@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { AuthRequest } from "./auth";
+import { AuthRequest } from "./authMiddleware";
 
 export function ownerOnly(
   req: AuthRequest,
@@ -7,7 +7,8 @@ export function ownerOnly(
   next: NextFunction
 ) {
   if (req.user?.role !== "owner") {
-    return res.status(403).json({ message: "Solo per owner" });
+    return res.status(403).json({ message: "Solo owner autorizzati" });
   }
+
   next();
 }

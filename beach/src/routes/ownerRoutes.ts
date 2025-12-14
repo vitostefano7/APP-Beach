@@ -1,17 +1,16 @@
 import express from "express";
+import { requireAuth } from "../middleware/authMiddleware";
+import { ownerOnly } from "../middleware/ownerOnly";
 import {
   createStruttura,
   getMyStrutture,
   updateStruttura,
   getOwnerBookings,
 } from "../controllers/ownerController";
-import { authMiddleware } from "../middleware/authMiddleware";
-import { ownerOnly } from "../middleware/ownerOnly";
 
 const router = express.Router();
 
-router.use(authMiddleware);
-router.use(ownerOnly);
+router.use(requireAuth, ownerOnly);
 
 router.post("/strutture", createStruttura);
 router.get("/strutture", getMyStrutture);

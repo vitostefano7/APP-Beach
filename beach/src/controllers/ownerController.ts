@@ -1,92 +1,64 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import mongoose from "mongoose";
+import { AuthRequest } from "../middleware/authMiddleware";
 import Strutture from "../models/Strutture";
 import Booking from "../models/Booking";
 
 /**
- * 🏗️ CREA STRUTTURA (OWNER)
- * POST /owner/strutture
+ * CREA STRUTTURA
  */
-export const createStruttura = async (req: Request, res: Response) => {
+export const createStruttura = async (req: AuthRequest, res: Response) => {
   try {
-    const ownerId = req.user.id;
-
-    const {
-      name,
-      description,
-      location,
-      pricePerHour,
-      amenities,
-      customAmenities,
-      openingHours,
-      images,
-      coverImage,
-      indoor,
-      surface,
-      maxPlayers,
-    } = req.body;
-
-    if (!name || !location?.lat || !location?.lng || !pricePerHour) {
-      return res.status(400).json({ message: "Dati obbligatori mancanti" });
-    }
+    const ownerId = req.user!.id;
 
     const struttura = await Strutture.create({
-      name,
-      description,
-      owner: ownerId,
+      ...req.body,
+      owner: new mongoose.Types.ObjectId(ownerId),
       location: {
-        ...location,
-        coordinates: [location.lng, location.lat],
+        ...req.body.location,
+        coordinates: [
+          req.body.location.lng,
+          req.body.location.lat,
+        ],
       },
-      pricePerHour,
-      amenities,
-      customAmenities,
-      openingHours,
-      images,
-      coverImage,
-      indoor,
-      surface,
-      maxPlayers,
     });
 
     res.status(201).json(struttura);
   } catch (err) {
-    console.error("createStruttura error", err);
+    console.error(err);
     res.status(500).json({ message: "Errore creazione struttura" });
   }
 };
 
 /**
- * 📋 STRUTTURE DELL'OWNER
- * GET /owner/strutture
+ * STRUTTURE OWNER
  */
-export const getMyStrutture = async (req: Request, res: Response) => {
+export const getMyStrutture = async (req: AuthRequest, res: Response) => {
   try {
-    const ownerId = req.user.id;
+    const ownerId = req.user!.id;
 
     const strutture = await Strutture.find({
-      owner: ownerId,
+      owner: new mongoose.Types.ObjectId(ownerId),
       isDeleted: false,
     });
 
     res.json(strutture);
   } catch (err) {
-    console.error("getMyStrutture error", err);
-    res.status(500).json({ message: "Errore caricamento strutture" });
+    res.status(500).json({ message: "Errore" });
   }
 };
 
 /**
- * ✏️ MODIFICA STRUTTURA (OWNER)
- * PUT /owner/strutture/:id
+ * UPDATE STRUTTURA
  */
-export const updateStruttura = async (req: Request, res: Response) => {
+export const updateStruttura = async (req: AuthRequest, res: Response) => {
   try {
-    const ownerId = req.user.id;
+    const ownerId = req.user!.id;
     const { id } = req.params;
 
     const struttura = await Strutture.findOne({
       _id: id,
-      owner: ownerId,
+      owner: new mongoose.Types.ObjectId(ownerId),
     });
 
     if (!struttura) {
@@ -95,7 +67,6 @@ export const updateStruttura = async (req: Request, res: Response) => {
 
     Object.assign(struttura, req.body);
 
-    // se cambia location → aggiorna coordinates
     if (req.body.location?.lat && req.body.location?.lng) {
       struttura.location.coordinates = [
         req.body.location.lng,
@@ -106,33 +77,32 @@ export const updateStruttura = async (req: Request, res: Response) => {
     await struttura.save();
     res.json(struttura);
   } catch (err) {
-    console.error("updateStruttura error", err);
-    res.status(500).json({ message: "Errore modifica struttura" });
+    res.status(500).json({ message: "Errore update" });
   }
 };
 
 /**
- * 📆 PRENOTAZIONI DELLE STRUTTURE OWNER
- * GET /owner/bookings
+ * PRENOTAZIONI OWNER
  */
-export const getOwnerBookings = async (req: Request, res: Response) => {
+export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
   try {
-    const ownerId = req.user.id;
+    const ownerId = req.user!.id;
 
-    const strutture = await Strutture.find({ owner: ownerId }).select("_id");
-    const strutturaIds = strutture.map(s => s._id);
+    const strutture = await Strutture.find({
+      owner: new mongoose.Types.ObjectId(ownerId),
+    }).select("_id");
+
+    const ids = strutture.map(s => s._id);
 
     const bookings = await Booking.find({
-      struttura: { $in: strutturaIds },
+      struttura: { $in: ids },
       status: "confirmed",
     })
       .populate("user", "name email")
-      .populate("struttura", "name location")
-      .sort({ date: -1, startTime: 1 });
+      .populate("struttura", "name location");
 
     res.json(bookings);
   } catch (err) {
-    console.error("getOwnerBookings error", err);
-    res.status(500).json({ message: "Errore prenotazioni" });
+    res.status(500).json({ message: "Errore bookings" });
   }
 };

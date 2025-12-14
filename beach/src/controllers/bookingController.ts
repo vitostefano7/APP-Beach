@@ -1,27 +1,35 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import Booking from "../models/Booking";
-import Struttura from "../models/Struttura";
+import Strutture from "../models/Strutture";
+import { AuthRequest } from "../middleware/authMiddleware";
 
 /**
  * 📌 CREA PRENOTAZIONE (PLAYER)
  * POST /bookings
  */
-export const createBooking = async (req: Request, res: Response) => {
+export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id; // dal middleware JWT
+    const user = req.user!;
     const { strutturaId, date, startTime, endTime } = req.body;
 
     if (!strutturaId || !date || !startTime || !endTime) {
       return res.status(400).json({ message: "Dati mancanti" });
     }
 
+    // ❌ owner non può prenotare
+    if (user.role === "owner") {
+      return res
+        .status(403)
+        .json({ message: "Un owner non può prenotare" });
+    }
+
     // 🔍 controllo struttura
-    const struttura = await Struttura.findById(strutturaId);
+    const struttura = await Strutture.findById(strutturaId);
     if (!struttura || !struttura.isActive) {
       return res.status(404).json({ message: "Struttura non disponibile" });
     }
 
-    // ❌ controllo conflitto orario
+    // ❌ conflitto orario
     const conflict = await Booking.findOne({
       struttura: strutturaId,
       date,
@@ -35,7 +43,7 @@ export const createBooking = async (req: Request, res: Response) => {
 
     // ✅ crea booking
     const booking = await Booking.create({
-      user: userId,
+      user: user.id,
       struttura: strutturaId,
       date,
       startTime,
@@ -51,14 +59,12 @@ export const createBooking = async (req: Request, res: Response) => {
 };
 
 /**
- * 📌 PRENOTAZIONI DELL’UTENTE LOGGATO (PLAYER)
+ * 📌 PRENOTAZIONI DELL’UTENTE LOGGATO
  * GET /bookings/me
  */
-export const getMyBookings = async (req: Request, res: Response) => {
+export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
-
-    const bookings = await Booking.find({ user: userId })
+    const bookings = await Booking.find({ user: req.user!.id })
       .populate("struttura", "name location pricePerHour")
       .sort({ date: -1, startTime: -1 });
 
@@ -70,22 +76,18 @@ export const getMyBookings = async (req: Request, res: Response) => {
 };
 
 /**
- * 📌 CANCELLA PRENOTAZIONE (PLAYER)
+ * 📌 CANCELLA PRENOTAZIONE
  * DELETE /bookings/:id
  */
-export const cancelBooking = async (req: Request, res: Response) => {
+export const cancelBooking = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
-    const { id } = req.params;
-
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
-    // 🔐 sicurezza: solo il proprietario può cancellare
-    if (booking.user.toString() !== userId) {
+    if (booking.user.toString() !== req.user!.id) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 

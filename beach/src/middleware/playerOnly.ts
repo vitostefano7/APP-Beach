@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { AuthRequest } from "./auth";
+import { AuthRequest } from "./authMiddleware";
 
 export function playerOnly(
   req: AuthRequest,

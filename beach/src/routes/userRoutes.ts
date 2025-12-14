@@ -1,31 +1,23 @@
 import express from "express";
 import User from "../models/User";
-import { auth, AuthRequest } from "../middleware/auth";
+import { requireAuth, AuthRequest } from "../middleware/authMiddleware";
 
 const router = express.Router();
 
-router.put(
-  "/me",
-  auth,
-  async (req: AuthRequest, res) => {
-    const { name, email } = req.body;
+router.get("/me", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
 
-    if (!name || !email) {
-      return res.status(400).json({ message: "Dati non validi" });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      { name, email },
-      { new: true }
-    ).select("-password");
-
+    const user = await User.findById(userId).select("-password");
     if (!user) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
     res.json(user);
+  } catch (err) {
+    console.error("get me error", err);
+    res.status(500).json({ message: "Errore server" });
   }
-);
+});
 
 export default router;

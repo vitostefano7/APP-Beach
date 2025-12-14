@@ -10,7 +10,7 @@ const bookingSchema = new mongoose.Schema(
 
     struttura: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Struttura",
+      ref: "Struttura", // ✅ NOME MODELLO CORRETTO
       required: true,
     },
 

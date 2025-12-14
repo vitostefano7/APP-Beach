@@ -1,20 +1,20 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-interface IStruttura extends Document {
+export interface IStruttura extends Document {
   name: string;
   description: string;
-  owner: mongoose.Schema.Types.ObjectId;
+  owner: mongoose.Types.ObjectId;
   location: {
     address: string;
     city: string;
     lat: number;
     lng: number;
-    coordinates: [number, number];  // Geospatial data
+    coordinates: [number, number];
   };
   sport: "beach_volley" | "padel" | "tennis";
   maxPlayers: number;
   indoor: boolean;
-  surface: "sand" | "hardcourt" | "grass";  // Possibile estensione per altre superfici
+  surface: "sand" | "hardcourt" | "grass";
   pricePerHour: number;
   amenities: {
     toilets: boolean;
@@ -24,27 +24,11 @@ interface IStruttura extends Document {
     restaurant: boolean;
     bar: boolean;
   };
-  customAmenities: [
-    {
-      label: string;
-      icon: string;
-    }
-  ];
-  openingHours: {
-    monday: { open: string; close: string };
-    tuesday: { open: string; close: string };
-    wednesday: { open: string; close: string };
-    thursday: { open: string; close: string };
-    friday: { open: string; close: string };
-    saturday: { open: string; close: string };
-    sunday: { open: string; close: string };
-  };
+  customAmenities: { label: string; icon: string }[];
+  openingHours: Record<string, { open: string; close: string }>;
   images: string[];
-  coverImage: string;
-  rating: {
-    average: number;
-    count: number;
-  };
+  coverImage?: string;
+  rating: { average: number; count: number };
   isActive: boolean;
   isFeatured: boolean;
   isDeleted: boolean;
@@ -53,20 +37,20 @@ interface IStruttura extends Document {
 const StrutturaSchema = new Schema<IStruttura>(
   {
     name: { type: String, required: true },
-    description: { type: String, required: true },
+    description: String,
 
     owner: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
     location: {
-      address: { type: String, required: true },
-      city: { type: String, required: true },
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
-      coordinates: { type: [Number], index: "2dsphere" }, // Geospatial index for proximity search
+      address: String,
+      city: String,
+      lat: Number,
+      lng: Number,
+      coordinates: { type: [Number], index: "2dsphere" },
     },
 
     sport: {
@@ -77,38 +61,29 @@ const StrutturaSchema = new Schema<IStruttura>(
 
     maxPlayers: { type: Number, default: 4 },
     indoor: { type: Boolean, default: false },
-    surface: { type: String, enum: ["sand", "hardcourt", "grass"], default: "sand" },
+    surface: {
+      type: String,
+      enum: ["sand", "hardcourt", "grass"],
+      default: "sand",
+    },
 
     pricePerHour: { type: Number, required: true },
 
     amenities: {
-      toilets: { type: Boolean, default: false },
-      lockerRoom: { type: Boolean, default: false },
-      showers: { type: Boolean, default: false },
-      parking: { type: Boolean, default: false },
-      restaurant: { type: Boolean, default: false },
-      bar: { type: Boolean, default: false },
+      toilets: Boolean,
+      lockerRoom: Boolean,
+      showers: Boolean,
+      parking: Boolean,
+      restaurant: Boolean,
+      bar: Boolean,
     },
 
-    customAmenities: [
-      {
-        label: { type: String },
-        icon: { type: String },
-      },
-    ],
+    customAmenities: [{ label: String, icon: String }],
 
-    openingHours: {
-      monday: { open: { type: String }, close: { type: String } },
-      tuesday: { open: { type: String }, close: { type: String } },
-      wednesday: { open: { type: String }, close: { type: String } },
-      thursday: { open: { type: String }, close: { type: String } },
-      friday: { open: { type: String }, close: { type: String } },
-      saturday: { open: { type: String }, close: { type: String } },
-      sunday: { open: { type: String }, close: { type: String } },
-    },
+    openingHours: Schema.Types.Mixed,
 
-    images: { type: [String], default: [] },
-    coverImage: { type: String },
+    images: [String],
+    coverImage: String,
 
     rating: {
       average: { type: Number, default: 0 },
