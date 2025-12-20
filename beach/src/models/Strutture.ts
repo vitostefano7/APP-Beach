@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStruttura extends Document {
   name: string;
-  description: string;
+  description?: string;
   owner: mongoose.Types.ObjectId;
   location: {
     address: string;
@@ -11,23 +11,9 @@ export interface IStruttura extends Document {
     lng: number;
     coordinates: [number, number];
   };
-  sport: "beach_volley" | "padel" | "tennis";
-  maxPlayers: number;
-  indoor: boolean;
-  surface: "sand" | "hardcourt" | "grass";
-  pricePerHour: number;
-  amenities: {
-    toilets: boolean;
-    lockerRoom: boolean;
-    showers: boolean;
-    parking: boolean;
-    restaurant: boolean;
-    bar: boolean;
-  };
-  customAmenities: { label: string; icon: string }[];
-  openingHours: Record<string, { open: string; close: string }>;
+  amenities: any;
+  openingHours: any;
   images: string[];
-  coverImage?: string;
   rating: { average: number; count: number };
   isActive: boolean;
   isFeatured: boolean;
@@ -39,11 +25,7 @@ const StrutturaSchema = new Schema<IStruttura>(
     name: { type: String, required: true },
     description: String,
 
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
     location: {
       address: String,
@@ -52,22 +34,6 @@ const StrutturaSchema = new Schema<IStruttura>(
       lng: Number,
       coordinates: { type: [Number], index: "2dsphere" },
     },
-
-    sport: {
-      type: String,
-      enum: ["beach_volley", "padel", "tennis"],
-      default: "beach_volley",
-    },
-
-    maxPlayers: { type: Number, default: 4 },
-    indoor: { type: Boolean, default: false },
-    surface: {
-      type: String,
-      enum: ["sand", "hardcourt", "grass"],
-      default: "sand",
-    },
-
-    pricePerHour: { type: Number, required: true },
 
     amenities: {
       toilets: Boolean,
@@ -78,12 +44,9 @@ const StrutturaSchema = new Schema<IStruttura>(
       bar: Boolean,
     },
 
-    customAmenities: [{ label: String, icon: String }],
-
     openingHours: Schema.Types.Mixed,
 
-    images: [String],
-    coverImage: String,
+    images: { type: [String], default: [] },
 
     rating: {
       average: { type: Number, default: 0 },

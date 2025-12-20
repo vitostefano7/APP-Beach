@@ -3,8 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import SearchScreen from "../screens/SearchScreen";
 import BookingsScreen from "../screens/BookingsScreen";
-import MapsScreen from "../screens/MapsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import MapsStack from "./MapsStack"; // ⬅️ IMPORTANTE
 
 const Tab = createBottomTabNavigator();
 
@@ -20,7 +20,13 @@ export default function PlayerTabs() {
             Mappa: "map",
             Profilo: "person",
           };
-          return <Ionicons name={icons[route.name]} size={size} color={color} />;
+          return (
+            <Ionicons
+              name={icons[route.name]}
+              size={size}
+              color={color}
+            />
+          );
         },
         tabBarActiveTintColor: "#2b8cee",
         tabBarInactiveTintColor: "#999",
@@ -28,7 +34,10 @@ export default function PlayerTabs() {
     >
       <Tab.Screen name="Cerca" component={SearchScreen} />
       <Tab.Screen name="Prenotazioni" component={BookingsScreen} />
-      <Tab.Screen name="Mappa" component={MapsScreen} />
+
+      {/* 🔴 QUI ERA IL BUG */}
+      <Tab.Screen name="Mappa" component={MapsStack} />
+
       <Tab.Screen name="Profilo" component={ProfileScreen} />
     </Tab.Navigator>
   );

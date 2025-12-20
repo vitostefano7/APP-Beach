@@ -8,7 +8,7 @@ import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 
 import PlayerTabs from "./src/navigation/PlayerTabs";
-import OwnerTabs from "./src/navigation/OwnerTabs";
+import OwnerRootStack from "./src/navigation/OwnerRootStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,7 +25,7 @@ function AppNavigator() {
           <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       ) : user?.role === "owner" ? (
-        <Stack.Screen name="OwnerHome" component={OwnerTabs} />
+        <Stack.Screen name="OwnerHome" component={OwnerRootStack} />
       ) : (
         <Stack.Screen name="PlayerHome" component={PlayerTabs} />
       )}

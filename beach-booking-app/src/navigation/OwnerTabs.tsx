@@ -7,7 +7,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
-export default function OwnerTabs() {
+export default function OwnerTabs() { 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({

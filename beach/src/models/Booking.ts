@@ -8,47 +8,22 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
-    struttura: {
+    campo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Struttura", // ✅ NOME MODELLO CORRETTO
+      ref: "Campo",
       required: true,
     },
 
-    date: {
-      type: String, // "2025-01-20"
-      required: true,
-    },
+    date: { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
 
-    startTime: {
-      type: String, // "14:00"
-      required: true,
-    },
-
-    endTime: {
-      type: String, // "15:00"
-      required: true,
-    },
-
-    durationHours: {
-      type: Number,
-      required: true,
-    },
-
-    price: {
-      type: Number,
-      required: true,
-    },
+    price: { type: Number, required: true },
 
     status: {
       type: String,
       enum: ["confirmed", "cancelled"],
       default: "confirmed",
-    },
-
-    paymentStatus: {
-      type: String,
-      enum: ["pending", "paid", "refunded"],
-      default: "pending",
     },
   },
   { timestamps: true }

@@ -8,7 +8,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [role, setRole] = useState<"player" | "owner">("player");
 
   const handleRegister = async () => {
-    const res = await fetch("http://YOUR_IP:3000/auth/register", {
+    const res = await fetch("http://192.168.1.112:3000/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, role }),

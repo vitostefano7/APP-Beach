@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import MapView, { Marker, Circle, Region } from "react-native-maps";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -21,19 +22,17 @@ type Struttura = {
   };
 };
 
-type Cluster = {
-  center: { lat: number; lng: number };
-  items: Struttura[];
+type MapsStackParamList = {
+  Maps: undefined;
+  FieldDetails: { struttura: Struttura };
 };
 
 /* ---------- UTILS ---------- */
 
-// distanza reale (metri)
 function distanceInMeters(a: any, b: any) {
   const R = 6371000;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
   const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-
   const lat1 = (a.lat * Math.PI) / 180;
   const lat2 = (b.lat * Math.PI) / 180;
 
@@ -44,13 +43,14 @@ function distanceInMeters(a: any, b: any) {
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// cluster semplice
-function clusterStrutture(strutture: Struttura[], radius: number): Cluster[] {
-  const clusters: Cluster[] = [];
+function clusterStrutture(strutture: Struttura[], radius: number) {
+  const clusters: any[] = [];
 
   strutture.forEach(s => {
     const point = { lat: s.location.lat, lng: s.location.lng };
-    const found = clusters.find(c => distanceInMeters(c.center, point) < radius);
+    const found = clusters.find(
+      c => distanceInMeters(c.center, point) < radius
+    );
 
     if (found) found.items.push(s);
     else clusters.push({ center: point, items: [s] });
@@ -59,27 +59,25 @@ function clusterStrutture(strutture: Struttura[], radius: number): Cluster[] {
   return clusters;
 }
 
-// raggio fisso in base allo zoom
 function getCircleRadius(latitudeDelta: number) {
-  if (latitudeDelta > 4) return 15000;  // 15 km
-  if (latitudeDelta > 2) return 10000;  // 10 km
-  if (latitudeDelta > 1) return 6000;   // 6 km
-  if (latitudeDelta > 0.5) return 3000; // 3 km
-  return 1500;                          // 1.5 km
+  if (latitudeDelta > 4) return 15000;
+  if (latitudeDelta > 2) return 10000;
+  if (latitudeDelta > 1) return 6000;
+  if (latitudeDelta > 0.5) return 3000;
+  return 1500;
 }
 
 /* ---------- SCREEN ---------- */
 
 export default function MapsScreen() {
-  const navigation = useNavigation<any>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MapsStackParamList>>();
+
   const mapRef = useRef<MapView>(null);
 
   const [strutture, setStrutture] = useState<Struttura[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // filtri
-  const [showFilters, setShowFilters] = useState(false);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  
 
   const [region, setRegion] = useState<Region>({
     latitude: 45.4642,
@@ -97,28 +95,17 @@ export default function MapsScreen() {
       .catch(console.log);
   }, []);
 
-  /* ---------- FILTRI ---------- */
-
-  const filteredStrutture = useMemo(() => {
-    return strutture.filter(s => {
-      if (maxPrice !== null && s.pricePerHour > maxPrice) return false;
-      return true;
-    });
-  }, [strutture, maxPrice]);
-
-  /* ---------- ZOOM ---------- */
+  /* ---------- CLUSTERS ---------- */
 
   const isZoomedOut = region.latitudeDelta > 0.35;
   const circleRadius = getCircleRadius(region.latitudeDelta);
 
-  /* ---------- CLUSTERS ---------- */
-
   const clusters = useMemo(() => {
     if (!isZoomedOut) return [];
-    return clusterStrutture(filteredStrutture, circleRadius);
-  }, [filteredStrutture, isZoomedOut, circleRadius]);
+    return clusterStrutture(strutture, circleRadius);
+  }, [strutture, isZoomedOut, circleRadius]);
 
-  const selected = filteredStrutture.find(s => s._id === selectedId);
+  const selected = strutture.find(s => s._id === selectedId);
 
   /* ---------- GPS ---------- */
 
@@ -149,21 +136,17 @@ export default function MapsScreen() {
         onRegionChangeComplete={setRegion}
         onPress={() => setSelectedId(null)}
       >
-        {/* ZOOM OUT → CIRCLE */}
+        {/* CLUSTERS */}
         {isZoomedOut &&
           clusters.map((c, i) => (
             <View key={i}>
               <Circle
-                center={{
-                  latitude: c.center.lat,
-                  longitude: c.center.lng,
-                }}
+                center={{ latitude: c.center.lat, longitude: c.center.lng }}
                 radius={circleRadius}
                 strokeColor="rgba(43,140,238,0.7)"
                 fillColor="rgba(43,140,238,0.25)"
               />
 
-              {/* click sul circle */}
               <Marker
                 coordinate={{
                   latitude: c.center.lat,
@@ -175,8 +158,8 @@ export default function MapsScreen() {
                     {
                       latitude: c.center.lat,
                       longitude: c.center.lng,
-                      latitudeDelta: region.latitudeDelta * 0.15,
-                      longitudeDelta: region.longitudeDelta * 0.15,
+                      latitudeDelta: region.latitudeDelta * 0.2,
+                      longitudeDelta: region.longitudeDelta * 0.2,
                     },
                     400
                   )
@@ -185,11 +168,11 @@ export default function MapsScreen() {
             </View>
           ))}
 
-        {/* ZOOM IN → MARKER */}
+        {/* MARKERS */}
         {!isZoomedOut &&
-          filteredStrutture.map(s => (
+          strutture.map(s => (
             <Marker
-              key={`${s._id}-${selectedId}`}
+              key={s._id}
               coordinate={{
                 latitude: s.location.lat,
                 longitude: s.location.lng,
@@ -200,66 +183,22 @@ export default function MapsScreen() {
           ))}
       </MapView>
 
-      {/* GPS BUTTON */}
+      {/* GPS */}
       <Pressable style={styles.gpsButton} onPress={centerOnUser}>
         <Ionicons name="locate" size={22} color="#2b8cee" />
       </Pressable>
-
-      {/* FILTER BUTTON */}
-      <Pressable
-        style={styles.filterButton}
-        onPress={() => setShowFilters(true)}
-      >
-        <Ionicons name="filter" size={20} color="#2b8cee" />
-      </Pressable>
-
-      {/* FILTER PANEL */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <Text style={styles.filterTitle}>Filtri</Text>
-
-          <Pressable
-            style={styles.filterOption}
-            onPress={() => setMaxPrice(10)}
-          >
-            <Text>Prezzo ≤ 10 €</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.filterOption}
-            onPress={() => setMaxPrice(20)}
-          >
-            <Text>Prezzo ≤ 20 €</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.filterOption}
-            onPress={() => setMaxPrice(null)}
-          >
-            <Text>Nessun filtro</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.filterClose}
-            onPress={() => setShowFilters(false)}
-          >
-            <Text style={styles.filterCloseText}>Chiudi</Text>
-          </Pressable>
-        </View>
-      )}
 
       {/* CARD */}
       {selected && !isZoomedOut && (
         <View style={styles.card}>
           <Text style={styles.title}>{selected.name}</Text>
-          <Text>€{selected.pricePerHour} / ora</Text>
+          <Text>€ {selected.pricePerHour} / ora</Text>
 
           <Pressable
             style={styles.button}
             onPress={() =>
-              navigation.navigate("Mappa", {
-                screen: "FieldDetails",
-                params: { struttura: selected },
+              navigation.navigate("FieldDetails", {
+                struttura: selected,
               })
             }
           >
@@ -283,57 +222,12 @@ const styles = StyleSheet.create({
 
   gpsButton: {
     position: "absolute",
-    bottom: 10,
+    bottom: 20,
     right: 20,
     backgroundColor: "white",
     padding: 12,
     borderRadius: 30,
     elevation: 4,
-  },
-
-  filterButton: {
-    position: "absolute",
-    bottom: 70,
-    right: 20,
-    backgroundColor: "white",
-    padding: 12,
-    borderRadius: 30,
-    elevation: 4,
-  },
-
-  filterPanel: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-    padding: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    elevation: 10,
-  },
-
-  filterTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-
-  filterOption: {
-    paddingVertical: 12,
-  },
-
-  filterClose: {
-    marginTop: 16,
-    backgroundColor: "#2b8cee",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-
-  filterCloseText: {
-    color: "white",
-    fontWeight: "700",
   },
 
   card: {

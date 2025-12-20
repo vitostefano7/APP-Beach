@@ -5,18 +5,20 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
-
 
 export default function ProfileScreen() {
   const { user, logout, login, token } = useContext(AuthContext);
 
   if (!user) {
     return (
-      <View style={styles.container}>
-        <Text>Nessun utente</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Text>Nessun utente</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -36,126 +38,145 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-  try {
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    const res = await fetch("http://192.168.1.112:3000/users/me", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ name, email }),
-    });
+      const res = await fetch("http://192.168.1.112:3000/users/me", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, email }),
+      });
 
-    if (!res.ok) {
-      throw new Error("Errore aggiornamento profilo");
+      if (!res.ok) {
+        throw new Error("Errore aggiornamento profilo");
+      }
+
+      const updatedUser = await res.json();
+
+      // aggiorna contesto globale
+      login(token!, updatedUser);
+
+      setIsEditing(false);
+    } catch (err) {
+      console.log("Errore update profilo", err);
+    } finally {
+      setSaving(false);
     }
-
-    const updatedUser = await res.json();
-
-    // aggiorna contesto globale
-    login(token!, updatedUser);
-
-    setIsEditing(false);
-  } catch (err) {
-    console.log("Errore update profilo", err);
-  } finally {
-    setSaving(false);
-  }
-};
-
-
+  };
 
   return (
-    <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Il mio profilo</Text>
-        <Pressable onPress={logout}>
-          <Text style={styles.logout}>Logout</Text>
-        </Pressable>
-      </View>
-
-      {/* AVATAR */}
-      <View style={styles.avatarWrapper}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-      </View>
-
-      {/* CARD */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Dati personali</Text>
-
-        {/* NOME */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Nome</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-            />
-          ) : (
-            <Text style={styles.value}>{user.name}</Text>
-          )}
-        </View>
-
-        {/* EMAIL */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-          ) : (
-            <Text style={styles.value}>{user.email}</Text>
-          )}
-        </View>
-
-        {/* RUOLO */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Ruolo</Text>
-          <Text style={styles.value}>{user.role}</Text>
-        </View>
-
-        {/* AZIONI */}
-        {!isEditing ? (
-          <Pressable
-            style={styles.editButton}
-            onPress={() => setIsEditing(true)}
-          >
-            <Text style={styles.editText}>Modifica profilo</Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Il mio profilo</Text>
+          <Pressable onPress={logout}>
+            <Text style={styles.logout}>Logout</Text>
           </Pressable>
-        ) : (
-          <View style={styles.editActions}>
-            <Pressable onPress={handleCancel}>
-              <Text style={styles.cancelText}>Annulla</Text>
-            </Pressable>
+        </View>
 
-            <Pressable style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveText}>Salva</Text>
-            </Pressable>
+        {/* AVATAR */}
+        <View style={styles.avatarWrapper}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user.name.charAt(0).toUpperCase()}
+            </Text>
           </View>
-        )}
+
+          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+        </View>
+
+        {/* CARD */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Dati personali</Text>
+
+          {/* NOME */}
+          <View style={styles.row}>
+            <Text style={styles.label}>Nome</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+              />
+            ) : (
+              <Text style={styles.value}>{user.name}</Text>
+            )}
+          </View>
+
+          {/* EMAIL */}
+          <View style={styles.row}>
+            <Text style={styles.label}>Email</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+              />
+            ) : (
+              <Text style={styles.value}>{user.email}</Text>
+            )}
+          </View>
+
+          {/* RUOLO */}
+          <View style={styles.row}>
+            <Text style={styles.label}>Ruolo</Text>
+            <Text style={styles.value}>{user.role}</Text>
+          </View>
+
+          {/* AZIONI */}
+          {!isEditing ? (
+            <Pressable
+              style={styles.editButton}
+              onPress={() => setIsEditing(true)}
+            >
+              <Text style={styles.editText}>Modifica profilo</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.editActions}>
+              <Pressable onPress={handleCancel}>
+                <Text style={styles.cancelText}>Annulla</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.saveButton}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                <Text style={styles.saveText}>
+                  {saving ? "Salvataggio..." : "Salva"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
+/* =========================
+   STYLES
+========================= */
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: "#f6f7f9",
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  container: {
+    flex: 1,
     padding: 20,
   },
 

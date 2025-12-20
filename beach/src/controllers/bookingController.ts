@@ -1,37 +1,41 @@
 import { Response } from "express";
 import Booking from "../models/Booking";
-import Strutture from "../models/Strutture";
+import Campo from "../models/Campo";
 import { AuthRequest } from "../middleware/authMiddleware";
 
+/* =====================================================
+   PLAYER
+===================================================== */
+
 /**
- * 📌 CREA PRENOTAZIONE (PLAYER)
+ * 📌 CREA PRENOTAZIONE
  * POST /bookings
  */
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { strutturaId, date, startTime, endTime } = req.body;
+    const { campoId, date, startTime, endTime } = req.body;
 
-    if (!strutturaId || !date || !startTime || !endTime) {
+    if (!campoId || !date || !startTime || !endTime) {
       return res.status(400).json({ message: "Dati mancanti" });
     }
 
-    // ❌ owner non può prenotare
     if (user.role === "owner") {
       return res
         .status(403)
         .json({ message: "Un owner non può prenotare" });
     }
 
-    // 🔍 controllo struttura
-    const struttura = await Strutture.findById(strutturaId);
-    if (!struttura || !struttura.isActive) {
-      return res.status(404).json({ message: "Struttura non disponibile" });
+    /* 🔍 campo */
+    const campo = await Campo.findById(campoId).populate("struttura");
+
+    if (!campo || !campo.isActive) {
+      return res.status(404).json({ message: "Campo non disponibile" });
     }
 
-    // ❌ conflitto orario
+    /* ❌ conflitto orario */
     const conflict = await Booking.findOne({
-      struttura: strutturaId,
+      campo: campoId,
       date,
       startTime,
       status: "confirmed",
@@ -41,39 +45,46 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Orario già prenotato" });
     }
 
-    // ✅ crea booking
+    /* ✅ crea booking */
     const booking = await Booking.create({
       user: user.id,
-      struttura: strutturaId,
+      campo: campoId,
       date,
       startTime,
       endTime,
-      price: struttura.pricePerHour,
+      price: campo.pricePerHour,
     });
 
-    return res.status(201).json(booking);
+    res.status(201).json(booking);
   } catch (err) {
-    console.error("createBooking error", err);
-    return res.status(500).json({ message: "Errore server" });
+    console.error("❌ createBooking error:", err);
+    res.status(500).json({ message: "Errore server" });
   }
 };
 
 /**
- * 📌 PRENOTAZIONI DELL’UTENTE LOGGATO
+ * 📌 PRENOTAZIONI DEL PLAYER
  * GET /bookings/me
  */
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
     const bookings = await Booking.find({ user: req.user!.id })
-      .populate("struttura", "name location pricePerHour")
+      .populate({
+        path: "campo",
+        populate: {
+          path: "struttura",
+          select: "name location images",
+        },
+      })
       .sort({ date: -1, startTime: -1 });
 
-    return res.json(bookings);
+    res.json(bookings);
   } catch (err) {
     console.error("getMyBookings error", err);
-    return res.status(500).json({ message: "Errore server" });
+    res.status(500).json({ message: "Errore server" });
   }
 };
+
 
 /**
  * 📌 CANCELLA PRENOTAZIONE
@@ -94,9 +105,45 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     booking.status = "cancelled";
     await booking.save();
 
-    return res.json({ message: "Prenotazione cancellata" });
+    res.json({ message: "Prenotazione cancellata" });
   } catch (err) {
-    console.error("cancelBooking error", err);
-    return res.status(500).json({ message: "Errore server" });
+    console.error("❌ cancelBooking error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/* =====================================================
+   OWNER
+===================================================== */
+
+/**
+ * 📌 PRENOTAZIONI RICEVUTE DALL’OWNER
+ * GET /bookings/owner
+ */
+export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerId = req.user!.id;
+
+    const bookings = await Booking.find()
+      .populate({
+        path: "campo",
+        populate: {
+          path: "struttura",
+          match: { owner: ownerId },
+          select: "name location",
+        },
+      })
+      .populate("user", "name email")
+      .sort({ date: 1, startTime: 1 });
+
+    /* ❗ rimuove booking non dell’owner */
+    const filtered = bookings.filter(
+      b => (b as any).campo?.struttura
+    );
+
+    res.json(filtered);
+  } catch (err) {
+    console.error("❌ getOwnerBookings error:", err);
+    res.status(500).json({ message: "Errore server" });
   }
 };

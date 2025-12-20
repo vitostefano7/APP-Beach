@@ -1,6 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/authMiddleware";
-import { ownerOnly } from "../middleware/ownerOnly";
+import ownerOnly from "../middleware/ownerOnly";
 import {
   createStruttura,
   getMyStrutture,

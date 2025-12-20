@@ -8,7 +8,7 @@ export default function LoginScreen({ navigation }: any) {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    const res = await fetch("http://YOUR_IP:3000/auth/login", {
+    const res = await fetch("http://192.168.1.112:3000/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
