@@ -3,297 +3,215 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  TextInput,
+  Switch,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 
+const API_URL = "http://192.168.1.112:3000";
+
 export default function ProfileScreen() {
-  const { user, logout, login, token } = useContext(AuthContext);
+  const { token, logout, user } = useContext(AuthContext);
+  const [data, setData] = useState<any>(null);
 
-  if (!user) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <Text>Nessun utente</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
-  // 🔁 edit mode
-  const [isEditing, setIsEditing] = useState(false);
-
-  // 📝 form locale
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-
-  const handleCancel = () => {
-    setName(user.name);
-    setEmail(user.email);
-    setIsEditing(false);
+  const fetchProfile = async () => {
+    const res = await fetch(`${API_URL}/users/me/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    setData(json);
   };
 
-  const [saving, setSaving] = useState(false);
+  if (!data) return null;
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-
-      const res = await fetch("http://192.168.1.112:3000/users/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, email }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Errore aggiornamento profilo");
-      }
-
-      const updatedUser = await res.json();
-
-      // aggiorna contesto globale
-      login(token!, updatedUser);
-
-      setIsEditing(false);
-    } catch (err) {
-      console.log("Errore update profilo", err);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { profile, preferences, payments } = data;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView>
         {/* HEADER */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Il mio profilo</Text>
-          <Pressable onPress={logout}>
-            <Text style={styles.logout}>Logout</Text>
+          <Text style={styles.title}>Il mio profilo</Text>
+          <Pressable>
+            <Text style={styles.save}>Salva</Text>
           </Pressable>
         </View>
 
         {/* AVATAR */}
-        <View style={styles.avatarWrapper}>
+        <View style={styles.avatarSection}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user.name.charAt(0).toUpperCase()}
+              {user.name.charAt(0)}
             </Text>
           </View>
 
           <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.subtitle}>
+            Livello {profile.level} • Membro dal{" "}
+            {new Date(user.createdAt).getFullYear()}
+          </Text>
         </View>
 
-        {/* CARD */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Dati personali</Text>
+        {/* STATS */}
+        <View style={styles.stats}>
+          <StatBox label="PARTITE" value={profile.matchesPlayed} />
+          <StatBox label="RATING" value={profile.ratingAverage} star />
+        </View>
 
-          {/* NOME */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Nome</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-              />
-            ) : (
-              <Text style={styles.value}>{user.name}</Text>
-            )}
-          </View>
+        {/* DATI PERSONALI */}
+        <Section title="DATI PERSONALI">
+          <Row label="Nome" value={user.name} />
+          <Row label="Email" value={user.email} />
+          <Row label="Telefono" value={user.phone ?? "-"} />
+        </Section>
 
-          {/* EMAIL */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Email</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-            ) : (
-              <Text style={styles.value}>{user.email}</Text>
-            )}
-          </View>
-
-          {/* RUOLO */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Ruolo</Text>
-            <Text style={styles.value}>{user.role}</Text>
-          </View>
-
-          {/* AZIONI */}
-          {!isEditing ? (
-            <Pressable
-              style={styles.editButton}
-              onPress={() => setIsEditing(true)}
-            >
-              <Text style={styles.editText}>Modifica profilo</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.editActions}>
-              <Pressable onPress={handleCancel}>
-                <Text style={styles.cancelText}>Annulla</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.saveButton}
-                onPress={handleSave}
-                disabled={saving}
-              >
-                <Text style={styles.saveText}>
-                  {saving ? "Salvataggio..." : "Salva"}
-                </Text>
-              </Pressable>
-            </View>
+        {/* PAGAMENTI */}
+        <Section title="PAGAMENTI">
+          {payments?.[0] && (
+            <Row
+              label={`Visa •••• ${payments[0].last4}`}
+              value={`Scade ${payments[0].expMonth}/${payments[0].expYear}`}
+              arrow
+            />
           )}
+        </Section>
+
+        {/* PREFERENZE */}
+        <View style={styles.preferences}>
+          <PrefRow label="Notifiche Push" value={preferences.pushNotifications} />
+          <PrefRow label="Modalità Scura" value={preferences.darkMode} />
+          <Row
+            label="Campo preferito"
+            value={profile.favoriteCampo?.name ?? "-"}
+            arrow
+          />
+          <Row label="Privacy e Sicurezza" arrow />
         </View>
-      </View>
+
+        {/* LOGOUT */}
+        <Pressable style={styles.logoutButton} onPress={logout}>
+          <Text style={styles.logoutText}>Esci dall'account</Text>
+        </Pressable>
+
+        <Text style={styles.version}>Versione App 2.4.0</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
+const StatBox = ({ label, value, star }: any) => (
+  <View style={styles.statBox}>
+    <Text style={styles.statValue}>
+      {star ? `⭐ ${value}` : value}
+    </Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
-/* =========================
-   STYLES
-========================= */
+const Section = ({ title, children }: any) => (
+  <>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.card}>{children}</View>
+  </>
+);
+
+const Row = ({ label, value, arrow }: any) => (
+  <View style={styles.row}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.rowRight}>
+      {value && <Text style={styles.value}>{value}</Text>}
+      {arrow && <Text>›</Text>}
+    </View>
+  </View>
+);
+
+const PrefRow = ({ label, value }: any) => (
+  <View style={styles.row}>
+    <Text style={styles.label}>{label}</Text>
+    <Switch value={value} />
+  </View>
+);
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#f6f7f9",
-  },
+  safe: { flex: 1, backgroundColor: "#f6f7f9" },
 
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-
-  /* Header */
   header: {
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  logout: {
-    color: "#e53935",
-    fontWeight: "600",
-  },
+  title: { fontSize: 20, fontWeight: "700" },
+  save: { color: "#007aff", fontWeight: "600" },
 
-  /* Avatar */
-  avatarWrapper: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
+  avatarSection: { alignItems: "center", marginVertical: 20 },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#ef8f00",
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#eee",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    elevation: 4,
   },
-  avatarText: {
-    fontSize: 44,
-    color: "white",
-    fontWeight: "700",
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  email: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-  },
+  avatarText: { fontSize: 32, fontWeight: "700" },
+  name: { fontSize: 20, fontWeight: "700", marginTop: 8 },
+  subtitle: { color: "#666", marginTop: 4 },
 
-  /* Card */
+  stats: { flexDirection: "row", gap: 12, paddingHorizontal: 16 },
+  statBox: {
+    flex: 1,
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  statValue: { fontSize: 18, fontWeight: "700" },
+  statLabel: { color: "#999", marginTop: 4 },
+
+  sectionTitle: {
+    marginTop: 24,
+    marginLeft: 16,
+    color: "#999",
+    fontWeight: "700",
+  },
   card: {
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    elevation: 3,
+    margin: 16,
+    borderRadius: 12,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#999",
-    marginBottom: 12,
-  },
+
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
     borderColor: "#eee",
   },
-  label: {
-    color: "#666",
-  },
-  value: {
-    fontWeight: "600",
+  label: { color: "#333" },
+  value: { fontWeight: "600" },
+  rowRight: { flexDirection: "row", gap: 8 },
+
+  preferences: {
+    backgroundColor: "white",
+    margin: 16,
+    borderRadius: 12,
   },
 
-  /* Edit */
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 8,
-    minWidth: 160,
-    textAlign: "right",
-  },
-  editButton: {
-    marginTop: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#ef8f00",
+  logoutButton: {
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#fdecea",
     alignItems: "center",
   },
-  editText: {
-    color: "#ef8f00",
-    fontWeight: "600",
-  },
-  editActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 16,
-    alignItems: "center",
-  },
-  cancelText: {
+  logoutText: { color: "#e53935", fontWeight: "700" },
+
+  version: {
+    textAlign: "center",
     color: "#999",
-    fontWeight: "600",
-    marginRight: 16,
-  },
-  saveButton: {
-    backgroundColor: "#ef8f00",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  saveText: {
-    color: "white",
-    fontWeight: "700",
+    marginBottom: 20,
   },
 });

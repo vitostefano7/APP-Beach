@@ -2,15 +2,19 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
+import PlayerProfile from "../models/PlayerProfile";
+import UserPreferences from "../models/UserPreferences";
 
-const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi lo mettiamo in variabile d'ambiente
+const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi env
 
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email e password sono obbligatori" });
+      return res
+        .status(400)
+        .json({ message: "Name, email e password sono obbligatori" });
     }
 
     const existing = await User.findOne({ email });
@@ -26,6 +30,12 @@ export const register = async (req: Request, res: Response) => {
       password: hashed,
       role: role === "owner" ? "owner" : "player",
     });
+
+    // 👇 CREA STRUTTURE DI PROFILO SOLO PER PLAYER
+    if (user.role === "player") {
+      await PlayerProfile.create({ user: user._id });
+      await UserPreferences.create({ user: user._id });
+    }
 
     return res.status(201).json({
       id: user._id,
@@ -44,24 +54,17 @@ export const login = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email e password obbligatorie" });
+      return res
+        .status(400)
+        .json({ message: "Email e password obbligatorie" });
     }
 
-    console.log("📨 Email ricevuta:", email);
-    console.log("🔑 Password ricevuta:", password);
-
     const user = await User.findOne({ email });
-    console.log("🗄️ User dal DB:", user?.email);
-
     if (!user) {
       return res.status(400).json({ message: "Credenziali errate" });
     }
 
-    console.log("🔐 Password hash nel DB:", user.password);
-
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log("✅ Password match:", isMatch);
-
     if (!isMatch) {
       return res.status(400).json({ message: "Credenziali errate" });
     }

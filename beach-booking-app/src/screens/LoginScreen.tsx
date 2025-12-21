@@ -24,13 +24,27 @@ export default function LoginScreen({ navigation }: any) {
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
 
-      <TextInput style={styles.input} placeholder="Email" onChangeText={setEmail} />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        onChangeText={setPassword}
-      />
+        {/* EMAIL */}
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+        />
+
+        {/* PASSWORD */}
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry
+          onChangeText={setPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="password"
+        />
 
       <Pressable style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Accedi</Text>
@@ -44,7 +58,7 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
+  container: { flex: 1, justifyContent: "center", padding: 20},
   title: { fontSize: 24, fontWeight: "700", textAlign: "center", marginBottom: 20 },
   input: { borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 12 },
   button: { backgroundColor: "#2b8cee", padding: 14, borderRadius: 8 },

@@ -5,6 +5,8 @@ import User, { IUser } from "./models/User";
 import Struttura, { IStruttura } from "./models/Strutture";
 import Campo, { ICampo } from "./models/Campo";
 import Booking from "./models/Booking";
+import PlayerProfile from "./models/PlayerProfile";
+import UserPreferences from "./models/UserPreferences";
 
 /* =========================
    CONFIG
@@ -48,14 +50,13 @@ async function seed() {
     await Booking.deleteMany({});
     await Campo.deleteMany({});
     await Struttura.deleteMany({});
+    await PlayerProfile.deleteMany({});
+    await UserPreferences.deleteMany({});
     await User.deleteMany({});
     console.log("🧹 Database pulito");
 
     /* -------- PASSWORD -------- */
-    const hashedPassword = await bcrypt.hash(
-      DEFAULT_PASSWORD,
-      SALT_ROUNDS
-    );
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
 
     /* -------- USERS -------- */
     const users: IUser[] = await User.insertMany([
@@ -71,13 +72,33 @@ async function seed() {
 
     console.log("👤 Utenti creati:", users.length);
 
+    /* -------- PLAYER PROFILES -------- */
+    await PlayerProfile.insertMany(
+      players.map(player => ({
+        user: player._id,
+        level: "amateur",
+        matchesPlayed: 0,
+        ratingAverage: 0,
+      }))
+    );
+
+    await UserPreferences.insertMany(
+      players.map(player => ({
+        user: player._id,
+        pushNotifications: true,
+        darkMode: false,
+        privacyLevel: "public",
+      }))
+    );
+
+    console.log("🎮 Profili giocatore creati:", players.length);
+
     /* -------- STRUTTURE -------- */
     const strutture: IStruttura[] = await Struttura.insertMany(
       CITIES.map((c, i) => ({
         name: `Sport Center ${c.city}`,
         description: "Centro sportivo moderno",
         owner: owners[i % owners.length]._id,
-
         location: {
           address: `Via Sport ${i + 1}`,
           city: c.city,
@@ -88,7 +109,6 @@ async function seed() {
             c.lat + Math.random() * 0.01,
           ],
         },
-
         amenities: {
           toilets: true,
           lockerRoom: true,
@@ -97,13 +117,11 @@ async function seed() {
           restaurant: i % 2 === 0,
           bar: true,
         },
-
         openingHours: {
           monday: { open: "09:00", close: "22:00" },
           tuesday: { open: "09:00", close: "22:00" },
           wednesday: { open: "09:00", close: "22:00" },
         },
-
         images: [],
         rating: { average: 4.2, count: 10 },
         isActive: true,
@@ -157,6 +175,18 @@ async function seed() {
 
     await Booking.insertMany(bookings);
     console.log("📅 Prenotazioni create:", bookings.length);
+
+    /* -------- UPDATE MATCHES PLAYED -------- */
+    for (const player of players) {
+      const count = bookings.filter(
+        b => b.user.toString() === player._id.toString()
+      ).length;
+
+      await PlayerProfile.findOneAndUpdate(
+        { user: player._id },
+        { matchesPlayed: count }
+      );
+    }
 
     console.log("🌱 SEED COMPLETATO CON SUCCESSO");
     process.exit(0);

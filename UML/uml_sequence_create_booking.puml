@@ -1,0 +1,25 @@
+@startuml
+' =========================
+' Sequence: createBooking (PLAYER)
+' =========================
+autonumber
+actor Player
+participant "BookingController\ncreateBooking" as BC
+database Campo
+database Booking
+
+Player -> BC : POST /bookings\n(campoId, date, startTime, endTime)
+BC -> Campo : findById(campoId)
+Campo --> BC : campo (pricePerHour, struttura, ...)
+
+BC -> Booking : find({ campo: campoId, date, status:"confirmed", ...overlap... })
+Booking --> BC : existing bookings (possibly empty)
+
+alt slot disponibile
+  BC -> Booking : create({ user, campo, date, startTime, endTime, price, status:"confirmed" })
+  Booking --> BC : booking
+  BC --> Player : 201/200 booking
+else slot occupato
+  BC --> Player : 400 "Campo già prenotato"
+end
+@enduml
