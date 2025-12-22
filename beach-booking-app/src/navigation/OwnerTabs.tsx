@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
 import OwnerBookingsScreen from "../screens/owner/OwnerBookingsScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+import OwnerProfileScreen from "../screens/owner/OwnerProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -26,7 +26,7 @@ export default function OwnerTabs() {
     >
       <Tab.Screen name="Strutture" component={OwnerStruttureScreen} />
       <Tab.Screen name="Prenotazioni" component={OwnerBookingsScreen} />
-      <Tab.Screen name="Profilo" component={ProfileScreen} />
+      <Tab.Screen name="Profilo" component={OwnerProfileScreen} />
     </Tab.Navigator>
   );
 }

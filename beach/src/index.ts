@@ -5,6 +5,7 @@ import userRoutes from "./routes/userRoutes";
 import struttureRoutes from "./routes/struttureRoutes";
 import BookingRoutes from "./routes/bookingRoutes";
 import OwnerRoutes from "./routes/ownerRoutes";
+import campiRoutes from "./routes/campiRoutes";
 
 
 
@@ -27,7 +28,7 @@ async function start() {
     app.use("/strutture",struttureRoutes);
     app.use("/bookings",BookingRoutes);
     app.use("/owner",OwnerRoutes);
-
+    app.use("/campi", campiRoutes);
     app.listen(3000, () => {
       console.log("Server started on port 3000 ✔");
     });

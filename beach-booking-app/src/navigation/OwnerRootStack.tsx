@@ -1,10 +1,20 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import OwnerTabs from "./OwnerTabs";
 import StrutturaDashboardScreen from "../screens/owner/StrutturaDashboardScreen";
+import CreaStrutturaScreen from "../screens/owner/CreaStrutturaScreen";
+import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
+import ModificaStrutturaScreen from "../screens/owner/ModificaStrutturaScreen";
+import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";
+import ModificaCampoScreen from "../screens/owner/ModificaCampoScreen";
 
 export type OwnerRootStackParamList = {
   OwnerTabs: undefined;
   StrutturaDashboard: { strutturaId: string };
+  CreaStruttura: undefined;
+  AggiungiCampo: { strutturaId: string };
+  ModificaStruttura: { strutturaId: string };
+  DettaglioCampo: { campoId: string };
+  ModificaCampo: { campoId: string };
 };
 
 const Stack = createNativeStackNavigator<OwnerRootStackParamList>();
@@ -16,6 +26,26 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="StrutturaDashboard"
         component={StrutturaDashboardScreen}
+      />
+      <Stack.Screen
+        name="CreaStruttura"
+        component={CreaStrutturaScreen}
+      />
+      <Stack.Screen
+        name="AggiungiCampo"
+        component={AggiungiCampoScreen}
+      />
+      <Stack.Screen
+        name="ModificaStruttura"
+        component={ModificaStrutturaScreen}
+      />
+      <Stack.Screen
+        name="DettaglioCampo"
+        component={DettaglioCampoScreen}
+      />
+      <Stack.Screen
+        name="ModificaCampo"
+        component={ModificaCampoScreen}
       />
     </Stack.Navigator>
   );

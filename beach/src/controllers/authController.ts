@@ -10,8 +10,10 @@ const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi env
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
+    console.log("📝 Tentativo registrazione:", { name, email, role });
 
     if (!name || !email || !password) {
+      console.log("❌ Registrazione fallita: campi mancanti");
       return res
         .status(400)
         .json({ message: "Name, email e password sono obbligatori" });
@@ -19,6 +21,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existing = await User.findOne({ email });
     if (existing) {
+      console.log("❌ Registrazione fallita: email già esistente:", email);
       return res.status(400).json({ message: "Email già registrata" });
     }
 
@@ -31,10 +34,18 @@ export const register = async (req: Request, res: Response) => {
       role: role === "owner" ? "owner" : "player",
     });
 
+    console.log("✅ Utente registrato:", {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
     // 👇 CREA STRUTTURE DI PROFILO SOLO PER PLAYER
     if (user.role === "player") {
       await PlayerProfile.create({ user: user._id });
       await UserPreferences.create({ user: user._id });
+      console.log("✅ Profilo player creato per:", user._id);
     }
 
     return res.status(201).json({
@@ -44,7 +55,7 @@ export const register = async (req: Request, res: Response) => {
       role: user.role,
     });
   } catch (err) {
-    console.error("Register error", err);
+    console.error("❌ Register error:", err);
     return res.status(500).json({ message: "Errore server" });
   }
 };
@@ -52,8 +63,10 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    console.log("🔐 Tentativo login:", email);
 
     if (!email || !password) {
+      console.log("❌ Login fallito: campi mancanti");
       return res
         .status(400)
         .json({ message: "Email e password obbligatorie" });
@@ -61,11 +74,13 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      console.log("❌ Login fallito: utente non trovato:", email);
       return res.status(400).json({ message: "Credenziali errate" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log("❌ Login fallito: password errata per:", email);
       return res.status(400).json({ message: "Credenziali errate" });
     }
 
@@ -74,6 +89,16 @@ export const login = async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
+
+    console.log("✅ Login riuscito:", {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: `${token.substring(0, 20)}...`,
+    });
+
+    console.log("🔑 TOKEN COMPLETO:", token);
 
     return res.json({
       token,
@@ -85,7 +110,7 @@ export const login = async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    console.error("Login error", err);
+    console.error("❌ Login error:", err);
     return res.status(500).json({ message: "Errore server" });
   }
 };
