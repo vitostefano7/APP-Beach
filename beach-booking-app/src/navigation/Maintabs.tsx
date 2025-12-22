@@ -9,43 +9,30 @@ import MapsStack from "./MapsStack";
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
+  console.log("main tab aperto");
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-
         tabBarActiveTintColor: "#2979ff",
         tabBarInactiveTintColor: "#999",
-
         tabBarStyle: {
           height: 65,
           paddingBottom: 10,
           paddingTop: 6,
-          backgroundColor: "white"
+          backgroundColor: "white",
         },
-
-        tabBarLabelStyle: {
-          fontSize: 12,
-        },
-
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: any;
 
-          if (route.name === "Cerca") {
+          if (route.name === "Cerca")
             iconName = focused ? "search" : "search-outline";
-          }
-
-          if (route.name === "Prenotazioni") {
+          if (route.name === "Prenotazioni")
             iconName = focused ? "calendar" : "calendar-outline";
-          }
-
-          if (route.name === "Mappa") {
+          if (route.name === "Mappa")
             iconName = focused ? "map" : "map-outline";
-          }
-
-          if (route.name === "Profilo") {
+          if (route.name === "Profilo")
             iconName = focused ? "person" : "person-outline";
-          }
 
           return <Ionicons name={iconName} size={22} color={color} />;
         },
@@ -53,7 +40,14 @@ export default function MainTabs() {
     >
       <Tab.Screen name="Cerca" component={SearchScreen} />
       <Tab.Screen name="Prenotazioni" component={BookingsScreen} />
-      <Tab.Screen name="Mappa" component={MapsStack} />
+
+      {/* 🔥 CHIAVE DI TUTTO */}
+      <Tab.Screen
+        name="Mappa"
+        component={MapsStack}
+        options={{ unmountOnBlur: true }}
+      />
+
       <Tab.Screen name="Profilo" component={ProfileScreen} />
     </Tab.Navigator>
   );

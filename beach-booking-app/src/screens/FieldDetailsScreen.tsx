@@ -1,4 +1,3 @@
-// FieldDetailsScreen.tsx
 import {
   View,
   Text,
@@ -18,6 +17,9 @@ export default function FieldDetailsScreen() {
 
   const { struttura, from } = route.params ?? {};
 
+  /* =========================
+     GUARD
+  ========================= */
   if (!struttura) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -28,31 +30,55 @@ export default function FieldDetailsScreen() {
     );
   }
 
-  const images =
-    struttura.images?.length > 0
-      ? struttura.images
-      : ["https://picsum.photos/600/400"];
-
+  /* =========================
+     BACK LOGIC (CORRETTA)
+  ========================= */
   const handleBack = () => {
+    if (from === "search") {
+      // ⬅️ torna al TAB Cerca
+      navigation.getParent()?.navigate("Cerca");
+      return;
+    }
+
+    // ⬅️ default: torna alla mappa
     navigation.goBack();
   };
+
+  /* =========================
+     IMAGES
+  ========================= */
+  const images =
+    struttura.images && struttura.images.length > 0
+      ? struttura.images
+      : [
+          "https://picsum.photos/600/400",
+          "https://picsum.photos/601/400",
+        ];
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
+        {/* HEADER */}
         <View style={styles.header}>
           <Pressable onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} />
           </Pressable>
         </View>
 
+        {/* CONTENT */}
         <ScrollView showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {images.map((img: string, i: number) => (
-              <Image key={i} source={{ uri: img }} style={styles.image} />
+          {/* GALLERY */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {images.map((img: string, index: number) => (
+              <Image key={index} source={{ uri: img }} style={styles.image} />
             ))}
           </ScrollView>
 
+          {/* INFO */}
           <View style={styles.section}>
             <Text style={styles.title}>{struttura.name}</Text>
             <Text style={styles.address}>
@@ -60,6 +86,7 @@ export default function FieldDetailsScreen() {
             </Text>
           </View>
 
+          {/* MAP */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Posizione</Text>
             <MapView
@@ -83,10 +110,14 @@ export default function FieldDetailsScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
+        {/* BOTTOM BAR */}
         <View style={styles.bottomBar}>
-          <Text style={styles.price}>€ {struttura.pricePerHour} / ora</Text>
+          <Text style={styles.price}>
+            € {struttura.pricePerHour} / ora
+          </Text>
+
           <Pressable style={styles.bookButton}>
-            <Text style={styles.bookText}>Prenota ora</Text>
+            <Text style={styles.bookText}>Prenota Ora</Text>
           </Pressable>
         </View>
       </View>
@@ -94,26 +125,63 @@ export default function FieldDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+/* =========================
+   STYLES
+========================= */
 
-  header: { padding: 16 },
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+
+  container: {
+    flex: 1,
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
 
   image: {
     width: 300,
     height: 200,
     borderRadius: 16,
-    marginHorizontal: 8,
+    marginRight: 12,
   },
 
-  section: { padding: 16 },
-  title: { fontSize: 22, fontWeight: "700" },
-  address: { color: "#666", marginTop: 4 },
+  section: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
 
-  sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
-  map: { height: 180, borderRadius: 16 },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+
+  address: {
+    color: "#666",
+    marginTop: 4,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  map: {
+    height: 180,
+    borderRadius: 16,
+  },
 
   bottomBar: {
     position: "absolute",
@@ -128,12 +196,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#eee",
   },
-  price: { fontSize: 18, fontWeight: "700" },
+
+  price: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
   bookButton: {
     backgroundColor: "#2b8cee",
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 12,
   },
-  bookText: { color: "white", fontWeight: "700" },
+
+  bookText: {
+    color: "white",
+    fontWeight: "700",
+  },
 });

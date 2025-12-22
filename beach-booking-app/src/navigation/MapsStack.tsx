@@ -10,12 +10,18 @@ export default function MapsStack() {
       <Stack.Screen
         name="Maps"
         component={MapsScreen}
-        options={{ headerShown: false }}
+        options={{
+          title: "Mappa",
+          headerBackVisible: false,
+        }}
       />
+
       <Stack.Screen
         name="FieldDetails"
         component={FieldDetailsScreen}
-        options={{ headerShown: false }}
+        options={{
+          title: "Dettagli campo",
+        }}
       />
     </Stack.Navigator>
   );
