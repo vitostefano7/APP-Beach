@@ -12,9 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 
 import API_URL from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -81,6 +82,7 @@ export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { struttura } = route.params ?? {};
+  const { token } = useContext(AuthContext);
 
   const [campi, setCampi] = useState<Campo[]>([]);
   const [expandedCampoId, setExpandedCampoId] = useState<string | null>(null);
@@ -91,6 +93,9 @@ export default function FieldDetailsScreen() {
 
   const [selectedDate, setSelectedDate] = useState<Record<string, string>>({});
   const [selectedSlot, setSelectedSlot] = useState<Record<string, string>>({});
+
+  // ✅ Stato preferito
+  const [isFavorite, setIsFavorite] = useState(false);
 
   /* =========================
      GUARD
@@ -107,7 +112,7 @@ export default function FieldDetailsScreen() {
   }
 
   /* =========================
-     FETCH CAMPI
+     FETCH CAMPI & PREFERITI
   ========================= */
   useEffect(() => {
     fetch(`${API_URL}/campi/struttura/${struttura._id}`)
@@ -123,7 +128,61 @@ export default function FieldDetailsScreen() {
         setCurrentMonths(initialMonths);
       })
       .catch(() => setCampi([]));
-  }, [struttura._id]);
+
+    // Carica stato preferito
+    if (token) {
+      loadFavoriteStatus();
+    }
+  }, [struttura._id, token]);
+
+  const loadFavoriteStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users/preferences`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const prefs = await res.json();
+        const isFav = prefs.favoriteStrutture?.includes(struttura._id) || false;
+        setIsFavorite(isFav);
+      }
+    } catch (error) {
+      console.error("Errore caricamento preferiti:", error);
+    }
+  };
+
+  /* =========================
+     TOGGLE PREFERITO
+  ========================= */
+  const toggleFavorite = async () => {
+    if (!token) return;
+
+    const wasFavorite = isFavorite;
+
+    // Optimistic update
+    setIsFavorite(!wasFavorite);
+
+    try {
+      const url = wasFavorite
+        ? `${API_URL}/users/preferences/favorites/${struttura._id}`
+        : `${API_URL}/users/preferences/favorites/${struttura._id}`;
+
+      const res = await fetch(url, {
+        method: wasFavorite ? "DELETE" : "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        // Rollback on error
+        setIsFavorite(wasFavorite);
+        console.error("Errore toggle preferito");
+      }
+    } catch (error) {
+      // Rollback on error
+      setIsFavorite(wasFavorite);
+      console.error("Errore toggle preferito:", error);
+    }
+  };
 
   /* =========================
      FETCH CALENDARIO
@@ -201,12 +260,10 @@ export default function FieldDetailsScreen() {
 
     const days: (Date | null)[] = [];
 
-    // Riempi i giorni vuoti prima del primo giorno del mese
     for (let i = 0; i < firstDay.getDay(); i++) {
       days.push(null);
     }
 
-    // Aggiungi tutti i giorni del mese
     for (let d = 1; d <= lastDay.getDate(); d++) {
       days.push(new Date(year, month, d));
     }
@@ -336,15 +393,19 @@ export default function FieldDetailsScreen() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </Pressable>
 
-          {/* Rating badge */}
-          {struttura.rating?.count > 0 && (
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={16} color="#FFC107" />
-              <Text style={styles.ratingText}>{struttura.rating.average.toFixed(1)}</Text>
-            </View>
+          {/* ✅ Stellina preferiti */}
+          {token && (
+            <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
+              <Ionicons
+                name={isFavorite ? "star" : "star-outline"}
+                size={28}
+                color={isFavorite ? "#FFB800" : "white"}
+              />
+            </Pressable>
           )}
         </View>
 
+        {/* Resto del codice rimane uguale... */}
         {/* INFO STRUTTURA */}
         <View style={styles.infoSection}>
           <Text style={styles.title}>{struttura.name}</Text>
@@ -528,7 +589,6 @@ export default function FieldDetailsScreen() {
 
                           <View style={styles.daysGrid}>
                             {getDaysInMonth(campo._id).map((date, index) => {
-                              // Se è null, mostra una cella vuota
                               if (!date) {
                                 return (
                                   <View key={`empty-${index}`} style={styles.dayCol}>
@@ -805,22 +865,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ratingBadge: {
+  
+  // ✅ Stellina preferiti
+  favoriteButton: {
     position: "absolute",
     top: 16,
     right: 16,
-    flexDirection: "row",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  ratingText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
+    justifyContent: "center",
   },
 
   infoSection: {

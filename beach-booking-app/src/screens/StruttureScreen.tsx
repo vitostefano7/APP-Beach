@@ -9,14 +9,16 @@ import {
   ScrollView,
   Modal,
   Animated,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import MapView, { Marker, Circle, Region } from "react-native-maps";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import API_URL from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 /* =========================
    TYPES
@@ -37,7 +39,9 @@ type Struttura = {
     count: number;
   };
   images: string[];
-  sports?: string[]; // Sport disponibili
+  sports?: string[];
+  isFavorite?: boolean;
+  distance?: number; // Distanza dalla location preferita
 };
 
 type Cluster = {
@@ -55,6 +59,18 @@ type FilterState = {
   sport: string | null;
   date: Date | null;
   timeSlot: string | null;
+  city: string | null; // Città per override location preferita
+};
+
+type UserPreferences = {
+  preferredLocation?: {
+    city: string;
+    lat: number;
+    lng: number;
+    radius: number;
+  };
+  favoriteSports?: string[];
+  favoriteStrutture: string[];
 };
 
 /* =========================
@@ -64,12 +80,21 @@ export default function StruttureScreen() {
   const navigation = useNavigation<any>();
   const mapRef = useRef<MapView | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { token } = useContext(AuthContext);
 
   const [strutture, setStrutture] = useState<Struttura[]>([]);
+  const [favoriteStrutture, setFavoriteStrutture] = useState<Struttura[]>([]);
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [selectedMarker, setSelectedMarker] = useState<Struttura | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // ✅ Stato per header - città e raggio attualmente usati
+  const [activeCity, setActiveCity] = useState<string | null>(null);
+  const [activeRadius, setActiveRadius] = useState<number | null>(null);
+  
   const [region, setRegion] = useState<Region>({
     latitude: 45.4642,
     longitude: 9.19,
@@ -83,37 +108,294 @@ export default function StruttureScreen() {
     sport: null,
     date: null,
     timeSlot: null,
+    city: null,
   });
 
-  /* -------- FETCH -------- */
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [userClearedCity, setUserClearedCity] = useState(false); // ✅ Traccia se l'utente ha rimosso la città
+
+  // ✅ Imposta città solo al PRIMO caricamento
   useEffect(() => {
-    fetch(`${API_URL}/strutture`)
-      .then(r => r.json())
-      .then(setStrutture)
-      .catch(console.error);
-  }, []);
+    if (isFirstLoad && preferences?.preferredLocation?.city) {
+      console.log("📍 [STRUTTURE] Primo caricamento - imposto città filtro:", preferences.preferredLocation.city);
+      setFilters(prev => ({
+        ...prev,
+        city: preferences.preferredLocation!.city,
+      }));
+      setIsFirstLoad(false);
+    }
+  }, [preferences, isFirstLoad]);
+
+  /* -------- FETCH PREFERENCES -------- */
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Carica preferenze solo se non sono già caricate
+      if (!preferencesLoaded) {
+        console.log("🔄 [STRUTTURE] Primo focus, carico preferenze...");
+        loadPreferences();
+      }
+      return () => {
+        // Cleanup se necessario
+      };
+    }, [preferencesLoaded])
+  );
+
+  const loadPreferences = async () => {
+    if (!token) {
+      console.log("⚠️ [STRUTTURE] Nessun token, skip caricamento preferenze");
+      return;
+    }
+
+    try {
+      console.log("📤 [STRUTTURE] Carico preferenze...");
+      const res = await fetch(`${API_URL}/users/preferences`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const prefs = await res.json();
+        console.log("✅ [STRUTTURE] Preferenze caricate:", {
+          hasLocation: !!prefs.preferredLocation,
+          city: prefs.preferredLocation?.city,
+          radius: prefs.preferredLocation?.radius,
+          favoriteSports: prefs.favoriteSports,
+        });
+        setPreferences(prefs);
+        setPreferencesLoaded(true);
+
+        // Centra la mappa sulla location preferita
+        if (prefs.preferredLocation) {
+          console.log("🗺️ [STRUTTURE] Centro mappa su:", prefs.preferredLocation.city);
+          setRegion({
+            latitude: prefs.preferredLocation.lat,
+            longitude: prefs.preferredLocation.lng,
+            latitudeDelta: 0.5,
+            longitudeDelta: 0.5,
+          });
+        }
+      } else {
+        console.error("❌ [STRUTTURE] Errore caricamento preferenze:", res.status);
+      }
+    } catch (error) {
+      console.error("💥 [STRUTTURE] Errore caricamento preferenze:", error);
+    }
+  };
+
+  /* -------- FETCH STRUTTURE -------- */
+  // ✅ Carica strutture solo quando cambiano i filtri o le preferenze
+  useEffect(() => {
+    if (preferencesLoaded) {
+      console.log("🔄 [STRUTTURE] Carico strutture (filtri o preferenze changed)...");
+      loadStrutture();
+      if (token) loadFavorites();
+    }
+  }, [filters, preferences, preferencesLoaded, token]);
+
+  const loadStrutture = async () => {
+    try {
+      console.log("📤 [STRUTTURE] Carico lista strutture...");
+      const res = await fetch(`${API_URL}/strutture`);
+      let data: Struttura[] = await res.json();
+      console.log("📥 [STRUTTURE] Ricevute", data.length, "strutture");
+
+      // Determina quale città usare
+      const filterCity = filters.city;
+      const prefCity = preferences?.preferredLocation?.city;
+      
+      console.log("🔍 [DEBUG] filterCity:", filterCity, "| prefCity:", prefCity, "| userClearedCity:", userClearedCity);
+      
+      // ✅ CASO 1: Utente ha RIMOSSO esplicitamente la città
+      if (userClearedCity) {
+        console.log("🌍 [STRUTTURE] Città rimossa dall'utente, mostro TUTTE le strutture");
+        setActiveCity(null);
+        setActiveRadius(null);
+      }
+      // ✅ CASO 2: Nessuna città né da filtro né da preferenze
+      else if (!filterCity && !prefCity) {
+        console.log("🌍 [STRUTTURE] Nessuna città configurata, mostro TUTTE le strutture");
+        setActiveCity(null);
+        setActiveRadius(null);
+      } 
+      // ✅ CASO 3: Città del filtro DIVERSA dalle preferenze (geocoding)
+      else if (filterCity && filterCity !== prefCity) {
+        console.log("🌍 [STRUTTURE] Città filtro diversa da preferenze, faccio geocoding:", filterCity);
+        
+        try {
+          const geocodeUrl = 
+            `https://nominatim.openstreetmap.org/search?` +
+            `q=${encodeURIComponent(filterCity)},Italia&` +
+            `format=json&limit=1`;
+          
+          const geocodeRes = await fetch(geocodeUrl, {
+            headers: { 'User-Agent': 'SportBookingApp/1.0' },
+          });
+          
+          const geocodeData = await geocodeRes.json();
+          
+          if (geocodeData && geocodeData.length > 0) {
+            const filterLat = parseFloat(geocodeData[0].lat);
+            const filterLng = parseFloat(geocodeData[0].lon);
+            const radius = preferences?.preferredLocation?.radius || 30;
+            
+            console.log("📏 [STRUTTURE] Calcolo distanze da:", filterCity, `(${filterLat}, ${filterLng})`);
+            
+            data = data.map((s) => ({
+              ...s,
+              distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng),
+            }));
+            
+            const beforeFilter = data.length;
+            data = data.filter((s) => (s.distance || 0) <= radius);
+            console.log(`🔍 [STRUTTURE] Filtrate per raggio ${radius}km da ${filterCity}: ${beforeFilter} → ${data.length}`);
+            
+            data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+            
+            setActiveCity(filterCity);
+            setActiveRadius(radius);
+          } else {
+            console.warn("⚠️ [STRUTTURE] Geocoding fallito per:", filterCity);
+            setActiveCity(null);
+            setActiveRadius(null);
+          }
+        } catch (geoError) {
+          console.error("💥 [STRUTTURE] Errore geocoding:", geoError);
+          setActiveCity(null);
+          setActiveRadius(null);
+        }
+      }
+      // ✅ CASO 4: Usa città delle preferenze
+      else if (preferences?.preferredLocation && filterCity) {
+        const city = filterCity;
+        const radius = preferences.preferredLocation.radius || 30;
+        
+        console.log("📏 [STRUTTURE] Calcolo distanze da preferenze:", city);
+        
+        data = data.map((s) => ({
+          ...s,
+          distance: calculateDistance(
+            preferences.preferredLocation!.lat,
+            preferences.preferredLocation!.lng,
+            s.location.lat,
+            s.location.lng
+          ),
+        }));
+        
+        const beforeFilter = data.length;
+        data = data.filter((s) => (s.distance || 0) <= radius);
+        console.log(`🔍 [STRUTTURE] Filtrate per raggio ${radius}km da ${city}: ${beforeFilter} → ${data.length}`);
+        
+        data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        
+        setActiveCity(city);
+        setActiveRadius(radius);
+      }
+
+      // Marca i preferiti
+      if (preferences?.favoriteStrutture) {
+        data = data.map((s) => ({
+          ...s,
+          isFavorite: preferences.favoriteStrutture.includes(s._id),
+        }));
+        const favCount = data.filter(s => s.isFavorite).length;
+        console.log("⭐ [STRUTTURE] Marcati", favCount, "preferiti");
+      }
+
+      console.log("✅ [STRUTTURE] Strutture caricate e processate");
+      setStrutture(data);
+    } catch (error) {
+      console.error("💥 [STRUTTURE] Errore caricamento strutture:", error);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users/preferences/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setFavoriteStrutture(data);
+      }
+    } catch (error) {
+      console.error("Errore caricamento preferiti:", error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    console.log("🔄 [STRUTTURE] Pull to refresh - ricarico preferenze...");
+    await loadPreferences();
+    // ✅ NON resettare i filtri, loadStrutture si attiverà automaticamente
+    if (token) await loadFavorites();
+    setRefreshing(false);
+  };
+
+  /* -------- TOGGLE FAVORITE -------- */
+  const toggleFavorite = async (strutturaId: string) => {
+    if (!token) {
+      alert("Devi essere loggato per aggiungere ai preferiti");
+      return;
+    }
+
+    const struttura = strutture.find((s) => s._id === strutturaId);
+    if (!struttura) return;
+
+    const isFav = struttura.isFavorite;
+
+    // Aggiorna UI immediatamente (optimistic update)
+    setStrutture((prev) =>
+      prev.map((s) =>
+        s._id === strutturaId ? { ...s, isFavorite: !isFav } : s
+      )
+    );
+
+    try {
+      const res = await fetch(
+        `${API_URL}/users/preferences/favorites/${strutturaId}`,
+        {
+          method: isFav ? "DELETE" : "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          },
+        }
+      );
+
+      if (res.ok) {
+        // Ricarica preferiti
+        await loadFavorites();
+      } else {
+        // Rollback se fallisce
+        setStrutture((prev) =>
+          prev.map((s) =>
+            s._id === strutturaId ? { ...s, isFavorite: isFav } : s
+          )
+        );
+        alert("Errore durante l'operazione");
+      }
+    } catch (error) {
+      console.error("Errore toggle preferito:", error);
+      // Rollback
+      setStrutture((prev) =>
+        prev.map((s) =>
+          s._id === strutturaId ? { ...s, isFavorite: isFav } : s
+        )
+      );
+      alert("Errore di rete");
+    }
+  };
 
   /* -------- FILTER -------- */
-  const filtered = strutture.filter(s => {
+  const filtered = strutture.filter((s) => {
     // Filtro indoor/outdoor
     if (filters.indoor !== null && s.indoor !== filters.indoor) return false;
 
     // Filtro sport
     if (filters.sport) {
-      console.log(`Filtro sport attivo: ${filters.sport}`);
-      console.log(`Struttura ${s.name} ha sports:`, s.sports);
-      
-      if (!s.sports || s.sports.length === 0) {
-        console.log(`❌ ${s.name} esclusa (nessuno sport disponibile)`);
-        return false; // Escludi strutture senza sport definiti
-      }
-      
-      if (!s.sports.includes(filters.sport)) {
-        console.log(`❌ ${s.name} esclusa (non ha ${filters.sport})`);
-        return false;
-      }
-      
-      console.log(`✅ ${s.name} inclusa (ha ${filters.sport})`);
+      if (!s.sports || !s.sports.includes(filters.sport)) return false;
     }
 
     // Filtro ricerca testuale
@@ -125,12 +407,11 @@ export default function StruttureScreen() {
     )
       return false;
 
-    // TODO: Filtro per data e fascia oraria
-    // Qui dovresti chiamare un'API che verifica la disponibilità effettiva
-    // Per ora il filtro per data/timeSlot non viene applicato
-    // if (filters.date && filters.timeSlot) {
-    //   // Chiamare API per verificare disponibilità
-    // }
+    // Filtro città (override location preferita)
+    if (filters.city) {
+      if (!s.location.city.toLowerCase().includes(filters.city.toLowerCase()))
+        return false;
+    }
 
     return true;
   });
@@ -152,9 +433,7 @@ export default function StruttureScreen() {
     );
   };
 
-  /* =========================
-     CLUSTER LOGIC
-  ========================= */
+  /* -------- CLUSTER LOGIC -------- */
   const zoomDelta = Math.max(region.latitudeDelta, region.longitudeDelta);
   const shouldShowClusters = zoomDelta > 0.1;
 
@@ -170,7 +449,7 @@ export default function StruttureScreen() {
     const gridSize = region.latitudeDelta * 0.2;
     const grid: Record<string, Struttura[]> = {};
 
-    filtered.forEach(s => {
+    filtered.forEach((s) => {
       const x = Math.floor(s.location.lat / gridSize);
       const y = Math.floor(s.location.lng / gridSize);
       const key = `${x}_${y}`;
@@ -214,6 +493,7 @@ export default function StruttureScreen() {
     filters.sport !== null,
     filters.date !== null,
     filters.timeSlot !== null,
+    filters.city !== null,
   ].filter(Boolean).length;
 
   /* -------- RESET FILTERS -------- */
@@ -223,12 +503,11 @@ export default function StruttureScreen() {
       sport: null,
       date: null,
       timeSlot: null,
+      city: null,
     });
   };
 
-  /* =========================
-     LIST ITEM
-  ========================= */
+  /* -------- LIST ITEM -------- */
   const renderItem = ({ item }: { item: Struttura }) => (
     <Pressable
       style={styles.card}
@@ -247,16 +526,33 @@ export default function StruttureScreen() {
       />
 
       {/* Badge Indoor/Outdoor */}
-      <View style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}>
-        <Ionicons 
-          name={item.indoor ? "business" : "sunny"} 
-          size={12} 
-          color="white" 
+      <View
+        style={[
+          styles.badge,
+          item.indoor ? styles.badgeIndoor : styles.badgeOutdoor,
+        ]}
+      >
+        <Ionicons
+          name={item.indoor ? "business" : "sunny"}
+          size={12}
+          color="white"
         />
         <Text style={styles.badgeText}>
           {item.indoor ? "Indoor" : "Outdoor"}
         </Text>
       </View>
+
+      {/* Favorite Star */}
+      <Pressable
+        style={styles.favoriteButton}
+        onPress={() => toggleFavorite(item._id)}
+      >
+        <Ionicons
+          name={item.isFavorite ? "star" : "star-outline"}
+          size={24}
+          color={item.isFavorite ? "#FFB800" : "white"}
+        />
+      </Pressable>
 
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
@@ -264,9 +560,10 @@ export default function StruttureScreen() {
             <Text style={styles.title}>{item.name}</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location-sharp" size={14} color="#2979ff" />
-              <Text style={styles.address}>
-                {item.location.city}
-              </Text>
+              <Text style={styles.address}>{item.location.city}</Text>
+              {item.distance !== undefined && (
+                <Text style={styles.distance}>• {item.distance.toFixed(1)} km</Text>
+              )}
             </View>
           </View>
 
@@ -301,7 +598,7 @@ export default function StruttureScreen() {
             <Text style={styles.priceLabel}>da</Text>
             <Text style={styles.price}>€{item.pricePerHour}</Text>
           </View>
-          
+
           <Pressable
             style={styles.bookButton}
             onPress={() =>
@@ -324,7 +621,7 @@ export default function StruttureScreen() {
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
     outputRange: [80, 70],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
 
   return (
@@ -354,12 +651,72 @@ export default function StruttureScreen() {
             />
           </Pressable>
         </View>
+
+        {/* Location Info - Dinamico */}
+        {activeCity && activeRadius && (
+          <View style={styles.locationInfo}>
+            <Ionicons name="location" size={14} color="white" />
+            <Text style={styles.locationInfoText}>
+              Vicino a {activeCity} ({activeRadius} km)
+            </Text>
+          </View>
+        )}
+        {!activeCity && !activeRadius && (
+          <View style={styles.locationInfo}>
+            <Ionicons name="globe" size={14} color="white" />
+            <Text style={styles.locationInfoText}>
+              Tutte le strutture disponibili
+            </Text>
+          </View>
+        )}
       </Animated.View>
+
+      {/* FAVORITES SECTION */}
+      {favoriteStrutture.length > 0 && viewMode === "list" && (
+        <View style={styles.favoritesSection}>
+          <View style={styles.favoritesSectionHeader}>
+            <Ionicons name="star" size={20} color="#FFB800" />
+            <Text style={styles.favoritesTitle}>I tuoi preferiti</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.favoritesScroll}
+          >
+            {favoriteStrutture.map((item) => (
+              <Pressable
+                key={item._id}
+                style={styles.favoriteCard}
+                onPress={() =>
+                  navigation.navigate("FieldDetails", {
+                    struttura: item,
+                    from: "favorites",
+                  })
+                }
+              >
+                <Image
+                  source={{
+                    uri: item.images?.[0] ?? "https://picsum.photos/300/200",
+                  }}
+                  style={styles.favoriteImage}
+                />
+                <View style={styles.favoriteContent}>
+                  <Text style={styles.favoriteTitle} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.favoriteCity}>{item.location.city}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* RESULTS COUNT */}
       <View style={styles.resultsBar}>
         <Text style={styles.resultsText}>
-          {filtered.length} {filtered.length === 1 ? "struttura" : "strutture"} trovate
+          {filtered.length} {filtered.length === 1 ? "struttura" : "strutture"}{" "}
+          trovate
         </Text>
       </View>
 
@@ -368,7 +725,7 @@ export default function StruttureScreen() {
         {viewMode === "list" ? (
           <Animated.FlatList
             data={filtered}
-            keyExtractor={item => item._id}
+            keyExtractor={(item) => item._id}
             renderItem={renderItem}
             contentContainerStyle={{ paddingBottom: 120 }}
             onScroll={Animated.event(
@@ -377,6 +734,9 @@ export default function StruttureScreen() {
             )}
             scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           />
         ) : (
           <View style={styles.mapContainer}>
@@ -388,21 +748,17 @@ export default function StruttureScreen() {
               onPress={() => setSelectedMarker(null)}
             >
               {shouldShowClusters ? (
-                clusters.map(cluster => (
+                clusters.map((cluster) => (
                   <Marker
                     key={cluster.id}
                     coordinate={cluster.coordinate}
                     onPress={() => handleClusterPress(cluster)}
                   >
-                    <Ionicons
-                      name="location-sharp"
-                      size={36}
-                      color="#2979ff"
-                    />
+                    <Ionicons name="location-sharp" size={36} color="#2979ff" />
                   </Marker>
                 ))
               ) : (
-                filtered.map(s => {
+                filtered.map((s) => {
                   const isSelected = selectedMarker?._id === s._id;
 
                   return (
@@ -412,15 +768,21 @@ export default function StruttureScreen() {
                         latitude: s.location.lat,
                         longitude: s.location.lng,
                       }}
-                      onPress={e => {
+                      onPress={(e) => {
                         e.stopPropagation();
                         setSelectedMarker(s);
                       }}
                     >
                       <Ionicons
-                        name="location-sharp"
+                        name={s.isFavorite ? "star" : "location-sharp"}
                         size={isSelected ? 40 : 34}
-                        color={isSelected ? "#2979ff" : "#FF5252"}
+                        color={
+                          s.isFavorite
+                            ? "#FFB800"
+                            : isSelected
+                            ? "#2979ff"
+                            : "#FF5252"
+                        }
                       />
                     </Marker>
                   );
@@ -477,17 +839,23 @@ export default function StruttureScreen() {
         visible={showFilters}
         filters={filters}
         onClose={() => setShowFilters(false)}
-        onApply={newFilters => {
+        onApply={(newFilters) => {
+          // ✅ Traccia se l'utente ha rimosso la città
+          if (newFilters.city === null && filters.city !== null) {
+            console.log("🗑️ [FILTRI] Utente ha rimosso la città, imposto userClearedCity=true");
+            setUserClearedCity(true);
+          } else if (newFilters.city !== null) {
+            console.log("📍 [FILTRI] Utente ha impostato città:", newFilters.city);
+            setUserClearedCity(false);
+          }
+          
           setFilters(newFilters);
           setShowFilters(false);
         }}
       />
 
       {/* FLOATING ACTION BUTTON - FILTRI */}
-      <Pressable 
-        style={styles.fab}
-        onPress={() => setShowFilters(true)}
-      >
+      <Pressable style={styles.fab} onPress={() => setShowFilters(true)}>
         <Ionicons name="options-outline" size={26} color="white" />
         {activeFiltersCount > 0 && (
           <View style={styles.fabBadge}>
@@ -499,8 +867,32 @@ export default function StruttureScreen() {
   );
 }
 
+/* -------- UTILITY -------- */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
 /* =========================
-   ADVANCED FILTERS MODAL
+   ADVANCED FILTERS MODAL  
 ========================= */
 type AdvancedFiltersModalProps = {
   visible: boolean;
@@ -517,7 +909,7 @@ function AdvancedFiltersModal({
 }: AdvancedFiltersModalProps) {
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
 
-  const sports = ["Beach Volley", "Volley"]; // ✅ Sport effettivi dal database
+  const sports = ["Beach Volley", "Volley"];
   const timeSlots = [
     "Mattina (6:00 - 12:00)",
     "Pomeriggio (12:00 - 18:00)",
@@ -541,10 +933,39 @@ function AdvancedFiltersModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Città Override */}
+            <Text style={styles.sectionTitle}>Città</Text>
+            <TextInput
+              style={styles.cityInput}
+              placeholder="Lascia vuoto per vedere tutte le strutture"
+              value={tempFilters.city || ""}
+              onChangeText={(text) =>
+                setTempFilters((prev) => ({ ...prev, city: text || null }))
+              }
+            />
+            {tempFilters.city ? (
+              <View style={styles.cityHintContainer}>
+                <Text style={styles.cityHint}>
+                  📍 Strutture filtrate per: {tempFilters.city}
+                </Text>
+                <Pressable
+                  style={styles.clearCityButton}
+                  onPress={() => setTempFilters((prev) => ({ ...prev, city: null }))}
+                >
+                  <Ionicons name="close-circle" size={20} color="#FF5252" />
+                  <Text style={styles.clearCityText}>Rimuovi</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Text style={styles.allStructuresHint}>
+                🌍 Verranno mostrate TUTTE le strutture disponibili
+              </Text>
+            )}
+
             {/* Sport */}
             <Text style={styles.sectionTitle}>Sport</Text>
             <View style={styles.optionsGrid}>
-              {sports.map(sport => (
+              {sports.map((sport) => (
                 <Pressable
                   key={sport}
                   style={[
@@ -552,7 +973,7 @@ function AdvancedFiltersModal({
                     tempFilters.sport === sport && styles.optionActive,
                   ]}
                   onPress={() =>
-                    setTempFilters(prev => ({
+                    setTempFilters((prev) => ({
                       ...prev,
                       sport: prev.sport === sport ? null : sport,
                     }))
@@ -593,7 +1014,7 @@ function AdvancedFiltersModal({
                       isSelected && styles.dateOptionActive,
                     ]}
                     onPress={() =>
-                      setTempFilters(prev => ({
+                      setTempFilters((prev) => ({
                         ...prev,
                         date: isSelected ? null : date,
                       }))
@@ -615,7 +1036,7 @@ function AdvancedFiltersModal({
             {/* Fascia Oraria */}
             <Text style={styles.sectionTitle}>Fascia Oraria</Text>
             <View style={styles.timeSlots}>
-              {timeSlots.map(slot => (
+              {timeSlots.map((slot) => (
                 <Pressable
                   key={slot}
                   style={[
@@ -623,7 +1044,7 @@ function AdvancedFiltersModal({
                     tempFilters.timeSlot === slot && styles.timeSlotActive,
                   ]}
                   onPress={() =>
-                    setTempFilters(prev => ({
+                    setTempFilters((prev) => ({
                       ...prev,
                       timeSlot: prev.timeSlot === slot ? null : slot,
                     }))
@@ -637,7 +1058,8 @@ function AdvancedFiltersModal({
                   <Text
                     style={[
                       styles.timeSlotText,
-                      tempFilters.timeSlot === slot && styles.timeSlotTextActive,
+                      tempFilters.timeSlot === slot &&
+                        styles.timeSlotTextActive,
                     ]}
                   >
                     {slot}
@@ -657,6 +1079,7 @@ function AdvancedFiltersModal({
                   sport: null,
                   date: null,
                   timeSlot: null,
+                  city: null,
                 })
               }
             >
@@ -680,9 +1103,9 @@ function AdvancedFiltersModal({
    STYLES
 ========================= */
 const styles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: "#FAFAFA" 
+  safe: {
+    flex: 1,
+    backgroundColor: "#FAFAFA",
   },
 
   // HEADER
@@ -702,7 +1125,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
   },
 
   searchBox: {
@@ -721,8 +1143,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  input: { 
-    flex: 1, 
+  input: {
+    flex: 1,
     fontSize: 15,
     color: "#333",
     fontWeight: "500",
@@ -739,91 +1161,81 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
 
-  // QUICK FILTERS
-  quickFilters: {
-    maxHeight: 54,
-    marginTop: 4,
-  },
-
-  quickFiltersContent: {
-    gap: 10,
-    paddingRight: 16,
-  },
-
-  advancedFilterButton: {
+  locationInfo: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "white",
     gap: 6,
-    borderWidth: 2,
-    borderColor: "#D0D0D0",
+    marginTop: 8,
+    paddingHorizontal: 4,
   },
 
-  advancedFilterText: {
-    fontSize: 14,
-    color: "#2979ff",
-    fontWeight: "700",
-  },
-
-  filterBadge: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 12,
-    minWidth: 22,
-    height: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-    marginLeft: 2,
-  },
-
-  filterBadgeText: {
-    color: "white",
+  locationInfoText: {
     fontSize: 12,
-    fontWeight: "900",
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
   },
 
-  quickChip: {
+  // FAVORITES SECTION
+  favoritesSection: {
+    backgroundColor: "white",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+
+  favoritesSectionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    marginBottom: 12,
+  },
+
+  favoritesTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1A1A1A",
+  },
+
+  favoritesScroll: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+
+  favoriteCard: {
+    width: 140,
     backgroundColor: "white",
-    gap: 6,
+    borderRadius: 12,
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: "#D0D0D0",
+    borderColor: "#FFB800",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
-  quickChipActive: {
-    backgroundColor: "#2979ff",
-    borderColor: "#2979ff",
+  favoriteImage: {
+    width: "100%",
+    height: 80,
+    backgroundColor: "#F5F5F5",
   },
 
-  quickChipText: {
-    fontSize: 14,
-    color: "#000000",
+  favoriteContent: {
+    padding: 8,
+  },
+
+  favoriteTitle: {
+    fontSize: 13,
     fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 2,
   },
 
-  quickChipTextActive: {
-    color: "white",
-    fontWeight: "700",
-  },
-
-  resetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#FF5252",
-  },
-
-  resetButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
+  favoriteCity: {
+    fontSize: 11,
+    color: "#666",
   },
 
   // RESULTS
@@ -842,8 +1254,8 @@ const styles = StyleSheet.create({
   },
 
   // CONTAINER
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
   },
@@ -861,8 +1273,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  image: { 
-    height: 180, 
+  image: {
+    height: 180,
     width: "100%",
     backgroundColor: "#F5F5F5",
   },
@@ -893,7 +1305,19 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  cardContent: { 
+  favoriteButton: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cardContent: {
     padding: 16,
   },
 
@@ -903,8 +1327,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  title: { 
-    fontSize: 18, 
+  title: {
+    fontSize: 18,
     fontWeight: "800",
     color: "#1A1A1A",
     marginBottom: 6,
@@ -916,10 +1340,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
-  address: { 
+  address: {
     color: "#666",
     fontSize: 13,
     fontWeight: "500",
+  },
+
+  distance: {
+    color: "#2979ff",
+    fontSize: 12,
+    fontWeight: "700",
   },
 
   ratingBox: {
@@ -1013,7 +1443,7 @@ const styles = StyleSheet.create({
     marginTop: -16,
   },
 
-  map: { 
+  map: {
     flex: 1,
   },
 
@@ -1053,8 +1483,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  mapTitle: { 
-    fontSize: 18, 
+  mapTitle: {
+    fontSize: 18,
     fontWeight: "800",
     color: "#1A1A1A",
     marginBottom: 4,
@@ -1138,6 +1568,54 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     marginTop: 20,
     marginBottom: 12,
+  },
+
+  cityInput: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    fontWeight: "500",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+
+  cityHint: {
+    fontSize: 12,
+    color: "#2979ff",
+    marginTop: 8,
+    fontWeight: "600",
+  },
+
+  cityHintContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+
+  clearCityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "#FFEBEE",
+  },
+
+  clearCityText: {
+    fontSize: 12,
+    color: "#FF5252",
+    fontWeight: "700",
+  },
+
+  allStructuresHint: {
+    fontSize: 12,
+    color: "#4CAF50",
+    marginTop: 8,
+    fontWeight: "600",
+    fontStyle: "italic",
   },
 
   optionsGrid: {
@@ -1273,7 +1751,7 @@ const styles = StyleSheet.create({
     color: "white",
   },
 
-  // FAB (Floating Action Button)
+  // FAB
   fab: {
     position: "absolute",
     right: 20,

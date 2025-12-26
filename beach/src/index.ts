@@ -3,11 +3,12 @@ import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import struttureRoutes from "./routes/struttureRoutes";
-import bookingRoutes from "./routes/bookingRoutes";  // ⬅️ UNO SOLO (minuscolo)
-import ownerRoutes from "./routes/ownerRoutes";      // ⬅️ minuscolo
+import bookingRoutes from "./routes/bookingRoutes";
+import ownerRoutes from "./routes/ownerRoutes";
 import campiRoutes from "./routes/campiRoutes";
 import campoCalendarRoutes from "./routes/campoCalendarRoutes";
-import matchRoutes from "./routes/matchRoutes"
+import matchRoutes from "./routes/matchRoutes";
+import userPreferencesRoutes from './routes/userPreferencesRoutes';
 
 const app = express();
 app.use(express.json());
@@ -25,12 +26,17 @@ async function start() {
 
     // Route registration
     app.use("/auth", authRoutes);
-    app.use("/users", userRoutes);
+    
+    // ✅ SOLUZIONE: Metti userPreferencesRoutes PRIMA di userRoutes
+    // Così /users/preferences viene gestito prima di /users/*
+    app.use('/users', userPreferencesRoutes);  // ← PRIMA (più specifico)
+    app.use("/users", userRoutes);              // ← DOPO (più generico)
+    
     app.use("/strutture", struttureRoutes);
-    app.use("/bookings", bookingRoutes);  // ⬅️ UNA SOLA VOLTA!
+    app.use("/bookings", bookingRoutes);
     app.use("/owner", ownerRoutes);
     app.use("/campi", campiRoutes);
-    app.use("/campi", campoCalendarRoutes);  // Stesso base path per calendar routes
+    app.use("/campi", campoCalendarRoutes);
     app.use("/matches", matchRoutes);
     
     app.listen(3000, () => {

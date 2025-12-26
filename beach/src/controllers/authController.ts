@@ -48,11 +48,22 @@ export const register = async (req: Request, res: Response) => {
       console.log("✅ Profilo player creato per:", user._id);
     }
 
+    // ✅ GENERA TOKEN ALLA REGISTRAZIONE
+    const token = jwt.sign(
+      { id: user._id.toString(), role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    console.log("🔑 Token generato per registrazione:", `${token.substring(0, 20)}...`);
+
+    // ✅ RESTITUISCI TOKEN NELLA RISPOSTA
     return res.status(201).json({
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      token,  // ✅ AGGIUNTO
     });
   } catch (err) {
     console.error("❌ Register error:", err);
