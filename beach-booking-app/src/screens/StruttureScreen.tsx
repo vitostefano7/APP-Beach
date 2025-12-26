@@ -651,24 +651,6 @@ export default function StruttureScreen() {
             />
           </Pressable>
         </View>
-
-        {/* Location Info - Dinamico */}
-        {activeCity && activeRadius && (
-          <View style={styles.locationInfo}>
-            <Ionicons name="location" size={14} color="white" />
-            <Text style={styles.locationInfoText}>
-              Vicino a {activeCity} ({activeRadius} km)
-            </Text>
-          </View>
-        )}
-        {!activeCity && !activeRadius && (
-          <View style={styles.locationInfo}>
-            <Ionicons name="globe" size={14} color="white" />
-            <Text style={styles.locationInfoText}>
-              Tutte le strutture disponibili
-            </Text>
-          </View>
-        )}
       </Animated.View>
 
       {/* FAVORITES SECTION */}
@@ -714,10 +696,29 @@ export default function StruttureScreen() {
 
       {/* RESULTS COUNT */}
       <View style={styles.resultsBar}>
-        <Text style={styles.resultsText}>
-          {filtered.length} {filtered.length === 1 ? "struttura" : "strutture"}{" "}
-          trovate
-        </Text>
+        <View style={styles.resultsRow}>
+          <Text style={styles.resultsText}>
+            {filtered.length} {filtered.length === 1 ? "struttura" : "strutture"}{" "}
+            {filtered.length === 1 ? "trovata" : "trovate"}
+          </Text>
+          
+          {/* ✅ Badge città + raggio */}
+          {activeCity && activeRadius && (
+            <View style={styles.locationBadge}>
+              <Ionicons name="location" size={12} color="#2979ff" />
+              <Text style={styles.locationBadgeText}>
+                {activeCity} ({activeRadius} km)
+              </Text>
+            </View>
+          )}
+          
+          {!activeCity && !activeRadius && (
+            <View style={styles.locationBadgeAll}>
+              <Ionicons name="globe" size={12} color="#4CAF50" />
+              <Text style={styles.locationBadgeTextAll}>Tutte</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* CONTENT */}
@@ -1161,20 +1162,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
 
-  locationInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 4,
-  },
-
-  locationInfoText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
-  },
-
   // FAVORITES SECTION
   favoritesSection: {
     backgroundColor: "white",
@@ -1247,10 +1234,48 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
 
+  resultsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
   resultsText: {
     fontSize: 13,
-    color: "#999",
+    color: "#666",
     fontWeight: "600",
+  },
+
+  locationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  locationBadgeText: {
+    fontSize: 11,
+    color: "#2979ff",
+    fontWeight: "700",
+  },
+
+  locationBadgeAll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  locationBadgeTextAll: {
+    fontSize: 11,
+    color: "#4CAF50",
+    fontWeight: "700",
   },
 
   // CONTAINER

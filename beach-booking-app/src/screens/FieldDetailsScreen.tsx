@@ -302,6 +302,19 @@ export default function FieldDetailsScreen() {
     return checkDate < today;
   };
 
+  // ✅ Verifica se uno slot è nel passato
+  const isPastSlot = (dateStr: string, timeStr: string): boolean => {
+    const now = new Date();
+    
+    // Parse della data e ora dello slot
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const slotDate = new Date(dateStr + 'T00:00:00');
+    slotDate.setHours(hours, minutes, 0, 0);
+    
+    // Lo slot è nel passato se è prima di adesso
+    return slotDate < now;
+  };
+
   /* =========================
      HELPERS
   ========================= */
@@ -696,29 +709,32 @@ export default function FieldDetailsScreen() {
                                 <View style={styles.slotsGrid}>
                                   {selectedDayData.slots.map((slot, i) => {
                                     const isSlotSelected = selectedSlot[campo._id] === slot.time;
+                                    const isSlotPast = isPastSlot(selectedDateStr, slot.time);
+                                    const isSlotDisabled = !slot.enabled || isSlotPast;
 
                                     return (
                                       <Pressable
                                         key={`${selectedDateStr}-${slot.time}-${i}`}
                                         style={[
                                           styles.slotChip,
-                                          slot.enabled
+                                          slot.enabled && !isSlotPast
                                             ? styles.slotAvailable
                                             : styles.slotUnavailable,
                                           isSlotSelected && styles.slotSelected,
+                                          isSlotPast && styles.slotPast,
                                         ]}
                                         onPress={() => {
-                                          if (!slot.enabled) return;
+                                          if (isSlotDisabled) return;
                                           setSelectedSlot((prev) => ({
                                             ...prev,
                                             [campo._id]: isSlotSelected ? "" : slot.time,
                                           }));
                                         }}
-                                        disabled={!slot.enabled}
+                                        disabled={isSlotDisabled}
                                       >
                                         <Ionicons
                                           name={
-                                            slot.enabled
+                                            slot.enabled && !isSlotPast
                                               ? isSlotSelected
                                                 ? "checkmark-circle"
                                                 : "time-outline"
@@ -728,7 +744,7 @@ export default function FieldDetailsScreen() {
                                           color={
                                             isSlotSelected
                                               ? "white"
-                                              : slot.enabled
+                                              : slot.enabled && !isSlotPast
                                               ? "#4CAF50"
                                               : "#999"
                                           }
@@ -736,7 +752,7 @@ export default function FieldDetailsScreen() {
                                         <Text
                                           style={[
                                             styles.slotTime,
-                                            !slot.enabled && styles.slotTimeDisabled,
+                                            isSlotDisabled && styles.slotTimeDisabled,
                                             isSlotSelected && styles.slotTimeSelected,
                                           ]}
                                         >
@@ -1290,6 +1306,9 @@ const styles = StyleSheet.create({
   slotUnavailable: {
     backgroundColor: "#F5F5F5",
     borderColor: "#e9ecef",
+  },
+  slotPast: {
+    opacity: 0.4,
   },
   slotSelected: {
     backgroundColor: "#2196F3",
