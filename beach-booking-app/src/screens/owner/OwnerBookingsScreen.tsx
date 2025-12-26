@@ -147,6 +147,77 @@ function BookingCard({ item, onPress }: { item: any; onPress: () => void }) {
 }
 
 /* =========================
+   MODALE SELEZIONE STATO
+========================= */
+function StatoModal({
+  visible,
+  onClose,
+  selectedStatus,
+  onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  selectedStatus: "active" | "cancelled" | "completed";
+  onSelect: (status: "active" | "cancelled" | "completed") => void;
+}) {
+  const options = [
+    { value: "active", label: "Attive", icon: "checkmark-circle-outline" },
+    { value: "cancelled", label: "Cancellate", icon: "close-circle-outline" },
+    { value: "completed", label: "Concluse", icon: "flag-outline" },
+  ] as const;
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Stato Prenotazioni</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={24} color="#999" />
+            </Pressable>
+          </View>
+
+          <View style={styles.optionsList}>
+            {options.map((option) => (
+              <Pressable
+                key={option.value}
+                style={[
+                  styles.optionItem,
+                  selectedStatus === option.value && styles.optionItemSelected,
+                ]}
+                onPress={() => {
+                  onSelect(option.value);
+                  onClose();
+                }}
+              >
+                <View style={styles.optionItemLeft}>
+                  <Ionicons
+                    name={option.icon as any}
+                    size={20}
+                    color={selectedStatus === option.value ? "#2196F3" : "#666"}
+                  />
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selectedStatus === option.value && styles.optionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </View>
+                {selectedStatus === option.value && (
+                  <Ionicons name="checkmark" size={20} color="#2196F3" />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/* =========================
    MODALE SELEZIONE STRUTTURA
 ========================= */
 function StrutturaModal({
@@ -470,9 +541,10 @@ export default function OwnerBookingsScreen() {
   const [filterDate, setFilterDate] = useState(route.params?.filterDate || "");
   const [filterCampo, setFilterCampo] = useState(route.params?.filterCampoId || "");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"active" | "cancelled" | "completed">("active"); // ✅ Default: Attive
 
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showStatoModal, setShowStatoModal] = useState(false);
   const [showStrutturaModal, setShowStrutturaModal] = useState(false);
   const [showCampoModal, setShowCampoModal] = useState(false);
 
@@ -556,8 +628,22 @@ export default function OwnerBookingsScreen() {
   const applyFilters = useCallback(() => {
     let result = bookings;
 
-    if (!showCancelled) {
-      result = result.filter((b) => b.status === "confirmed");
+    // ✅ Filtro per stato
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (statusFilter === "active") {
+      result = result.filter((b) => {
+        const bookingDate = new Date(b.date + "T00:00:00");
+        return b.status === "confirmed" && bookingDate >= today;
+      });
+    } else if (statusFilter === "cancelled") {
+      result = result.filter((b) => b.status === "cancelled");
+    } else if (statusFilter === "completed") {
+      result = result.filter((b) => {
+        const bookingDate = new Date(b.date + "T00:00:00");
+        return b.status === "confirmed" && bookingDate < today;
+      });
     }
 
     if (filterDate) {
@@ -573,7 +659,7 @@ export default function OwnerBookingsScreen() {
     }
 
     setFilteredBookings(result);
-  }, [bookings, filterDate, filterCampo, filterStruttura, showCancelled]);
+  }, [bookings, filterDate, filterCampo, filterStruttura, statusFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -634,6 +720,7 @@ export default function OwnerBookingsScreen() {
           style={styles.filtersScroll}
           contentContainerStyle={styles.filtersScrollContent}
         >
+          {/* 1. Data */}
           <Pressable
             style={[styles.filterChip, filterDate && styles.filterChipActive]}
             onPress={() => setShowCalendar(true)}
@@ -653,6 +740,7 @@ export default function OwnerBookingsScreen() {
             </Text>
           </Pressable>
 
+          {/* 2. Struttura */}
           <Pressable
             style={[styles.filterChip, filterStruttura && styles.filterChipActive]}
             onPress={() => setShowStrutturaModal(true)}
@@ -671,6 +759,7 @@ export default function OwnerBookingsScreen() {
             </Text>
           </Pressable>
 
+          {/* 3. Campo (solo se struttura selezionata) */}
           {filterStruttura && campiFiltered.length > 0 && (
             <Pressable
               style={[styles.filterChip, filterCampo && styles.filterChipActive]}
@@ -689,20 +778,32 @@ export default function OwnerBookingsScreen() {
             </Pressable>
           )}
 
+          {/* 4. Stato - BLU di default (sempre "attivo") */}
           <Pressable
-            style={[styles.filterChip, showCancelled && styles.filterChipActive]}
-            onPress={() => setShowCancelled(!showCancelled)}
+            style={[styles.filterChip, styles.filterChipActive]}
+            onPress={() => setShowStatoModal(true)}
           >
             <Ionicons
-              name={showCancelled ? "eye-outline" : "eye-off-outline"}
+              name={
+                statusFilter === "active"
+                  ? "checkmark-circle-outline"
+                  : statusFilter === "cancelled"
+                  ? "close-circle-outline"
+                  : "flag-outline"
+              }
               size={16}
-              color={showCancelled ? "white" : "#666"}
+              color="white"
             />
-            <Text style={[styles.filterChipText, showCancelled && styles.filterChipTextActive]}>
-              {showCancelled ? "Con cancellate" : "Solo attive"}
+            <Text style={[styles.filterChipText, styles.filterChipTextActive]}>
+              {statusFilter === "active"
+                ? "Attive"
+                : statusFilter === "cancelled"
+                ? "Cancellate"
+                : "Concluse"}
             </Text>
           </Pressable>
 
+          {/* Reset (solo se ci sono altri filtri attivi) */}
           {hasActiveFilters && (
             <Pressable style={styles.filterChipReset} onPress={clearFilters}>
               <Ionicons name="close" size={16} color="#E53935" />
@@ -736,15 +837,26 @@ export default function OwnerBookingsScreen() {
                 <Ionicons name="calendar-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
                 <Text style={styles.emptyText}>
-                  {hasActiveFilters || !showCancelled
+                  {hasActiveFilters
                     ? "Prova a modificare i filtri"
-                    : "Non hai ancora ricevuto prenotazioni"}
+                    : statusFilter === "active"
+                    ? "Non hai prenotazioni attive"
+                    : statusFilter === "cancelled"
+                    ? "Non hai prenotazioni cancellate"
+                    : "Non hai prenotazioni concluse"}
                 </Text>
               </View>
             }
           />
         )}
       </View>
+
+      <StatoModal
+        visible={showStatoModal}
+        onClose={() => setShowStatoModal(false)}
+        selectedStatus={statusFilter}
+        onSelect={(status) => setStatusFilter(status)}
+      />
 
       <CalendarModal
         visible={showCalendar}
@@ -836,7 +948,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // FILTRI SCROLL - FIX COMPLETO
+  // FILTRI SCROLL
   filtersScroll: {
     flexGrow: 0,
     flexShrink: 0,
@@ -1218,6 +1330,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+  },
+
+  optionItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
 
   optionItemSelected: {
