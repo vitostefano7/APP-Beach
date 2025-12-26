@@ -17,6 +17,22 @@ import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 
+// ✅ AMENITIES DISPONIBILI (dinamiche - puoi aggiungerne)
+const AVAILABLE_AMENITIES = [
+  { key: "toilets", label: "Bagni", icon: "man" },
+  { key: "lockerRoom", label: "Spogliatoi", icon: "shirt" },
+  { key: "showers", label: "Docce", icon: "water" },
+  { key: "parking", label: "Parcheggio", icon: "car" },
+  { key: "restaurant", label: "Ristorante", icon: "restaurant" },
+  { key: "bar", label: "Bar/Caffè", icon: "cafe" },
+  { key: "wifi", label: "WiFi", icon: "wifi" },
+  { key: "airConditioning", label: "Aria condizionata", icon: "snow" },
+  { key: "lighting", label: "Illuminazione notturna", icon: "bulb" },
+  { key: "gym", label: "Palestra", icon: "barbell" },
+  { key: "store", label: "Negozio sportivo", icon: "storefront" },
+  { key: "firstAid", label: "Pronto soccorso", icon: "medical" },
+];
+
 interface OpeningHours {
   [key: string]: { open: string; close: string; closed: boolean };
 }
@@ -58,15 +74,12 @@ export default function ModificaStrutturaScreen() {
     sunday: { open: "09:00", close: "22:00", closed: false },
   });
 
-  // Servizi
-  const [amenities, setAmenities] = useState({
-    toilets: false,
-    lockerRoom: false,
-    showers: false,
-    parking: false,
-    restaurant: false,
-    bar: false,
-  });
+  // ✅ Servizi - Array di stringhe (dinamico)
+  const [amenities, setAmenities] = useState<string[]>([]);
+  
+  // ✅ Custom amenity input
+  const [showCustomAmenityInput, setShowCustomAmenityInput] = useState(false);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
 
   useEffect(() => {
     loadStruttura();
@@ -89,14 +102,24 @@ export default function ModificaStrutturaScreen() {
       setDescription(data.description || "");
       setAddress(data.location?.address || "");
       setCity(data.location?.city || "");
-      setIsActive(data.isActive !== false); // Default true se undefined
+      setIsActive(data.isActive !== false);
 
       if (data.openingHours && Object.keys(data.openingHours).length > 0) {
         setOpeningHours(data.openingHours);
       }
 
+      // ✅ Converti amenities da oggetto a array
       if (data.amenities) {
-        setAmenities(data.amenities);
+        if (Array.isArray(data.amenities)) {
+          // Già array
+          setAmenities(data.amenities);
+        } else {
+          // Oggetto { toilets: true, bar: false } → ["toilets"]
+          const activeAmenities = Object.entries(data.amenities)
+            .filter(([_, value]) => value === true)
+            .map(([key]) => key);
+          setAmenities(activeAmenities);
+        }
       }
     } catch (error) {
       console.error("❌ Errore caricamento struttura:", error);
@@ -108,8 +131,48 @@ export default function ModificaStrutturaScreen() {
     }
   };
 
-  const toggleAmenity = (key: keyof typeof amenities) => {
-    setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
+  // ✅ Toggle amenity dinamico
+  const toggleAmenity = (key: string) => {
+    setAmenities((prev) =>
+      prev.includes(key)
+        ? prev.filter((a) => a !== key)
+        : [...prev, key]
+    );
+  };
+
+  // ✅ Aggiungi custom amenity
+  const addCustomAmenity = () => {
+    const trimmed = customAmenityInput.trim();
+    
+    if (!trimmed) {
+      Alert.alert("Errore", "Inserisci il nome del servizio");
+      return;
+    }
+
+    if (amenities.includes(trimmed)) {
+      Alert.alert("Attenzione", "Questo servizio è già presente");
+      return;
+    }
+
+    setAmenities((prev) => [...prev, trimmed]);
+    setCustomAmenityInput("");
+    setShowCustomAmenityInput(false);
+  };
+
+  // ✅ Rimuovi custom amenity
+  const removeCustomAmenity = (amenity: string) => {
+    Alert.alert(
+      "Rimuovi servizio",
+      `Vuoi rimuovere "${amenity}"?`,
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Rimuovi",
+          style: "destructive",
+          onPress: () => setAmenities(prev => prev.filter(a => a !== amenity))
+        }
+      ]
+    );
   };
 
   const toggleDayClosed = (day: string) => {
@@ -132,7 +195,6 @@ export default function ModificaStrutturaScreen() {
 
   const handleToggleActive = () => {
     if (isActive) {
-      // Sto per disattivare
       Alert.alert(
         "Disattiva struttura",
         "Disattivando la struttura, non sarà più visibile agli utenti e non potranno essere effettuate nuove prenotazioni. Continuare?",
@@ -146,7 +208,6 @@ export default function ModificaStrutturaScreen() {
         ]
       );
     } else {
-      // Sto per attivare
       setIsActive(true);
     }
   };
@@ -160,7 +221,7 @@ export default function ModificaStrutturaScreen() {
     const updateData = {
       name,
       description,
-      amenities,
+      amenities, // ✅ Array di stringhe
       openingHours,
       isActive,
     };
@@ -345,30 +406,99 @@ export default function ModificaStrutturaScreen() {
           </View>
         ))}
 
-        <Text style={styles.sectionTitle}>Servizi disponibili</Text>
+        <Text style={styles.sectionTitle}>
+          Servizi disponibili ({amenities.length})
+        </Text>
 
-        {Object.entries({
-          toilets: { label: "Bagni", icon: "man" },
-          lockerRoom: { label: "Spogliatoi", icon: "shirt" },
-          showers: { label: "Docce", icon: "water" },
-          parking: { label: "Parcheggio", icon: "car" },
-          restaurant: { label: "Ristorante", icon: "restaurant" },
-          bar: { label: "Bar", icon: "cafe" },
-        }).map(([key, { label, icon }]) => (
+        {/* ✅ Render dinamico amenities predefinite */}
+        {AVAILABLE_AMENITIES.map(({ key, label, icon }) => (
           <View key={key} style={styles.amenityRow}>
             <View style={styles.amenityLeft}>
-              <View style={styles.amenityIcon}>
-                <Ionicons name={icon as any} size={20} color="#666" />
+              <View style={[
+                styles.amenityIcon,
+                amenities.includes(key) && styles.amenityIconActive
+              ]}>
+                <Ionicons 
+                  name={icon as any} 
+                  size={20} 
+                  color={amenities.includes(key) ? "#2196F3" : "#666"}
+                />
               </View>
               <Text style={styles.amenityLabel}>{label}</Text>
             </View>
             <Switch
-              value={amenities[key as keyof typeof amenities]}
-              onValueChange={() => toggleAmenity(key as keyof typeof amenities)}
+              value={amenities.includes(key)}
+              onValueChange={() => toggleAmenity(key)}
               trackColor={{ false: "#E0E0E0", true: "#2196F3" }}
             />
           </View>
         ))}
+
+        {/* ✅ Amenities custom (aggiunte dall'owner) */}
+        {amenities
+          .filter(a => !AVAILABLE_AMENITIES.find(av => av.key === a))
+          .map((customAmenity) => (
+            <View key={customAmenity} style={styles.amenityRow}>
+              <View style={styles.amenityLeft}>
+                <View style={[styles.amenityIcon, styles.amenityIconActive]}>
+                  <Ionicons name="add-circle" size={20} color="#2196F3" />
+                </View>
+                <Text style={styles.amenityLabel}>{customAmenity}</Text>
+                <View style={styles.customBadge}>
+                  <Text style={styles.customBadgeText}>Custom</Text>
+                </View>
+              </View>
+              <Pressable onPress={() => removeCustomAmenity(customAmenity)}>
+                <Ionicons name="trash-outline" size={20} color="#E53935" />
+              </Pressable>
+            </View>
+          ))}
+
+        {/* ✅ Aggiungi amenity custom */}
+        <Pressable
+          style={styles.addCustomButton}
+          onPress={() => setShowCustomAmenityInput(true)}
+        >
+          <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+          <Text style={styles.addCustomButtonText}>
+            Aggiungi servizio personalizzato
+          </Text>
+        </Pressable>
+
+        {/* ✅ Input per custom amenity */}
+        {showCustomAmenityInput && (
+          <View style={styles.customInputContainer}>
+            <TextInput
+              style={styles.customInput}
+              value={customAmenityInput}
+              onChangeText={setCustomAmenityInput}
+              placeholder="Es: Campo da calcetto, Spazio bimbi..."
+              placeholderTextColor="#999"
+              autoFocus
+            />
+            <View style={styles.customInputActions}>
+              <Pressable
+                style={styles.customInputCancel}
+                onPress={() => {
+                  setShowCustomAmenityInput(false);
+                  setCustomAmenityInput("");
+                }}
+              >
+                <Text style={styles.customInputCancelText}>Annulla</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.customInputAdd,
+                  !customAmenityInput.trim() && styles.customInputAddDisabled
+                ]}
+                onPress={addCustomAmenity}
+                disabled={!customAmenityInput.trim()}
+              >
+                <Text style={styles.customInputAddText}>Aggiungi</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         <Pressable
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -634,11 +764,104 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  amenityIconActive: {
+    backgroundColor: "#E3F2FD",
+  },
   
   amenityLabel: { 
     fontSize: 16, 
     fontWeight: "600",
     color: "#1a1a1a",
+  },
+
+  customBadge: {
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+
+  customBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FF9800",
+  },
+
+  addCustomButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+  },
+
+  addCustomButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+
+  customInputContainer: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#2196F3",
+  },
+
+  customInput: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 16,
+    color: "#1a1a1a",
+    marginBottom: 12,
+  },
+
+  customInputActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  customInputCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+  },
+
+  customInputCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  customInputAdd: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+  },
+
+  customInputAddDisabled: {
+    opacity: 0.5,
+  },
+
+  customInputAddText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
   },
 
   // SALVA

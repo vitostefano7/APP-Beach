@@ -2,7 +2,6 @@ import { Response } from "express";
 import User from "../models/User";
 import PlayerProfile from "../models/PlayerProfile";
 import UserPreferences from "../models/UserPreferences";
-import PaymentMethod from "../models/PaymentMethod";
 import Booking from "../models/Booking";
 import { AuthRequest } from "../middleware/authMiddleware";
 
@@ -16,11 +15,10 @@ export const getMyProfile = async (
   try {
     const userId = req.user!.id;
 
-    const [user, profile, preferences, payments] = await Promise.all([
+    const [user, profile, preferences] = await Promise.all([
       User.findById(userId).select("-password"),
       PlayerProfile.findOne({ user: userId }).populate("favoriteCampo"),
       UserPreferences.findOne({ user: userId }),
-      PaymentMethod.find({ user: userId }),
     ]);
 
     if (!user) {
@@ -50,7 +48,6 @@ export const getMyProfile = async (
         pushNotifications: false,
         darkMode: false,
       },
-      payments,
     });
   } catch (error) {
     console.error("getMyProfile error", error);

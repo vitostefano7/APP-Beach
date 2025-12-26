@@ -11,7 +11,7 @@ export interface IStruttura extends Document {
     lng: number;
     coordinates: [number, number];
   };
-  amenities: any;
+  amenities: string[]; // ✅ Array di stringhe invece di oggetto
   openingHours: any;
   images: string[];
   rating: { average: number; count: number };
@@ -35,13 +35,10 @@ const StrutturaSchema = new Schema<IStruttura>(
       coordinates: { type: [Number], index: "2dsphere" },
     },
 
+    // ✅ Amenities come array di stringhe (supporta custom)
     amenities: {
-      toilets: Boolean,
-      lockerRoom: Boolean,
-      showers: Boolean,
-      parking: Boolean,
-      restaurant: Boolean,
-      bar: Boolean,
+      type: [String],
+      default: [],
     },
 
     openingHours: Schema.Types.Mixed,
@@ -60,6 +57,8 @@ const StrutturaSchema = new Schema<IStruttura>(
   { timestamps: true }
 );
 
+// ✅ Indice per query con amenities
+StrutturaSchema.index({ amenities: 1 });
+
 export default mongoose.models.Struttura ||
   mongoose.model<IStruttura>("Struttura", StrutturaSchema);
-
