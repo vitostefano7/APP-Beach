@@ -1,0 +1,34 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title GET /campo/:id
+
+actor Client
+participant "Express Router" as Router
+participant "getCampoCalendarByMonth" as Controller
+database MongoDB
+
+Client -> Router: GET /campo/:id
+activate Router
+Router -> Controller: getCampoCalendarByMonth()
+activate Controller
+
+autonumber
+Controller -> MongoDB: CampoCalendarDay.find()
+MongoDB --> Controller: result
+note over Controller: Validate Input / Check Existence
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

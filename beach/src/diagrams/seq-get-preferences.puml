@@ -1,0 +1,40 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title GET /preferences
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "getUserPreferences" as Controller
+database MongoDB
+
+Client -> Router: GET /preferences
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: getUserPreferences()
+activate Controller
+
+autonumber
+Controller -> MongoDB: UserPreferences.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: UserPreferences.create()
+MongoDB --> Controller: result
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

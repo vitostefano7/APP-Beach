@@ -1,0 +1,12 @@
+@startuml
+title GET /
+
+actor Client
+participant Router
+participant getStrutture
+
+Client -> Router: GET /
+Router -> getStrutture: getStrutture()
+getStrutture --> Router: response
+Router --> Client: JSON
+@enduml

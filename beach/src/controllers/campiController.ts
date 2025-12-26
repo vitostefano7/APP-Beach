@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import Campo from "../models/Campo";
 import Struttura from "../models/Strutture";
-import CampoCalendarDay from "../models/CampoCalendarDay";
+import CampoCalendarDay from "../models/campoCalendarDay";
 import { AuthRequest } from "../middleware/authMiddleware";
 import Booking from "../models/Booking"; // ✅ AGGIUNTO
 

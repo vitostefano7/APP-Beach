@@ -5,7 +5,7 @@ import User from "./models/User";
 import Struttura from "./models/Strutture";
 import Campo from "./models/Campo";
 import Booking from "./models/Booking";
-import CampoCalendarDay from "./models/CampoCalendarDay";
+import CampoCalendarDay from "./models/campoCalendarDay";
 import PlayerProfile from "./models/PlayerProfile";
 import UserPreferences from "./models/UserPreferences";
 

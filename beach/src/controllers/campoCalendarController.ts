@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Campo from "../models/Campo";
-import CampoCalendarDay from "../models/CampoCalendarDay";
+import CampoCalendarDay from "../models/campoCalendarDay";
 import Booking from "../models/Booking";
 import { AuthRequest } from "../middleware/authMiddleware";
 

@@ -1,0 +1,12 @@
+@startuml
+title GET /search-address
+
+actor Client
+participant Router
+participant searchAddress
+
+Client -> Router: GET /search-address
+Router -> searchAddress: searchAddress()
+searchAddress --> Router: response
+Router --> Client: JSON
+@enduml

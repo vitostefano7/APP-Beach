@@ -1,0 +1,12 @@
+@startuml
+title GET /:id/calendar
+
+actor Client
+participant Router
+participant getCampoCalendarByMonth
+
+Client -> Router: GET /:id/calendar
+Router -> getCampoCalendarByMonth: getCampoCalendarByMonth()
+getCampoCalendarByMonth --> Router: response
+Router --> Client: JSON
+@enduml

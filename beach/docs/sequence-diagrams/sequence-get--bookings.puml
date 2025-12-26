@@ -1,0 +1,19 @@
+@startuml
+title GET /bookings
+
+actor Client
+participant Router
+participant getOwnerBookings
+
+Client -> Router: GET /bookings
+Router -> getOwnerBookings: getOwnerBookings()
+note right of getOwnerBookings
+auth: user
+end note
+getOwnerBookings -> Booking: find
+Booking -> MongoDB: query
+MongoDB --> Booking: result
+Booking --> getOwnerBookings: data
+getOwnerBookings --> Router: response
+Router --> Client: JSON
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title PUT /preferences/location
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "updatePreferredLocation" as Controller
+database MongoDB
+
+Client -> Router: PUT /preferences/location
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: updatePreferredLocation()
+activate Controller
+
+autonumber
+Controller -> MongoDB: UserPreferences.find()
+MongoDB --> Controller: result
+note over Controller: Initialize new UserPreferences
+note over Controller: Validate Input / Check Existence
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

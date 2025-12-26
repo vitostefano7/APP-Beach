@@ -1,5 +1,5 @@
 // utils/generateAnnualCalendar.ts
-import CampoCalendarDay from "../models/CampoCalendarDay";
+import CampoCalendarDay from "../models/campoCalendarDay";
 import { generateHalfHourSlots } from "./generateSlot";
 
 const WEEK_MAP = [

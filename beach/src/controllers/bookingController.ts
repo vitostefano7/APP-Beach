@@ -2,7 +2,7 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import Booking from "../models/Booking";
 import Campo from "../models/Campo";
-import CampoCalendarDay from "../models/CampoCalendarDay";
+import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
 

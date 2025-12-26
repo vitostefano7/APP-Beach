@@ -1,0 +1,44 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title POST /preferences/favorites/:strutturaId
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "addFavoriteStruttura" as Controller
+database MongoDB
+
+Client -> Router: POST /preferences/favorites/:strutturaId
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: addFavoriteStruttura()
+activate Controller
+
+autonumber
+Controller -> MongoDB: Struttura.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: UserPreferences.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Strutture.push()
+MongoDB --> Controller: result
+note over Controller: Initialize new UserPreferences
+note over Controller: Validate Input / Check Existence
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

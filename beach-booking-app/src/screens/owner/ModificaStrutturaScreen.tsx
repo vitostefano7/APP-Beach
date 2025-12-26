@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 
@@ -44,6 +45,7 @@ export default function ModificaStrutturaScreen() {
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [isActive, setIsActive] = useState(true);
 
   // Orari
   const [openingHours, setOpeningHours] = useState<OpeningHours>({
@@ -87,6 +89,7 @@ export default function ModificaStrutturaScreen() {
       setDescription(data.description || "");
       setAddress(data.location?.address || "");
       setCity(data.location?.city || "");
+      setIsActive(data.isActive !== false); // Default true se undefined
 
       if (data.openingHours && Object.keys(data.openingHours).length > 0) {
         setOpeningHours(data.openingHours);
@@ -127,6 +130,27 @@ export default function ModificaStrutturaScreen() {
     }));
   };
 
+  const handleToggleActive = () => {
+    if (isActive) {
+      // Sto per disattivare
+      Alert.alert(
+        "Disattiva struttura",
+        "Disattivando la struttura, non sarà più visibile agli utenti e non potranno essere effettuate nuove prenotazioni. Continuare?",
+        [
+          { text: "Annulla", style: "cancel" },
+          {
+            text: "Disattiva",
+            style: "destructive",
+            onPress: () => setIsActive(false),
+          },
+        ]
+      );
+    } else {
+      // Sto per attivare
+      setIsActive(true);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert("Errore", "Il nome è obbligatorio");
@@ -138,6 +162,7 @@ export default function ModificaStrutturaScreen() {
       description,
       amenities,
       openingHours,
+      isActive,
     };
 
     setSaving(true);
@@ -176,7 +201,7 @@ export default function ModificaStrutturaScreen() {
       <SafeAreaView style={styles.safe}>
         <ActivityIndicator
           size="large"
-          color="#007AFF"
+          color="#2196F3"
           style={{ marginTop: 100 }}
         />
       </SafeAreaView>
@@ -186,8 +211,8 @@ export default function ModificaStrutturaScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
+          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Struttura</Text>
         <View style={{ width: 24 }} />
@@ -198,6 +223,45 @@ export default function ModificaStrutturaScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* STATO STRUTTURA */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusLeft}>
+              <View style={[styles.statusIcon, isActive ? styles.statusIconActive : styles.statusIconInactive]}>
+                <Ionicons
+                  name={isActive ? "checkmark-circle" : "close-circle"}
+                  size={24}
+                  color={isActive ? "#4CAF50" : "#E53935"}
+                />
+              </View>
+              <View>
+                <Text style={styles.statusTitle}>
+                  Struttura {isActive ? "attiva" : "non attiva"}
+                </Text>
+                <Text style={styles.statusSubtitle}>
+                  {isActive
+                    ? "Visibile agli utenti"
+                    : "Nascosta agli utenti"}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isActive}
+              onValueChange={handleToggleActive}
+              trackColor={{ false: "#E0E0E0", true: "#4CAF50" }}
+              thumbColor={isActive ? "white" : "#f4f3f4"}
+            />
+          </View>
+          {!isActive && (
+            <View style={styles.warningBox}>
+              <Ionicons name="warning" size={16} color="#FF9800" />
+              <Text style={styles.warningText}>
+                La struttura è nascosta. Gli utenti non possono vederla o prenotare.
+              </Text>
+            </View>
+          )}
+        </View>
+
         <Text style={styles.sectionTitle}>Informazioni base</Text>
 
         <View style={styles.section}>
@@ -225,12 +289,15 @@ export default function ModificaStrutturaScreen() {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            ℹ️ Indirizzo e posizione non possono essere modificati
-          </Text>
-          <Text style={styles.infoAddress}>
-            {address || "Non disponibile"}, {city}
-          </Text>
+          <Ionicons name="information-circle" size={20} color="#2196F3" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoText}>
+              Indirizzo e posizione non possono essere modificati
+            </Text>
+            <Text style={styles.infoAddress}>
+              {address || "Non disponibile"}, {city}
+            </Text>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Orari di apertura</Text>
@@ -239,28 +306,40 @@ export default function ModificaStrutturaScreen() {
           <View key={key} style={styles.dayRow}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayLabel}>{label}</Text>
-              <Switch
-                value={!openingHours[key]?.closed}
-                onValueChange={() => toggleDayClosed(key)}
-              />
+              <View style={styles.dayToggle}>
+                <Text style={styles.dayToggleLabel}>
+                  {openingHours[key]?.closed ? "Chiuso" : "Aperto"}
+                </Text>
+                <Switch
+                  value={!openingHours[key]?.closed}
+                  onValueChange={() => toggleDayClosed(key)}
+                  trackColor={{ false: "#E0E0E0", true: "#2196F3" }}
+                />
+              </View>
             </View>
             {!openingHours[key]?.closed && (
               <View style={styles.timeRow}>
-                <TextInput
-                  style={styles.timeInput}
-                  value={openingHours[key]?.open || "09:00"}
-                  onChangeText={(v) => updateOpeningHour(key, "open", v)}
-                  placeholder="09:00"
-                  placeholderTextColor="#999"
-                />
-                <Text style={styles.timeSeparator}>-</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={openingHours[key]?.close || "22:00"}
-                  onChangeText={(v) => updateOpeningHour(key, "close", v)}
-                  placeholder="22:00"
-                  placeholderTextColor="#999"
-                />
+                <View style={styles.timeInputContainer}>
+                  <Ionicons name="time-outline" size={16} color="#666" />
+                  <TextInput
+                    style={styles.timeInput}
+                    value={openingHours[key]?.open || "09:00"}
+                    onChangeText={(v) => updateOpeningHour(key, "open", v)}
+                    placeholder="09:00"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                <Text style={styles.timeSeparator}>→</Text>
+                <View style={styles.timeInputContainer}>
+                  <Ionicons name="time-outline" size={16} color="#666" />
+                  <TextInput
+                    style={styles.timeInput}
+                    value={openingHours[key]?.close || "22:00"}
+                    onChangeText={(v) => updateOpeningHour(key, "close", v)}
+                    placeholder="22:00"
+                    placeholderTextColor="#999"
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -269,18 +348,24 @@ export default function ModificaStrutturaScreen() {
         <Text style={styles.sectionTitle}>Servizi disponibili</Text>
 
         {Object.entries({
-          toilets: "Bagni",
-          lockerRoom: "Spogliatoi",
-          showers: "Docce",
-          parking: "Parcheggio",
-          restaurant: "Ristorante",
-          bar: "Bar",
-        }).map(([key, label]) => (
+          toilets: { label: "Bagni", icon: "man" },
+          lockerRoom: { label: "Spogliatoi", icon: "shirt" },
+          showers: { label: "Docce", icon: "water" },
+          parking: { label: "Parcheggio", icon: "car" },
+          restaurant: { label: "Ristorante", icon: "restaurant" },
+          bar: { label: "Bar", icon: "cafe" },
+        }).map(([key, { label, icon }]) => (
           <View key={key} style={styles.amenityRow}>
-            <Text style={styles.amenityLabel}>{label}</Text>
+            <View style={styles.amenityLeft}>
+              <View style={styles.amenityIcon}>
+                <Ionicons name={icon as any} size={20} color="#666" />
+              </View>
+              <Text style={styles.amenityLabel}>{label}</Text>
+            </View>
             <Switch
               value={amenities[key as keyof typeof amenities]}
               onValueChange={() => toggleAmenity(key as keyof typeof amenities)}
+              trackColor={{ false: "#E0E0E0", true: "#2196F3" }}
             />
           </View>
         ))}
@@ -290,6 +375,7 @@ export default function ModificaStrutturaScreen() {
           onPress={handleSave}
           disabled={saving}
         >
+          <Ionicons name="checkmark-circle" size={24} color="white" />
           <Text style={styles.saveButtonText}>
             {saving ? "Salvataggio..." : "Salva modifiche"}
           </Text>
@@ -302,97 +388,283 @@ export default function ModificaStrutturaScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#f0f0f0",
   },
-  back: { fontSize: 20, fontWeight: "800" },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  container: { flex: 1, padding: 16 },
+  
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: "800",
+    color: "#1a1a1a",
+  },
+  
+  container: { 
+    flex: 1, 
+    padding: 16,
+  },
+
+  // STATO STRUTTURA
+  statusCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  statusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  statusLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+
+  statusIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  statusIconActive: {
+    backgroundColor: "#E8F5E9",
+  },
+
+  statusIconInactive: {
+    backgroundColor: "#FFEBEE",
+  },
+
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+
+  statusSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF3E0",
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#E65100",
+    fontWeight: "500",
+  },
+
+  // SEZIONI
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    marginTop: 16,
+    fontWeight: "800",
+    marginTop: 8,
+    marginBottom: 16,
+    color: "#1a1a1a",
+  },
+  
+  section: { 
     marginBottom: 16,
   },
-  section: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 6, color: "#333" },
+  
+  label: { 
+    fontSize: 14, 
+    fontWeight: "700", 
+    marginBottom: 8, 
+    color: "#1a1a1a",
+  },
+  
   input: {
     backgroundColor: "white",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#e0e0e0",
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
+    color: "#1a1a1a",
   },
-  textArea: { minHeight: 100, textAlignVertical: "top" },
+  
+  textArea: { 
+    minHeight: 100, 
+    textAlignVertical: "top",
+  },
+  
   infoBox: {
-    backgroundColor: "#E8F4FD",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#E3F2FD",
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#007AFF",
+    borderColor: "#2196F3",
   },
+  
   infoText: {
-    fontSize: 14,
-    color: "#007AFF",
-    marginBottom: 4,
+    fontSize: 13,
+    color: "#1976D2",
     fontWeight: "600",
+    marginBottom: 4,
   },
+  
   infoAddress: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
   },
+
+  // ORARI
   dayRow: {
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#f0f0f0",
   },
+  
   dayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dayLabel: { fontSize: 16, fontWeight: "600" },
-  timeRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  
+  dayLabel: { 
+    fontSize: 16, 
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+
+  dayToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  dayToggleLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  
+  timeRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginTop: 12,
+    gap: 12,
+  },
+
+  timeInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  
   timeInput: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    padding: 10,
-    textAlign: "center",
     fontSize: 16,
+    fontWeight: "600",
+    color: "#1a1a1a",
   },
-  timeSeparator: { marginHorizontal: 10, fontSize: 18, fontWeight: "700" },
+  
+  timeSeparator: { 
+    fontSize: 18, 
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+
+  // SERVIZI
   amenityRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
-    padding: 14,
+    padding: 16,
     borderRadius: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#f0f0f0",
   },
-  amenityLabel: { fontSize: 16, fontWeight: "600" },
+
+  amenityLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  amenityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  
+  amenityLabel: { 
+    fontSize: 16, 
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+
+  // SALVA
   saveButton: {
-    backgroundColor: "#007AFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#2196F3",
     padding: 16,
     borderRadius: 12,
-    alignItems: "center",
     marginTop: 24,
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  saveButtonDisabled: { opacity: 0.5 },
-  saveButtonText: { color: "white", fontSize: 18, fontWeight: "700" },
+  
+  saveButtonDisabled: { 
+    opacity: 0.5,
+  },
+  
+  saveButtonText: { 
+    color: "white", 
+    fontSize: 18, 
+    fontWeight: "700",
+  },
 });

@@ -1,0 +1,15 @@
+@startuml
+title GET /:id/campi
+
+actor Client
+participant Router
+participant getCampiByStruttura
+
+Client -> Router: GET /:id/campi
+Router -> getCampiByStruttura: getCampiByStruttura()
+note right of getCampiByStruttura
+params: { id }
+end note
+getCampiByStruttura --> Router: response
+Router --> Client: JSON
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title POST /register
+
+actor Client
+participant "Express Router" as Router
+participant "register" as Controller
+database MongoDB
+
+Client -> Router: POST /register
+activate Router
+Router -> Controller: register()
+activate Controller
+
+autonumber
+Controller -> MongoDB: User.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: User.create()
+MongoDB --> Controller: result
+Controller -> MongoDB: PlayerProfile.create()
+MongoDB --> Controller: result
+Controller -> MongoDB: UserPreferences.create()
+MongoDB --> Controller: result
+note over Controller: Validate Input / Check Existence
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml
