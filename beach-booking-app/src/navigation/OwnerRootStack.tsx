@@ -67,7 +67,7 @@ export default function OwnerRootStack() {
         component={CampoCalendarioGestioneScreen} 
       />
       <Stack.Screen 
-        name="DettaglioPrenotazione" 
+        name="OwnerDettaglioPrenotazione" 
         component={DettaglioPrenotazioneOwnerScreen} 
       />
       <Stack.Screen 
