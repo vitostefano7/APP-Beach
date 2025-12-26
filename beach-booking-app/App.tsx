@@ -6,7 +6,7 @@ import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
-import SetupPreferencesScreen from "./src/screens/SetupPreferencesScreen"; // ✅ AGGIUNGI QUESTO
+import SetupPreferencesScreen from "./src/screens/player/profilo/SetupPreferencesScreen"; // ✅ AGGIUNGI QUESTO
 
 import PlayerTabs from "./src/navigation/PlayerTabs";
 import OwnerRootStack from "./src/navigation/OwnerRootStack";

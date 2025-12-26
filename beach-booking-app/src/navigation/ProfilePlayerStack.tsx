@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import ProfileScreen from "../screens/ProfileScreen";
-import PrivacySecurityScreen from "../screens/PrivacySecurityScreen";
+import ProfileScreen from "../screens/player/profilo/ProfileScreen";
+import PrivacySecurityScreen from "../screens/player/profilo/PrivacySecurityScreen";
 import PreferencesScreen from "../screens/PreferencesScreen";
 
 export type ProfileStackParamList = {

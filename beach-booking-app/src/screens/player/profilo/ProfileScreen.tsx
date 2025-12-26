@@ -13,9 +13,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { AuthContext } from "../context/AuthContext";
-import { ProfileStackParamList } from "../navigation/ProfilePlayerStack";
-import API_URL from "../config/api";
+import { AuthContext } from "../../../context/AuthContext";
+import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
+import API_URL from "../../../config/api";
 
 /* =========================
    TYPES

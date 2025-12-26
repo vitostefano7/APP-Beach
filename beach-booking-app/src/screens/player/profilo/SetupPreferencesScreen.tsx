@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../config/api";
+import API_URL from "../../../config/api";
 
 export default function SetupPreferencesScreen({ route, navigation }: any) {
   const { userId, token, name } = route.params || {};

@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import StruttureScreen from "../screens/StruttureScreen";
-import FieldDetailsScreen from "../screens/FieldDetailsScreen";
+import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen";
 import ConfermaPrenotazioneScreen from "../screens/ConfermaPrenotazioneScreen";
 import LeMiePrenotazioniScreen from "../screens/LeMiePrenotazioneScreen";
 import DettaglioPrenotazioneScreen from "../screens/DettaglioPrenotazioneScreen";

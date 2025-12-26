@@ -3,7 +3,7 @@ import OwnerTabs from "./OwnerTabs";
 import StrutturaDashboardScreen from "../screens/owner/StrutturaDashboardScreen";
 import CreaStrutturaScreen from "../screens/owner/CreaStrutturaScreen";
 import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
-import ModificaStrutturaScreen from "../screens/owner/ModificaStrutturaScreen";
+import ModificaStrutturaScreen from "../screens/owner/struttura/ModificaStrutturaScreen";
 import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";
 import ModificaCampoScreen from "../screens/owner/ModificaCampoScreen";
 import CampoDisponibilitaScreen from "../screens/owner/CampoDisponibilitaScreen";
