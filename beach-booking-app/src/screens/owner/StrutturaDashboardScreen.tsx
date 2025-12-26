@@ -12,7 +12,7 @@ import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/nativ
 import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../context/AuthContext";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
 
 interface Struttura {
   _id: string;
@@ -32,6 +32,17 @@ interface Campo {
   indoor: boolean;
 }
 
+interface Booking {
+  _id: string;
+  campo: {
+    _id: string;
+    struttura: {
+      _id: string;
+    };
+  };
+  status: string;
+}
+
 const SPORT_MAP: { [key: string]: string } = {
   beach_volley: "Beach Volley",
   padel: "Padel",
@@ -47,6 +58,7 @@ export default function StrutturaDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [struttura, setStruttura] = useState<Struttura | null>(null);
   const [campi, setCampi] = useState<Campo[]>([]);
+  const [bookingsCount, setBookingsCount] = useState(0);
 
   const loadData = useCallback(async () => {
     if (!token) {
@@ -88,6 +100,32 @@ export default function StrutturaDashboardScreen() {
       
       setCampi(campiData);
       console.log("✅ State campi aggiornato, lunghezza:", campiData.length);
+
+      // Carica prenotazioni per questa struttura
+      try {
+        const bookingsUrl = `${API_URL}/bookings/owner`;
+        console.log("📞 Chiamata API bookings:", bookingsUrl);
+        
+        const bookingsRes = await fetch(bookingsUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (bookingsRes.ok) {
+          const allBookings = await bookingsRes.json();
+          
+          // Filtra solo le prenotazioni confermate per questa struttura
+          const strutturaBookings = allBookings.filter((booking: Booking) => 
+            booking.status === "confirmed" && 
+            booking.campo?.struttura?._id === strutturaId
+          );
+          
+          console.log(`✅ Prenotazioni attive per questa struttura: ${strutturaBookings.length}`);
+          setBookingsCount(strutturaBookings.length);
+        }
+      } catch (error) {
+        console.error("⚠️ Errore caricamento prenotazioni:", error);
+        setBookingsCount(0);
+      }
     } catch (error) {
       console.error("❌ Errore caricamento dati:", error);
     } finally {
@@ -161,6 +199,13 @@ export default function StrutturaDashboardScreen() {
         },
       ]
     );
+  };
+
+  const handleGoToBookings = () => {
+    console.log("📅 Navigazione verso prenotazioni filtrate per struttura:", strutturaId);
+    navigation.navigate("OwnerBookings", {
+      filterStrutturaId: strutturaId,
+    });
   };
 
   console.log("🎨 Rendering dashboard - campi.length:", campi.length);
@@ -239,11 +284,15 @@ export default function StrutturaDashboardScreen() {
             <Text style={styles.kpiValue}>€{prezzoMedio.toFixed(0)}/h</Text>
           </View>
 
-          <View style={styles.kpiCard}>
+          {/* KPI PRENOTAZIONI - ORA CLICCABILE */}
+          <Pressable 
+            style={[styles.kpiCard, styles.kpiCardClickable]} 
+            onPress={handleGoToBookings}
+          >
             <Text style={styles.kpiLabel}>PRENOTAZIONI</Text>
-            <Text style={styles.kpiValue}>0</Text>
-            <Text style={styles.kpiSubtext}>Coming soon</Text>
-          </View>
+            <Text style={styles.kpiValue}>{bookingsCount}</Text>
+            <Text style={styles.kpiSubtext}>Tocca per vedere →</Text>
+          </Pressable>
         </View>
 
         {/* STATO CAMPI */}
@@ -321,13 +370,6 @@ export default function StrutturaDashboardScreen() {
 
         <Pressable
           style={styles.actionButton}
-          onPress={() => console.log("Visualizza prenotazioni")}
-        >
-          <Text style={styles.actionButtonText}>📅 Prenotazioni (coming soon)</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.actionButton}
           onPress={() => console.log("Visualizza statistiche")}
         >
           <Text style={styles.actionButtonText}>📊 Statistiche (coming soon)</Text>
@@ -374,9 +416,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#eee",
   },
+  
+  kpiCardClickable: {
+    borderColor: "#007AFF",
+    borderWidth: 2,
+  },
+  
   kpiLabel: { color: "#666", fontWeight: "700", fontSize: 12 },
   kpiValue: { fontSize: 28, fontWeight: "900", marginTop: 6 },
-  kpiSubtext: { color: "#999", fontSize: 11, marginTop: 2 },
+  kpiSubtext: { color: "#007AFF", fontSize: 11, marginTop: 2, fontWeight: "600" },
 
   sectionTitle: { fontSize: 20, fontWeight: "800", marginBottom: 12 },
 

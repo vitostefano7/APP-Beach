@@ -3,6 +3,7 @@ import User from "../models/User";
 import PlayerProfile from "../models/PlayerProfile";
 import UserPreferences from "../models/UserPreferences";
 import PaymentMethod from "../models/PaymentMethod";
+import Booking from "../models/Booking";
 import { AuthRequest } from "../middleware/authMiddleware";
 
 /**
@@ -26,10 +27,29 @@ export const getMyProfile = async (
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
+    // 📅 oggi a mezzanotte
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // ✅ PARTITE GIOCATE = prenotazioni passate e confermate
+    const matchesPlayed = await Booking.countDocuments({
+      user: userId,
+      status: "confirmed",
+      date: { $lt: today.toISOString().slice(0, 10) },
+    });
+
     res.json({
       user,
-      profile,
-      preferences,
+      profile: {
+        level: profile?.level ?? "amateur",
+        ratingAverage: profile?.ratingAverage ?? 0,
+        favoriteCampo: profile?.favoriteCampo ?? null,
+        matchesPlayed, // 👈 CALCOLATO DINAMICAMENTE
+      },
+      preferences: preferences ?? {
+        pushNotifications: false,
+        darkMode: false,
+      },
       payments,
     });
   } catch (error) {
@@ -52,7 +72,7 @@ export const updatePlayerProfile = async (
     const profile = await PlayerProfile.findOneAndUpdate(
       { user: userId },
       { level, favoriteCampo },
-      { new: true }
+      { new: true, upsert: true }
     ).populate("favoriteCampo");
 
     res.json(profile);
@@ -75,7 +95,7 @@ export const updatePreferences = async (
     const preferences = await UserPreferences.findOneAndUpdate(
       { user: userId },
       req.body,
-      { new: true }
+      { new: true, upsert: true }
     );
 
     res.json(preferences);

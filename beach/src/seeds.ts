@@ -1,10 +1,11 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import bcrypt from "bcrypt";
 
-import User, { IUser } from "./models/User";
-import Struttura, { IStruttura } from "./models/Strutture";
-import Campo, { ICampo } from "./models/Campo";
+import User from "./models/User";
+import Struttura from "./models/Strutture";
+import Campo from "./models/Campo";
 import Booking from "./models/Booking";
+import CampoCalendarDay from "./models/CampoCalendarDay";
 import PlayerProfile from "./models/PlayerProfile";
 import UserPreferences from "./models/UserPreferences";
 
@@ -17,178 +18,204 @@ const MONGO_URI =
 const DEFAULT_PASSWORD = "123";
 const SALT_ROUNDS = 10;
 
+// 📅 ANNO DA GENERARE
+const YEAR = new Date().getFullYear();
+
+// ⏱️ SLOT DEFAULT
+const OPEN_HOUR = 9;
+const CLOSE_HOUR = 22;
+const SLOT_MINUTES = 60;
+
 /* =========================
-   CITTÀ ITALIA
+   TYPES
 ========================= */
-const CITIES = [
-  { city: "Milano", lat: 45.4642, lng: 9.19 },
-  { city: "Torino", lat: 45.0703, lng: 7.6869 },
-  { city: "Bologna", lat: 44.4949, lng: 11.3426 },
-  { city: "Firenze", lat: 43.7696, lng: 11.2558 },
-  { city: "Roma", lat: 41.9028, lng: 12.4964 },
-  { city: "Napoli", lat: 40.8518, lng: 14.2681 },
-];
+type BookingSeed = {
+  user: Types.ObjectId;
+  campo: Types.ObjectId;
+  date: string;
+  startTime: string;
+  endTime: string;
+  price: number;
+  status: "confirmed" | "cancelled";
+};
 
 /* =========================
    UTILS
 ========================= */
-function randomDate(offset: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
+function formatDate(d: Date): string {
   return d.toISOString().split("T")[0];
+}
+
+function generateSlots(): { time: string; enabled: boolean }[] {
+  const slots: { time: string; enabled: boolean }[] = [];
+
+  for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
+    slots.push({
+      time: `${String(h).padStart(2, "0")}:00`,
+      enabled: true,
+    });
+  }
+
+  return slots;
+}
+
+function generateYearDates(year: number): string[] {
+  const dates: string[] = [];
+  const date = new Date(year, 0, 1);
+
+  while (date.getFullYear() === year) {
+    dates.push(formatDate(date));
+    date.setDate(date.getDate() + 1);
+  }
+
+  return dates;
 }
 
 /* =========================
    SEED
 ========================= */
-async function seed() {
+async function seed(): Promise<void> {
   try {
     await mongoose.connect(MONGO_URI);
     console.log("✅ MongoDB connesso");
 
-    /* -------- CLEAN DB -------- */
-    await Booking.deleteMany({});
-    await Campo.deleteMany({});
-    await Struttura.deleteMany({});
-    await PlayerProfile.deleteMany({});
-    await UserPreferences.deleteMany({});
-    await User.deleteMany({});
+    /* -------- CLEAN -------- */
+    await Promise.all([
+      Booking.deleteMany({}),
+      CampoCalendarDay.deleteMany({}),
+      Campo.deleteMany({}),
+      Struttura.deleteMany({}),
+      PlayerProfile.deleteMany({}),
+      UserPreferences.deleteMany({}),
+      User.deleteMany({}),
+    ]);
     console.log("🧹 Database pulito");
 
-    /* -------- PASSWORD -------- */
-    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
-
     /* -------- USERS -------- */
-    const users: IUser[] = await User.insertMany([
-      { name: "Mario Rossi", email: "mario@test.it", password: hashedPassword, role: "player" },
-      { name: "Luca Bianchi", email: "luca@test.it", password: hashedPassword, role: "player" },
-      { name: "Giulia Verdi", email: "giulia@test.it", password: hashedPassword, role: "player" },
-      { name: "Paolo Owner", email: "owner@test.it", password: hashedPassword, role: "owner" },
-      { name: "Marco Owner", email: "owner2@test.it", password: hashedPassword, role: "owner" },
+    const password = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
+
+    const users = await User.insertMany([
+      { name: "Mario Rossi", email: "mario@test.it", password, role: "player" },
+      { name: "Giulia Verdi", email: "giulia@test.it", password, role: "player" },
+      { name: "Luca Bianchi", email: "luca@test.it", password, role: "player" },
+      { name: "Paolo Owner", email: "owner@test.it", password, role: "owner" },
     ]);
 
-    const owners = users.filter(u => u.role === "owner");
     const players = users.filter(u => u.role === "player");
+    const owner = users.find(u => u.role === "owner")!;
 
-    console.log("👤 Utenti creati:", users.length);
-
-    /* -------- PLAYER PROFILES -------- */
+    /* -------- PLAYER DATA -------- */
     await PlayerProfile.insertMany(
-      players.map(player => ({
-        user: player._id,
-        level: "amateur",
+      players.map(p => ({
+        user: p._id,
         matchesPlayed: 0,
         ratingAverage: 0,
       }))
     );
 
     await UserPreferences.insertMany(
-      players.map(player => ({
-        user: player._id,
+      players.map(p => ({
+        user: p._id,
         pushNotifications: true,
         darkMode: false,
-        privacyLevel: "public",
       }))
     );
 
-    console.log("🎮 Profili giocatore creati:", players.length);
-
-    /* -------- STRUTTURE -------- */
-    const strutture: IStruttura[] = await Struttura.insertMany(
-      CITIES.map((c, i) => ({
-        name: `Sport Center ${c.city}`,
-        description: "Centro sportivo moderno",
-        owner: owners[i % owners.length]._id,
-        location: {
-          address: `Via Sport ${i + 1}`,
-          city: c.city,
-          lat: c.lat + Math.random() * 0.01,
-          lng: c.lng + Math.random() * 0.01,
-          coordinates: [
-            c.lng + Math.random() * 0.01,
-            c.lat + Math.random() * 0.01,
-          ],
-        },
-        amenities: {
-          toilets: true,
-          lockerRoom: true,
-          showers: true,
-          parking: true,
-          restaurant: i % 2 === 0,
-          bar: true,
-        },
-        openingHours: {
-          monday: { open: "09:00", close: "22:00" },
-          tuesday: { open: "09:00", close: "22:00" },
-          wednesday: { open: "09:00", close: "22:00" },
-        },
-        images: [],
-        rating: { average: 4.2, count: 10 },
-        isActive: true,
-        isFeatured: i % 2 === 0,
-        isDeleted: false,
-      }))
-    );
-
-    console.log("🏟️ Strutture create:", strutture.length);
-
-    /* -------- CAMPI -------- */
-    const campi: Partial<ICampo>[] = [];
-
-    strutture.forEach((struttura, i) => {
-      for (let n = 1; n <= 2; n++) {
-        campi.push({
-          struttura: struttura._id,
-          name: `Campo ${n}`,
-          sport: n % 2 === 0 ? "padel" : "beach_volley",
-          surface: n % 2 === 0 ? "hardcourt" : "sand",
-          maxPlayers: 4,
-          indoor: n % 2 === 0,
-          pricePerHour: 30 + i * 5,
-          isActive: true,
-        });
-      }
+    /* -------- STRUTTURA -------- */
+    const struttura = await Struttura.create({
+      name: "VBB Sport Center",
+      owner: owner._id,
+      location: {
+        address: "Via del Mare 12",
+        city: "Brindisi",
+        lat: 40.632,
+        lng: 17.936,
+        coordinates: [17.936, 40.632],
+      },
+      amenities: {
+        toilets: true,
+        lockerRoom: true,
+        showers: true,
+        parking: true,
+        bar: true,
+      },
+      images: [],
+      rating: { average: 4.5, count: 12 },
+      isActive: true,
     });
 
-    const campiCreati = await Campo.insertMany(campi);
-    console.log("🏐 Campi creati:", campiCreati.length);
+    /* -------- CAMPI -------- */
+    const campi = await Campo.insertMany([
+      {
+        struttura: struttura._id,
+        name: "Campo Beach 1",
+        sport: "beach_volley",
+        surface: "sand",
+        pricePerHour: 40,
+        indoor: false,
+        isActive: true,
+      },
+      {
+        struttura: struttura._id,
+        name: "Campo Padel 1",
+        sport: "padel",
+        surface: "hardcourt",
+        pricePerHour: 50,
+        indoor: true,
+        isActive: true,
+      },
+    ]);
 
-    /* -------- BOOKINGS -------- */
-    const bookings: any[] = [];
+    /* -------- CALENDARIO ANNUALE -------- */
+    const yearDates = generateYearDates(YEAR);
+    const calendarDocs = [];
 
-    players.forEach(player => {
-      for (let i = 0; i < 2; i++) {
-        const campo =
-          campiCreati[Math.floor(Math.random() * campiCreati.length)];
-
-        bookings.push({
-          user: player._id,
+    for (const campo of campi) {
+      for (const date of yearDates) {
+        calendarDocs.push({
           campo: campo._id,
-          date: randomDate(i + 1),
-          startTime: "18:00",
-          endTime: "19:00",
-          price: campo.pricePerHour,
-          status: "confirmed",
+          date,
+          slots: generateSlots(),
+          isClosed: false,
         });
       }
+    }
+
+    await CampoCalendarDay.insertMany(calendarDocs);
+    console.log(
+      `📆 Calendario annuale creato: ${calendarDocs.length} giorni`
+    );
+
+    /* -------- BOOKINGS -------- */
+    const bookings: BookingSeed[] = [];
+
+    players.forEach((player, i) => {
+      bookings.push(
+        {
+          user: player._id,
+          campo: campi[0]._id,
+          date: formatDate(new Date(YEAR, 5, 10)),
+          startTime: "18:00",
+          endTime: "19:00",
+          price: campi[0].pricePerHour,
+          status: "confirmed",
+        },
+        {
+          user: player._id,
+          campo: campi[1]._id,
+          date: formatDate(new Date(YEAR, 2, 20)),
+          startTime: "10:00",
+          endTime: "11:00",
+          price: campi[1].pricePerHour,
+          status: "cancelled",
+        }
+      );
     });
 
     await Booking.insertMany(bookings);
-    console.log("📅 Prenotazioni create:", bookings.length);
+    console.log("📅 Prenotazioni create");
 
-    /* -------- UPDATE MATCHES PLAYED -------- */
-    for (const player of players) {
-      const count = bookings.filter(
-        b => b.user.toString() === player._id.toString()
-      ).length;
-
-      await PlayerProfile.findOneAndUpdate(
-        { user: player._id },
-        { matchesPlayed: count }
-      );
-    }
-
-    console.log("🌱 SEED COMPLETATO CON SUCCESSO");
+    console.log("🌱 SEED ANNUALE COMPLETATO");
     process.exit(0);
   } catch (err) {
     console.error("❌ Errore seed:", err);

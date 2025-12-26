@@ -6,6 +6,12 @@ import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
 import ModificaStrutturaScreen from "../screens/owner/ModificaStrutturaScreen";
 import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";
 import ModificaCampoScreen from "../screens/owner/ModificaCampoScreen";
+import CampoDisponibilitaScreen from "../screens/owner/CampoDisponibilitaScreen";
+import CampoCalendarioGestioneScreen from "../screens/owner/CampoCalendarioGestioneScreen";
+import OwnerBookingsScreen from "../screens/owner/OwnerBookingsScreen";
+import DettaglioPrenotazioneOwnerScreen from "../screens/owner/DettaglioPrenotazioneOwnerScreen";
+import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
+
 
 export type OwnerRootStackParamList = {
   OwnerTabs: undefined;
@@ -40,12 +46,33 @@ export default function OwnerRootStack() {
         component={ModificaStrutturaScreen}
       />
       <Stack.Screen
+        name="OwnerBookings"
+        component={OwnerBookingsScreen}
+      />
+      <Stack.Screen
         name="DettaglioCampo"
         component={DettaglioCampoScreen}
       />
       <Stack.Screen
         name="ModificaCampo"
         component={ModificaCampoScreen}
+      />
+      <Stack.Screen
+        name="CampoDisponibilita"
+        component={CampoDisponibilitaScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CampoCalendarioGestione" 
+        component={CampoCalendarioGestioneScreen} 
+      />
+      <Stack.Screen 
+        name="DettaglioPrenotazione" 
+        component={DettaglioPrenotazioneOwnerScreen} 
+      />
+      <Stack.Screen 
+        name="InserisciRisultato" 
+        component={InserisciRisultatoScreen} 
       />
     </Stack.Navigator>
   );

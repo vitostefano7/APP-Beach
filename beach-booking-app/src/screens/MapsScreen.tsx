@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import MapView, { Marker, Circle, Region } from "react-native-maps";
-import { useEffect, useState, useRef } from "react";
-import { useNavigation } from "@react-navigation/native";
+import MapView, { Marker, Region } from "react-native-maps";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import API_URL from "../config/api";
 
-const API_URL = "http://192.168.1.112:3000";
 
 type Struttura = {
   _id: string;
@@ -32,12 +32,22 @@ export default function MapsScreen() {
   const [selected, setSelected] = useState<Struttura | null>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
 
+  console.log("🟢 MapsScreen renderizzato - selected:", selected?.name || "null");
+
   useEffect(() => {
     fetch(`${API_URL}/strutture`)
       .then(r => r.json())
       .then(setStrutture)
       .catch(console.log);
   }, []);
+
+  // 🔥 SOLUZIONE: resetta la selezione quando torni su questa schermata
+  useFocusEffect(
+    useCallback(() => {
+      console.log("🟢 useFocusEffect chiamato - resetto selected");
+      setSelected(null);
+    }, [])
+  );
 
   const centerOnUser = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -89,7 +99,8 @@ export default function MapsScreen() {
             style={styles.button}
             onPress={() =>
               navigation.navigate("FieldDetails", {
-                struttura: selected, from: "map",
+                struttura: selected,
+                from: "map",
               })
             }
           >

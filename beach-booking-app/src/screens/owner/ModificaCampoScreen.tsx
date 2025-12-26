@@ -13,8 +13,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
+
+/* =======================
+   COSTANTI
+======================= */
 
 const DAYS = [
   { key: "monday", label: "Lunedì" },
@@ -26,6 +31,10 @@ const DAYS = [
   { key: "sunday", label: "Domenica" },
 ];
 
+/* =======================
+   SCREEN
+======================= */
+
 export default function ModificaCampoScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
@@ -36,14 +45,13 @@ export default function ModificaCampoScreen() {
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
-  const [sport, setSport] = useState<"beach_volley" | "padel" | "tennis" | "">("");
-  const [surface, setSurface] = useState<"sand" | "hardcourt" | "grass" | "">("");
+  const [sport, setSport] = useState<"beach_volley" | "volley" | "">("");
+  const [surface, setSurface] = useState<"sand" | "cement" | "pvc" | "">("");
   const [maxPlayers, setMaxPlayers] = useState("4");
   const [indoor, setIndoor] = useState(false);
   const [pricePerHour, setPricePerHour] = useState("");
   const [isActive, setIsActive] = useState(true);
-  
-  // Orari settimanali
+
   const [weeklySchedule, setWeeklySchedule] = useState({
     monday: { enabled: true, open: "09:00", close: "22:00" },
     tuesday: { enabled: true, open: "09:00", close: "22:00" },
@@ -54,37 +62,41 @@ export default function ModificaCampoScreen() {
     sunday: { enabled: true, open: "09:00", close: "22:00" },
   });
 
+  /* =======================
+     LOAD CAMPO
+  ======================= */
+
   useEffect(() => {
     loadCampo();
   }, []);
 
+  useEffect(() => {
+    if (sport === "beach_volley") {
+      setSurface("sand");
+    } else if (sport === "volley") {
+      setSurface(indoor ? "pvc" : "cement");
+    }
+  }, [sport, indoor]);
+
   const loadCampo = async () => {
     try {
-      setLoading(true);
       const response = await fetch(`${API_URL}/campi/${campoId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error("Campo non trovato");
-      }
+      if (!response.ok) throw new Error();
 
       const data = await response.json();
 
-      setName(data.name || "");
-      setSport(data.sport || "");
-      setSurface(data.surface || "");
+      setName(data.name);
+      setSport(data.sport);
+      setSurface(data.surface);
       setMaxPlayers(data.maxPlayers?.toString() || "4");
       setIndoor(data.indoor || false);
       setPricePerHour(data.pricePerHour?.toString() || "");
-      setIsActive(data.isActive !== undefined ? data.isActive : true);
-      
-      // Carica orari settimanali
-      if (data.weeklySchedule) {
-        setWeeklySchedule(data.weeklySchedule);
-      }
-    } catch (error) {
-      console.error("❌ Errore caricamento campo:", error);
+      setIsActive(data.isActive ?? true);
+      if (data.weeklySchedule) setWeeklySchedule(data.weeklySchedule);
+    } catch {
       Alert.alert("Errore", "Impossibile caricare il campo", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
@@ -93,49 +105,40 @@ export default function ModificaCampoScreen() {
     }
   };
 
+  /* =======================
+     WEEKLY
+  ======================= */
+
   const toggleDayEnabled = (day: string) => {
     setWeeklySchedule((prev) => ({
       ...prev,
-      [day]: { ...prev[day as keyof typeof prev], enabled: !prev[day as keyof typeof prev].enabled },
+      [day]: {
+        ...prev[day as keyof typeof prev],
+        enabled: !prev[day as keyof typeof prev].enabled,
+      },
     }));
   };
 
-  const updateDayTime = (day: string, type: "open" | "close", value: string) => {
+  const updateDayTime = (
+    day: string,
+    type: "open" | "close",
+    value: string
+  ) => {
     setWeeklySchedule((prev) => ({
       ...prev,
       [day]: { ...prev[day as keyof typeof prev], [type]: value },
     }));
   };
 
-  const handleSave = async () => {
-    // Validazione
-    if (!name.trim()) {
-      Alert.alert("Errore", "Il nome del campo è obbligatorio");
-      return;
-    }
-    if (!sport) {
-      Alert.alert("Errore", "Seleziona uno sport");
-      return;
-    }
-    if (!surface) {
-      Alert.alert("Errore", "Seleziona una superficie");
-      return;
-    }
-    if (!pricePerHour || parseFloat(pricePerHour) <= 0) {
-      Alert.alert("Errore", "Inserisci un prezzo valido");
-      return;
-    }
+  /* =======================
+     SAVE
+  ======================= */
 
-    const updateData = {
-      name,
-      sport,
-      surface,
-      maxPlayers: parseInt(maxPlayers) || 4,
-      indoor,
-      pricePerHour: parseFloat(pricePerHour),
-      isActive,
-      weeklySchedule,
-    };
+  const handleSave = async () => {
+    if (!name.trim() || !pricePerHour) {
+      Alert.alert("Errore", "Compila i campi obbligatori");
+      return;
+    }
 
     setSaving(true);
 
@@ -146,23 +149,25 @@ export default function ModificaCampoScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify({
+          name,
+          sport,
+          surface,
+          maxPlayers: parseInt(maxPlayers) || 4,
+          indoor,
+          pricePerHour: parseFloat(pricePerHour),
+          isActive,
+          weeklySchedule,
+        }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Campo aggiornato:", result);
-        console.log("📊 isActive dopo update:", updateData.isActive);
-        Alert.alert("Successo", "Campo aggiornato con successo!", [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        const error = await response.json();
-        Alert.alert("Errore", error.message || "Impossibile aggiornare il campo");
-      }
-    } catch (error) {
-      Alert.alert("Errore", "Errore di connessione");
-      console.error(error);
+      if (!response.ok) throw new Error();
+
+      Alert.alert("Successo", "Campo aggiornato", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch {
+      Alert.alert("Errore", "Errore nel salvataggio");
     } finally {
       setSaving(false);
     }
@@ -171,57 +176,56 @@ export default function ModificaCampoScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator
-          size="large"
-          color="#007AFF"
-          style={{ marginTop: 100 }}
-        />
+        <ActivityIndicator size="large" color="#2196F3" style={{ marginTop: 100 }} />
       </SafeAreaView>
     );
   }
 
+  const surfaceLabel =
+    sport === "beach_volley"
+      ? indoor
+        ? "Sabbia (Indoor)"
+        : "Sabbia (Outdoor)"
+      : indoor
+      ? "PVC (Indoor)"
+      : "Cemento (Outdoor)";
+
   return (
     <SafeAreaView style={styles.safe}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Campo</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* NOME */}
         <View style={styles.section}>
           <Text style={styles.label}>Nome campo *</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Es. Campo 1"
-            placeholderTextColor="#999"
-          />
+          <TextInput style={styles.input} value={name} onChangeText={setName} />
         </View>
 
+        {/* SPORT */}
         <View style={styles.section}>
           <Text style={styles.label}>Sport *</Text>
           <View style={styles.chipContainer}>
             {[
-              { value: "beach_volley", label: "Beach Volley" },
-              { value: "padel", label: "Padel" },
-              { value: "tennis", label: "Tennis" },
+              { value: "beach_volley", label: "Beach Volley", icon: "fitness" },
+              { value: "volley", label: "Volley", icon: "basketball" },
             ].map((item) => (
               <Pressable
                 key={item.value}
-                style={[
-                  styles.chip,
-                  sport === item.value && styles.chipActive,
-                ]}
+                style={[styles.chip, sport === item.value && styles.chipActive]}
                 onPress={() => setSport(item.value as any)}
               >
+                <Ionicons
+                  name={item.icon as any}
+                  size={18}
+                  color={sport === item.value ? "white" : "#666"}
+                />
                 <Text
                   style={[
                     styles.chipText,
@@ -235,44 +239,55 @@ export default function ModificaCampoScreen() {
           </View>
         </View>
 
+        {/* INDOOR / OUTDOOR */}
         <View style={styles.section}>
-          <Text style={styles.label}>Superficie *</Text>
-          <View style={styles.chipContainer}>
-            {[
-              { value: "sand", label: "Sabbia" },
-              { value: "hardcourt", label: "Cemento" },
-              { value: "grass", label: "Erba" },
-            ].map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.chip,
-                  surface === item.value && styles.chipActive,
-                ]}
-                onPress={() => setSurface(item.value as any)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    surface === item.value && styles.chipTextActive,
-                  ]}
-                >
-                  {item.label}
+          <View style={styles.switchCard}>
+            <View style={styles.switchCardLeft}>
+              <Ionicons
+                name={indoor ? "business" : "sunny"}
+                size={24}
+                color={indoor ? "#2196F3" : "#FF9800"}
+              />
+              <View>
+                <Text style={styles.switchCardTitle}>
+                  {indoor ? "Campo coperto (Indoor)" : "Campo scoperto (Outdoor)"}
                 </Text>
-              </Pressable>
-            ))}
+                <Text style={styles.switchCardSubtitle}>
+                  Superficie: {surfaceLabel}
+                </Text>
+              </View>
+            </View>
+            <Switch value={indoor} onValueChange={setIndoor} />
           </View>
         </View>
 
+        {/* SUPERFICIE */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Superficie</Text>
+          <View style={styles.surfaceDisplay}>
+            <Ionicons
+              name={
+                surface === "sand"
+                  ? "beach"
+                  : surface === "pvc"
+                  ? "layers"
+                  : "construct"
+              }
+              size={20}
+              color="#4CAF50"
+            />
+            <Text style={styles.surfaceDisplayText}>{surfaceLabel}</Text>
+          </View>
+        </View>
+
+        {/* PREZZO / GIOCATORI */}
         <View style={styles.row}>
           <View style={[styles.section, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Prezzo/ora (€) *</Text>
+            <Text style={styles.label}>Prezzo/ora (€)</Text>
             <TextInput
               style={styles.input}
               value={pricePerHour}
               onChangeText={setPricePerHour}
-              placeholder="25"
-              placeholderTextColor="#999"
               keyboardType="decimal-pad"
             />
           </View>
@@ -282,18 +297,12 @@ export default function ModificaCampoScreen() {
               style={styles.input}
               value={maxPlayers}
               onChangeText={setMaxPlayers}
-              placeholder="4"
-              placeholderTextColor="#999"
               keyboardType="number-pad"
             />
           </View>
         </View>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.label}>Campo coperto</Text>
-          <Switch value={indoor} onValueChange={setIndoor} />
-        </View>
-
+        {/* ATTIVO */}
         <View style={styles.switchRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>Campo attivo</Text>
@@ -306,9 +315,9 @@ export default function ModificaCampoScreen() {
           <Switch value={isActive} onValueChange={setIsActive} />
         </View>
 
-        {/* Orari settimanali */}
+        {/* ORARI */}
         <Text style={styles.sectionTitle}>⏰ Orari settimanali</Text>
-        
+
         {DAYS.map(({ key, label }) => (
           <View key={key} style={styles.dayRow}>
             <View style={styles.dayHeader}>
@@ -318,22 +327,19 @@ export default function ModificaCampoScreen() {
                 onValueChange={() => toggleDayEnabled(key)}
               />
             </View>
+
             {weeklySchedule[key as keyof typeof weeklySchedule].enabled && (
               <View style={styles.timeRow}>
                 <TextInput
                   style={styles.timeInput}
                   value={weeklySchedule[key as keyof typeof weeklySchedule].open}
                   onChangeText={(v) => updateDayTime(key, "open", v)}
-                  placeholder="09:00"
-                  placeholderTextColor="#999"
                 />
                 <Text style={styles.timeSeparator}>-</Text>
                 <TextInput
                   style={styles.timeInput}
                   value={weeklySchedule[key as keyof typeof weeklySchedule].close}
                   onChangeText={(v) => updateDayTime(key, "close", v)}
-                  placeholder="22:00"
-                  placeholderTextColor="#999"
                 />
               </View>
             )}
@@ -356,123 +362,121 @@ export default function ModificaCampoScreen() {
   );
 }
 
+/* =======================
+   STYLES
+======================= */
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  safe: { flex: 1, backgroundColor: "#f8f9fa" },
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
     backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#e9ecef",
   },
-  back: { fontSize: 20, fontWeight: "800" },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerTitle: { fontSize: 18, fontWeight: "800" },
-  container: { flex: 1, padding: 16 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 20,
-    marginBottom: 16,
-  },
+  container: { padding: 16 },
   section: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 8, color: "#333" },
+  label: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
   input: {
     backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
   },
   row: { flexDirection: "row" },
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  chipContainer: { flexDirection: "row", gap: 10 },
   chip: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
   },
   chipActive: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
   },
-  chipText: {
-    fontSize: 15,
-    color: "#666",
-    fontWeight: "600",
-  },
-  chipTextActive: {
-    color: "white",
-  },
-  switchRow: {
+  chipText: { fontSize: 15, fontWeight: "600", color: "#666" },
+  chipTextActive: { color: "white" },
+  switchCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+  },
+  switchCardLeft: { flexDirection: "row", gap: 12, alignItems: "center" },
+  switchCardTitle: { fontWeight: "700", fontSize: 15 },
+  switchCardSubtitle: { fontSize: 13, color: "#666" },
+  surfaceDisplay: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
+  surfaceDisplayText: { fontSize: 16, fontWeight: "700", color: "#2E7D32" },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e9ecef",
     marginBottom: 20,
   },
-  switchDescription: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 4,
-  },
+  switchDescription: { fontSize: 13, color: "#666" },
+  sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   dayRow: {
     backgroundColor: "white",
-    borderRadius: 12,
     padding: 14,
+    borderRadius: 12,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#eee",
   },
-  dayHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  dayHeader: { flexDirection: "row", justifyContent: "space-between" },
   dayLabel: { fontSize: 16, fontWeight: "600" },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-  },
+  timeRow: { flexDirection: "row", marginTop: 10 },
   timeInput: {
     flex: 1,
     backgroundColor: "#f5f5f5",
     borderRadius: 8,
     padding: 10,
     textAlign: "center",
-    fontSize: 16,
   },
-  timeSeparator: {
-    marginHorizontal: 10,
-    fontSize: 18,
-    fontWeight: "700",
-  },
+  timeSeparator: { marginHorizontal: 10, fontSize: 18 },
   saveButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#2196F3",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
+  saveButtonDisabled: { opacity: 0.5 },
+  saveButtonText: { color: "white", fontSize: 18, fontWeight: "700" },
 });

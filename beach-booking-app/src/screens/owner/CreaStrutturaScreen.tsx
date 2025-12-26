@@ -15,7 +15,7 @@ import { useContext, useState, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
 
 interface PlaceSuggestion {
   place_id: string;

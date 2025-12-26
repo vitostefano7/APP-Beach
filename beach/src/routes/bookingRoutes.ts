@@ -2,8 +2,12 @@ import express from "express";
 import {
   createBooking,
   getMyBookings,
+  getBookingById,
   cancelBooking,
   getOwnerBookings,
+  getBookingsByCampo,
+  getOwnerBookingById,
+  cancelOwnerBooking,
 } from "../controllers/bookingController";
 
 import { requireAuth } from "../middleware/authMiddleware";
@@ -12,22 +16,64 @@ import ownerOnly from "../middleware/ownerOnly";
 const router = express.Router();
 
 /* =========================
-   PLAYER
+   PLAYER ROUTES
 ========================= */
 
+/**
+ * Crea nuova prenotazione
+ * POST /bookings
+ */
 router.post("/", requireAuth, createBooking);
+
+/**
+ * Le mie prenotazioni
+ * GET /bookings/me
+ */
 router.get("/me", requireAuth, getMyBookings);
-router.delete("/:id", requireAuth, cancelBooking);
 
 /* =========================
-   OWNER
+   OWNER ROUTES
 ========================= */
 
-router.get(
-  "/owner",
-  requireAuth,
-  ownerOnly,
-  getOwnerBookings
-);
+/**
+ * Tutte le prenotazioni ricevute
+ * GET /bookings/owner
+ */
+router.get("/owner", requireAuth, ownerOnly, getOwnerBookings);
+
+/**
+ * Singola prenotazione owner
+ * GET /bookings/owner/:id
+ */
+router.get("/owner/:id", requireAuth, ownerOnly, getOwnerBookingById);
+
+/**
+ * Cancella prenotazione owner
+ * DELETE /bookings/owner/:id
+ */
+router.delete("/owner/:id", requireAuth, ownerOnly, cancelOwnerBooking);
+
+/**
+ * Prenotazioni per un campo specifico
+ * GET /bookings/campo/:campoId?date=YYYY-MM-DD
+ */
+router.get("/campo/:campoId", requireAuth, getBookingsByCampo);
+
+/* =========================
+   ROUTES CON PARAMETRI DINAMICI
+   ⚠️ DEVONO ESSERE ALLA FINE
+========================= */
+
+/**
+ * Singola prenotazione
+ * GET /bookings/:id
+ */
+router.get("/:id", requireAuth, getBookingById);
+
+/**
+ * Cancella prenotazione
+ * DELETE /bookings/:id
+ */
+router.delete("/:id", requireAuth, cancelBooking);
 
 export default router;

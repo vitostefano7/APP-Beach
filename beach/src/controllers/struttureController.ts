@@ -6,17 +6,60 @@ import axios from "axios";
 
 /**
  * 📌 GET /strutture
- * Tutte le strutture pubbliche (PLAYER)
+ * Tutte le strutture pubbliche (PLAYER) - CON SPORTS AGGREGATI
  */
 export const getStrutture = async (_req: Request, res: Response) => {
   try {
     const strutture = await Struttura.find({
       isActive: true,
       isDeleted: false,
-    }).sort({ isFeatured: -1, createdAt: -1 });
-    res.json(strutture);
+    })
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .lean();
+
+    // Per ogni struttura, aggrega info dai campi
+    const struttureWithSports = await Promise.all(
+      strutture.map(async (struttura) => {
+        // Trova tutti i campi attivi di questa struttura
+        const campi = await Campo.find({
+          struttura: struttura._id,
+          isActive: true,
+        })
+          .select('sport indoor pricePerHour')
+          .lean();
+
+        // Estrai sport unici e converti in nomi leggibili
+        const sportsSet = new Set<string>();
+        campi.forEach((campo) => {
+          if (campo.sport === 'beach_volley') {
+            sportsSet.add('Beach Volley');
+          } else if (campo.sport === 'volley') {
+            sportsSet.add('Volley');
+          }
+        });
+        const sports = Array.from(sportsSet);
+
+        // Prezzo minimo tra tutti i campi
+        const pricePerHour =
+          campi.length > 0 
+            ? Math.min(...campi.map((c) => c.pricePerHour))
+            : 0;
+
+        // Ha almeno un campo indoor?
+        const indoor = campi.some((c) => c.indoor);
+
+        return {
+          ...struttura,
+          sports,
+          pricePerHour,
+          indoor,
+        };
+      })
+    );
+
+    res.json(struttureWithSports);
   } catch (err) {
-    console.error("❌ getStrutture error:", err);
+    console.error("Errore getStrutture:", err);
     res.status(500).json({ message: "Errore caricamento strutture" });
   }
 };
@@ -36,7 +79,7 @@ export const getStrutturaById = async (req: Request, res: Response) => {
     }
     res.json(struttura);
   } catch (err) {
-    console.error("❌ getStrutturaById error:", err);
+    console.error("Errore getStrutturaById:", err);
     res.status(500).json({ message: "Errore struttura" });
   }
 };
@@ -56,7 +99,7 @@ export const getCampiByStruttura = async (
     }).sort({ pricePerHour: 1 });
     res.json(campi);
   } catch (err) {
-    console.error("❌ getCampiByStruttura error:", err);
+    console.error("Errore getCampiByStruttura:", err);
     res.status(500).json({ message: "Errore caricamento campi" });
   }
 };
@@ -76,7 +119,7 @@ export const getOwnerStrutture = async (
     }).sort({ createdAt: -1 });
     res.json(strutture);
   } catch (err) {
-    console.error("❌ getOwnerStrutture error:", err);
+    console.error("Errore getOwnerStrutture:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -95,7 +138,7 @@ export const createStruttura = async (
     // Validazione campi obbligatori
     if (!name || !location?.city) {
       return res.status(400).json({ 
-        message: "Nome e città sono obbligatori" 
+        message: "Nome e citta sono obbligatori" 
       });
     }
 
@@ -126,14 +169,14 @@ export const createStruttura = async (
     });
 
     await struttura.save();
-    console.log("✅ Struttura creata:", struttura._id);
+    console.log("Struttura creata:", struttura._id);
 
     res.status(201).json({
       message: "Struttura creata con successo",
       struttura,
     });
   } catch (err) {
-    console.error("❌ createStruttura error:", err);
+    console.error("Errore createStruttura:", err);
     res.status(500).json({ message: "Errore creazione struttura" });
   }
 };
@@ -180,7 +223,7 @@ export const updateStruttura = async (
       struttura,
     });
   } catch (err) {
-    console.error("❌ updateStruttura error:", err);
+    console.error("Errore updateStruttura:", err);
     res.status(500).json({ message: "Errore aggiornamento struttura" });
   }
 };
@@ -194,7 +237,7 @@ export const deleteStruttura = async (
   res: Response
 ) => {
   try {
-    console.log("🗑️ Richiesta eliminazione struttura:", req.params.id);
+    console.log("Richiesta eliminazione struttura:", req.params.id);
     
     const struttura = await Struttura.findOne({
       _id: req.params.id,
@@ -203,7 +246,7 @@ export const deleteStruttura = async (
     });
 
     if (!struttura) {
-      console.log("❌ Struttura non trovata o non autorizzato");
+      console.log("Struttura non trovata o non autorizzato");
       return res.status(404).json({ 
         message: "Struttura non trovata o non autorizzato" 
       });
@@ -213,15 +256,15 @@ export const deleteStruttura = async (
     
     // Elimina prima tutti i campi associati
     const campiEliminati = await Campo.deleteMany({ struttura: req.params.id });
-    console.log(`✅ ${campiEliminati.deletedCount} campi eliminati`);
+    console.log(`${campiEliminati.deletedCount} campi eliminati`);
 
     // Elimina la struttura
     await Struttura.findByIdAndDelete(req.params.id);
-    console.log("✅ Struttura eliminata definitivamente:", strutturaNome);
+    console.log("Struttura eliminata definitivamente:", strutturaNome);
 
     res.json({ message: "Struttura e campi eliminati con successo" });
   } catch (err) {
-    console.error("❌ deleteStruttura error:", err);
+    console.error("Errore deleteStruttura:", err);
     res.status(500).json({ message: "Errore eliminazione struttura" });
   }
 };
@@ -240,7 +283,7 @@ export const searchAddress = async (req: Request, res: Response) => {
       });
     }
 
-    console.log("🔍 Cercando indirizzo:", query);
+    console.log("Cercando indirizzo:", query);
 
     // Chiama Nominatim con axios
     const response = await axios.get(
@@ -260,7 +303,7 @@ export const searchAddress = async (req: Request, res: Response) => {
       }
     );
 
-    console.log("✅ Risultati trovati:", response.data.length);
+    console.log("Risultati trovati:", response.data.length);
 
     // Trasforma i risultati
     const suggestions = response.data.map((item: any) => ({
@@ -280,7 +323,7 @@ export const searchAddress = async (req: Request, res: Response) => {
 
     res.json(suggestions);
   } catch (err: any) {
-    console.error("❌ searchAddress error:", err.message);
+    console.error("Errore searchAddress:", err.message);
     
     if (err.response) {
       // Nominatim ha risposto con un errore

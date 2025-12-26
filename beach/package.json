@@ -15,7 +15,8 @@
     "bcrypt": "^6.0.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.0.1"
+    "mongoose": "^9.0.1",
+    "react-native-calendars": "^1.1313.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

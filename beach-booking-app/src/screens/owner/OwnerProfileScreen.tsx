@@ -7,9 +7,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext }  from "../../context/AuthContext";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
 
 export default function OwnerProfileScreen() {
   const { token, logout, user } = useContext(AuthContext);

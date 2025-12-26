@@ -9,11 +9,12 @@ import {
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
 
 export default function AggiungiCampoScreen() {
   const { token } = useContext(AuthContext);
@@ -23,24 +24,35 @@ export default function AggiungiCampoScreen() {
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [sport, setSport] = useState<"beach_volley" | "padel" | "tennis" | "">("");
-  const [surface, setSurface] = useState<"sand" | "hardcourt" | "grass" | "">("");
+  const [sport, setSport] = useState<"beach_volley" | "volley" | "">("");
+  const [surface, setSurface] = useState<"sand" | "cement" | "pvc" | "">("");
   const [maxPlayers, setMaxPlayers] = useState("4");
   const [indoor, setIndoor] = useState(false);
   const [pricePerHour, setPricePerHour] = useState("");
 
+  /* =======================
+     LOGICA SUPERFICIE
+  ======================= */
+  useEffect(() => {
+    if (sport === "beach_volley") {
+      setSurface("sand");
+    } else if (sport === "volley") {
+      setSurface(indoor ? "pvc" : "cement");
+    } else {
+      setSurface("");
+    }
+  }, [sport, indoor]);
+
+  /* =======================
+     CREATE CAMPO
+  ======================= */
   const handleCreate = async () => {
-    // Validazione
     if (!name.trim()) {
       Alert.alert("Errore", "Il nome del campo è obbligatorio");
       return;
     }
     if (!sport) {
       Alert.alert("Errore", "Seleziona uno sport");
-      return;
-    }
-    if (!surface) {
-      Alert.alert("Errore", "Seleziona una superficie");
       return;
     }
     if (!pricePerHour || parseFloat(pricePerHour) <= 0) {
@@ -88,14 +100,28 @@ export default function AggiungiCampoScreen() {
     }
   };
 
+  /* =======================
+     LABEL SUPERFICIE
+  ======================= */
+  const getSurfaceLabel = () => {
+    if (sport === "beach_volley") {
+      return indoor ? "Sabbia (Indoor)" : "Sabbia (Outdoor)";
+    }
+    if (sport === "volley") {
+      return indoor ? "PVC (Indoor)" : "Cemento (Outdoor)";
+    }
+    return "Superficie";
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Aggiungi Campo</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -103,6 +129,16 @@ export default function AggiungiCampoScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* INFO */}
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle" size={20} color="#2196F3" />
+          <Text style={styles.infoText}>
+            La superficie viene impostata automaticamente in base allo sport e al
+            tipo di campo
+          </Text>
+        </View>
+
+        {/* NOME */}
         <View style={styles.section}>
           <Text style={styles.label}>Nome campo *</Text>
           <TextInput
@@ -114,13 +150,13 @@ export default function AggiungiCampoScreen() {
           />
         </View>
 
+        {/* SPORT */}
         <View style={styles.section}>
           <Text style={styles.label}>Sport *</Text>
           <View style={styles.chipContainer}>
             {[
-              { value: "beach_volley", label: "Beach Volley" },
-              { value: "padel", label: "Padel" },
-              { value: "tennis", label: "Tennis" },
+              { value: "beach_volley", label: "Beach Volley", icon: "fitness" },
+              { value: "volley", label: "Volley", icon: "basketball" },
             ].map((item) => (
               <Pressable
                 key={item.value}
@@ -130,6 +166,11 @@ export default function AggiungiCampoScreen() {
                 ]}
                 onPress={() => setSport(item.value as any)}
               >
+                <Ionicons
+                  name={item.icon as any}
+                  size={18}
+                  color={sport === item.value ? "white" : "#666"}
+                />
                 <Text
                   style={[
                     styles.chipText,
@@ -143,35 +184,65 @@ export default function AggiungiCampoScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Superficie *</Text>
-          <View style={styles.chipContainer}>
-            {[
-              { value: "sand", label: "Sabbia" },
-              { value: "hardcourt", label: "Cemento" },
-              { value: "grass", label: "Erba" },
-            ].map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.chip,
-                  surface === item.value && styles.chipActive,
-                ]}
-                onPress={() => setSurface(item.value as any)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    surface === item.value && styles.chipTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            ))}
+        {/* INDOOR / OUTDOOR */}
+        {sport && (
+          <View style={styles.section}>
+            <View style={styles.switchCard}>
+              <View style={styles.switchCardLeft}>
+                <Ionicons
+                  name={indoor ? "business" : "sunny"}
+                  size={24}
+                  color={indoor ? "#2196F3" : "#FF9800"}
+                />
+                <View style={styles.switchCardText}>
+                  <Text style={styles.switchCardTitle}>
+                    {indoor
+                      ? "Campo coperto (Indoor)"
+                      : "Campo scoperto (Outdoor)"}
+                  </Text>
+                  <Text style={styles.switchCardSubtitle}>
+                    {sport === "beach_volley"
+                      ? "Superficie: Sabbia"
+                      : indoor
+                      ? "Superficie: PVC"
+                      : "Superficie: Cemento"}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={indoor}
+                onValueChange={setIndoor}
+                trackColor={{ false: "#e9ecef", true: "#2196F3" }}
+                thumbColor="white"
+              />
+            </View>
           </View>
-        </View>
+        )}
 
+        {/* SUPERFICIE */}
+        {sport && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Superficie</Text>
+            <View style={styles.surfaceDisplay}>
+              <Ionicons
+                name={
+                  surface === "sand"
+                    ? "beach"
+                    : surface === "pvc"
+                    ? "layers"
+                    : "construct"
+                }
+                size={20}
+                color="#4CAF50"
+              />
+              <Text style={styles.surfaceDisplayText}>
+                {getSurfaceLabel()}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* PREZZO / GIOCATORI */}
         <View style={styles.row}>
           <View style={[styles.section, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Prezzo/ora (€) *</Text>
@@ -197,13 +268,12 @@ export default function AggiungiCampoScreen() {
           </View>
         </View>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.label}>Campo coperto</Text>
-          <Switch value={indoor} onValueChange={setIndoor} />
-        </View>
-
+        {/* SUBMIT */}
         <Pressable
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          style={[
+            styles.createButton,
+            loading && styles.createButtonDisabled,
+          ]}
           onPress={handleCreate}
           disabled={loading}
         >
@@ -218,8 +288,15 @@ export default function AggiungiCampoScreen() {
   );
 }
 
+/* =======================
+   STYLES
+======================= */
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  safe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -227,38 +304,79 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#e9ecef",
   },
-  back: { fontSize: 20, fontWeight: "800" },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  container: { flex: 1, padding: 16 },
-  section: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 8, color: "#333" },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a1a1a",
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#E3F2FD",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#1976D2",
+    fontWeight: "500",
+  },
+  section: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: "#333",
+  },
   input: {
     backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
+    fontWeight: "500",
   },
-  row: { flexDirection: "row" },
+  row: {
+    flexDirection: "row",
+  },
   chipContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 10,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
   },
   chipActive: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
   },
   chipText: {
     fontSize: 15,
@@ -268,19 +386,52 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: "white",
   },
-  switchRow: {
+  switchCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+  },
+  switchCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  switchCardText: {
+    flex: 1,
+  },
+  switchCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
+  },
+  switchCardSubtitle: {
+    fontSize: 13,
+    color: "#666",
+  },
+  surfaceDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#E8F5E9",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
+  surfaceDisplayText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2E7D32",
   },
   createButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#2196F3",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",

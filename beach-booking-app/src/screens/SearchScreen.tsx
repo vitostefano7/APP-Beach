@@ -11,8 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../config/api";
 
 /* ---------- TYPES ---------- */
 type Struttura = {
@@ -39,6 +38,8 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [filterIndoor, setFilterIndoor] = useState<boolean | null>(null);
 
+  console.log("🔵 SearchScreen renderizzato");
+
   useEffect(() => {
     fetch(`${API_URL}/strutture`)
       .then(r => r.json())
@@ -61,12 +62,10 @@ export default function SearchScreen() {
   const renderItem = ({ item }: { item: Struttura }) => (
     <Pressable
       style={styles.card}
-      onPress={() =>
-        navigation.navigate("Mappa", {
-          screen: "FieldDetails",
-          params: { struttura: item, from: "search" },
-        })
-      }
+      onPress={() => {
+        console.log("🔵 SEARCH: navigazione a FieldDetails per", item.name);
+        navigation.navigate("FieldDetails", { struttura: item, from: "search" });
+      }}
     >
       <Image
         source={{

@@ -1,15 +1,13 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
-import SearchScreen from "../screens/SearchScreen";
-import BookingsScreen from "../screens/BookingsScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import MapsStack from "./MapsStack";
+import StruttureStack from "./StruttureStack";
+import BookingsStack from "./BookingsStack";
+import ProfilePlayerStack from "./ProfilePlayerStack";
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
-  console.log("main tab aperto");
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -22,15 +20,13 @@ export default function MainTabs() {
           paddingTop: 6,
           backgroundColor: "white",
         },
-        tabBarIcon: ({ color, size, focused }) => {
+        tabBarIcon: ({ color, focused }) => {
           let iconName: any;
 
-          if (route.name === "Cerca")
-            iconName = focused ? "search" : "search-outline";
+          if (route.name === "Strutture")
+            iconName = focused ? "business" : "business-outline";
           if (route.name === "Prenotazioni")
             iconName = focused ? "calendar" : "calendar-outline";
-          if (route.name === "Mappa")
-            iconName = focused ? "map" : "map-outline";
           if (route.name === "Profilo")
             iconName = focused ? "person" : "person-outline";
 
@@ -38,17 +34,9 @@ export default function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Cerca" component={SearchScreen} />
-      <Tab.Screen name="Prenotazioni" component={BookingsScreen} />
-
-      {/* 🔥 CHIAVE DI TUTTO */}
-      <Tab.Screen
-        name="Mappa"
-        component={MapsStack}
-        options={{ unmountOnBlur: true }}
-      />
-
-      <Tab.Screen name="Profilo" component={ProfileScreen} />
+      <Tab.Screen name="Strutture" component={StruttureStack} />
+      <Tab.Screen name="Prenotazioni" component={BookingsStack} />
+      <Tab.Screen name="Profilo" component={ProfilePlayerStack} />
     </Tab.Navigator>
   );
 }

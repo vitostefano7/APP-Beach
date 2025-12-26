@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MapsScreen from "../screens/MapsScreen";
 import FieldDetailsScreen from "../screens/FieldDetailsScreen";
+import Det
 
 const Stack = createNativeStackNavigator();
 

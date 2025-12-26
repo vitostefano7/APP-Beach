@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import  {AuthContext } from "../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
-const API_URL = "http://192.168.1.112:3000";
+import API_URL from "../../config/api";
 
 function StrutturaCard({ item }: { item: any }) {
   const navigation = useNavigation<any>();

@@ -60,4 +60,6 @@ const StrutturaSchema = new Schema<IStruttura>(
   { timestamps: true }
 );
 
-export default mongoose.model<IStruttura>("Struttura", StrutturaSchema);
+export default mongoose.models.Struttura ||
+  mongoose.model<IStruttura>("Struttura", StrutturaSchema);
+
