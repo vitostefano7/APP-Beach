@@ -19,23 +19,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
+import { Calendar } from 'react-native-calendars';
 import API_URL from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 
 // ✅ Import stili
-import { styles } from "./styles-player/StruttureScreen.styles";
-
+import { styles } from "./player/styles-player/StruttureScreen.styles";
 // ✅ Import utils e types
 import {
   Struttura,
-  Cluster,
   FilterState,
   UserPreferences,
   calculateDistance,
-  createClusters,
   filterStrutture,
   countActiveFilters,
-} from "./utils-player/StruttureScreen-utils";
+} from "./player/utils-player/StruttureScreen-utils";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -247,122 +245,151 @@ export default function StruttureScreen() {
       return;
     }
 
-    const struttura = strutture.find((s) => s._id === strutturaId);
-    if (!struttura) return;
-
-    const isFav = struttura.isFavorite;
-
-    setStrutture((prev) =>
-      prev.map((s) =>
-        s._id === strutturaId ? { ...s, isFavorite: !isFav } : s
-      )
-    );
-
     try {
       const res = await fetch(
         `${API_URL}/users/preferences/favorites/${strutturaId}`,
         {
-          method: isFav ? "DELETE" : "POST",
-          headers: { 
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}` 
           },
         }
       );
 
       if (res.ok) {
-        await loadFavorites();
-      } else {
-        setStrutture((prev) =>
-          prev.map((s) =>
-            s._id === strutturaId ? { ...s, isFavorite: isFav } : s
-          )
-        );
-        alert("Errore durante l'operazione");
+        await loadPreferences();
+        if (token) await loadFavorites();
       }
     } catch (error) {
-      console.error("Errore toggle preferito:", error);
-      setStrutture((prev) =>
-        prev.map((s) =>
-          s._id === strutturaId ? { ...s, isFavorite: isFav } : s
-        )
-      );
-      alert("Errore di rete");
+      console.error("Errore toggle preferiti:", error);
     }
   };
 
-  // ✅ Usa funzione esterna per filtering
-  const filtered = filterStrutture(strutture, filters, query);
+  const toggleFavoritesExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFavoritesExpanded(!favoritesExpanded);
+  };
 
   const centerOnUser = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") return;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        /*alert("Permesso negato per accedere alla posizione");*/
+        return;
+      }
 
-    const location = await Location.getCurrentPositionAsync({});
-    mapRef.current?.animateToRegion(
-      {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+      const loc = await Location.getCurrentPositionAsync({});
+      const newRegion: Region = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
-      },
-      500
-    );
-  };
+      };
 
-  const zoomDelta = Math.max(region.latitudeDelta, region.longitudeDelta);
-  const shouldShowClusters = zoomDelta > 0.1;
-
-  useEffect(() => {
-    if (shouldShowClusters) {
-      setSelectedMarker(null);
+      setRegion(newRegion);
+      mapRef.current?.animateToRegion(newRegion, 500);
+    } catch (error) {
+      console.log("Errore nel centrare sulla posizione:");
     }
-  }, [shouldShowClusters]);
-
-  // ✅ Usa funzione esterna per clustering
-  const clusters = shouldShowClusters ? createClusters(filtered, region) : [];
-
-  const handleClusterPress = (cluster: Cluster) => {
-    mapRef.current?.animateToRegion(
-      {
-        latitude: cluster.coordinate.latitude,
-        longitude: cluster.coordinate.longitude,
-        latitudeDelta: region.latitudeDelta * 0.4,
-        longitudeDelta: region.longitudeDelta * 0.4,
-      },
-      500
-    );
   };
 
-  // ✅ Usa funzione esterna per contare filtri
+  const filteredStrutture = filterStrutture(strutture, filters, query);
   const activeFiltersCount = countActiveFilters(filters);
 
-  const renderItem = ({ item }: { item: Struttura }) => (
+  // Clustering con marker standard - MIGLIORATO
+  const getMarkersForZoom = () => {
+    const zoomLevel = region.latitudeDelta;
+    
+    if (filteredStrutture.length === 0) return [];
+    
+    // ZOOM VICINO - Tutti i marker individuali (< 0.05° ≈ 5km)
+    if (zoomLevel < 0.05) {
+      return filteredStrutture.map((struttura) => ({
+        id: struttura._id,
+        coordinate: {
+          latitude: struttura.location.lat,
+          longitude: struttura.location.lng,
+        },
+        struttura: struttura,
+        isCluster: false,
+      }));
+    }
+    
+    // ZOOM MEDIO - Cluster regionali (0.05° - 1.5°)
+    if (zoomLevel < 1.5) {
+      const gridSize = Math.max(zoomLevel * 0.2, 0.03);
+      const grid: Record<string, Struttura[]> = {};
+      
+      filteredStrutture.forEach((s) => {
+        const x = Math.floor(s.location.lat / gridSize);
+        const y = Math.floor(s.location.lng / gridSize);
+        const key = `${x}_${y}`;
+        
+        if (!grid[key]) grid[key] = [];
+        grid[key].push(s);
+      });
+      
+      return Object.entries(grid).map(([key, strutture]) => {
+        const avgLat = strutture.reduce((sum, s) => sum + s.location.lat, 0) / strutture.length;
+        const avgLng = strutture.reduce((sum, s) => sum + s.location.lng, 0) / strutture.length;
+        
+        return {
+          id: `cluster-${key}`,
+          coordinate: {
+            latitude: avgLat,
+            longitude: avgLng,
+          },
+          struttura: strutture[0],
+          isCluster: true,
+          count: strutture.length,
+        };
+      });
+    }
+    
+    // ZOOM ALTO - UN SOLO MARKER CENTRALE (> 1.5°)
+    const avgLat = filteredStrutture.reduce((sum, s) => sum + s.location.lat, 0) / filteredStrutture.length;
+    const avgLng = filteredStrutture.reduce((sum, s) => sum + s.location.lng, 0) / filteredStrutture.length;
+    
+    return [{
+      id: 'cluster-main',
+      coordinate: {
+        latitude: avgLat,
+        longitude: avgLng,
+      },
+      struttura: filteredStrutture[0],
+      isCluster: true,
+      count: filteredStrutture.length,
+    }];
+  };
+
+  const markers = viewMode === "map" ? getMarkersForZoom() : [];
+
+  const renderCard = ({ item }: { item: Struttura }) => (
     <Pressable
       style={styles.card}
       onPress={() =>
         navigation.navigate("FieldDetails", {
           struttura: item,
-          from: "search",
+          from: "list",
         })
       }
     >
-      <Image
-        source={{
-          uri: item.images?.[0] ?? "https://picsum.photos/600/400",
-        }}
-        style={styles.image}
-      />
+      {item.images?.length ? (
+        <Image
+          source={{ uri: item.images[0] }}
+          style={styles.image}
+        />
+      ) : (
+        <View style={styles.image} />
+      )}
 
       <View
-        style={[
-          styles.badge,
-          item.indoor ? styles.badgeIndoor : styles.badgeOutdoor,
-        ]}
+        style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}
       >
         <Ionicons
-          name={item.indoor ? "business" : "sunny"}
-          size={12}
+          name={item.indoor ? "business-outline" : "sunny-outline"}
+          size={14}
           color="white"
         />
         <Text style={styles.badgeText}>
@@ -375,8 +402,8 @@ export default function StruttureScreen() {
         onPress={() => toggleFavorite(item._id)}
       >
         <Ionicons
-          name={item.isFavorite ? "star" : "star-outline"}
-          size={24}
+          name={item.isFavorite ? "heart" : "heart-outline"}
+          size={20}
           color={item.isFavorite ? "#FFB800" : "white"}
         />
       </Pressable>
@@ -386,80 +413,61 @@ export default function StruttureScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{item.name}</Text>
             <View style={styles.locationRow}>
-              <Ionicons name="location-sharp" size={14} color="#2979ff" />
-              <Text style={styles.address}>{item.location.city}</Text>
-              {item.distance !== undefined && (
-                <Text style={styles.distance}>• {item.distance.toFixed(1)} km</Text>
-              )}
-            </View>
-          </View>
-
-          {item.rating && (
-            <View style={styles.ratingBox}>
-              <Ionicons name="star" size={14} color="#FFB800" />
-              <Text style={styles.ratingText}>
-                {item.rating.average.toFixed(1)}
+              <Ionicons name="location-outline" size={14} color="#666" />
+              <Text style={styles.address} numberOfLines={1}>
+                {item.location.address}, {item.location.city}
               </Text>
             </View>
+            {item.distance !== undefined && (
+              <Text style={styles.distance}>📍 {item.distance.toFixed(1)} km</Text>
+            )}
+          </View>
+
+          <View>
+            <Text style={styles.priceLabel}>A partire da</Text>
+            <Text style={styles.price}>€{item.pricePerHour}</Text>
+          </View>
+        </View>
+
+        <View style={styles.tagsRow}>
+          {item.sports?.slice(0, 2).map((sport, idx) => (
+            <View key={idx} style={styles.sportTag}>
+              <Text style={styles.sportTagText}>{sport}</Text>
+            </View>
+          ))}
+          {item.sports && item.sports.length > 2 && (
+            <Text style={styles.moreText}>+{item.sports.length - 2}</Text>
           )}
         </View>
 
-        {item.sports && item.sports.length > 0 && (
-          <View style={styles.tagsRow}>
-            {item.sports.slice(0, 3).map((sport, idx) => (
-              <View key={idx} style={styles.sportTag}>
-                <Text style={styles.sportTagText}>{sport}</Text>
-              </View>
-            ))}
-            {item.sports.length > 3 && (
-              <Text style={styles.moreText}>+{item.sports.length - 3}</Text>
-            )}
-          </View>
-        )}
-
-        <View style={styles.priceRow}>
-          <View>
-            <Text style={styles.priceLabel}>da</Text>
-            <Text style={styles.price}>€{item.pricePerHour}</Text>
-          </View>
-
-          <Pressable
-            style={styles.bookButton}
-            onPress={() =>
-              navigation.navigate("FieldDetails", {
-                struttura: item,
-                from: "search",
-                openCampiDisponibili: true,
-              })
-            }
-          >
-            <Text style={styles.bookButtonText}>Prenota</Text>
-            <Ionicons name="arrow-forward" size={16} color="white" />
-          </Pressable>
-        </View>
+        <Pressable 
+          style={styles.bookButton}
+          onPress={() =>
+            navigation.navigate("FieldDetails", {
+              struttura: item,
+              from: "list",
+            })
+          }
+        >
+          <Text style={styles.bookButtonText}>Prenota</Text>
+          <Ionicons name="arrow-forward" size={14} color="white" />
+        </Pressable>
       </View>
     </Pressable>
   );
 
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [80, 70],
-    extrapolate: "clamp",
-  });
-
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* ANIMATED HEADER */}
-      <Animated.View style={[styles.header, { height: headerHeight }]}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <View style={styles.header}>
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
-            <Ionicons name="search" size={20} color="#999" />
+            <Ionicons name="search-outline" size={20} color="#666" />
             <TextInput
-              placeholder="Cerca città o struttura..."
               style={styles.input}
+              placeholder="Cerca strutture..."
+              placeholderTextColor="#999"
               value={query}
               onChangeText={setQuery}
-              placeholderTextColor="#999"
             />
           </View>
 
@@ -468,27 +476,22 @@ export default function StruttureScreen() {
             onPress={() => setViewMode(viewMode === "list" ? "map" : "list")}
           >
             <Ionicons
-              name={viewMode === "list" ? "map" : "list"}
-              size={22}
+              name={viewMode === "list" ? "map-outline" : "list-outline"}
+              size={24}
               color="white"
             />
           </Pressable>
         </View>
-      </Animated.View>
+      </View>
 
-      {/* ✅ FAVORITES SECTION - COLLAPSIBLE */}
-      {favoriteStrutture.length > 0 && viewMode === "list" && (
+      {viewMode === "list" && favoriteStrutture.length > 0 && (
         <View style={styles.favoritesSection}>
-          <Pressable 
+          <Pressable
             style={styles.favoritesSectionHeader}
-            onPress={() => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setFavoritesExpanded(!favoritesExpanded);
-            }}
-            hitSlop={10}
+            onPress={toggleFavoritesExpanded}
           >
             <View style={styles.favoritesHeaderLeft}>
-              <Ionicons name="star" size={18} color="#FFB800" />
+              <Ionicons name="heart" size={18} color="#FFB800" />
               <Text style={styles.favoritesTitle}>I tuoi preferiti</Text>
               <View style={styles.favoritesCount}>
                 <Text style={styles.favoritesCountText}>
@@ -496,41 +499,45 @@ export default function StruttureScreen() {
                 </Text>
               </View>
             </View>
-            <Ionicons 
-              name={favoritesExpanded ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#666" 
+            <Ionicons
+              name={favoritesExpanded ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#666"
             />
           </Pressable>
-          
+
           {favoritesExpanded && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.favoritesScroll}
             >
-              {favoriteStrutture.map((item) => (
+              {favoriteStrutture.map((fav) => (
                 <Pressable
-                  key={item._id}
+                  key={fav._id}
                   style={styles.favoriteCard}
                   onPress={() =>
                     navigation.navigate("FieldDetails", {
-                      struttura: item,
+                      struttura: fav,
                       from: "favorites",
                     })
                   }
                 >
-                  <Image
-                    source={{
-                      uri: item.images?.[0] ?? "https://picsum.photos/300/200",
-                    }}
-                    style={styles.favoriteImage}
-                  />
+                  {fav.images?.length ? (
+                    <Image
+                      source={{ uri: fav.images[0] }}
+                      style={styles.favoriteImage}
+                    />
+                  ) : (
+                    <View style={styles.favoriteImage} />
+                  )}
                   <View style={styles.favoriteContent}>
                     <Text style={styles.favoriteTitle} numberOfLines={1}>
-                      {item.name}
+                      {fav.name}
                     </Text>
-                    <Text style={styles.favoriteCity}>{item.location.city}</Text>
+                    <Text style={styles.favoriteCity} numberOfLines={1}>
+                      {fav.location.city}
+                    </Text>
                   </View>
                 </Pressable>
               ))}
@@ -539,46 +546,39 @@ export default function StruttureScreen() {
         </View>
       )}
 
-      {/* RESULTS COUNT */}
       <View style={styles.resultsBar}>
         <View style={styles.resultsRow}>
           <Text style={styles.resultsText}>
-            {filtered.length} {filtered.length === 1 ? "struttura" : "strutture"}{" "}
-            {filtered.length === 1 ? "trovata" : "trovate"}
+            {filteredStrutture.length} strutture trovate
           </Text>
-          
-          {activeCity && activeRadius && (
+          {activeCity && activeRadius ? (
             <View style={styles.locationBadge}>
-              <Ionicons name="location" size={12} color="#2979ff" />
+              <Ionicons name="location" size={14} color="#2979ff" />
               <Text style={styles.locationBadgeText}>
                 {activeCity} ({activeRadius} km)
               </Text>
             </View>
-          )}
-          
-          {!activeCity && !activeRadius && (
+          ) : (
             <View style={styles.locationBadgeAll}>
-              <Ionicons name="globe" size={12} color="#4CAF50" />
-              <Text style={styles.locationBadgeTextAll}>Tutte</Text>
+              <Ionicons name="globe-outline" size={14} color="#4CAF50" />
+              <Text style={styles.locationBadgeTextAll}>Tutta Italia</Text>
             </View>
           )}
         </View>
       </View>
 
-      {/* CONTENT */}
-      <View style={styles.container}>
+      <View style={{ flex: 1 }}>
         {viewMode === "list" ? (
-          <Animated.FlatList
-            data={filtered}
+          <FlatList
+            data={filteredStrutture}
+            renderItem={renderCard}
             keyExtractor={(item) => item._id}
-            renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: 120 }}
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { y: scrollY } } }],
               { useNativeDriver: false }
             )}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
@@ -588,90 +588,103 @@ export default function StruttureScreen() {
             <MapView
               ref={mapRef}
               style={styles.map}
-              initialRegion={region}
+              region={region}
               onRegionChangeComplete={setRegion}
-              onPress={() => setSelectedMarker(null)}
+              showsUserLocation
             >
-              {shouldShowClusters ? (
-                clusters.map((cluster) => (
-                  <Marker
-                    key={cluster.id}
-                    coordinate={cluster.coordinate}
-                    onPress={() => handleClusterPress(cluster)}
-                  >
-                    <Ionicons name="location-sharp" size={36} color="#2979ff" />
-                  </Marker>
-                ))
-              ) : (
-                filtered.map((s) => {
-                  const isSelected = selectedMarker?._id === s._id;
-
-                  return (
-                    <Marker
-                      key={s._id}
-                      coordinate={{
-                        latitude: s.location.lat,
-                        longitude: s.location.lng,
-                      }}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        setSelectedMarker(s);
-                      }}
-                    >
-                      <Ionicons
-                        name={s.isFavorite ? "star" : "location-sharp"}
-                        size={isSelected ? 40 : 34}
-                        color={
-                          s.isFavorite
-                            ? "#FFB800"
-                            : isSelected
-                            ? "#2979ff"
-                            : "#FF5252"
-                        }
-                      />
-                    </Marker>
-                  );
-                })
-              )}
+              {markers.map((marker) => (
+                <Marker
+                  key={marker.id}
+                  coordinate={marker.coordinate}
+                  pinColor="#2979ff"
+                  onPress={() => {
+                    if (marker.isCluster) {
+                      // Zoom in sul cluster
+                      const newRegion: Region = {
+                        latitude: marker.coordinate.latitude,
+                        longitude: marker.coordinate.longitude,
+                        latitudeDelta: region.latitudeDelta * 0.35,
+                        longitudeDelta: region.longitudeDelta * 0.35,
+                      };
+                      mapRef.current?.animateToRegion(newRegion, 500);
+                    } else {
+                      setSelectedMarker(marker.struttura);
+                    }
+                  }}
+                />
+              ))}
             </MapView>
 
             <Pressable style={styles.geoButton} onPress={centerOnUser}>
-              <Ionicons name="navigate" size={22} color="#2979ff" />
+              <Ionicons name="locate" size={24} color="#2979ff" />
             </Pressable>
 
-            {selectedMarker && !shouldShowClusters && (
-              <View style={styles.mapCard}>
-                <View style={styles.mapCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.mapTitle}>{selectedMarker.name}</Text>
-                    <Text style={styles.mapAddress}>
-                      {selectedMarker.location.address}
-                    </Text>
-                  </View>
-                  {selectedMarker.rating && (
-                    <View style={styles.mapRating}>
-                      <Ionicons name="star" size={16} color="#FFB800" />
-                      <Text style={styles.mapRatingText}>
-                        {selectedMarker.rating.average.toFixed(1)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <Pressable
-                  style={styles.mapBookButton}
-                  onPress={() =>
-                    navigation.navigate("FieldDetails", {
-                      struttura: selectedMarker,
-                      from: "map",
-                      openCampiDisponibili: true,
-                    })
-                  }
+            {selectedMarker && (
+              <Modal
+                visible={true}
+                animationType="fade"
+                transparent
+                onRequestClose={() => setSelectedMarker(null)}
+              >
+                <Pressable 
+                  style={styles.mapModalOverlay}
+                  onPress={() => setSelectedMarker(null)}
                 >
-                  <Text style={styles.mapBookButtonText}>Prenota ora</Text>
-                  <Ionicons name="arrow-forward" size={18} color="white" />
+                  <Pressable 
+                    style={styles.mapModalCard}
+                    onPress={(e) => e.stopPropagation()}
+                  >
+                    <Pressable
+                      style={styles.mapModalClose}
+                      onPress={() => setSelectedMarker(null)}
+                    >
+                      <Ionicons name="close" size={24} color="#666" />
+                    </Pressable>
+
+                    {selectedMarker.images?.length ? (
+                      <Image
+                        source={{ uri: selectedMarker.images[0] }}
+                        style={styles.mapModalImage}
+                      />
+                    ) : (
+                      <View style={styles.mapModalImage} />
+                    )}
+
+                    <View style={styles.mapModalContent}>
+                      <View style={styles.mapModalHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.mapModalTitle}>{selectedMarker.name}</Text>
+                          <View style={styles.mapModalLocation}>
+                            <Ionicons name="location-outline" size={14} color="#666" />
+                            <Text style={styles.mapModalAddress}>
+                              {selectedMarker.location.city}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.mapModalPriceBox}>
+                          <Text style={styles.mapModalPriceLabel}>da</Text>
+                          <Text style={styles.mapModalPrice}>€{selectedMarker.pricePerHour}</Text>
+                        </View>
+                      </View>
+
+                      <Pressable
+                        style={styles.mapModalButton}
+                        onPress={() => {
+                          setSelectedMarker(null);
+                          navigation.navigate("FieldDetails", {
+                            struttura: selectedMarker,
+                            from: "map",
+                            openCampiDisponibili: true,
+                          });
+                        }}
+                      >
+                        <Text style={styles.mapModalButtonText}>Vedi i dettagli e prenota</Text>
+                        <Ionicons name="arrow-forward" size={18} color="white" />
+                      </Pressable>
+                    </View>
+                  </Pressable>
                 </Pressable>
-              </View>
+              </Modal>
             )}
           </View>
         )}
@@ -693,8 +706,14 @@ export default function StruttureScreen() {
         }}
       />
 
-      <Pressable style={styles.fab} onPress={() => setShowFilters(true)}>
-        <Ionicons name="options-outline" size={26} color="white" />
+      <Pressable 
+        style={[
+          styles.fab,
+          viewMode === "list" && styles.fabList
+        ]} 
+        onPress={() => setShowFilters(true)}
+      >
+        <Ionicons name="options-outline" size={24} color="white" />
         {activeFiltersCount > 0 && (
           <View style={styles.fabBadge}>
             <Text style={styles.fabBadgeText}>{activeFiltersCount}</Text>
@@ -722,6 +741,7 @@ function AdvancedFiltersModal({
   onApply,
 }: AdvancedFiltersModalProps) {
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const sports = ["Beach Volley", "Volley"];
   const timeSlots = [
@@ -733,6 +753,22 @@ function AdvancedFiltersModal({
   useEffect(() => {
     setTempFilters(filters);
   }, [filters]);
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return null;
+    return date.toISOString().split('T')[0];
+  };
+
+  const formatDisplayDate = (date: Date | null) => {
+    if (!date) return "Seleziona una data";
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    };
+    return date.toLocaleDateString('it-IT', options);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -803,45 +839,36 @@ function AdvancedFiltersModal({
             </View>
 
             <Text style={styles.sectionTitle}>Data</Text>
-            <View style={styles.dateRow}>
-              {["Oggi", "Domani", "Questo weekend"].map((label, idx) => {
-                const date = new Date();
-                if (idx === 1) date.setDate(date.getDate() + 1);
-                if (idx === 2) {
-                  const day = date.getDay();
-                  const daysUntilSaturday = (6 - day + 7) % 7;
-                  date.setDate(date.getDate() + daysUntilSaturday);
-                }
-
-                const isSelected =
-                  tempFilters.date?.toDateString() === date.toDateString();
-
-                return (
-                  <Pressable
-                    key={label}
-                    style={[
-                      styles.dateOption,
-                      isSelected && styles.dateOptionActive,
-                    ]}
-                    onPress={() =>
-                      setTempFilters((prev) => ({
-                        ...prev,
-                        date: isSelected ? null : date,
-                      }))
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.dateOptionText,
-                        isSelected && styles.dateOptionTextActive,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Pressable
+              style={[
+                styles.datePickerButton,
+                tempFilters.date && styles.datePickerButtonActive
+              ]}
+              onPress={() => setShowCalendar(true)}
+            >
+              <Ionicons 
+                name="calendar-outline" 
+                size={20} 
+                color={tempFilters.date ? "#2979ff" : "#666"} 
+              />
+              <Text style={[
+                styles.datePickerText,
+                tempFilters.date && styles.datePickerTextActive
+              ]}>
+                {formatDisplayDate(tempFilters.date)}
+              </Text>
+              {tempFilters.date && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setTempFilters((prev) => ({ ...prev, date: null }));
+                  }}
+                  style={styles.clearDateButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#FF5252" />
+                </Pressable>
+              )}
+            </Pressable>
 
             <Text style={styles.sectionTitle}>Fascia Oraria</Text>
             <View style={styles.timeSlots}>
@@ -903,6 +930,70 @@ function AdvancedFiltersModal({
           </View>
         </View>
       </View>
+
+      {/* Calendar Modal */}
+      <Modal
+        visible={showCalendar}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <Pressable 
+          style={styles.calendarOverlay}
+          onPress={() => setShowCalendar(false)}
+        >
+          <Pressable 
+            style={styles.calendarContainer}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.calendarHeader}>
+              <Text style={styles.calendarTitle}>Seleziona una data</Text>
+              <Pressable onPress={() => setShowCalendar(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </Pressable>
+            </View>
+            
+            <Calendar
+              current={formatDate(tempFilters.date) || formatDate(new Date())}
+              minDate={formatDate(new Date())}
+              onDayPress={(day) => {
+                setTempFilters((prev) => ({
+                  ...prev,
+                  date: new Date(day.dateString),
+                }));
+                setShowCalendar(false);
+              }}
+              markedDates={{
+                [formatDate(tempFilters.date) || '']: {
+                  selected: true,
+                  selectedColor: '#2979ff',
+                },
+              }}
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#666',
+                selectedDayBackgroundColor: '#2979ff',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#2979ff',
+                dayTextColor: '#1A1A1A',
+                textDisabledColor: '#d9d9d9',
+                dotColor: '#2979ff',
+                selectedDotColor: '#ffffff',
+                arrowColor: '#2979ff',
+                monthTextColor: '#1A1A1A',
+                indicatorColor: '#2979ff',
+                textDayFontWeight: '500',
+                textMonthFontWeight: '700',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 15,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 13,
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }

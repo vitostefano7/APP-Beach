@@ -203,32 +203,32 @@ export const styles = StyleSheet.create({
 
   card: {
     backgroundColor: "white",
-    borderRadius: 20,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 12,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   image: {
-    height: 180,
+    height: 120,
     width: "100%",
     backgroundColor: "#F5F5F5",
   },
 
   badge: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
 
   badgeIndoor: {
@@ -241,37 +241,38 @@ export const styles = StyleSheet.create({
 
   badgeText: {
     color: "white",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
   },
 
   favoriteButton: {
     position: "absolute",
-    top: 12,
-    left: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: 10,
+    left: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center",
     justifyContent: "center",
   },
 
   cardContent: {
-    padding: 16,
+    padding: 10,
   },
 
   cardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 12,
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
 
   title: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
     color: "#1A1A1A",
-    marginBottom: 6,
+    marginBottom: 3,
   },
 
   locationRow: {
@@ -282,13 +283,13 @@ export const styles = StyleSheet.create({
 
   address: {
     color: "#666",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
   },
 
   distance: {
     color: "#2979ff",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
 
@@ -297,13 +298,13 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     backgroundColor: "#FFF9E6",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 8,
   },
 
   ratingText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#1A1A1A",
   },
@@ -312,25 +313,25 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 8,
     flexWrap: "wrap",
   },
 
   sportTag: {
     backgroundColor: "#F0F0F0",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
   },
 
   sportTagText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
     color: "#666",
   },
 
   moreText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#999",
     fontWeight: "600",
   },
@@ -339,40 +340,45 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 2,
   },
 
   priceLabel: {
-    fontSize: 11,
+    fontSize: 9,
     color: "#999",
     fontWeight: "500",
+    textAlign: "right",
   },
 
   price: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: "800",
     color: "#1A1A1A",
+    textAlign: "right",
   },
 
   bookButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    gap: 4,
     backgroundColor: "#2979ff",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: "stretch",
+    marginTop: 2,
     shadowColor: "#2979ff",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   bookButtonText: {
     color: "white",
     fontWeight: "700",
-    fontSize: 15,
+    fontSize: 13,
   },
 
   mapContainer: {
@@ -389,10 +395,13 @@ export const styles = StyleSheet.create({
   geoButton: {
     position: "absolute",
     right: 20,
-    bottom: 160,
+    bottom: 90,
     backgroundColor: "white",
-    padding: 14,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -404,10 +413,10 @@ export const styles = StyleSheet.create({
     position: "absolute",
     bottom: 20,
     left: 20,
-    right: 20,
+    width: 200,
     backgroundColor: "white",
-    padding: 18,
-    borderRadius: 20,
+    padding: 12,
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -415,23 +424,52 @@ export const styles = StyleSheet.create({
     elevation: 8,
   },
 
+  mapCardClose: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+
   mapCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
+    paddingRight: 30,
   },
 
   mapTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "800",
     color: "#1A1A1A",
-    marginBottom: 4,
+    marginBottom: 2,
   },
 
   mapAddress: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#666",
+    marginBottom: 6,
+  },
+
+  mapPriceBox: {
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+
+  mapPriceLabel: {
+    fontSize: 9,
+    color: "#999",
+    fontWeight: "500",
+  },
+
+  mapPrice: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#2979ff",
   },
 
   mapRating: {
@@ -454,6 +492,119 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#2979ff",
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: "#2979ff",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
+  mapBookButtonText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  // Map Modal Popup Styles
+  mapModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+
+  mapModalCard: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    width: "100%",
+    maxWidth: 400,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  mapModalClose: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  mapModalImage: {
+    width: "100%",
+    height: 200,
+    backgroundColor: "#F5F5F5",
+  },
+
+  mapModalContent: {
+    padding: 16,
+  },
+
+  mapModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+
+  mapModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    marginBottom: 6,
+  },
+
+  mapModalLocation: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  mapModalAddress: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+
+  mapModalPriceBox: {
+    alignItems: "flex-end",
+  },
+
+  mapModalPriceLabel: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "500",
+  },
+
+  mapModalPrice: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#2979ff",
+  },
+
+  mapModalButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     backgroundColor: "#2979ff",
     paddingVertical: 14,
@@ -465,7 +616,7 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  mapBookButtonText: {
+  mapModalButtonText: {
     color: "white",
     fontWeight: "700",
     fontSize: 16,
@@ -691,11 +842,11 @@ export const styles = StyleSheet.create({
 
   fab: {
     position: "absolute",
-    right: 20,
-    bottom: 90,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 6,
+    bottom: 15,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "#2979ff",
     alignItems: "center",
     justifyContent: "center",
@@ -706,24 +857,95 @@ export const styles = StyleSheet.create({
     elevation: 8,
   },
 
+  fabList: {
+    bottom: 9,
+  },
+
   fabBadge: {
     position: "absolute",
     top: -4,
     right: -4,
     backgroundColor: "#FF5252",
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "white",
   },
 
   fabBadgeText: {
     color: "white",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
+  },
+
+  // Calendar Modal Styles
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+
+  calendarContainer: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  calendarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+
+  calendarTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1A1A1A",
+  },
+
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F5F5F5",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+
+  datePickerButtonActive: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2979ff",
+  },
+
+  datePickerText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  datePickerTextActive: {
+    color: "#2979ff",
+    fontWeight: "700",
+  },
+
+  clearDateButton: {
+    padding: 4,
   },
 });

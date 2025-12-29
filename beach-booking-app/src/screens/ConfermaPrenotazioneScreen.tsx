@@ -93,7 +93,7 @@ export default function ConfermaPrenotazioneScreen() {
           },
           {
             text: "OK",
-            onPress: () => navigation.navigate("Home"),
+            onPress: () => navigation.navigate("LeMiePrenotazioni"),
           },
         ]
       );
