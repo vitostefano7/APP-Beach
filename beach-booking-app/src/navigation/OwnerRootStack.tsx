@@ -11,6 +11,7 @@ import CampoCalendarioGestioneScreen from "../screens/owner/CampoCalendarioGesti
 import OwnerBookingsScreen from "../screens/owner/OwnerBookingsScreen";
 import DettaglioPrenotazioneOwnerScreen from "../screens/owner/DettaglioPrenotazioneOwnerScreen";
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
+import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCampiScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -73,6 +74,10 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="InserisciRisultato" 
         component={InserisciRisultatoScreen} 
+      />
+      <Stack.Screen 
+        name="ConfiguraPrezziCampo" 
+        component={ConfiguraPrezziCampoScreen} 
       />
     </Stack.Navigator>
   );

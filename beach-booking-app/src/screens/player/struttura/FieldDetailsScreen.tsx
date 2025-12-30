@@ -43,6 +43,30 @@ type CalendarDay = {
   isClosed?: boolean;
 };
 
+type PricingRules = {
+  mode: "flat" | "advanced";
+  flatPrices?: {
+    oneHour: number;
+    oneHourHalf: number;
+  };
+  basePrices?: {
+    oneHour: number;
+    oneHourHalf: number;
+  };
+  timeSlotPricing?: {
+    enabled: boolean;
+    slots: Array<{
+      start: string;
+      end: string;
+      label: string;
+      prices: {
+        oneHour: number;
+        oneHourHalf: number;
+      };
+    }>;
+  };
+};
+
 type Campo = {
   _id: string;
   name: string;
@@ -50,9 +74,94 @@ type Campo = {
   surface: "sand" | "hardcourt" | "grass" | "pvc" | "cement";
   indoor: boolean;
   pricePerHour: number;
+  pricingRules?: PricingRules;
   maxPlayers: number;
   isActive: boolean;
 };
+
+/**
+ * 🧮 Calcola il prezzo in base al pricing rules del campo
+ */
+function calculatePrice(
+  campo: Campo,
+  duration: number,
+  startTime?: string
+): number {
+  const pricing = campo.pricingRules;
+
+  // Fallback al vecchio sistema se non ci sono pricing rules
+  if (!pricing || !pricing.mode) {
+    return campo.pricePerHour * duration;
+  }
+
+  // FLAT MODE
+  if (pricing.mode === "flat") {
+    return duration === 1
+      ? pricing.flatPrices?.oneHour || campo.pricePerHour
+      : pricing.flatPrices?.oneHourHalf || (campo.pricePerHour * 1.4);
+  }
+
+  // ADVANCED MODE
+  let selectedPrices = pricing.basePrices;
+
+  // Controlla se c'è una fascia oraria che copre questo orario
+  if (pricing.timeSlotPricing?.enabled && startTime && pricing.timeSlotPricing.slots?.length > 0) {
+    const timeSlot = pricing.timeSlotPricing.slots.find(
+      (slot) => startTime >= slot.start && startTime < slot.end
+    );
+    if (timeSlot && timeSlot.prices) {
+      selectedPrices = timeSlot.prices;
+    }
+  }
+
+  // Ritorna il prezzo in base alla durata
+  if (duration === 1) {
+    return selectedPrices?.oneHour || campo.pricePerHour;
+  } else {
+    return selectedPrices?.oneHourHalf || (campo.pricePerHour * 1.4);
+  }
+}
+
+/**
+ * 📊 Ottieni label del prezzo (per mostrare variazioni)
+ */
+function getPriceLabel(campo: Campo, duration: number): string {
+  const pricing = campo.pricingRules;
+
+  // Se non ci sono pricing rules o è flat mode, mostra prezzo fisso
+  if (!pricing || !pricing.mode || pricing.mode === "flat") {
+    const price = calculatePrice(campo, duration);
+    return `€${price.toFixed(2)}`;
+  }
+
+  // ADVANCED MODE - controlla se ci sono variazioni
+  if (pricing.timeSlotPricing?.enabled && pricing.timeSlotPricing.slots?.length > 0) {
+    const basePrice = duration === 1
+      ? pricing.basePrices?.oneHour || campo.pricePerHour
+      : pricing.basePrices?.oneHourHalf || (campo.pricePerHour * 1.4);
+
+    let minPrice = basePrice;
+    let maxPrice = basePrice;
+
+    // Trova min e max tra tutte le fasce
+    pricing.timeSlotPricing.slots.forEach((slot) => {
+      if (slot.prices) {
+        const slotPrice = duration === 1 ? slot.prices.oneHour : slot.prices.oneHourHalf;
+        minPrice = Math.min(minPrice, slotPrice);
+        maxPrice = Math.max(maxPrice, slotPrice);
+      }
+    });
+
+    // Se ci sono variazioni, mostra range
+    if (minPrice !== maxPrice) {
+      return `da €${minPrice.toFixed(2)}`;
+    }
+  }
+
+  // Nessuna variazione, mostra prezzo base
+  const price = calculatePrice(campo, duration);
+  return `€${price.toFixed(2)}`;
+}
 
 export default function FieldDetailsScreen() {
   const route = useRoute<any>();
@@ -404,7 +513,7 @@ export default function FieldDetailsScreen() {
                         </View>
                         <View style={styles.detailItem}>
                           <Ionicons name="cash" size={14} color="#4CAF50" />
-                          <Text style={styles.priceText}>€{campo.pricePerHour}/ora</Text>
+                          <Text style={styles.priceText}>{getPriceLabel(campo, 1)}/ora</Text>
                         </View>
                       </View>
                     </View>
@@ -608,9 +717,8 @@ export default function FieldDetailsScreen() {
                                         <Text style={styles.durationCardSubtitle}>Partita standard</Text>
                                         <View style={styles.durationCardPrice}>
                                           <Text style={styles.durationCardPriceAmount}>
-                                            €{campo.pricePerHour}
+                                            {getPriceLabel(campo, 1)}
                                           </Text>
-                                          <Text style={styles.durationCardPriceLabel}>/ora</Text>
                                         </View>
                                         <View style={styles.durationCardFooter}>
                                           <Ionicons name="arrow-forward" size={16} color="#2196F3" />
@@ -630,9 +738,8 @@ export default function FieldDetailsScreen() {
                                         <Text style={styles.durationCardSubtitle}>Partita lunga</Text>
                                         <View style={styles.durationCardPrice}>
                                           <Text style={styles.durationCardPriceAmount}>
-                                            €{(campo.pricePerHour * 1.5).toFixed(2)}
+                                            {getPriceLabel(campo, 1.5)}
                                           </Text>
-                                          <Text style={styles.durationCardPriceLabel}>/1.5h</Text>
                                         </View>
                                         <View style={styles.durationCardFooter}>
                                           <Ionicons name="arrow-forward" size={16} color="#FF9800" />
@@ -702,16 +809,24 @@ export default function FieldDetailsScreen() {
                                               Seleziona l'orario di inizio ({availableSlots.length} disponibili)
                                             </Text>
 
-                                            <View style={styles.slotsGrid}>
+                                            <ScrollView
+                                              horizontal
+                                              showsHorizontalScrollIndicator={false}
+                                              contentContainerStyle={styles.slotsScrollContent}
+                                              style={styles.slotsScroll}
+                                            >
                                               {availableSlots.map((slot, i) => {
                                                 const isSlotSelected = selectedSlot[campo._id] === slot.time;
 
-                                                // Calcola orario di fine
+                                                // Calcola orario di fine e prezzo
                                                 const [h, m] = slot.time.split(":").map(Number);
                                                 const totalMinutes = h * 60 + m + (selectedDuration[campo._id] * 60);
                                                 const endH = Math.floor(totalMinutes / 60);
                                                 const endM = totalMinutes % 60;
                                                 const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+
+                                                // 🆕 Calcola prezzo per questo slot specifico
+                                                const slotPrice = calculatePrice(campo, selectedDuration[campo._id], slot.time);
 
                                                 return (
                                                   <Pressable
@@ -728,33 +843,43 @@ export default function FieldDetailsScreen() {
                                                       }));
                                                     }}
                                                   >
-                                                    <Ionicons
-                                                      name={isSlotSelected ? "checkmark-circle" : "time-outline"}
-                                                      size={14}
-                                                      color={isSlotSelected ? "white" : "#4CAF50"}
-                                                    />
-                                                    <View style={styles.slotTimeContainer}>
-                                                      <Text
-                                                        style={[
-                                                          styles.slotTime,
-                                                          isSlotSelected && styles.slotTimeSelected,
-                                                        ]}
-                                                      >
-                                                        {slot.time}
-                                                      </Text>
-                                                      <Text
-                                                        style={[
-                                                          styles.slotEndTime,
-                                                          isSlotSelected && styles.slotEndTimeSelected,
-                                                        ]}
-                                                      >
-                                                        → {endTime}
-                                                      </Text>
+                                                    <View style={styles.slotMainContent}>
+                                                      <Ionicons
+                                                        name={isSlotSelected ? "checkmark-circle" : "time-outline"}
+                                                        size={14}
+                                                        color={isSlotSelected ? "white" : "#4CAF50"}
+                                                      />
+                                                      <View style={styles.slotTimeContainer}>
+                                                        <Text
+                                                          style={[
+                                                            styles.slotTime,
+                                                            isSlotSelected && styles.slotTimeSelected,
+                                                          ]}
+                                                        >
+                                                          {slot.time}
+                                                        </Text>
+                                                        <Text
+                                                          style={[
+                                                            styles.slotEndTime,
+                                                            isSlotSelected && styles.slotEndTimeSelected,
+                                                          ]}
+                                                        >
+                                                          → {endTime}
+                                                        </Text>
+                                                      </View>
                                                     </View>
+                                                    <Text
+                                                      style={[
+                                                        styles.slotPrice,
+                                                        isSlotSelected && styles.slotPriceSelected,
+                                                      ]}
+                                                    >
+                                                      €{slotPrice.toFixed(2)}
+                                                    </Text>
                                                   </Pressable>
                                                 );
                                               })}
-                                            </View>
+                                            </ScrollView>
 
                                             {selectedSlot[campo._id] && (
                                               <Pressable
@@ -766,6 +891,12 @@ export default function FieldDetailsScreen() {
                                                   const endM = totalMinutes % 60;
                                                   const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
+                                                  const finalPrice = calculatePrice(
+                                                    campo,
+                                                    selectedDuration[campo._id],
+                                                    selectedSlot[campo._id]
+                                                  );
+
                                                   navigation.navigate("ConfermaPrenotazione", {
                                                     campoId: campo._id,
                                                     campoName: campo.name,
@@ -775,7 +906,7 @@ export default function FieldDetailsScreen() {
                                                     startTime: selectedSlot[campo._id],
                                                     endTime: endTime,
                                                     duration: selectedDuration[campo._id],
-                                                    price: campo.pricePerHour * selectedDuration[campo._id],
+                                                    price: finalPrice,
                                                   });
                                                 }}
                                               >
@@ -789,7 +920,7 @@ export default function FieldDetailsScreen() {
                                                   </View>
                                                 </View>
                                                 <Text style={styles.prenotaBtnPrice}>
-                                                  €{(campo.pricePerHour * selectedDuration[campo._id]).toFixed(2)}
+                                                  €{calculatePrice(campo, selectedDuration[campo._id], selectedSlot[campo._id]).toFixed(2)}
                                                 </Text>
                                               </Pressable>
                                             )}
