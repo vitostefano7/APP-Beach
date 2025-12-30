@@ -14,6 +14,10 @@ import {
   closeCalendarDay,
   reopenCalendarDay,
 } from "../controllers/campoCalendarController";
+import {
+  updateCampoPricing,
+  getCampoPricing,
+} from "../controllers/campiPricingController";
 import { requireAuth } from "../middleware/authMiddleware";
 import ownerOnly from "../middleware/ownerOnly";
 
@@ -33,6 +37,15 @@ router.delete("/:id", requireAuth, ownerOnly, deleteCampo);
 router.delete("/:campoId/calendar/:date", requireAuth, ownerOnly, closeCalendarDay);
 router.post("/:campoId/calendar/:date/reopen", requireAuth, ownerOnly, reopenCalendarDay);
 router.put("/:campoId/calendar/:date/slot", requireAuth, ownerOnly, updateCalendarSlot);
+
+/* =====================================================
+   PRICING MANAGEMENT - OWNER & PUBLIC
+===================================================== */
+// GET pricing rules (public - per mostrare prezzi agli utenti)
+router.get("/:id/pricing", getCampoPricing);
+
+// UPDATE pricing rules (owner only)
+router.put("/:id/pricing", requireAuth, ownerOnly, updateCampoPricing);
 
 /* =====================================================
    PUBLIC ROUTES

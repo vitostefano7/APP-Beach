@@ -591,20 +591,33 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  slotsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
+  // === SLOTS HORIZONTAL SCROLL ===
+  slotsScroll: {
+    marginVertical: 8,
+  },
+  slotsScrollContent: {
+    gap: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
   },
   slotChip: {
+    flexDirection: "column",
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    minWidth: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  slotMainContent: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 2,
-    width: `${(100 - 4) / 3}%`, // 3 per row
   },
   slotAvailable: {
     backgroundColor: "#E8F5E9",
@@ -620,13 +633,17 @@ export const styles = StyleSheet.create({
   slotSelected: {
     backgroundColor: "#2196F3",
     borderColor: "#1976D2",
+    shadowColor: "#2196F3",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   slotTimeContainer: {
     alignItems: "center",
     gap: 1,
   },
   slotTime: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
     color: "#4CAF50",
   },
@@ -637,12 +654,22 @@ export const styles = StyleSheet.create({
     color: "white",
   },
   slotEndTime: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#999",
     fontWeight: "600",
   },
   slotEndTimeSelected: {
     color: "rgba(255, 255, 255, 0.8)",
+  },
+  slotPrice: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#4CAF50",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  slotPriceSelected: {
+    color: "white",
   },
 
   prenotaBtn: {

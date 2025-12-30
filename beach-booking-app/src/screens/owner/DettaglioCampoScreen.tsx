@@ -181,11 +181,90 @@ export default function DettaglioCampoScreen() {
             <Text style={styles.infoLabel}>Max giocatori</Text>
             <Text style={styles.infoValue}>{campo.maxPlayers}</Text>
           </View>
+        </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Prezzo orario</Text>
-            <Text style={styles.priceValue}>€{campo.pricePerHour}</Text>
-          </View>
+        {/* PREZZI DETTAGLIATI */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>💰 Prezzi</Text>
+
+          {/* Se FLAT MODE */}
+          {campo.pricingRules?.mode === "flat" && (
+            <>
+              <View style={styles.priceDetailRow}>
+                <Text style={styles.priceDetailLabel}>Tariffa unica</Text>
+              </View>
+              <View style={styles.priceDetailRow}>
+                <Text style={styles.priceDetailDuration}>1 ora</Text>
+                <Text style={styles.priceDetailValue}>
+                  €{campo.pricingRules.flatPrices?.oneHour || campo.pricePerHour || 20}
+                </Text>
+              </View>
+              <View style={styles.priceDetailRow}>
+                <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                <Text style={styles.priceDetailValue}>
+                  €{campo.pricingRules.flatPrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
+                </Text>
+              </View>
+            </>
+          )}
+
+          {/* Se ADVANCED MODE */}
+          {campo.pricingRules?.mode === "advanced" && (
+            <>
+              {/* Prezzo Base */}
+              <View style={styles.priceSection}>
+                <Text style={styles.priceSectionTitle}>Prezzo Base</Text>
+                <View style={styles.priceDetailRow}>
+                  <Text style={styles.priceDetailDuration}>1 ora</Text>
+                  <Text style={styles.priceDetailValue}>
+                    €{campo.pricingRules.basePrices?.oneHour || campo.pricePerHour || 20}
+                  </Text>
+                </View>
+                <View style={styles.priceDetailRow}>
+                  <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                  <Text style={styles.priceDetailValue}>
+                    €{campo.pricingRules.basePrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fasce Orarie */}
+              {campo.pricingRules.timeSlotPricing?.enabled &&
+                campo.pricingRules.timeSlotPricing.slots?.length > 0 && (
+                  <>
+                    {campo.pricingRules.timeSlotPricing.slots.map(
+                      (slot: any, index: number) => (
+                        <View key={index} style={styles.priceSection}>
+                          <Text style={styles.priceSectionTitle}>
+                            {slot.label} ({slot.start}-{slot.end})
+                          </Text>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1 ora</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{slot.prices?.oneHour || 20}
+                            </Text>
+                          </View>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{slot.prices?.oneHourHalf || 28}
+                            </Text>
+                          </View>
+                        </View>
+                      )
+                    )}
+                  </>
+                )}
+            </>
+          )}
+
+          {/* Fallback vecchio sistema */}
+          {!campo.pricingRules && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Prezzo orario</Text>
+              <Text style={styles.priceValue}>€{campo.pricePerHour}</Text>
+            </View>
+          )}
         </View>
 
         {/* AZIONI */}
@@ -204,6 +283,22 @@ export default function DettaglioCampoScreen() {
           >
             <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
               📅 Gestisci Calendario Annuale
+            </Text>
+          </Pressable>
+
+          {/* 💰 GESTIONE PREZZI */}
+          <Pressable
+            style={[styles.actionButton, styles.actionButtonSecondary]}
+            onPress={() =>
+              navigation.navigate("ConfiguraPrezziCampo", {
+                campoId: campo._id,
+                campoName: campo.name,
+                campoSport: campo.sport,
+              })
+            }
+          >
+            <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
+              💰 Gestisci Prezzi
             </Text>
           </Pressable>
 
@@ -304,7 +399,38 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 16, color: "#666" },
   infoValue: { fontSize: 16, fontWeight: "600" },
-  priceValue: { fontSize: 18, fontWeight: "800", color: "#007AFF" },
+  priceValue: { fontSize: 15, fontWeight: "800", color: "#007AFF" },
+  priceSection: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  priceSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#007AFF",
+    marginBottom: 8,
+  },
+  priceDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  priceDetailLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+  },
+  priceDetailDuration: {
+    fontSize: 14,
+    color: "#666",
+  },
+  priceDetailValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#007AFF",
+  },
   actionButton: {
     backgroundColor: "#f9f9f9",
     borderRadius: 12,
@@ -317,6 +443,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#2196F3",
     borderColor: "#2196F3",
   },
+  actionButtonSecondary: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
   actionButtonDanger: { 
     borderColor: "#FF3B30",
     backgroundColor: "#FFF5F5",
@@ -327,6 +457,9 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   actionButtonTextPrimary: {
+    color: "white",
+  },
+  actionButtonTextSecondary: {
     color: "white",
   },
   actionButtonDangerText: { 
