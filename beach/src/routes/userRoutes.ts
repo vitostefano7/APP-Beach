@@ -5,6 +5,7 @@ import {
   updatePlayerProfile,
   updatePreferences,
   updateMe,
+  changePassword,
 } from "../controllers/profileController";
 
 const router = express.Router();
@@ -24,5 +25,10 @@ router.patch("/me/profile", requireAuth, updatePlayerProfile);
  * PREFERENCES
  */
 router.patch("/me/preferences", requireAuth, updatePreferences);
+
+/**
+ * SECURITY
+ */
+router.post("/me/change-password", requireAuth, changePassword);
 
 export default router;

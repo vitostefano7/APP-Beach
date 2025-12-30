@@ -439,20 +439,172 @@ export const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  // === DURATION SELECTION ===
+  durationSelection: {
+    padding: 12,
+  },
+  durationTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  durationSubtitle: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  durationButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  durationCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  durationCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  durationBadge: {
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  durationBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+  durationCardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 2,
+  },
+  durationCardSubtitle: {
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 8,
+  },
+  durationCardPrice: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginBottom: 8,
+  },
+  durationCardPriceAmount: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#4CAF50",
+  },
+  durationCardPriceLabel: {
+    fontSize: 12,
+    color: "#999",
+    marginLeft: 3,
+  },
+  durationCardFooter: {
+    alignItems: "flex-end",
+  },
+
+  // === SELECTED DURATION BANNER ===
+  selectedDurationBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196F3",
+  },
+  selectedDurationLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  selectedDurationText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1565C0",
+    flex: 1,
+  },
+  changeDurationBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2196F3",
+  },
+  changeDurationText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+
+  // === NO SLOTS AVAILABLE ===
+  noSlotsBox: {
+    alignItems: "center",
+    padding: 32,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  noSlotsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#F57C00",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  noSlotsText: {
+    fontSize: 14,
+    color: "#E65100",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  changeDurationBtn2: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  changeDurationText2: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
   slotsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   slotChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     borderWidth: 2,
-    minWidth: 90,
+    width: `${(100 - 4) / 3}%`, // 3 per row
   },
   slotAvailable: {
     backgroundColor: "#E8F5E9",
@@ -469,8 +621,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "#2196F3",
     borderColor: "#1976D2",
   },
+  slotTimeContainer: {
+    alignItems: "center",
+    gap: 1,
+  },
   slotTime: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#4CAF50",
   },
@@ -479,6 +635,14 @@ export const styles = StyleSheet.create({
   },
   slotTimeSelected: {
     color: "white",
+  },
+  slotEndTime: {
+    fontSize: 9,
+    color: "#999",
+    fontWeight: "600",
+  },
+  slotEndTimeSelected: {
+    color: "rgba(255, 255, 255, 0.8)",
   },
 
   prenotaBtn: {

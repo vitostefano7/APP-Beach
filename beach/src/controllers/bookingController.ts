@@ -165,7 +165,6 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
  * 📌 SINGOLA PRENOTAZIONE
  * GET /bookings/:id
  */
-
 export const getBookingById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -404,7 +403,7 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
       path: "campo",
       populate: {
         path: "struttura",
-        select: "owner",
+        select: "owner name",
       },
     });
 

@@ -4,6 +4,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 type User = {
   id: string;
   role: "player" | "owner";
+  name?: string;
+  email?: string;
+  createdAt?: string;
 };
 
 type AuthContextType = {

@@ -3,10 +3,11 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
+import { ThemeProvider } from "./src/screens/player/profilo/ThemeContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
-import SetupPreferencesScreen from "./src/screens/player/profilo/SetupPreferencesScreen"; // ✅ AGGIUNGI QUESTO
+import SetupPreferencesScreen from "./src/screens/player/profilo/SetupPreferencesScreen";
 
 import PlayerTabs from "./src/navigation/PlayerTabs";
 import OwnerRootStack from "./src/navigation/OwnerRootStack";
@@ -24,7 +25,6 @@ function AppNavigator() {
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-          {/* ✅ AGGIUNGI QUESTA RIGA */}
           <Stack.Screen 
             name="SetupPreferences" 
             component={SetupPreferencesScreen}
@@ -42,10 +42,12 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

@@ -89,11 +89,11 @@ export default function ConfermaPrenotazioneScreen() {
         [
           {
             text: "Vedi prenotazioni",
-            onPress: () => navigation.navigate("LePrenotazioni"),
+            onPress: () => navigation.navigate("LeMiePrenotazioni"),
           },
           {
             text: "OK",
-            onPress: () => navigation.navigate("LeMiePrenotazioni"),
+            onPress: () => navigation.navigate("Strutture"),
           },
         ]
       );
@@ -107,14 +107,6 @@ export default function ConfermaPrenotazioneScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#212121" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Conferma Prenotazione</Text>
-        <View style={{ width: 24 }} />
-      </View>
 
       <ScrollView style={styles.container}>
         {/* Card riepilogo */}
