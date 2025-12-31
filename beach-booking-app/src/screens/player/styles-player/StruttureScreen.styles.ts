@@ -394,38 +394,49 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
-  geoButton: {
+  // ✅ NUOVI STILI PER CONTROLLI MAPPA
+  mapControlsContainer: {
     position: "absolute",
-    right: 20,
-    bottom: 90,
-    backgroundColor: "white",
+    bottom: 100,
+    right: 16,
+    gap: 12,
+    alignItems: "flex-end",
+  },
+
+  mapControlButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    justifyContent: "center",
+    backgroundColor: "white",
     alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  mapControlButtonPrimary: {
+    flexDirection: "row",
+    bottom: 570,
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    backgroundColor: "#2979ff",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 6,
   },
 
-  listViewButton: {
-    position: "absolute",
-    bottom: 150,
-    right: 20,
-    backgroundColor: "#2979ff",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+  mapControlButtonText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
   mapCard: {
@@ -903,7 +914,7 @@ export const styles = StyleSheet.create({
 
   fab: {
     position: "absolute",
-    right: 6,
+    right: 15,
     bottom: 15,
     width: 50,
     height: 50,

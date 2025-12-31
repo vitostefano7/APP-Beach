@@ -200,26 +200,6 @@ export default function ProfileScreen() {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Notifiche</Text>
-        <View style={styles.card}>
-          <PreferenceRow 
-            icon="notifications-outline" 
-            title="Notifiche push" 
-            subtitle="Aggiornamenti prenotazioni" 
-            value={pushNotifications} 
-            onChange={setPushNotifications} 
-          />
-          <Divider />
-          <PreferenceRow 
-            icon="moon-outline" 
-            title="Tema scuro" 
-            subtitle="In arrivo" 
-            value={darkMode} 
-            onChange={setDarkMode} 
-            disabled 
-          />
-        </View>
-
         <Pressable style={styles.logout} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#F44336" />
           <Text style={styles.logoutText}>Esci dall'account</Text>

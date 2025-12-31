@@ -235,7 +235,15 @@ export default function ModificaStrutturaScreen() {
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Struttura</Text>
-        <View style={{ width: 24 }} />
+        <Pressable 
+          onPress={handleSave}
+          disabled={saving}
+          style={[styles.saveHeaderButton, saving && styles.saveHeaderButtonDisabled]}
+        >
+          <Text style={styles.saveHeaderButtonText}>
+            {saving ? "..." : "Salva"}
+          </Text>
+        </Pressable>
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -354,11 +362,6 @@ export default function ModificaStrutturaScreen() {
         <Pressable style={styles.addCustomButton} onPress={() => setShowCustomModal(true)}>
           <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
           <Text style={styles.addCustomButtonText}>Aggiungi servizio personalizzato</Text>
-        </Pressable>
-
-        <Pressable style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving}>
-          <Ionicons name="checkmark-circle" size={24} color="white" />
-          <Text style={styles.saveButtonText}>{saving ? "Salvataggio..." : "Salva modifiche"}</Text>
         </Pressable>
 
         <View style={{ height: 40 }} />

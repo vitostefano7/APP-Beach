@@ -19,6 +19,25 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1a1a1a",
   },
+
+  saveHeaderButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 70,
+    alignItems: "center",
+  },
+
+  saveHeaderButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  saveHeaderButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   
   container: { 
     flex: 1, 

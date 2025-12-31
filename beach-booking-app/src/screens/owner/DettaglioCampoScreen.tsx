@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 
 import API_URL from "../../config/api";
 
@@ -24,6 +24,7 @@ interface Campo {
   pricePerHour: number;
   isActive: boolean;
   struttura: string;
+  pricingRules?: any;
 }
 
 const SPORT_MAP: { [key: string]: string } = {
@@ -47,11 +48,7 @@ export default function DettaglioCampoScreen() {
   const [loading, setLoading] = useState(true);
   const [campo, setCampo] = useState<Campo | null>(null);
 
-  useEffect(() => {
-    loadCampo();
-  }, []);
-
-  const loadCampo = async () => {
+  const loadCampo = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/campi/${campoId}`, {
@@ -71,7 +68,14 @@ export default function DettaglioCampoScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [campoId, token]);
+
+  // ✅ Ricarica quando la schermata torna in focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCampo();
+    }, [loadCampo])
+  );
 
   const handleDelete = async () => {
     Alert.alert(
@@ -278,6 +282,7 @@ export default function DettaglioCampoScreen() {
               navigation.navigate("CampoCalendarioGestione", {
                 campoId: campo._id,
                 campoName: campo.name,
+                strutturaId: campo.struttura,
               })
             }
           >
@@ -299,20 +304,6 @@ export default function DettaglioCampoScreen() {
           >
             <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
               💰 Gestisci Prezzi
-            </Text>
-          </Pressable>
-
-          {/* 🕐 ORARI SETTIMANALI (opzionale) */}
-          <Pressable
-            style={styles.actionButton}
-            onPress={() =>
-              navigation.navigate("CampoDisponibilita", {
-                campoId: campo._id,
-              })
-            }
-          >
-            <Text style={styles.actionButtonText}>
-              🕐 Modifica Orari Settimanali
             </Text>
           </Pressable>
 

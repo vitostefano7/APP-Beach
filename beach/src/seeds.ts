@@ -1,82 +1,92 @@
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 import User from "./models/User";
-import Struttura from "./models/Strutture";
-import Campo from "./models/Campo";
-import Booking from "./models/Booking";
-import CampoCalendarDay from "./models/campoCalendarDay";
 import PlayerProfile from "./models/PlayerProfile";
 import UserPreferences from "./models/UserPreferences";
+import Struttura from "./models/Strutture";
+import Campo from "./models/Campo";
+import CampoCalendarDay from "./models/campoCalendarDay";
+import Booking from "./models/Booking";
 import Match from "./models/Match";
 
 /* =========================
    CONFIG
 ========================= */
 const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://admin:adminpass@127.0.0.1:27017/beach?authSource=admin";
+  process.env.MONGO_URI ||
+  "mongodb://admin:adminpass@127.0.0.1:27017/beach?authSource=admin";
 
 const DEFAULT_PASSWORD = "123";
 const SALT_ROUNDS = 10;
 
-// 📅 ANNI DA GENERARE (anno corrente + prossimo)
-const CURRENT_YEAR = new Date().getFullYear();
-const YEARS_TO_GENERATE = [CURRENT_YEAR, CURRENT_YEAR + 1];
-
-// ⏱️ SLOT DEFAULT
-const OPEN_HOUR = 9;
-const CLOSE_HOUR = 22;
+const MONTHS_TO_GENERATE = 15; // Rolling calendar di 15 mesi
 
 /* =========================
    UTILS
 ========================= */
-function formatDate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
+const randomInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
-function generateSlots(): { time: string; enabled: boolean }[] {
-  const slots: { time: string; enabled: boolean }[] = [];
+const randomElement = <T>(arr: T[]): T =>
+  arr[Math.floor(Math.random() * arr.length)];
 
-  for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
-    slots.push({
-      time: `${String(h).padStart(2, "0")}:00`,
-      enabled: true,
-    });
+const formatDate = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * ✅ Genera slot ogni 30 minuti
+ */
+function generateHalfHourSlots(open: string, close: string) {
+  const slots = [];
+  let [h, m] = open.split(":").map(Number);
+
+  while (true) {
+    const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    if (time >= close) break;
+
+    slots.push({ time, enabled: true });
+
+    m += 30;
+    if (m >= 60) {
+      h++;
+      m = 0;
+    }
   }
 
   return slots;
 }
 
-function generateYearDates(year: number): string[] {
+/**
+ * ✅ Genera date per i prossimi N mesi
+ */
+function generateDatesForMonths(months: number): string[] {
   const dates: string[] = [];
-  const date = new Date(year, 0, 1);
+  const start = new Date();
+  const end = new Date();
+  end.setMonth(end.getMonth() + months);
 
-  while (date.getFullYear() === year) {
-    dates.push(formatDate(date));
-    date.setDate(date.getDate() + 1);
+  const d = new Date(start);
+  while (d <= end) {
+    dates.push(formatDate(d));
+    d.setDate(d.getDate() + 1);
   }
-
   return dates;
-}
-
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function randomElement<T>(arr: T[]): T {
-  return arr[randomInt(0, arr.length - 1)];
 }
 
 /* =========================
    SEED
 ========================= */
-async function seed(): Promise<void> {
+async function seed() {
   try {
     await mongoose.connect(MONGO_URI);
     console.log("✅ MongoDB connesso");
 
     /* -------- CLEAN -------- */
-    console.log("🧹 Pulizia database...");
     await Promise.all([
       Match.deleteMany({}),
       Booking.deleteMany({}),
@@ -87,481 +97,315 @@ async function seed(): Promise<void> {
       UserPreferences.deleteMany({}),
       User.deleteMany({}),
     ]);
-    console.log("✅ Database pulito");
+    console.log("🧹 Database pulito");
 
     /* -------- USERS -------- */
-    console.log("👥 Creazione utenti...");
     const password = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
 
     const users = await User.insertMany([
-      // Players
       { name: "Mario Rossi", email: "mario@test.it", password, role: "player", isActive: true },
       { name: "Giulia Verdi", email: "giulia@test.it", password, role: "player", isActive: true },
       { name: "Luca Bianchi", email: "luca@test.it", password, role: "player", isActive: true },
       { name: "Anna Ferrari", email: "anna@test.it", password, role: "player", isActive: true },
-      { name: "Marco Colombo", email: "marco@test.it", password, role: "player", isActive: true },
-      
-      // Owners
-      { name: "Paolo Owner Milano", email: "paolo@test.it", password, role: "owner", isActive: true },
-      { name: "Sara Owner Roma", email: "sara@test.it", password, role: "owner", isActive: true },
-      { name: "Vito Owner Brindisi", email: "vito@test.it", password, role: "owner", isActive: true },
+
+      { name: "Paolo Owner", email: "paolo@test.it", password, role: "owner", isActive: true },
+      { name: "Sara Owner", email: "sara@test.it", password, role: "owner", isActive: true },
     ]);
 
-    const players = users.filter(u => u.role === "player");
-    const owners = users.filter(u => u.role === "owner");
+    const players = users.filter((u) => u.role === "player");
+    const owners = users.filter((u) => u.role === "owner");
 
     console.log(`✅ Creati ${users.length} utenti (${players.length} player, ${owners.length} owner)`);
 
     /* -------- PLAYER PROFILES -------- */
-    console.log("🏐 Creazione profili player...");
-    const levels = ["beginner", "amateur", "advanced"];
-    
     await PlayerProfile.insertMany(
-      players.map(p => ({
+      players.map((p) => ({
         user: p._id,
-        level: randomElement(levels),
-        matchesPlayed: randomInt(0, 50),
+        level: randomElement(["beginner", "amateur", "advanced"]),
+        matchesPlayed: randomInt(0, 40),
         ratingAverage: Math.random() * 5,
       }))
     );
 
-    /* -------- USER PREFERENCES -------- */
-    console.log("⚙️ Creazione preferenze utenti...");
-    const cities = [
-      { name: "Milano", lat: 45.4642, lng: 9.1900 },
-      { name: "Roma", lat: 41.9028, lng: 12.4964 },
-      { name: "Brindisi", lat: 40.6320, lng: 17.9360 },
-    ];
+    console.log(`✅ Creati ${players.length} player profiles`);
 
+    /* -------- USER PREFERENCES -------- */
     await UserPreferences.insertMany(
-      players.map((p, idx) => {
-        const city = cities[idx % cities.length];
-        return {
-          user: p._id,
-          pushNotifications: true,
-          darkMode: Math.random() > 0.5,
-          privacyLevel: randomElement(["public", "friends", "private"]),
-          preferredLocation: {
-            city: city.name,
-            lat: city.lat,
-            lng: city.lng,
-            radius: randomElement([10, 20, 30, 50]),
-          },
-          favoriteStrutture: [],
-          favoriteSports: Math.random() > 0.5 ? ["Beach Volley"] : ["Volley"],
-          preferredTimeSlot: randomElement(["morning", "afternoon", "evening"]),
-        };
-      })
+      players.map((p) => ({
+        user: p._id,
+        pushNotifications: true,
+        darkMode: Math.random() > 0.5,
+        privacyLevel: randomElement(["public", "friends", "private"]),
+        preferredLocation: {
+          city: "Milano",
+          lat: 45.4642,
+          lng: 9.19,
+          radius: 30,
+        },
+        favoriteStrutture: [],
+        favoriteSports: ["Beach Volley"],
+        preferredTimeSlot: randomElement(["morning", "afternoon", "evening"]),
+      }))
     );
 
+    console.log(`✅ Create ${players.length} user preferences`);
+
     /* -------- STRUTTURE -------- */
-    console.log("🏢 Creazione strutture...");
-    
     const strutture = await Struttura.insertMany([
-      // Milano
       {
-        name: "Beach Volley Paradise Milano",
-        description: "La migliore struttura di beach volley a Milano. Campi professionali in sabbia, spogliatoi moderni e bar.",
+        name: "Beach Volley Milano",
+        description: "Centro beach volley professionale con 3 campi",
         owner: owners[0]._id,
         location: {
           address: "Via Tortona 35",
           city: "Milano",
-          lat: 45.4542,
-          lng: 9.1700,
-          coordinates: [9.1700, 45.4542],
+          lat: 45.4642,
+          lng: 9.19,
+          coordinates: [9.19, 45.4642],
         },
-        amenities: {
-          toilets: true,
-          lockerRoom: true,
-          showers: true,
-          parking: true,
-          restaurant: false,
-          bar: true,
-        },
-        openingHours: {
-          monday: { open: "09:00", close: "22:00", closed: false },
-          tuesday: { open: "09:00", close: "22:00", closed: false },
-          wednesday: { open: "09:00", close: "22:00", closed: false },
-          thursday: { open: "09:00", close: "22:00", closed: false },
-          friday: { open: "09:00", close: "23:00", closed: false },
-          saturday: { open: "08:00", close: "23:00", closed: false },
-          sunday: { open: "08:00", close: "22:00", closed: false },
-        },
-        images: ["https://images.unsplash.com/photo-1612872087720-bb876e2e67d1"],
-        rating: { average: 4.7, count: 45 },
-        isActive: true,
-        isFeatured: true,
-      },
-      {
-        name: "Volley Center Milano",
-        description: "Centro polifunzionale con campi indoor e outdoor.",
-        owner: owners[0]._id,
-        location: {
-          address: "Via Ripamonti 88",
-          city: "Milano",
-          lat: 45.4342,
-          lng: 9.2100,
-          coordinates: [9.2100, 45.4342],
-        },
-        amenities: {
-          toilets: true,
-          lockerRoom: true,
-          showers: true,
-          parking: true,
-          restaurant: true,
-          bar: true,
-        },
-        openingHours: {
-          monday: { open: "09:00", close: "22:00", closed: false },
-          tuesday: { open: "09:00", close: "22:00", closed: false },
-          wednesday: { open: "09:00", close: "22:00", closed: false },
-          thursday: { open: "09:00", close: "22:00", closed: false },
-          friday: { open: "09:00", close: "22:00", closed: false },
-          saturday: { open: "09:00", close: "22:00", closed: false },
-          sunday: { open: "09:00", close: "20:00", closed: false },
-        },
-        images: ["https://images.unsplash.com/photo-1592656094267-764a45160876"],
-        rating: { average: 4.5, count: 32 },
-        isActive: true,
-        isFeatured: false,
-      },
-
-      // Roma
-      {
-        name: "Beach Roma Ostia",
-        description: "Campi beach volley vista mare a Ostia.",
-        owner: owners[1]._id,
-        location: {
-          address: "Lungomare Paolo Toscanelli 150",
-          city: "Roma",
-          lat: 41.7350,
-          lng: 12.2850,
-          coordinates: [12.2850, 41.7350],
-        },
-        amenities: {
-          toilets: true,
-          lockerRoom: true,
-          showers: true,
-          parking: true,
-          restaurant: true,
-          bar: true,
-        },
-        openingHours: {
-          monday: { open: "10:00", close: "20:00", closed: false },
-          tuesday: { open: "10:00", close: "20:00", closed: false },
-          wednesday: { open: "10:00", close: "20:00", closed: false },
-          thursday: { open: "10:00", close: "20:00", closed: false },
-          friday: { open: "10:00", close: "22:00", closed: false },
-          saturday: { open: "09:00", close: "23:00", closed: false },
-          sunday: { open: "09:00", close: "23:00", closed: false },
-        },
-        images: ["https://images.unsplash.com/photo-1545262810-77515befe149"],
-        rating: { average: 4.8, count: 67 },
-        isActive: true,
-        isFeatured: true,
-      },
-
-      // Brindisi
-      {
-        name: "VBB Sport Center Brindisi",
-        description: "Centro sportivo con campi beach volley professionali.",
-        owner: owners[2]._id,
-        location: {
-          address: "Via del Mare 12",
-          city: "Brindisi",
-          lat: 40.6320,
-          lng: 17.9360,
-          coordinates: [17.9360, 40.6320],
-        },
-        amenities: {
-          toilets: true,
-          lockerRoom: true,
-          showers: true,
-          parking: true,
-          restaurant: false,
-          bar: true,
-        },
-        openingHours: {
-          monday: { open: "09:00", close: "22:00", closed: false },
-          tuesday: { open: "09:00", close: "22:00", closed: false },
-          wednesday: { open: "09:00", close: "22:00", closed: false },
-          thursday: { open: "09:00", close: "22:00", closed: false },
-          friday: { open: "09:00", close: "23:00", closed: false },
-          saturday: { open: "08:00", close: "23:00", closed: false },
-          sunday: { open: "00:00", close: "00:00", closed: true },
-        },
-        images: [],
-        rating: { average: 4.5, count: 23 },
-        isActive: true,
-        isFeatured: false,
-      },
-
-      // Struttura disattivata (test)
-      {
-        name: "Old Volley Club (CHIUSO)",
-        description: "Struttura non più operativa.",
-        owner: owners[0]._id,
-        location: {
-          address: "Via Esempio 1",
-          city: "Milano",
-          lat: 45.4500,
-          lng: 9.1800,
-          coordinates: [9.1800, 45.4500],
-        },
-        amenities: {
-          toilets: false,
-          lockerRoom: false,
-          showers: false,
-          parking: false,
-          restaurant: false,
-          bar: false,
-        },
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "bar"],
         openingHours: {},
         images: [],
-        rating: { average: 0, count: 0 },
-        isActive: false,
-        isFeatured: false,
+        rating: { average: 4.7, count: 30 },
+        isActive: true,
+        isFeatured: true,
+        isDeleted: false,
+      },
+      {
+        name: "Beach Roma Ostia",
+        description: "Campi beach volley vista mare",
+        owner: owners[1]._id,
+        location: {
+          address: "Lungomare Paolo Toscanelli 160",
+          city: "Roma",
+          lat: 41.735,
+          lng: 12.285,
+          coordinates: [12.285, 41.735],
+        },
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "restaurant", "bar"],
+        openingHours: {},
+        images: [],
+        rating: { average: 4.8, count: 50 },
+        isActive: true,
+        isFeatured: true,
+        isDeleted: false,
       },
     ]);
 
     console.log(`✅ Create ${strutture.length} strutture`);
 
     /* -------- CAMPI -------- */
-    console.log("🏐 Creazione campi...");
-    
-    const campiData = [];
-
-    // Beach Volley Paradise Milano - 3 campi beach
-    for (let i = 1; i <= 3; i++) {
-      campiData.push({
+    const campi = await Campo.insertMany([
+      // STRUTTURA 1 - Beach Volley Milano
+      {
         struttura: strutture[0]._id,
-        name: `Campo Beach ${i}`,
-        sport: "beach_volley",
-        surface: "sand",
-        maxPlayers: 4,
-        indoor: false,
-        pricePerHour: 40 + (i * 5),
-        isActive: true,
-      });
-    }
-
-    // Volley Center Milano - 2 indoor + 1 outdoor
-    campiData.push(
-      {
-        struttura: strutture[1]._id,
-        name: "Campo Indoor 1",
-        sport: "volley",
-        surface: "pvc",
-        maxPlayers: 12,
-        indoor: true,
-        pricePerHour: 50,
-        isActive: true,
-      },
-      {
-        struttura: strutture[1]._id,
-        name: "Campo Indoor 2",
-        sport: "volley",
-        surface: "pvc",
-        maxPlayers: 12,
-        indoor: true,
-        pricePerHour: 50,
-        isActive: true,
-      },
-      {
-        struttura: strutture[1]._id,
-        name: "Campo Outdoor",
-        sport: "volley",
-        surface: "cement",
-        maxPlayers: 12,
-        indoor: false,
-        pricePerHour: 35,
-        isActive: true,
-      }
-    );
-
-    // Beach Roma Ostia - 4 campi beach
-    for (let i = 1; i <= 4; i++) {
-      campiData.push({
-        struttura: strutture[2]._id,
-        name: `Beach Field ${i}`,
-        sport: "beach_volley",
-        surface: "sand",
-        maxPlayers: 4,
-        indoor: false,
-        pricePerHour: 45,
-        isActive: true,
-      });
-    }
-
-    // VBB Sport Center Brindisi - 2 campi beach
-    for (let i = 1; i <= 2; i++) {
-      campiData.push({
-        struttura: strutture[3]._id,
-        name: `Campo Beach ${i}`,
+        name: "Campo Beach 1",
         sport: "beach_volley",
         surface: "sand",
         maxPlayers: 4,
         indoor: false,
         pricePerHour: 40,
         isActive: true,
-      });
-    }
+        pricingRules: {
+          mode: "flat",
+          flatPrices: { oneHour: 40, oneHourHalf: 56 },
+          basePrices: { oneHour: 40, oneHourHalf: 56 },
+          timeSlotPricing: { enabled: false, slots: [] },
+          playerCountPricing: { enabled: false, prices: [] },
+        },
+        weeklySchedule: {
+          monday: { enabled: true, open: "09:00", close: "22:00" },
+          tuesday: { enabled: true, open: "09:00", close: "22:00" },
+          wednesday: { enabled: true, open: "09:00", close: "22:00" },
+          thursday: { enabled: true, open: "09:00", close: "22:00" },
+          friday: { enabled: true, open: "09:00", close: "23:00" },
+          saturday: { enabled: true, open: "08:00", close: "23:00" },
+          sunday: { enabled: true, open: "08:00", close: "22:00" },
+        },
+      },
+      {
+        struttura: strutture[0]._id,
+        name: "Campo Beach 2",
+        sport: "beach_volley",
+        surface: "sand",
+        maxPlayers: 4,
+        indoor: false,
+        pricePerHour: 40,
+        isActive: true,
+        pricingRules: {
+          mode: "advanced",
+          flatPrices: { oneHour: 40, oneHourHalf: 56 },
+          basePrices: { oneHour: 35, oneHourHalf: 49 },
+          timeSlotPricing: {
+            enabled: true,
+            slots: [
+              {
+                start: "18:00",
+                end: "23:00",
+                label: "Sera",
+                prices: { oneHour: 45, oneHourHalf: 63 },
+              },
+            ],
+          },
+          playerCountPricing: { enabled: false, prices: [] },
+        },
+        weeklySchedule: {
+          monday: { enabled: true, open: "09:00", close: "22:00" },
+          tuesday: { enabled: true, open: "09:00", close: "22:00" },
+          wednesday: { enabled: true, open: "09:00", close: "22:00" },
+          thursday: { enabled: true, open: "09:00", close: "22:00" },
+          friday: { enabled: true, open: "09:00", close: "23:00" },
+          saturday: { enabled: true, open: "08:00", close: "23:00" },
+          sunday: { enabled: true, open: "08:00", close: "22:00" },
+        },
+      },
 
-    const campi = await Campo.insertMany(campiData);
+      // STRUTTURA 2 - Beach Roma
+      {
+        struttura: strutture[1]._id,
+        name: "Campo Beach 1",
+        sport: "beach_volley",
+        surface: "sand",
+        maxPlayers: 4,
+        indoor: false,
+        pricePerHour: 45,
+        isActive: true,
+        pricingRules: {
+          mode: "flat",
+          flatPrices: { oneHour: 45, oneHourHalf: 63 },
+          basePrices: { oneHour: 45, oneHourHalf: 63 },
+          timeSlotPricing: { enabled: false, slots: [] },
+          playerCountPricing: { enabled: false, prices: [] },
+        },
+        weeklySchedule: {
+          monday: { enabled: true, open: "09:00", close: "21:00" },
+          tuesday: { enabled: true, open: "09:00", close: "21:00" },
+          wednesday: { enabled: true, open: "09:00", close: "21:00" },
+          thursday: { enabled: true, open: "09:00", close: "21:00" },
+          friday: { enabled: true, open: "09:00", close: "22:00" },
+          saturday: { enabled: true, open: "08:00", close: "22:00" },
+          sunday: { enabled: true, open: "08:00", close: "21:00" },
+        },
+      },
+    ]);
+
     console.log(`✅ Creati ${campi.length} campi`);
 
-    /* -------- CALENDARIO ANNUALE -------- */
-    console.log("📆 Generazione calendari annuali...");
-    
+    /* -------- CALENDARIO (Rolling 15 mesi) -------- */
+    const dates = generateDatesForMonths(MONTHS_TO_GENERATE);
     const calendarDocs = [];
 
-    for (const year of YEARS_TO_GENERATE) {
-      const yearDates = generateYearDates(year);
-      
-      for (const campo of campi) {
-        for (const date of yearDates) {
-          calendarDocs.push({
-            campo: campo._id,
-            date,
-            slots: generateSlots(),
-            isClosed: false,
-          });
-        }
+    const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+    for (const campo of campi) {
+      for (const dateStr of dates) {
+        const date = new Date(dateStr + "T12:00:00");
+        const weekday = WEEK_MAP[date.getDay()] as keyof typeof campo.weeklySchedule;
+        const schedule = campo.weeklySchedule[weekday];
+
+        calendarDocs.push({
+          campo: campo._id,
+          date: dateStr,
+          slots: schedule.enabled ? generateHalfHourSlots(schedule.open, schedule.close) : [],
+          isClosed: !schedule.enabled,
+        });
       }
     }
 
     await CampoCalendarDay.insertMany(calendarDocs);
-    console.log(`✅ Creati ${calendarDocs.length} giorni di calendario (${YEARS_TO_GENERATE.length} anni)`);
+    console.log(`✅ Creati ${calendarDocs.length} giorni di calendario (${campi.length} campi × ${dates.length} giorni)`);
 
     /* -------- BOOKINGS -------- */
-    console.log("📅 Creazione prenotazioni...");
-    
     const bookings = [];
-    const now = new Date();
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Prenotazioni passate (per match)
-    for (let i = 0; i < 20; i++) {
-      const daysAgo = randomInt(1, 60);
-      const pastDate = new Date(now);
-      pastDate.setDate(pastDate.getDate() - daysAgo);
-      
+    // Prenotazioni di oggi
+    for (let i = 0; i < 5; i++) {
+      const campo = randomElement(campi);
       const player = randomElement(players);
-      const campo = randomElement(campi.filter(c => c.sport === "beach_volley"));
-      const hour = randomInt(9, 20);
+      const hour = randomInt(10, 18);
+      const startTime = `${String(hour).padStart(2, "0")}:00`;
+      const endTime = `${String(hour + 1).padStart(2, "0")}:00`;
 
       bookings.push({
         user: player._id,
         campo: campo._id,
-        date: formatDate(pastDate),
-        startTime: `${String(hour).padStart(2, "0")}:00`,
-        endTime: `${String(hour + 1).padStart(2, "0")}:00`,
-        price: campo.pricePerHour,
+        date: formatDate(today),
+        startTime,
+        endTime,
+        price: 40,
         status: "confirmed",
       });
     }
 
-    // Prenotazioni future
-    for (let i = 0; i < 30; i++) {
-      const daysAhead = randomInt(1, 90);
-      const futureDate = new Date(now);
-      futureDate.setDate(futureDate.getDate() + daysAhead);
-      
-      const player = randomElement(players);
+    // Prenotazioni di domani
+    for (let i = 0; i < 5; i++) {
       const campo = randomElement(campi);
-      const hour = randomInt(9, 20);
+      const player = randomElement(players);
+      const hour = randomInt(10, 18);
+      const startTime = `${String(hour).padStart(2, "0")}:00`;
+      const endTime = `${String(hour + 1).padStart(2, "0")}:00`;
 
       bookings.push({
         user: player._id,
         campo: campo._id,
-        date: formatDate(futureDate),
-        startTime: `${String(hour).padStart(2, "0")}:00`,
-        endTime: `${String(hour + 1).padStart(2, "0")}:00`,
-        price: campo.pricePerHour,
-        status: Math.random() > 0.9 ? "cancelled" : "confirmed",
+        date: formatDate(tomorrow),
+        startTime,
+        endTime,
+        price: 40,
+        status: "confirmed",
       });
     }
 
     const savedBookings = await Booking.insertMany(bookings);
     console.log(`✅ Create ${savedBookings.length} prenotazioni`);
 
-    /* -------- MATCHES -------- */
-    console.log("🏆 Creazione match...");
-    
-    const pastBookings = savedBookings.filter((b: any) => {
-      const bookingDate = new Date(b.date);
-      return bookingDate < now && b.status === "confirmed";
-    });
-
-    const matches = [];
-
-    for (const booking of pastBookings.slice(0, 15)) {
-      // Genera 2 o 3 set
-      const numSets = randomElement([2, 3]);
-      const sets = [];
-      let teamAWins = 0;
-      let teamBWins = 0;
-
-      for (let i = 0; i < numSets; i++) {
-        const teamAScore = randomInt(15, 21);
-        const teamBScore = randomInt(15, 21);
-        
-        if (teamAScore > teamBScore) teamAWins++;
-        else teamBWins++;
-
-        sets.push({
-          teamA: teamAScore,
-          teamB: teamBScore,
-        });
-
-        // Se qualcuno ha vinto 2 set, stop
-        if (teamAWins === 2 || teamBWins === 2) break;
-      }
-
-      matches.push({
-        booking: booking._id,
-        score: { sets },
-        winner: teamAWins > teamBWins ? "A" : "B",
-      });
+    // ✅ Disabilita gli slot prenotati nel calendario
+    for (const booking of savedBookings) {
+      await CampoCalendarDay.updateOne(
+        {
+          campo: booking.campo,
+          date: booking.date,
+          "slots.time": booking.startTime,
+        },
+        {
+          $set: { "slots.$.enabled": false },
+        }
+      );
     }
+
+    console.log(`✅ Disabilitati ${savedBookings.length} slot nel calendario`);
+
+    /* -------- MATCH -------- */
+    const matches = savedBookings.slice(0, 3).map((b) => ({
+      booking: b._id,
+      score: {
+        sets: [
+          { teamA: 21, teamB: 18 },
+          { teamA: 19, teamB: 21 },
+          { teamA: 15, teamB: 13 },
+        ],
+      },
+      winner: "A",
+    }));
 
     await Match.insertMany(matches);
     console.log(`✅ Creati ${matches.length} match`);
 
-    /* -------- FAVORITES -------- */
-    console.log("⭐ Assegnazione strutture favorite...");
-    
-    for (const player of players) {
-      const randomStrutture = strutture
-        .filter(s => s.isActive)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, randomInt(1, 3))
-        .map(s => s._id);
-
-      await UserPreferences.findOneAndUpdate(
-        { user: player._id },
-        { $set: { favoriteStrutture: randomStrutture } }
-      );
-    }
-
-    console.log("✅ Preferiti assegnati");
-
     /* -------- SUMMARY -------- */
     console.log("\n" + "=".repeat(50));
-    console.log("🌱 SEED COMPLETATO CON SUCCESSO!");
+    console.log("🌱 SEED COMPLETATO CON SUCCESSO");
     console.log("=".repeat(50));
-    console.log(`👥 Utenti:              ${users.length}`);
-    console.log(`   - Players:           ${players.length}`);
-    console.log(`   - Owners:            ${owners.length}`);
-    console.log(`🏢 Strutture:           ${strutture.length}`);
-    console.log(`🏐 Campi:               ${campi.length}`);
-    console.log(`📆 Giorni calendario:   ${calendarDocs.length}`);
-    console.log(`📅 Prenotazioni:        ${savedBookings.length}`);
-    console.log(`🏆 Match:               ${matches.length}`);
+    console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
+    console.log(`🏢 Strutture: ${strutture.length}`);
+    console.log(`⚽ Campi: ${campi.length}`);
+    console.log(`📅 Giorni calendario: ${calendarDocs.length}`);
+    console.log(`📝 Prenotazioni: ${savedBookings.length}`);
+    console.log(`🏆 Match: ${matches.length}`);
     console.log("=".repeat(50));
-    console.log("\n💡 CREDENZIALI:");
-    console.log("   Email: mario@test.it | giulia@test.it | luca@test.it");
-    console.log("   Email Owner: paolo@test.it | sara@test.it | vito@test.it");
-    console.log("   Password: 123");
+    console.log("🔑 Password per tutti gli utenti: 123");
     console.log("=".repeat(50) + "\n");
 
     process.exit(0);

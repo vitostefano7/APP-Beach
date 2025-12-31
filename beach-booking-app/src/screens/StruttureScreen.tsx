@@ -625,16 +625,22 @@ export default function StruttureScreen() {
               ))}
             </MapView>
 
-            <Pressable style={styles.geoButton} onPress={centerOnUser}>
-              <Ionicons name="locate" size={24} color="#2979ff" />
-            </Pressable>
+            {/* ✅ GRUPPO BOTTONI ALLINEATI */}
+            <View style={styles.mapControlsContainer}>
+              {/* Bottone Posizione */}
+              <Pressable style={styles.mapControlButton} onPress={centerOnUser}>
+                <Ionicons name="locate" size={22} color="#2979ff" />
+              </Pressable>
 
-            <Pressable 
-              style={styles.listViewButton} 
-              onPress={() => setViewMode("list")}
-            >
-              <Ionicons name="list-outline" size={24} color="white" />
-            </Pressable>
+              {/* Bottone Vista Lista - PIÙ CHIARO */}
+              <Pressable 
+                style={styles.mapControlButtonPrimary} 
+                onPress={() => setViewMode("list")}
+              >
+                <Ionicons name="list" size={22} color="white" />
+                <Text style={styles.mapControlButtonText}>Lista</Text>
+              </Pressable>
+            </View>
 
             {selectedMarker && (
               <Modal

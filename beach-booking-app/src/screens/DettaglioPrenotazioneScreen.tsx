@@ -86,6 +86,36 @@ export default function DettaglioPrenotazioneScreen() {
     Linking.openURL(url);
   };
 
+  const openChat = async () => {
+  try {
+    console.log('💬 Apertura chat con struttura:', booking.campo.struttura._id);
+    
+    const res = await fetch(
+      `${API_URL}/api/conversations/struttura/${booking.campo.struttura._id}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!res.ok) {
+      console.error('❌ Errore creazione conversazione:', res.status);
+      throw new Error();
+    }
+
+    const conversation = await res.json();
+    console.log('✅ Conversazione ottenuta:', conversation._id);
+
+    // ✅ Chat è nello STESSO STACK, naviga direttamente!
+    navigation.navigate("Chat", {
+      conversationId: conversation._id,
+      strutturaName: booking.campo.struttura.name,
+    });
+  } catch (error) {
+    console.error("❌ Errore apertura chat:", error);
+    Alert.alert("Errore", "Impossibile aprire la chat");
+  }
+};
+
   const goToInserisciRisultato = () => {
     navigation.navigate("InserisciRisultato", { bookingId });
   };
@@ -158,46 +188,51 @@ export default function DettaglioPrenotazioneScreen() {
         <View style={styles.content}>
           {/* STRUTTURA */}
           <View style={styles.mainCard}>
-            <Text style={styles.strutturaName}>
-              {booking.campo.struttura.name}
-            </Text>
-            
-            <View style={styles.campoRow}>
-              <View style={styles.sportIcon}>
-                <Ionicons 
-                  name={
-                    booking.campo.sport === "calcio" ? "football" :
-                    booking.campo.sport === "tennis" ? "tennisball" :
-                    booking.campo.sport === "basket" ? "basketball" :
-                    "fitness"
-                  } 
-                  size={20} 
-                  color="#2196F3" 
-                />
+            <View style={styles.strutturaHeader}>
+              <View style={styles.strutturaMainInfo}>
+                <Text style={styles.strutturaName}>
+                  {booking.campo.struttura.name}
+                </Text>
+                
+                <View style={styles.campoRow}>
+                  <View style={styles.sportIcon}>
+                    <Ionicons 
+                      name={
+                        booking.campo.sport === "calcio" ? "football" :
+                        booking.campo.sport === "tennis" ? "tennisball" :
+                        booking.campo.sport === "basket" ? "basketball" :
+                        "fitness"
+                      } 
+                      size={20} 
+                      color="#2196F3" 
+                    />
+                  </View>
+                  <View style={styles.campoInfo}>
+                    <Text style={styles.campoName}>{booking.campo.name}</Text>
+                    <Text style={styles.sportText}>{booking.campo.sport}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.campoInfo}>
-                <Text style={styles.campoName}>{booking.campo.name}</Text>
-                <Text style={styles.sportText}>{booking.campo.sport}</Text>
-              </View>
-              <View style={styles.priceTag}>
-                <Text style={styles.priceAmount}>€{booking.price}</Text>
-              </View>
+
+              <Pressable style={styles.chatIconButton} onPress={openChat}>
+                <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+              </Pressable>
             </View>
 
-            <Pressable style={styles.locationCard} onPress={openMaps}>
-              <View style={styles.locationIcon}>
-                <Ionicons name="location" size={20} color="#F44336" />
+            <View style={styles.priceLocationRow}>
+              <View style={styles.priceTag}>
+                <Ionicons name="cash-outline" size={16} color="#4CAF50" />
+                <Text style={styles.priceAmount}>€{booking.price}</Text>
               </View>
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationAddress}>
-                  {booking.campo.struttura.location.address}
-                </Text>
-                <Text style={styles.locationCity}>
+
+              <Pressable style={styles.locationButton} onPress={openMaps}>
+                <Ionicons name="location" size={16} color="#F44336" />
+                <Text style={styles.locationButtonText}>
                   {booking.campo.struttura.location.city}
                 </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </Pressable>
+                <Ionicons name="chevron-forward" size={14} color="#999" />
+              </Pressable>
+            </View>
           </View>
 
           {/* DATA E ORARIO */}
@@ -412,92 +447,116 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
-  },
-  strutturaName: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#1a1a1a",
     marginBottom: 16,
   },
 
-  campoRow: {
+  strutturaHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
+
+  strutturaMainInfo: {
+    flex: 1,
+  },
+
+  strutturaName: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    marginBottom: 12,
+  },
+
+  campoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
   sportIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
   },
+
   campoInfo: {
     flex: 1,
   },
+
   campoName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#333",
     marginBottom: 2,
   },
+
   sportText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     textTransform: "capitalize",
   },
+
+  chatIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  priceLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
   priceTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: "#E8F5E9",
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
   },
+
   priceAmount: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#4CAF50",
   },
 
-  locationCard: {
+  locationButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 6,
     backgroundColor: "#f8f9fa",
-    padding: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
   },
-  locationIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFEBEE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationInfo: {
+
+  locationButtonText: {
     flex: 1,
-  },
-  locationAddress: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 2,
-  },
-  locationCity: {
-    fontSize: 13,
-    color: "#666",
   },
 
   card: {
     backgroundColor: "white",
     borderRadius: 16,
     padding: 20,
-    marginTop: 16,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -626,7 +685,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E3F2FD",
     padding: 20,
     borderRadius: 16,
-    marginTop: 16,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: "#2196F3",
     borderStyle: "dashed",
@@ -659,7 +718,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#F44336",
-    marginTop: 16,
     paddingVertical: 16,
     borderRadius: 12,
     shadowColor: "#F44336",

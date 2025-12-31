@@ -18,7 +18,7 @@ export default function StruttureStack() {
       />
       <Stack.Screen name="ConfermaPrenotazione" component={ConfermaPrenotazioneScreen} />
       <Stack.Screen name="LeMiePrenotazioni" component={LeMiePrenotazioniScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }}/>
       <Stack.Screen
         name="DettaglioPrenotazione"
         component={DettaglioPrenotazioneScreen}

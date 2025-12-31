@@ -26,7 +26,7 @@ interface CalendarDay {
   date: string;
   slots: Slot[];
   isClosed: boolean;
-  bookingAction?: "cancelled" | null; // legacy: può non arrivare più dal backend
+  bookingAction?: "cancelled" | null;
 }
 
 const MONTHS_FULL = [
@@ -36,9 +36,6 @@ const MONTHS_FULL = [
 
 const DAYS_SHORT = ["D", "L", "M", "M", "G", "V", "S"];
 
-/**
- * ✅ FIX: mese in formato locale (evita bug UTC / gennaio)
- */
 const getMonthStr = (date: Date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -57,38 +54,31 @@ export default function CampoCalendarioGestioneScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [editMode, setEditMode] = useState(false);
 
-  // ✅ non esistono più /calendar/years e /calendar/generate nel backend nuovo
-  // quindi rimuoviamo stati e logiche che chiamavano quei path:
-  // const [availableYears, setAvailableYears] = useState<Array<{ year: number; daysCount: number }>>([]);
-
   /* =====================================================
-     LOAD CALENDAR (quando cambia mese)
+     LOAD CALENDAR
   ===================================================== */
   useEffect(() => {
     const loadCalendar = async () => {
       try {
         setLoading(true);
-
-        // ✅ FIX: locale
         const month = getMonthStr(currentMonth);
 
         console.log("📅 Caricamento calendario per:", month);
 
-        // ✅ NUOVO ENDPOINT (routes: /calendar/campo/:id?month=YYYY-MM)
+        // ✅ ENDPOINT CORRETTO: GET /calendar/campo/:id
         const res = await fetch(
-          `${API_URL}/campi/${campoId}/calendar?month=${month}`,
+          `${API_URL}/calendar/campo/${campoId}?month=${month}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          console.error("❌ HTTP Error:", res.status);
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
 
         console.log(`✅ ${data.length} giorni caricati per ${month}`);
-        console.log(
-          "📊 Primi 3 giorni:",
-          data.slice(0, 3).map((d: any) => ({ date: d.date, slots: d.slots?.length ?? 0 }))
-        );
-
         setCalendarDays(data);
       } catch (err) {
         console.error("❌ Errore calendario:", err);
@@ -126,7 +116,6 @@ export default function CampoCalendarioGestioneScreen() {
   const getDayData = (date: Date | null): CalendarDay | null => {
     if (!date) return null;
 
-    // formato locale YYYY-MM-DD
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
@@ -163,37 +152,42 @@ export default function CampoCalendarioGestioneScreen() {
 
   const executeToggleSlot = async (date: string, time: string, newEnabled: boolean) => {
     try {
-      // ✅ NUOVO ENDPOINT:
-      // PUT /calendar/campo/:campoId/date/:date/slot
-      const res = await fetch(
-        `${API_URL}/calendar/campo/${campoId}/date/${date}/slot`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ time, enabled: newEnabled }),
-        }
-      );
+      console.log("🔄 Toggle slot:", { date, time, newEnabled });
+      
+      // ✅ ENDPOINT CORRETTO: PUT /calendar/campo/:campoId/date/:date/slot
+      const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}/slot`;
+      console.log("📡 Endpoint:", endpoint);
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ time, enabled: newEnabled }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("❌ Response:", res.status, errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+      
       const updatedDay = await res.json();
 
       setCalendarDays((prev) =>
         prev.map((day) => (day.date === date ? updatedDay : day))
       );
 
-      // bookingAction potrebbe non arrivare più: lo lasciamo safe
       if (updatedDay?.bookingAction === "cancelled") {
         Alert.alert(
           "Prenotazione cancellata",
-          "Lo slot è stato riabilitato e la prenotazione è stata cancellata."
+          "Lo slot è stato disabilitato e la prenotazione è stata cancellata."
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Errore toggle slot:", err);
-      Alert.alert("Errore", "Impossibile aggiornare lo slot");
+      Alert.alert("Errore", err.message || "Impossibile aggiornare lo slot");
     }
   };
 
@@ -202,20 +196,22 @@ export default function CampoCalendarioGestioneScreen() {
 
     const newEnabled = !currentEnabled;
 
-    if (newEnabled && !currentEnabled) {
+    // ✅ LOGICA CORRETTA: Alert solo quando DISABILITI uno slot (che potrebbe avere prenotazioni)
+    if (!newEnabled && currentEnabled) {
       Alert.alert(
         "Conferma",
-        "Riabilitando questo slot, la prenotazione esistente verrà cancellata. Continuare?",
+        "Disabilitando questo slot, eventuali prenotazioni esistenti verranno cancellate. Continuare?",
         [
           { text: "Annulla", style: "cancel" },
           {
-            text: "Riabilita",
+            text: "Disabilita",
             style: "destructive",
             onPress: () => executeToggleSlot(date, time, newEnabled),
           },
         ]
       );
     } else {
+      // Riabilitare uno slot non causa problemi
       executeToggleSlot(date, time, newEnabled);
     }
   };
@@ -224,7 +220,6 @@ export default function CampoCalendarioGestioneScreen() {
     if (editMode) {
       toggleSlot(date, time, slotEnabled);
     } else {
-      // Se slot disabilitato => in app tua logica: vedere prenotazioni
       if (!slotEnabled) {
         navigation.navigate("OwnerBookings", {
           filterDate: date,
@@ -248,20 +243,24 @@ export default function CampoCalendarioGestioneScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // ✅ NUOVO ENDPOINT:
-              // DELETE /calendar/campo/:campoId/date/:date
-              const res = await fetch(
-                `${API_URL}/calendar/campo/${campoId}/date/${date}`,
-                {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${token}` },
-                }
-              );
+              console.log("🔒 Chiudo giornata:", date);
+              
+              // ✅ ENDPOINT CORRETTO: DELETE /calendar/campo/:campoId/date/:date
+              const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}`;
+              console.log("📡 Endpoint:", endpoint);
 
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const res = await fetch(endpoint, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+
+              if (!res.ok) {
+                const errorText = await res.text();
+                console.error("❌ Response:", res.status, errorText);
+                throw new Error(`HTTP ${res.status}: ${errorText}`);
+              }
+              
               const result = await res.json();
-
-              // Nel nuovo controller: ritorna { message, cancelledBookings, calendarDay }
               const updatedDay = result.calendarDay ?? result;
 
               setCalendarDays((prev) =>
@@ -269,16 +268,15 @@ export default function CampoCalendarioGestioneScreen() {
               );
 
               const cancelled = result.cancelledBookings ?? 0;
-
               const msg =
                 cancelled > 0
                   ? `Giornata chiusa. ${cancelled} prenotazioni cancellate.`
                   : "Giornata chiusa con successo";
 
               Alert.alert("Successo", msg);
-            } catch (err) {
+            } catch (err: any) {
               console.error("❌ Errore chiusura:", err);
-              Alert.alert("Errore", "Impossibile chiudere la giornata");
+              Alert.alert("Errore", err.message || "Impossibile chiudere la giornata");
             }
           },
         },
@@ -298,17 +296,23 @@ export default function CampoCalendarioGestioneScreen() {
           text: "Riapri",
           onPress: async () => {
             try {
-              // ✅ NUOVO ENDPOINT:
-              // POST /calendar/campo/:campoId/date/:date/reopen
-              const res = await fetch(
-                `${API_URL}/calendar/campo/${campoId}/date/${date}/reopen`,
-                {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${token}` },
-                }
-              );
+              console.log("🔓 Riapro giornata:", date);
+              
+              // ✅ ENDPOINT CORRETTO: POST /calendar/campo/:campoId/date/:date/reopen
+              const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}/reopen`;
+              console.log("📡 Endpoint:", endpoint);
 
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+
+              if (!res.ok) {
+                const errorText = await res.text();
+                console.error("❌ Response:", res.status, errorText);
+                throw new Error(`HTTP ${res.status}: ${errorText}`);
+              }
+              
               const updatedDay = await res.json();
 
               setCalendarDays((prev) =>
@@ -316,9 +320,9 @@ export default function CampoCalendarioGestioneScreen() {
               );
 
               Alert.alert("Successo", "Giornata riaperta");
-            } catch (err) {
+            } catch (err: any) {
               console.error("❌ Errore riapertura:", err);
-              Alert.alert("Errore", "Impossibile riaprire la giornata");
+              Alert.alert("Errore", err.message || "Impossibile riaprire la giornata");
             }
           },
         },
@@ -408,10 +412,6 @@ export default function CampoCalendarioGestioneScreen() {
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
         ) : calendarDays.length === 0 ? (
-          /**
-           * ✅ In teoria col backend rolling non dovrebbe quasi mai essere vuoto.
-           * Però lasciamo un empty state "safe" senza bottoni che chiamano API rimosse.
-           */
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📅</Text>
             <Text style={styles.emptyTitle}>Nessun dato disponibile</Text>
@@ -423,7 +423,6 @@ export default function CampoCalendarioGestioneScreen() {
             <Pressable
               style={styles.generateButton}
               onPress={() => {
-                // refresh semplice: ritriggera useEffect cambiando month "a se stesso"
                 setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
               }}
             >
@@ -448,7 +447,6 @@ export default function CampoCalendarioGestioneScreen() {
                     return <View key={`empty-${index}`} style={styles.dayCell} />;
                   }
 
-                  // formato locale YYYY-MM-DD
                   const year = date.getFullYear();
                   const month = String(date.getMonth() + 1).padStart(2, "0");
                   const day = String(date.getDate()).padStart(2, "0");
@@ -783,13 +781,14 @@ const styles = StyleSheet.create({
   },
   closedText: { fontSize: 14, fontWeight: "600", color: "#C62828" },
 
-  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  // ✅ SLOT PIÙ PICCOLI
+  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   slotItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
     borderWidth: 1.5,
-    minWidth: 80,
+    minWidth: 65,
     alignItems: "center",
   },
   slotItemEditable: {
@@ -797,9 +796,9 @@ const styles = StyleSheet.create({
   },
   slotEnabled: { backgroundColor: "#E8F5E9", borderColor: "#4CAF50" },
   slotDisabled: { backgroundColor: "#FFEBEE", borderColor: "#F44336" },
-  slotTime: { fontSize: 14, fontWeight: "700", color: "#2E7D32" },
+  slotTime: { fontSize: 12, fontWeight: "700", color: "#2E7D32" },
   slotTimeDisabled: { color: "#C62828" },
-  slotLabel: { fontSize: 9, color: "#999", marginTop: 2, textAlign: "center" },
+  slotLabel: { fontSize: 8, color: "#999", marginTop: 1, textAlign: "center" },
 
   closeDayBtn: {
     backgroundColor: "#FFEBEE",
@@ -823,7 +822,6 @@ const styles = StyleSheet.create({
   },
   reopenBtnText: { fontSize: 14, fontWeight: "600", color: "#2E7D32" },
 
-  // EMPTY STATE
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -852,7 +850,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // Re-used button style (prima era "Genera anno", ora è "Ricarica")
   generateButton: {
     backgroundColor: "#007AFF",
     paddingHorizontal: 24,

@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   Switch,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
@@ -15,6 +16,36 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
+
+/* =======================
+   INTERFACES
+======================= */
+
+interface DurationPrice {
+  oneHour: number;
+  oneHourHalf: number;
+}
+
+interface TimeSlot {
+  start: string;
+  end: string;
+  label: string;
+  prices: DurationPrice;
+}
+
+interface PricingRules {
+  mode: "flat" | "advanced";
+  flatPrices: DurationPrice;
+  basePrices: DurationPrice;
+  timeSlotPricing: {
+    enabled: boolean;
+    slots: TimeSlot[];
+  };
+}
+
+/* =======================
+   COMPONENT
+======================= */
 
 export default function AggiungiCampoScreen() {
   const { token } = useContext(AuthContext);
@@ -28,7 +59,16 @@ export default function AggiungiCampoScreen() {
   const [surface, setSurface] = useState<"sand" | "cement" | "pvc" | "">("");
   const [maxPlayers, setMaxPlayers] = useState("4");
   const [indoor, setIndoor] = useState(false);
-  const [pricePerHour, setPricePerHour] = useState("");
+
+  // Pricing
+  const [pricing, setPricing] = useState<PricingRules>({
+    mode: "flat",
+    flatPrices: { oneHour: 20, oneHourHalf: 28 },
+    basePrices: { oneHour: 20, oneHourHalf: 28 },
+    timeSlotPricing: { enabled: false, slots: [] },
+  });
+
+  const [showPricingModal, setShowPricingModal] = useState(false);
 
   /* =======================
      LOGICA SUPERFICIE
@@ -44,6 +84,92 @@ export default function AggiungiCampoScreen() {
   }, [sport, indoor]);
 
   /* =======================
+     PRICING HANDLERS
+  ======================= */
+
+  const updatePricingFlat = (type: "oneHour" | "oneHourHalf", value: string) => {
+    const num = parseFloat(value) || 0;
+    setPricing(prev => ({
+      ...prev,
+      flatPrices: { ...prev.flatPrices, [type]: num },
+    }));
+  };
+
+  const updatePricingBase = (type: "oneHour" | "oneHourHalf", value: string) => {
+    const num = parseFloat(value) || 0;
+    setPricing(prev => ({
+      ...prev,
+      basePrices: { ...prev.basePrices, [type]: num },
+    }));
+  };
+
+  const toggleTimeSlot = () => {
+    setPricing(prev => ({
+      ...prev,
+      timeSlotPricing: {
+        ...prev.timeSlotPricing,
+        enabled: !prev.timeSlotPricing.enabled,
+      },
+    }));
+  };
+
+  const addTimeSlot = () => {
+    setPricing(prev => ({
+      ...prev,
+      timeSlotPricing: {
+        ...prev.timeSlotPricing,
+        slots: [
+          ...prev.timeSlotPricing.slots,
+          {
+            start: "09:00",
+            end: "13:00",
+            label: "Mattina",
+            prices: { oneHour: 15, oneHourHalf: 21 },
+          },
+        ],
+      },
+    }));
+  };
+
+  const updateTimeSlot = (index: number, field: string, value: any) => {
+    setPricing(prev => {
+      const newSlots = [...prev.timeSlotPricing.slots];
+      if (!newSlots[index]) return prev;
+      
+      if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+        const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+        newSlots[index] = {
+          ...newSlots[index],
+          prices: {
+            ...newSlots[index].prices,
+            [priceField]: parseFloat(value) || 0,
+          },
+        };
+      } else {
+        newSlots[index] = { ...newSlots[index], [field]: value };
+      }
+      
+      return {
+        ...prev,
+        timeSlotPricing: {
+          ...prev.timeSlotPricing,
+          slots: newSlots,
+        },
+      };
+    });
+  };
+
+  const removeTimeSlot = (index: number) => {
+    setPricing(prev => ({
+      ...prev,
+      timeSlotPricing: {
+        ...prev.timeSlotPricing,
+        slots: prev.timeSlotPricing.slots.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  /* =======================
      CREATE CAMPO
   ======================= */
   const handleCreate = async () => {
@@ -55,10 +181,6 @@ export default function AggiungiCampoScreen() {
       Alert.alert("Errore", "Seleziona uno sport");
       return;
     }
-    if (!pricePerHour || parseFloat(pricePerHour) <= 0) {
-      Alert.alert("Errore", "Inserisci un prezzo valido");
-      return;
-    }
 
     const campoData = {
       name,
@@ -66,7 +188,8 @@ export default function AggiungiCampoScreen() {
       surface,
       maxPlayers: parseInt(maxPlayers) || 4,
       indoor,
-      pricePerHour: parseFloat(pricePerHour),
+      pricePerHour: pricing.flatPrices.oneHour,
+      pricingRules: pricing,
     };
 
     setLoading(true);
@@ -101,7 +224,7 @@ export default function AggiungiCampoScreen() {
   };
 
   /* =======================
-     LABEL SUPERFICIE
+     LABEL HELPERS
   ======================= */
   const getSurfaceLabel = () => {
     if (sport === "beach_volley") {
@@ -112,6 +235,240 @@ export default function AggiungiCampoScreen() {
     }
     return "Superficie";
   };
+
+  const getPricingLabel = () => {
+    if (pricing.mode === "flat") {
+      return `€${pricing.flatPrices.oneHour}/h`;
+    }
+    const hasSlots = pricing.timeSlotPricing.enabled && 
+                    pricing.timeSlotPricing.slots.length > 0;
+    return hasSlots ? "Prezzi dinamici" : `€${pricing.basePrices.oneHour}/h`;
+  };
+
+  /* =======================
+     PRICING MODAL
+  ======================= */
+  const renderPricingModal = () => (
+    <Modal visible={showPricingModal} animationType="slide">
+      <SafeAreaView style={styles.modalSafe}>
+        <View style={styles.modalHeader}>
+          <Pressable onPress={() => setShowPricingModal(false)}>
+            <Ionicons name="close" size={28} color="#333" />
+          </Pressable>
+          <Text style={styles.modalHeaderTitle}>Configura Prezzi</Text>
+          <Pressable onPress={() => setShowPricingModal(false)} style={styles.saveModalButton}>
+            <Text style={styles.saveModalButtonText}>Salva</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          {/* MODE */}
+          <View style={styles.modalCard}>
+            <Text style={styles.modalCardTitle}>💰 Modalità Pricing</Text>
+
+            <Pressable
+              style={[
+                styles.radioOption,
+                pricing.mode === "flat" && styles.radioOptionActive,
+              ]}
+              onPress={() => setPricing({ ...pricing, mode: "flat" })}
+            >
+              <View style={styles.radioCircle}>
+                {pricing.mode === "flat" && <View style={styles.radioCircleInner} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.radioLabel}>Prezzo Fisso</Text>
+                <Text style={styles.radioDescription}>
+                  Prezzi uguali per tutte le fasce orarie
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.radioOption,
+                pricing.mode === "advanced" && styles.radioOptionActive,
+              ]}
+              onPress={() => setPricing({ ...pricing, mode: "advanced" })}
+            >
+              <View style={styles.radioCircle}>
+                {pricing.mode === "advanced" && <View style={styles.radioCircleInner} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.radioLabel}>Pricing Dinamico</Text>
+                <Text style={styles.radioDescription}>
+                  Prezzi variabili per fascia oraria
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* FLAT MODE */}
+          {pricing.mode === "flat" && (
+            <View style={styles.modalCard}>
+              <Text style={styles.modalCardTitle}>💵 Prezzi Fissi</Text>
+
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>1 ora</Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.euroSign}>€</Text>
+                  <TextInput
+                    style={styles.priceInputField}
+                    value={pricing.flatPrices.oneHour.toString()}
+                    onChangeText={(v) => updatePricingFlat("oneHour", v)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>1.5 ore</Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.euroSign}>€</Text>
+                  <TextInput
+                    style={styles.priceInputField}
+                    value={pricing.flatPrices.oneHourHalf.toString()}
+                    onChangeText={(v) => updatePricingFlat("oneHourHalf", v)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ADVANCED MODE */}
+          {pricing.mode === "advanced" && (
+            <>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalCardTitle}>💵 Prezzi Base</Text>
+                <Text style={styles.cardDescription}>
+                  Usati quando non c'è una fascia oraria specifica
+                </Text>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>1 ora</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.euroSign}>€</Text>
+                    <TextInput
+                      style={styles.priceInputField}
+                      value={pricing.basePrices.oneHour.toString()}
+                      onChangeText={(v) => updatePricingBase("oneHour", v)}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>1.5 ore</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.euroSign}>€</Text>
+                    <TextInput
+                      style={styles.priceInputField}
+                      value={pricing.basePrices.oneHourHalf.toString()}
+                      onChangeText={(v) => updatePricingBase("oneHourHalf", v)}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* TIME SLOTS */}
+              <View style={styles.modalCard}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.modalCardTitle}>⏰ Fasce Orarie</Text>
+                  <Switch
+                    value={pricing.timeSlotPricing.enabled}
+                    onValueChange={toggleTimeSlot}
+                  />
+                </View>
+
+                {pricing.timeSlotPricing.enabled && (
+                  <>
+                    {pricing.timeSlotPricing.slots.map((slot, index) => (
+                      <View key={index} style={styles.timeSlotCard}>
+                        <View style={styles.timeSlotHeader}>
+                          <TextInput
+                            style={styles.timeSlotLabelInput}
+                            value={slot.label}
+                            onChangeText={(v) => updateTimeSlot(index, "label", v)}
+                            placeholder="Nome fascia"
+                          />
+                          <Pressable onPress={() => removeTimeSlot(index)}>
+                            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                          </Pressable>
+                        </View>
+
+                        <View style={styles.timeSlotTimeRow}>
+                          <View style={styles.timeInputWrapper}>
+                            <Text style={styles.timeLabel}>Dalle</Text>
+                            <TextInput
+                              style={styles.timeInputModal}
+                              value={slot.start}
+                              onChangeText={(v) => updateTimeSlot(index, "start", v)}
+                              placeholder="09:00"
+                            />
+                          </View>
+
+                          <View style={styles.timeInputWrapper}>
+                            <Text style={styles.timeLabel}>Alle</Text>
+                            <TextInput
+                              style={styles.timeInputModal}
+                              value={slot.end}
+                              onChangeText={(v) => updateTimeSlot(index, "end", v)}
+                              placeholder="13:00"
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.slotPriceRow}>
+                          <View style={{ flex: 1, marginRight: 8 }}>
+                            <Text style={styles.slotPriceLabel}>1h</Text>
+                            <View style={styles.priceInputContainer}>
+                              <Text style={styles.euroSign}>€</Text>
+                              <TextInput
+                                style={styles.priceInputField}
+                                value={slot.prices.oneHour.toString()}
+                                onChangeText={(v) =>
+                                  updateTimeSlot(index, "prices.oneHour", v)
+                                }
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={styles.slotPriceLabel}>1.5h</Text>
+                            <View style={styles.priceInputContainer}>
+                              <Text style={styles.euroSign}>€</Text>
+                              <TextInput
+                                style={styles.priceInputField}
+                                value={slot.prices.oneHourHalf.toString()}
+                                onChangeText={(v) =>
+                                  updateTimeSlot(index, "prices.oneHourHalf", v)
+                                }
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+
+                    <Pressable style={styles.addButton} onPress={addTimeSlot}>
+                      <Ionicons name="add-circle" size={20} color="#2196F3" />
+                      <Text style={styles.addButtonText}>Aggiungi fascia oraria</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            </>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -242,31 +599,33 @@ export default function AggiungiCampoScreen() {
           </View>
         )}
 
-        {/* PREZZO / GIOCATORI */}
-        <View style={styles.row}>
-          <View style={[styles.section, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Prezzo/ora (€) *</Text>
-            <TextInput
-              style={styles.input}
-              value={pricePerHour}
-              onChangeText={setPricePerHour}
-              placeholder="25"
-              placeholderTextColor="#999"
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={[styles.section, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>Max giocatori</Text>
-            <TextInput
-              style={styles.input}
-              value={maxPlayers}
-              onChangeText={setMaxPlayers}
-              placeholder="4"
-              placeholderTextColor="#999"
-              keyboardType="number-pad"
-            />
-          </View>
+        {/* MAX GIOCATORI */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Max giocatori</Text>
+          <TextInput
+            style={styles.input}
+            value={maxPlayers}
+            onChangeText={setMaxPlayers}
+            placeholder="4"
+            placeholderTextColor="#999"
+            keyboardType="number-pad"
+          />
         </View>
+
+        {/* PRICING BUTTON */}
+        <Pressable
+          style={styles.pricingButton}
+          onPress={() => setShowPricingModal(true)}
+        >
+          <View style={styles.pricingButtonLeft}>
+            <Ionicons name="cash-outline" size={20} color="#2196F3" />
+            <View>
+              <Text style={styles.pricingButtonTitle}>Configura Prezzi</Text>
+              <Text style={styles.pricingButtonSubtitle}>{getPricingLabel()}</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#999" />
+        </Pressable>
 
         {/* SUBMIT */}
         <Pressable
@@ -284,6 +643,9 @@ export default function AggiungiCampoScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* PRICING MODAL */}
+      {renderPricingModal()}
     </SafeAreaView>
   );
 }
@@ -356,9 +718,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-  row: {
-    flexDirection: "row",
-  },
   chipContainer: {
     flexDirection: "row",
     gap: 10,
@@ -430,12 +789,38 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#2E7D32",
   },
+  pricingButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#2196F3",
+  },
+  pricingButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  pricingButtonTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1976D2",
+  },
+  pricingButtonSubtitle: {
+    fontSize: 13,
+    color: "#1976D2",
+    marginTop: 2,
+  },
   createButton: {
     backgroundColor: "#2196F3",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
   },
   createButtonDisabled: {
     opacity: 0.5,
@@ -445,4 +830,178 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
+
+  // MODAL STYLES
+  modalSafe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  saveModalButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveModalButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  modalCardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 12,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  radioOptionActive: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+  radioCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioCircleInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#2196F3",
+  },
+  radioLabel: { fontSize: 15, fontWeight: "600" },
+  radioDescription: { fontSize: 13, color: "#666", marginTop: 2 },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  priceLabel: { fontSize: 15, fontWeight: "600" },
+  priceInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    minWidth: 100,
+  },
+  euroSign: { fontSize: 16, fontWeight: "600", marginRight: 4, color: "#666" },
+  priceInputField: {
+    fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "right",
+  },
+  timeSlotCard: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  timeSlotHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  timeSlotLabelInput: {
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+  },
+  timeSlotTimeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  timeInputWrapper: { flex: 1 },
+  timeLabel: { fontSize: 12, color: "#666", marginBottom: 4, fontWeight: "600" },
+  timeInputModal: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 14,
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    fontWeight: "600",
+  },
+  slotPriceRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  slotPriceLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+    marginTop: 8,
+  },
+  addButtonText: { fontSize: 14, fontWeight: "600", color: "#2196F3" },
 });

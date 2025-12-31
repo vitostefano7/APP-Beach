@@ -10,9 +10,9 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 
@@ -65,12 +65,9 @@ export default function ConfiguraPrezziCampoScreen() {
      LOAD & SAVE
   ======================= */
 
-  useEffect(() => {
-    loadPricing();
-  }, []);
-
-  const loadPricing = async () => {
+  const loadPricing = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API_URL}/campi/${campoId}/pricing`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -90,7 +87,14 @@ export default function ConfiguraPrezziCampoScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [campoId, token]);
+
+  // ✅ Ricarica quando la schermata torna in focus
+  useFocusEffect(
+    useCallback(() => {
+      loadPricing();
+    }, [loadPricing])
+  );
 
   const handleSave = async () => {
     const flatOneHour = pricing.flatPrices?.oneHour || 0;

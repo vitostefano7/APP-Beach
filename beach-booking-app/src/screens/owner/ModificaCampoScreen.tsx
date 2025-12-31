@@ -198,7 +198,15 @@ export default function ModificaCampoScreen() {
           <Ionicons name="arrow-back" size={22} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Campo</Text>
-        <View style={{ width: 40 }} />
+        <Pressable 
+          onPress={handleSave}
+          disabled={saving}
+          style={[styles.saveHeaderButton, saving && styles.saveHeaderButtonDisabled]}
+        >
+          <Text style={styles.saveHeaderButtonText}>
+            {saving ? "..." : "Salva"}
+          </Text>
+        </Pressable>
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -346,16 +354,6 @@ export default function ModificaCampoScreen() {
           </View>
         ))}
 
-        <Pressable
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? "Salvataggio..." : "Salva modifiche"}
-          </Text>
-        </Pressable>
-
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -371,6 +369,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     backgroundColor: "white",
     borderBottomWidth: 1,
@@ -384,7 +383,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: "800",
+    flex: 1,
+    textAlign: "center",
+  },
+  saveHeaderButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 70,
+    alignItems: "center",
+  },
+  saveHeaderButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveHeaderButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   container: { padding: 16 },
   section: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
@@ -470,13 +490,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   timeSeparator: { marginHorizontal: 10, fontSize: 18 },
-  saveButton: {
-    backgroundColor: "#2196F3",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  saveButtonDisabled: { opacity: 0.5 },
-  saveButtonText: { color: "white", fontSize: 18, fontWeight: "700" },
 });

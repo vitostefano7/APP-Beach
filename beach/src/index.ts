@@ -33,7 +33,7 @@
       app.use("/bookings", bookingRoutes);  // ⬅️ UNA SOLA VOLTA!
       app.use("/owner", ownerRoutes);
       app.use("/campi", campiRoutes);
-      app.use("/campi", campoCalendarRoutes);  // Stesso base path per calendar routes
+      app.use("/calendar", campoCalendarRoutes);  // Stesso base path per calendar routes
       app.use("/matches", matchRoutes);
       app.use('/users', userPreferencesRoutes);  // ← Deve esserci questa riga
       app.use('/api/conversations', conversazioneRoute);

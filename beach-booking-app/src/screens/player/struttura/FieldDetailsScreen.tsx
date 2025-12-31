@@ -246,47 +246,48 @@ export default function FieldDetailsScreen() {
   };
 
   const startChat = async () => {
-    console.log("🔵 startChat chiamata");
-    
-    if (!token) {
-      console.log("❌ Nessun token");
-      alert("Effettua il login per chattare con la struttura");
-      return;
-    }
+  console.log("🔵 startChat chiamata");
+  
+  if (!token) {
+    console.log("❌ Nessun token");
+    alert("Effettua il login per chattare con la struttura");
+    return;
+  }
 
-    console.log("🔵 Token presente, fetching conversation...");
-    console.log("🔵 Struttura ID:", struttura._id);
+  console.log("🔵 Token presente, fetching conversation...");
+  console.log("🔵 Struttura ID:", struttura._id);
 
-    try {
-      const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
-      console.log("🔵 URL:", url);
+  try {
+    const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
+    console.log("🔵 URL:", url);
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    console.log("🔵 Response status:", res.status);
+
+    if (res.ok) {
+      const conversation = await res.json();
+      console.log("✅ Conversation ricevuta:", conversation);
+      
+      console.log("🔵 Navigating to Chat (same stack)...");
+      
+      // ✅ Chat è nello STESSO STACK, naviga direttamente!
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: struttura.name,
       });
-
-      console.log("🔵 Response status:", res.status);
-
-      if (res.ok) {
-        const conversation = await res.json();
-        console.log("✅ Conversation ricevuta:", conversation);
-        
-        console.log("🔵 Navigating to Chat...");
-        navigation.navigate("Chat", {
-          conversationId: conversation._id,
-          strutturaName: struttura.name,
-          otherPersonName: conversation.owner?.name || "Struttura",
-        });
-      } else {
-        const errorText = await res.text();
-        console.error("❌ Response non OK:", res.status, errorText);
-        alert(`Errore: ${res.status} - ${errorText}`);
-      }
-    } catch (error) {
-      console.error("❌ Errore catch:", error);
-      alert("Impossibile aprire la chat. Riprova più tardi.");
+    } else {
+      const errorText = await res.text();
+      console.error("❌ Response non OK:", res.status, errorText);
+      alert(`Errore: ${res.status} - ${errorText}`);
     }
-  };
+  } catch (error) {
+    console.error("❌ Errore catch:", error);
+    alert("Impossibile aprire la chat. Riprova più tardi.");
+  }
+};
 
   const loadCalendar = async (campoId: string, month: Date) => {
     try {

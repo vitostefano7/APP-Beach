@@ -242,43 +242,7 @@ export default function PreferencesScreen({ navigation }: any) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* NOTIFICHE E APP */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="notifications-outline" size={24} color="#2979ff" />
-            <Text style={styles.sectionTitle}>Notifiche e App</Text>
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Notifiche Push</Text>
-              <Text style={styles.settingDescription}>
-                Ricevi notifiche per prenotazioni e aggiornamenti
-              </Text>
-            </View>
-            <Switch
-              value={pushNotifications}
-              onValueChange={setPushNotifications}
-              trackColor={{ false: "#e9ecef", true: "#a3cfff" }}
-              thumbColor={pushNotifications ? "#2979ff" : "#f4f3f4"}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Modalità Scura</Text>
-              <Text style={styles.settingDescription}>
-                Tema scuro per l'interfaccia
-              </Text>
-            </View>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: "#e9ecef", true: "#a3cfff" }}
-              thumbColor={darkMode ? "#2979ff" : "#f4f3f4"}
-            />
-          </View>
-        </View>
+        
 
         {/* PRIVACY */}
         <View style={styles.section}>
@@ -432,6 +396,44 @@ export default function PreferencesScreen({ navigation }: any) {
                 </Text>
               </Pressable>
             ))}
+          </View>
+        </View>
+
+        {/* NOTIFICHE E APP */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications-outline" size={24} color="#2979ff" />
+            <Text style={styles.sectionTitle}>Notifiche e App</Text>
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Notifiche Push</Text>
+              <Text style={styles.settingDescription}>
+                Ricevi notifiche per prenotazioni e aggiornamenti
+              </Text>
+            </View>
+            <Switch
+              value={pushNotifications}
+              onValueChange={setPushNotifications}
+              trackColor={{ false: "#e9ecef", true: "#a3cfff" }}
+              thumbColor={pushNotifications ? "#2979ff" : "#f4f3f4"}
+            />
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Modalità Scura</Text>
+              <Text style={styles.settingDescription}>
+                Tema scuro per l'interfaccia
+              </Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: "#e9ecef", true: "#a3cfff" }}
+              thumbColor={darkMode ? "#2979ff" : "#f4f3f4"}
+            />
           </View>
         </View>
 
