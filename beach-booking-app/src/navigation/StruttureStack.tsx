@@ -4,6 +4,7 @@ import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen";
 import ConfermaPrenotazioneScreen from "../screens/ConfermaPrenotazioneScreen";
 import LeMiePrenotazioniScreen from "../screens/LeMiePrenotazioneScreen";
 import DettaglioPrenotazioneScreen from "../screens/DettaglioPrenotazioneScreen";
+import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 const Stack = createNativeStackNavigator();
 
 export default function StruttureStack() {
@@ -17,6 +18,7 @@ export default function StruttureStack() {
       />
       <Stack.Screen name="ConfermaPrenotazione" component={ConfermaPrenotazioneScreen} />
       <Stack.Screen name="LeMiePrenotazioni" component={LeMiePrenotazioniScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen
         name="DettaglioPrenotazione"
         component={DettaglioPrenotazioneScreen}

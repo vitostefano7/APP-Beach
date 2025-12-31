@@ -91,6 +91,33 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  chatSection: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+
+  chatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+
+  chatButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
   section: {
     padding: 16,
     marginTop: 8,

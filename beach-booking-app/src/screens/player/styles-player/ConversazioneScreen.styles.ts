@@ -1,0 +1,125 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  header: {
+    backgroundColor: "white",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1a1a1a",
+  },
+  listContent: {
+    paddingVertical: 8,
+  },
+  conversationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  conversationLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  conversationImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#f0f0f0",
+  },
+  conversationImagePlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  conversationInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  conversationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  conversationTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    flex: 1,
+  },
+  conversationTime: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  conversationSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  conversationLastMessage: {
+    fontSize: 14,
+    color: "#999",
+  },
+  conversationLastMessageUnread: {
+    fontWeight: "600",
+    color: "#333",
+  },
+  unreadBadge: {
+    backgroundColor: "#2979ff",
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  unreadBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    paddingTop: 100,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
