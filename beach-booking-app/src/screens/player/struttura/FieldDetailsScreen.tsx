@@ -399,10 +399,6 @@ export default function FieldDetailsScreen() {
             ))}
           </ScrollView>
 
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </Pressable>
-
           {token && (
             <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
               <Ionicons
@@ -710,7 +706,6 @@ export default function FieldDetailsScreen() {
                                         <View style={styles.durationCardHeader}>
                                           <Ionicons name="time" size={24} color="#2196F3" />
                                           <View style={styles.durationBadge}>
-                                            <Text style={styles.durationBadgeText}>Popolare</Text>
                                           </View>
                                         </View>
                                         <Text style={styles.durationCardTitle}>1 Ora</Text>

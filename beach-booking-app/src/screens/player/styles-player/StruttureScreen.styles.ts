@@ -196,9 +196,9 @@ export const styles = StyleSheet.create({
   },
 
   container: {
-    flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 0,
+    paddingBottom: 16,
   },
 
   card: {
@@ -383,9 +383,11 @@ export const styles = StyleSheet.create({
 
   mapContainer: {
     flex: 1,
-    marginHorizontal: -16,
-    marginBottom: -16,
-    marginTop: -16,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   map: {
@@ -407,6 +409,23 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 6,
+  },
+
+  listViewButton: {
+    position: "absolute",
+    bottom: 150,
+    right: 20,
+    backgroundColor: "#2979ff",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
 
   mapCard: {
@@ -632,17 +651,30 @@ export const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: "85%",
+    height: "90%",
+    display: "flex",
+    flexDirection: "column",
   },
 
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+
+  modalScrollView: {
+    flex: 1,
+  },
+
+  modalScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 20,
   },
 
   modalTitle: {
@@ -667,6 +699,25 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
     borderWidth: 2,
     borderColor: "transparent",
+  },
+
+  searchBoxModal: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+
+  inputModal: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#333",
   },
 
   cityHint: {
@@ -804,7 +855,17 @@ export const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
   },
 
   resetModalButton: {
