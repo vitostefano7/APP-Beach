@@ -275,7 +275,6 @@ export default function StruttureScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        /*alert("Permesso negato per accedere alla posizione");*/
         return;
       }
 
@@ -297,7 +296,6 @@ export default function StruttureScreen() {
   const filteredStrutture = filterStrutture(strutture, filters, query);
   const activeFiltersCount = countActiveFilters(filters);
 
-  // Clustering con marker standard - MIGLIORATO
   const getMarkersForZoom = () => {
     const zoomLevel = region.latitudeDelta;
     
@@ -316,9 +314,9 @@ export default function StruttureScreen() {
       }));
     }
     
-    // ZOOM MEDIO - Cluster regionali (0.05° - 1.5°)
-    if (zoomLevel < 1.5) {
-      const gridSize = Math.max(zoomLevel * 0.2, 0.03);
+    // ZOOM MEDIO - Cluster per zona (0.05° - 2°)
+    if (zoomLevel < 2) {
+      const gridSize = Math.max(zoomLevel * 0.15, 0.03);
       const grid: Record<string, Struttura[]> = {};
       
       filteredStrutture.forEach((s) => {
@@ -347,20 +345,31 @@ export default function StruttureScreen() {
       });
     }
     
-    // ZOOM ALTO - UN SOLO MARKER CENTRALE (> 1.5°)
-    const avgLat = filteredStrutture.reduce((sum, s) => sum + s.location.lat, 0) / filteredStrutture.length;
-    const avgLng = filteredStrutture.reduce((sum, s) => sum + s.location.lng, 0) / filteredStrutture.length;
+    // ZOOM LONTANO - Cluster per CITTÀ (> 2°)
+    const cityGroups: Record<string, Struttura[]> = {};
     
-    return [{
-      id: 'cluster-main',
-      coordinate: {
-        latitude: avgLat,
-        longitude: avgLng,
-      },
-      struttura: filteredStrutture[0],
-      isCluster: true,
-      count: filteredStrutture.length,
-    }];
+    filteredStrutture.forEach((s) => {
+      const city = s.location.city;
+      if (!cityGroups[city]) cityGroups[city] = [];
+      cityGroups[city].push(s);
+    });
+    
+    return Object.entries(cityGroups).map(([city, strutture]) => {
+      const avgLat = strutture.reduce((sum, s) => sum + s.location.lat, 0) / strutture.length;
+      const avgLng = strutture.reduce((sum, s) => sum + s.location.lng, 0) / strutture.length;
+      
+      return {
+        id: `cluster-city-${city}`,
+        coordinate: {
+          latitude: avgLat,
+          longitude: avgLng,
+        },
+        struttura: strutture[0],
+        isCluster: true,
+        count: strutture.length,
+        city: city,
+      };
+    });
   };
 
   const markers = viewMode === "map" ? getMarkersForZoom() : [];
@@ -456,35 +465,9 @@ export default function StruttureScreen() {
     </Pressable>
   );
 
-  return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <View style={styles.searchRow}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Cerca strutture..."
-              placeholderTextColor="#999"
-              value={query}
-              onChangeText={setQuery}
-            />
-          </View>
-
-          <Pressable
-            style={styles.viewToggle}
-            onPress={() => setViewMode(viewMode === "list" ? "map" : "list")}
-          >
-            <Ionicons
-              name={viewMode === "list" ? "map-outline" : "list-outline"}
-              size={24}
-              color="white"
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {viewMode === "list" && favoriteStrutture.length > 0 && (
+  const renderListHeader = () => (
+    <>
+      {favoriteStrutture.length > 0 && (
         <View style={styles.favoritesSection}>
           <Pressable
             style={styles.favoritesSectionHeader}
@@ -566,25 +549,53 @@ export default function StruttureScreen() {
           )}
         </View>
       </View>
+    </>
+  );
 
-      <View style={{ flex: 1 }}>
-        {viewMode === "list" ? (
-          <FlatList
-            data={filteredStrutture}
-            renderItem={renderCard}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.container}
-            showsVerticalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-          />
-        ) : (
-          <View style={styles.mapContainer}>
+  return (
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      {viewMode === "list" && (
+        <View style={styles.header}>
+          <View style={styles.searchRow}>
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={20} color="#666" />
+              <TextInput
+                style={styles.input}
+                placeholder="Cerca strutture..."
+                placeholderTextColor="#999"
+                value={query}
+                onChangeText={setQuery}
+              />
+            </View>
+
+            <Pressable
+              style={styles.viewToggle}
+              onPress={() => setViewMode("map")}
+            >
+              <Ionicons name="map-outline" size={24} color="white" />
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {viewMode === "list" ? (
+        <FlatList
+          data={filteredStrutture}
+          renderItem={renderCard}
+          keyExtractor={(item) => item._id}
+          ListHeaderComponent={renderListHeader}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      ) : (
+        <View style={styles.mapContainer}>
             <MapView
               ref={mapRef}
               style={styles.map}
@@ -599,7 +610,6 @@ export default function StruttureScreen() {
                   pinColor="#2979ff"
                   onPress={() => {
                     if (marker.isCluster) {
-                      // Zoom in sul cluster
                       const newRegion: Region = {
                         latitude: marker.coordinate.latitude,
                         longitude: marker.coordinate.longitude,
@@ -617,6 +627,13 @@ export default function StruttureScreen() {
 
             <Pressable style={styles.geoButton} onPress={centerOnUser}>
               <Ionicons name="locate" size={24} color="#2979ff" />
+            </Pressable>
+
+            <Pressable 
+              style={styles.listViewButton} 
+              onPress={() => setViewMode("list")}
+            >
+              <Ionicons name="list-outline" size={24} color="white" />
             </Pressable>
 
             {selectedMarker && (
@@ -687,12 +704,14 @@ export default function StruttureScreen() {
               </Modal>
             )}
           </View>
-        )}
-      </View>
+        )
+      }
 
       <AdvancedFiltersModal
         visible={showFilters}
         filters={filters}
+        query={query}
+        setQuery={setQuery}
         onClose={() => setShowFilters(false)}
         onApply={(newFilters) => {
           if (newFilters.city === null && filters.city !== null) {
@@ -724,14 +743,13 @@ export default function StruttureScreen() {
   );
 }
 
-/* =========================
-   ADVANCED FILTERS MODAL  
-========================= */
 type AdvancedFiltersModalProps = {
   visible: boolean;
   filters: FilterState;
   onClose: () => void;
   onApply: (filters: FilterState) => void;
+  query: string;
+  setQuery: (query: string) => void;
 };
 
 function AdvancedFiltersModal({
@@ -739,6 +757,8 @@ function AdvancedFiltersModal({
   filters,
   onClose,
   onApply,
+  query,
+  setQuery,
 }: AdvancedFiltersModalProps) {
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -771,7 +791,12 @@ function AdvancedFiltersModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      transparent
+      statusBarTranslucent
+    >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
@@ -781,7 +806,30 @@ function AdvancedFiltersModal({
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            style={styles.modalScrollView}
+            contentContainerStyle={styles.modalScrollContent}
+          >
+            <Text style={styles.sectionTitle}>Cerca</Text>
+            <View style={styles.searchBoxModal}>
+              <Ionicons name="search-outline" size={20} color="#666" />
+              <TextInput
+                style={styles.inputModal}
+                placeholder="Nome struttura o città..."
+                placeholderTextColor="#999"
+                value={query}
+                onChangeText={setQuery}
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery("")}>
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </Pressable>
+              )}
+            </View>
+
             <Text style={styles.sectionTitle}>Città</Text>
             <TextInput
               style={styles.cityInput}
@@ -903,6 +951,8 @@ function AdvancedFiltersModal({
                 </Pressable>
               ))}
             </View>
+
+            <View style={{ height: 40 }} />
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -931,7 +981,6 @@ function AdvancedFiltersModal({
         </View>
       </View>
 
-      {/* Calendar Modal */}
       <Modal
         visible={showCalendar}
         animationType="fade"
