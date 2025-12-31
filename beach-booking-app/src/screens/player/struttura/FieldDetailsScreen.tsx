@@ -245,6 +245,49 @@ export default function FieldDetailsScreen() {
     }
   };
 
+  const startChat = async () => {
+    console.log("🔵 startChat chiamata");
+    
+    if (!token) {
+      console.log("❌ Nessun token");
+      alert("Effettua il login per chattare con la struttura");
+      return;
+    }
+
+    console.log("🔵 Token presente, fetching conversation...");
+    console.log("🔵 Struttura ID:", struttura._id);
+
+    try {
+      const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
+      console.log("🔵 URL:", url);
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("🔵 Response status:", res.status);
+
+      if (res.ok) {
+        const conversation = await res.json();
+        console.log("✅ Conversation ricevuta:", conversation);
+        
+        console.log("🔵 Navigating to Chat...");
+        navigation.navigate("Chat", {
+          conversationId: conversation._id,
+          strutturaName: struttura.name,
+          otherPersonName: conversation.owner?.name || "Struttura",
+        });
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Response non OK:", res.status, errorText);
+        alert(`Errore: ${res.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error("❌ Errore catch:", error);
+      alert("Impossibile aprire la chat. Riprova più tardi.");
+    }
+  };
+
   const loadCalendar = async (campoId: string, month: Date) => {
     try {
       setLoadingCalendars((prev) => ({ ...prev, [campoId]: true }));
@@ -399,6 +442,10 @@ export default function FieldDetailsScreen() {
             ))}
           </ScrollView>
 
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </Pressable>
+
           {token && (
             <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
               <Ionicons
@@ -424,6 +471,23 @@ export default function FieldDetailsScreen() {
             <Text style={styles.description}>{struttura.description}</Text>
           )}
         </View>
+
+        {token && (
+          <View style={styles.chatSection}>
+            <Pressable 
+              style={styles.chatButton} 
+              onPress={() => {
+                console.log("BOTTONE PREMUTO!");
+                alert("Bottone cliccato!");
+                startChat();
+              }}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color="white" />
+              <Text style={styles.chatButtonText}>Contatta la struttura</Text>
+              <Ionicons name="arrow-forward" size={16} color="white" />
+            </Pressable>
+          </View>
+        )}
 
         {activeAmenities.length > 0 && (
           <View style={styles.section}>
@@ -706,6 +770,7 @@ export default function FieldDetailsScreen() {
                                         <View style={styles.durationCardHeader}>
                                           <Ionicons name="time" size={24} color="#2196F3" />
                                           <View style={styles.durationBadge}>
+                                            <Text style={styles.durationBadgeText}>Popolare</Text>
                                           </View>
                                         </View>
                                         <Text style={styles.durationCardTitle}>1 Ora</Text>

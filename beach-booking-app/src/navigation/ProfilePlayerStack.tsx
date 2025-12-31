@@ -2,6 +2,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileScreen from "../screens/player/profilo/ProfileScreen";
 import PrivacySecurityScreen from "../screens/player/profilo/PrivacySecurityScreen";
 import PreferencesScreen from "../screens/PreferencesScreen";
+import ConversazioneScreen from "../screens/player/comunicazioni/ConversazioneScreen";
+import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -22,6 +24,8 @@ export default function ProfilePlayerStack() {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
+      <Stack.Screen name="Conversazione" component={ConversazioneScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }

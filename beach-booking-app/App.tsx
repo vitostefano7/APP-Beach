@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
+import { UnreadMessagesProvider } from "./src/context/UnreadMessagesContext";
 import { ThemeProvider } from "./src/screens/player/profilo/ThemeContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
@@ -44,9 +45,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
+        <UnreadMessagesProvider>
+          <NavigationContainer>
+            <AppNavigator />
+          </NavigationContainer>
+        </UnreadMessagesProvider>
       </AuthProvider>
     </ThemeProvider>
   );
