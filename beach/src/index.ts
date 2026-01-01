@@ -37,6 +37,7 @@
       app.use("/matches", matchRoutes);
       app.use('/users', userPreferencesRoutes);  // ← Deve esserci questa riga
       app.use('/api/conversations', conversazioneRoute);
+      app.use('/users', userRoutes);
 
 
       

@@ -134,6 +134,38 @@ export const styles = StyleSheet.create({
     color: "#1a1a1a",
   },
 
+  // OPENING HOURS
+  openingHoursContainer: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+  },
+  openingHourRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  dayName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+  },
+  hoursLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4CAF50",
+  },
+  closedLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#F44336",
+  },
+
   amenitiesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

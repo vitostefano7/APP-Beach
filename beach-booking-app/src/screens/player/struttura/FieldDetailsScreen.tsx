@@ -6,7 +6,6 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -78,6 +77,17 @@ type Campo = {
   maxPlayers: number;
   isActive: boolean;
 };
+
+// Mappa dei giorni della settimana
+const DAYS_OF_WEEK = [
+  { key: "monday", label: "Lunedì" },
+  { key: "tuesday", label: "Martedì" },
+  { key: "wednesday", label: "Mercoledì" },
+  { key: "thursday", label: "Giovedì" },
+  { key: "friday", label: "Venerdì" },
+  { key: "saturday", label: "Sabato" },
+  { key: "sunday", label: "Domenica" },
+];
 
 /**
  * 🧮 Calcola il prezzo in base al pricing rules del campo
@@ -181,12 +191,12 @@ export default function FieldDetailsScreen() {
 
   if (!struttura) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={styles.safe}>
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={64} color="#ccc" />
           <Text style={styles.errorText}>Struttura non trovata</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -246,48 +256,48 @@ export default function FieldDetailsScreen() {
   };
 
   const startChat = async () => {
-  console.log("🔵 startChat chiamata");
-  
-  if (!token) {
-    console.log("❌ Nessun token");
-    alert("Effettua il login per chattare con la struttura");
-    return;
-  }
-
-  console.log("🔵 Token presente, fetching conversation...");
-  console.log("🔵 Struttura ID:", struttura._id);
-
-  try {
-    const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
-    console.log("🔵 URL:", url);
-
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    console.log("🔵 Response status:", res.status);
-
-    if (res.ok) {
-      const conversation = await res.json();
-      console.log("✅ Conversation ricevuta:", conversation);
-      
-      console.log("🔵 Navigating to Chat (same stack)...");
-      
-      // ✅ Chat è nello STESSO STACK, naviga direttamente!
-      navigation.navigate("Chat", {
-        conversationId: conversation._id,
-        strutturaName: struttura.name,
-      });
-    } else {
-      const errorText = await res.text();
-      console.error("❌ Response non OK:", res.status, errorText);
-      alert(`Errore: ${res.status} - ${errorText}`);
+    console.log("🔵 startChat chiamata");
+    
+    if (!token) {
+      console.log("❌ Nessun token");
+      alert("Effettua il login per chattare con la struttura");
+      return;
     }
-  } catch (error) {
-    console.error("❌ Errore catch:", error);
-    alert("Impossibile aprire la chat. Riprova più tardi.");
-  }
-};
+
+    console.log("🔵 Token presente, fetching conversation...");
+    console.log("🔵 Struttura ID:", struttura._id);
+
+    try {
+      const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
+      console.log("🔵 URL:", url);
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("🔵 Response status:", res.status);
+
+      if (res.ok) {
+        const conversation = await res.json();
+        console.log("✅ Conversation ricevuta:", conversation);
+        
+        console.log("🔵 Navigating to Chat (same stack)...");
+        
+        // ✅ Chat è nello STESSO STACK, naviga direttamente!
+        navigation.navigate("Chat", {
+          conversationId: conversation._id,
+          strutturaName: struttura.name,
+        });
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Response non OK:", res.status, errorText);
+        alert(`Errore: ${res.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error("❌ Errore catch:", error);
+      alert("Impossibile aprire la chat. Riprova più tardi.");
+    }
+  };
 
   const loadCalendar = async (campoId: string, month: Date) => {
     try {
@@ -428,8 +438,12 @@ export default function FieldDetailsScreen() {
       .map(([key]) => key);
   }, [struttura.amenities]);
 
+  // 🔍 DEBUG - Verifica orari di apertura
+  console.log("📊 Struttura openingHours:", struttura.openingHours);
+  console.log("📊 Struttura completa:", struttura);
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.galleryContainer}>
           <ScrollView
@@ -443,9 +457,6 @@ export default function FieldDetailsScreen() {
             ))}
           </ScrollView>
 
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </Pressable>
 
           {token && (
             <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
@@ -487,6 +498,39 @@ export default function FieldDetailsScreen() {
               <Text style={styles.chatButtonText}>Contatta la struttura</Text>
               <Ionicons name="arrow-forward" size={16} color="white" />
             </Pressable>
+          </View>
+        )}
+
+        {/* ORARI DI APERTURA */}
+        {struttura.openingHours && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time" size={20} color="#FF9800" />
+              <Text style={styles.sectionTitle}>Orari di apertura</Text>
+            </View>
+
+            <View style={styles.openingHoursContainer}>
+              {DAYS_OF_WEEK.map(({ key, label }) => {
+                const dayHours = struttura.openingHours[key];
+                
+                if (!dayHours) return null;
+
+                const isClosed = dayHours.closed === true;
+
+                return (
+                  <View key={key} style={styles.openingHourRow}>
+                    <Text style={styles.dayName}>{label}</Text>
+                    {isClosed ? (
+                      <Text style={styles.closedLabel}>Chiuso</Text>
+                    ) : (
+                      <Text style={styles.hoursLabel}>
+                        {dayHours.open} - {dayHours.close}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 
@@ -1036,6 +1080,6 @@ export default function FieldDetailsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -7,6 +7,47 @@ import Booking from "../models/Booking";
 import { AuthRequest } from "../middleware/authMiddleware";
 
 /**
+ * GET /users/:userId
+ * Ottiene il profilo pubblico di un utente (per owner che vedono chat)
+ */
+export const getUserProfile = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.params;
+    const currentUser = req.user!;
+
+    console.log("👤 getUserProfile chiamato");
+    console.log("   - currentUser:", currentUser.id, currentUser.role);
+    console.log("   - userId richiesto:", userId);
+
+    // Solo gli owner possono vedere i profili degli altri utenti
+    if (currentUser.role !== "owner") {
+      console.log("❌ Accesso negato: utente non è owner");
+      return res.status(403).json({ 
+        message: "Solo i proprietari possono vedere i profili degli utenti" 
+      });
+    }
+
+    const user = await User.findById(userId).select(
+      "_id name email phone createdAt"
+    );
+
+    if (!user) {
+      console.log("❌ Utente non trovato:", userId);
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    console.log("✅ Profilo utente trovato:", user.name);
+    res.json(user);
+  } catch (error) {
+    console.error("❌ Errore getUserProfile:", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
  * GET /users/me/profile
  */
 export const getMyProfile = async (

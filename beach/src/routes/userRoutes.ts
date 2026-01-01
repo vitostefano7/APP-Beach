@@ -1,6 +1,7 @@
 import express from "express";
 import { requireAuth } from "../middleware/authMiddleware";
 import {
+  getUserProfile,
   getMyProfile,
   updatePlayerProfile,
   updatePreferences,
@@ -9,6 +10,12 @@ import {
 } from "../controllers/profileController";
 
 const router = express.Router();
+
+/**
+ * GET PROFILO UTENTE PUBBLICO (solo per owner)
+ * ⚠️ IMPORTANTE: Questa route DEVE essere PRIMA di /me/*
+ */
+router.get("/:userId", requireAuth, getUserProfile);
 
 /**
  * USER BASE

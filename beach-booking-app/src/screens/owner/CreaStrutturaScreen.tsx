@@ -723,7 +723,7 @@ export default function CreaStrutturaScreen() {
         <View key={key} style={styles.amenityRow}>
           <View style={styles.amenityLeft}>
             <View style={[styles.amenityIcon, amenities.includes(key) && styles.amenityIconActive]}>
-              <Ionicons name={icon as any} size={20} color={amenities.includes(key) ? "#2196F3" : "#666"} />
+              <Ionicons name={icon as any} size={18} color={amenities.includes(key) ? "#2196F3" : "#666"} />
             </View>
             <Text style={styles.amenityLabel}>{label}</Text>
           </View>
@@ -738,7 +738,7 @@ export default function CreaStrutturaScreen() {
           <View key={customAmenity} style={styles.amenityRow}>
             <View style={styles.amenityLeft}>
               <View style={[styles.amenityIcon, isActive && styles.amenityIconActive]}>
-                <Ionicons name="add-circle" size={20} color={isActive ? "#2196F3" : "#666"} />
+                <Ionicons name="add-circle" size={18} color={isActive ? "#2196F3" : "#666"} />
               </View>
               <Text style={[styles.amenityLabel, !isActive && { color: "#999" }]}>
                 {customAmenity}
@@ -750,7 +750,7 @@ export default function CreaStrutturaScreen() {
             <View style={styles.amenityActions}>
               <Switch value={isActive} onValueChange={() => toggleAmenity(customAmenity)} />
               <Pressable onPress={() => removeCustomAmenity(customAmenity)} style={styles.deleteButton} hitSlop={8}>
-                <Ionicons name="trash-outline" size={20} color="#E53935" />
+                <Ionicons name="trash-outline" size={18} color="#E53935" />
               </Pressable>
             </View>
           </View>
@@ -758,7 +758,7 @@ export default function CreaStrutturaScreen() {
       })}
 
       <Pressable style={styles.addCustomButton} onPress={() => setShowCustomModal(true)}>
-        <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+        <Ionicons name="add-circle-outline" size={18} color="#2196F3" />
         <Text style={styles.addCustomButtonText}>Aggiungi servizio personalizzato</Text>
       </Pressable>
     </>
@@ -792,7 +792,7 @@ export default function CreaStrutturaScreen() {
             <View style={styles.campoHeader}>
               <Text style={styles.campoTitle}>Campo {index + 1}</Text>
               <Pressable onPress={() => removeCampo(campo.id)} style={styles.deleteIconButton}>
-                <Ionicons name="trash-outline" size={22} color="#E53935" />
+                <Ionicons name="trash-outline" size={20} color="#E53935" />
               </Pressable>
             </View>
 
@@ -854,7 +854,7 @@ export default function CreaStrutturaScreen() {
                       ? "layers"
                       : "construct"
                   }
-                  size={20}
+                  size={18}
                   color="#4CAF50"
                 />
                 <View style={{ flex: 1 }}>
@@ -884,20 +884,20 @@ export default function CreaStrutturaScreen() {
               onPress={() => openPricingModal(campo.id)}
             >
               <View style={styles.pricingButtonLeft}>
-                <Ionicons name="cash-outline" size={20} color="#2196F3" />
+                <Ionicons name="cash-outline" size={18} color="#2196F3" />
                 <View>
                   <Text style={styles.pricingButtonTitle}>Configura Prezzi</Text>
                   <Text style={styles.pricingButtonSubtitle}>{getPricingLabel()}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <Ionicons name="chevron-forward" size={18} color="#999" />
             </Pressable>
           </View>
         );
       })}
 
       <Pressable style={styles.addCampoButton} onPress={addCampo}>
-        <Ionicons name="add-circle" size={20} color="white" />
+        <Ionicons name="add-circle" size={18} color="white" />
         <Text style={styles.addCampoText}>Aggiungi campo</Text>
       </Pressable>
     </>
@@ -915,7 +915,7 @@ export default function CreaStrutturaScreen() {
         <SafeAreaView style={styles.modalSafe}>
           <View style={styles.modalHeader}>
             <Pressable onPress={() => setShowPricingModal(false)}>
-              <Ionicons name="close" size={28} color="#333" />
+              <Ionicons name="close" size={26} color="#333" />
             </Pressable>
             <Text style={styles.modalHeaderTitle}>Configura Prezzi</Text>
             <Pressable onPress={savePricing} style={styles.saveModalButton}>
@@ -1056,7 +1056,7 @@ export default function CreaStrutturaScreen() {
                               placeholder="Nome fascia"
                             />
                             <Pressable onPress={() => removeTempTimeSlot(index)}>
-                              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
                             </Pressable>
                           </View>
 
@@ -1117,7 +1117,7 @@ export default function CreaStrutturaScreen() {
                       ))}
 
                       <Pressable style={styles.addButton} onPress={addTempTimeSlot}>
-                        <Ionicons name="add-circle" size={20} color="#2196F3" />
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
                         <Text style={styles.addButtonText}>Aggiungi fascia oraria</Text>
                       </Pressable>
                     </>
@@ -1148,6 +1148,7 @@ export default function CreaStrutturaScreen() {
 
       <ScrollView
         style={styles.container}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -1155,22 +1156,31 @@ export default function CreaStrutturaScreen() {
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
+      </ScrollView>
 
+      {/* FIXED BOTTOM BUTTONS */}
+      <View style={styles.fixedButtonContainer}>
         <View style={styles.buttonRow}>
-          {currentStep > 1 && (
-            <Pressable
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={() => setCurrentStep(currentStep - 1)}
-            >
-              <Text style={styles.buttonSecondaryText}>Indietro</Text>
-            </Pressable>
-          )}
+          <Pressable
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={() => {
+              if (currentStep > 1) {
+                setCurrentStep(currentStep - 1);
+              } else {
+                navigation.goBack();
+              }
+            }}
+          >
+            <Text style={styles.buttonSecondaryText}>
+              {currentStep === 1 ? "Annulla" : "Indietro"}
+            </Text>
+          </Pressable>
+          
           <Pressable
             style={[
               styles.button,
               styles.buttonPrimary,
               loading && styles.buttonDisabled,
-              currentStep === 1 && { flex: 1 },
             ]}
             onPress={handleNext}
             disabled={loading}
@@ -1184,9 +1194,7 @@ export default function CreaStrutturaScreen() {
             </Text>
           </Pressable>
         </View>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
 
       {/* MODALS */}
       {/* Custom Amenity Modal */}
@@ -1207,7 +1215,7 @@ export default function CreaStrutturaScreen() {
                 setShowCustomModal(false);
                 setCustomAmenityInput("");
               }}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={26} color="#333" />
               </Pressable>
             </View>
 
@@ -1266,13 +1274,17 @@ const styles = StyleSheet.create({
     borderBottomColor: "#eee",
     backgroundColor: "white",
   },
-  title: { fontSize: 22, fontWeight: "800" },
-  stepIndicator: { fontSize: 14, color: "#007AFF", fontWeight: "600" },
-  container: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: "700", marginBottom: 16 },
-  section: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 6, color: "#333" },
-  miniLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4, color: "#666" },
+  title: { fontSize: 20, fontWeight: "800" },
+  stepIndicator: { fontSize: 13, color: "#007AFF", fontWeight: "600" },
+  container: { flex: 1 },
+  scrollContent: { 
+    padding: 16,
+    paddingBottom: 100, // Spazio per i bottoni fissi
+  },
+  sectionTitle: { fontSize: 17, fontWeight: "700", marginBottom: 14 },
+  section: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: "600", marginBottom: 6, color: "#333" },
+  miniLabel: { fontSize: 11, fontWeight: "600", marginBottom: 4, color: "#666" },
   inputWrapper: { position: "relative" },
   input: {
     backgroundColor: "white",
@@ -1280,7 +1292,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 12,
     padding: 12,
-    fontSize: 16,
+    fontSize: 14,
   },
   inputDisabled: { backgroundColor: "#f5f5f5", color: "#666" },
   textArea: { minHeight: 100, textAlignVertical: "top" },
@@ -1295,11 +1307,11 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
   suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  suggestionText: { fontSize: 14, color: "#333" },
+  suggestionText: { fontSize: 13, color: "#333" },
   dayRow: {
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 14,
+    padding: 12,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#eee",
@@ -1309,7 +1321,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dayLabel: { fontSize: 16, fontWeight: "600" },
+  dayLabel: { fontSize: 14, fontWeight: "600" },
   timeRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
   timeInput: {
     flex: 1,
@@ -1317,9 +1329,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 14,
   },
-  timeSeparator: { marginHorizontal: 10, fontSize: 18, fontWeight: "700" },
+  timeSeparator: { marginHorizontal: 10, fontSize: 16, fontWeight: "700" },
   
   // AMENITIES
   amenityRow: {
@@ -1327,22 +1339,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#eee",
   },
   amenityLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   amenityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#f5f5f5",
     alignItems: "center",
     justifyContent: "center",
@@ -1350,22 +1362,22 @@ const styles = StyleSheet.create({
   amenityIconActive: {
     backgroundColor: "#E3F2FD",
   },
-  amenityLabel: { fontSize: 16, fontWeight: "600", flex: 1 },
+  amenityLabel: { fontSize: 14, fontWeight: "600", flex: 1 },
   customBadge: {
     backgroundColor: "#FFF3E0",
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   customBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
     color: "#FF9800",
   },
   amenityActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   deleteButton: {
     padding: 4,
@@ -1376,15 +1388,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "white",
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: "#2196F3",
     borderStyle: "dashed",
-    marginTop: 8,
+    marginTop: 6,
   },
   addCustomButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#2196F3",
   },
@@ -1392,9 +1404,9 @@ const styles = StyleSheet.create({
   // CAMPI
   campoCard: {
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "#ddd",
   },
@@ -1402,63 +1414,63 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  campoTitle: { fontSize: 18, fontWeight: "700" },
+  campoTitle: { fontSize: 16, fontWeight: "700" },
   deleteIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "#FFEBEE",
     alignItems: "center",
     justifyContent: "center",
   },
-  pickerRow: { marginTop: 12 },
-  pickerContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  pickerRow: { marginTop: 10 },
+  pickerContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 7,
+    borderRadius: 18,
     backgroundColor: "#f0f0f0",
     borderWidth: 1,
     borderColor: "#ddd",
   },
   chipActive: { backgroundColor: "#007AFF", borderColor: "#007AFF" },
-  chipText: { fontSize: 14, color: "#666" },
+  chipText: { fontSize: 13, color: "#666" },
   chipTextActive: { color: "white", fontWeight: "600" },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: "#f8f9fa",
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
   },
   switchDescription: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#999",
     marginTop: 2,
   },
   surfaceDisplay: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     backgroundColor: "#E8F5E9",
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
-    marginTop: 12,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: "#4CAF50",
   },
   surfaceDisplayLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#2E7D32",
     fontWeight: "600",
     marginBottom: 2,
   },
   surfaceDisplayText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1B5E20",
   },
@@ -1467,25 +1479,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#E3F2FD",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: "#2196F3",
   },
   pricingButtonLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   pricingButtonTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1976D2",
   },
   pricingButtonSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#1976D2",
     marginTop: 2,
   },
@@ -1495,15 +1507,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#007AFF",
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 6,
   },
-  addCampoText: { color: "white", fontSize: 16, fontWeight: "700" },
+  addCampoText: { color: "white", fontSize: 14, fontWeight: "700" },
   
-  // BUTTONS
-  buttonRow: { flexDirection: "row", gap: 12, marginTop: 24 },
-  button: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center" },
+  // FIXED BOTTOM BUTTONS
+  fixedButtonContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#e9ecef",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  buttonRow: { flexDirection: "row", gap: 10 },
+  button: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center" },
   buttonPrimary: { backgroundColor: "#007AFF" },
   buttonSecondary: {
     backgroundColor: "white",
@@ -1511,8 +1539,8 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonPrimaryText: { color: "white", fontSize: 18, fontWeight: "700" },
-  buttonSecondaryText: { color: "#333", fontSize: 18, fontWeight: "600" },
+  buttonPrimaryText: { color: "white", fontSize: 16, fontWeight: "700" },
+  buttonSecondaryText: { color: "#333", fontSize: 16, fontWeight: "600" },
 
   // CUSTOM AMENITY MODAL (BOTTOM)
   modalOverlay: {
@@ -1527,44 +1555,44 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    padding: 18,
   },
   modalHeaderBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   modalTitleBottom: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
   },
   modalInput: {
     backgroundColor: "#f5f5f5",
     borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    marginBottom: 20,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 18,
   },
   modalActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   modalCancelButton: {
     flex: 1,
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     backgroundColor: "#f5f5f5",
     alignItems: "center",
   },
   modalCancelText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#666",
   },
   modalAddButton: {
     flex: 1,
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     backgroundColor: "#2196F3",
     alignItems: "center",
@@ -1573,7 +1601,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   modalAddText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "white",
   },
@@ -1587,62 +1615,62 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 14,
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#e9ecef",
   },
   modalHeaderTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
   },
   saveModalButton: {
     backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   saveModalButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: 14,
   },
   modalCard: {
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "#e9ecef",
   },
   modalCardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   cardDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   radioOption: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: "#f8f9fa",
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 2,
     borderColor: "transparent",
   },
@@ -1651,52 +1679,52 @@ const styles = StyleSheet.create({
     borderColor: "#2196F3",
   },
   radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: "#2196F3",
     alignItems: "center",
     justifyContent: "center",
   },
   radioCircleInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#2196F3",
   },
-  radioLabel: { fontSize: 15, fontWeight: "600" },
-  radioDescription: { fontSize: 13, color: "#666", marginTop: 2 },
+  radioLabel: { fontSize: 14, fontWeight: "600" },
+  radioDescription: { fontSize: 12, color: "#666", marginTop: 2 },
   priceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  priceLabel: { fontSize: 15, fontWeight: "600" },
+  priceLabel: { fontSize: 14, fontWeight: "600" },
   priceInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: "#e9ecef",
-    minWidth: 100,
+    minWidth: 90,
   },
-  euroSign: { fontSize: 16, fontWeight: "600", marginRight: 4, color: "#666" },
+  euroSign: { fontSize: 14, fontWeight: "600", marginRight: 4, color: "#666" },
   priceInputField: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     flex: 1,
     textAlign: "right",
   },
   timeSlotCard: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#e9ecef",
   },
@@ -1704,25 +1732,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   timeSlotLabelInput: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     flex: 1,
   },
   timeSlotTimeRow: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   timeInputWrapper: { flex: 1 },
-  timeLabel: { fontSize: 12, color: "#666", marginBottom: 4, fontWeight: "600" },
+  timeLabel: { fontSize: 11, color: "#666", marginBottom: 4, fontWeight: "600" },
   timeInputModal: {
     backgroundColor: "white",
     borderRadius: 8,
     padding: 8,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "center",
     borderWidth: 1,
     borderColor: "#e9ecef",
@@ -1733,7 +1761,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   slotPriceLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
     marginBottom: 4,
     fontWeight: "600",
@@ -1743,12 +1771,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: "#2196F3",
     borderStyle: "dashed",
-    marginTop: 8,
+    marginTop: 6,
   },
-  addButtonText: { fontSize: 14, fontWeight: "600", color: "#2196F3" },
+  addButtonText: { fontSize: 13, fontWeight: "600", color: "#2196F3" },
 });

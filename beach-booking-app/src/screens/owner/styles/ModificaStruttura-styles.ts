@@ -1,54 +1,153 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  safe: { 
+    flex: 1, 
+    backgroundColor: "#f8f9fa" 
+  },
+
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "600",
+  },
   
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: "#e9ecef",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   
   headerTitle: { 
-    fontSize: 20, 
-    fontWeight: "800",
+    fontSize: 17, 
+    fontWeight: "700",
     color: "#1a1a1a",
+    flex: 1,
+    textAlign: "center",
   },
 
-  saveHeaderButton: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 70,
+  saveButton: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 4,
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 75,
+    justifyContent: "center",
   },
 
-  saveHeaderButtonDisabled: {
-    opacity: 0.5,
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
 
-  saveHeaderButtonText: {
+  saveButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   
   container: { 
-    flex: 1, 
+    flex: 1,
+  },
+
+  scrollContent: {
     padding: 16,
   },
 
+  // STATUS CARD
   statusCard: {
+    backgroundColor: "#E8F5E9",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  statusCardInactive: {
+    backgroundColor: "#FFEBEE",
+    borderColor: "#F44336",
+    shadowColor: "#F44336",
+  },
+
+  statusContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  statusIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  statusIconContainerInactive: {
+    backgroundColor: "white",
+  },
+
+  statusTextContainer: {
+    flex: 1,
+  },
+
+  statusTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
+  },
+
+  statusSubtitle: {
+    fontSize: 12,
+    color: "#666",
+  },
+
+  // CARD
+  card: {
     backgroundColor: "white",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -56,129 +155,80 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  statusHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  statusLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-
-  statusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  statusIconActive: {
-    backgroundColor: "#E8F5E9",
-  },
-
-  statusIconInactive: {
-    backgroundColor: "#FFEBEE",
-  },
-
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1a1a1a",
-  },
-
-  statusSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 2,
-  },
-
-  warningBox: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF3E0",
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 12,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
 
-  warningText: {
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
     flex: 1,
-    fontSize: 13,
-    color: "#E65100",
-    fontWeight: "500",
   },
 
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginTop: 8,
-    marginBottom: 16,
-    color: "#1a1a1a",
-  },
-  
-  section: { 
+  // INPUTS
+  inputGroup: {
     marginBottom: 16,
   },
-  
-  label: { 
-    fontSize: 14, 
-    fontWeight: "700", 
-    marginBottom: 8, 
-    color: "#1a1a1a",
+
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 6,
   },
   
   input: {
-    backgroundColor: "white",
+    backgroundColor: "#f8f9fa",
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#e9ecef",
     borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
+    padding: 12,
+    fontSize: 14,
     color: "#1a1a1a",
   },
   
   textArea: { 
-    minHeight: 100, 
+    minHeight: 90, 
     textAlignVertical: "top",
   },
   
   infoBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    backgroundColor: "#E3F2FD",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#2196F3",
+    gap: 8,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#2196F3",
   },
   
-  infoText: {
-    fontSize: 13,
-    color: "#1976D2",
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  
-  infoAddress: {
-    fontSize: 13,
+  infoBoxTitle: {
+    fontSize: 12,
     color: "#666",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  
+  infoBoxText: {
+    fontSize: 13,
+    color: "#1a1a1a",
+    fontWeight: "500",
   },
 
-  dayRow: {
-    backgroundColor: "white",
+  // DAYS
+  dayCard: {
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
+    padding: 12,
+    marginBottom: 8,
   },
   
   dayHeader: {
@@ -188,218 +238,213 @@ export const styles = StyleSheet.create({
   },
   
   dayLabel: { 
-    fontSize: 16, 
-    fontWeight: "700",
+    fontSize: 14, 
+    fontWeight: "600",
     color: "#1a1a1a",
   },
 
-  dayToggle: {
+  dayStatusContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
 
-  dayToggleLabel: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+  dayStatus: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "700",
+  },
+
+  dayStatusClosed: {
+    color: "#999",
   },
   
-  timeRow: { 
+  timeContainer: { 
     flexDirection: "row", 
     alignItems: "center", 
     marginTop: 12,
-    gap: 12,
+    gap: 8,
   },
 
-  timeInputContainer: {
+  timeBox: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#f5f5f5",
+    gap: 6,
+    backgroundColor: "white",
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
   
   timeInput: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
     color: "#1a1a1a",
   },
   
-  timeSeparator: { 
-    fontSize: 18, 
-    fontWeight: "700",
-    color: "#2196F3",
-  },
-
-  amenityRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-
-  amenityLeft: {
+  timeDivider: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    flex: 1,
+    gap: 4,
   },
 
-  amenityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-    justifyContent: "center",
+  timeDividerLine: {
+    width: 12,
+    height: 1,
+    backgroundColor: "#e9ecef",
   },
 
-  amenityIconActive: {
-    backgroundColor: "#E3F2FD",
-  },
-  
-  amenityLabel: { 
-    fontSize: 16, 
-    fontWeight: "600",
-    color: "#1a1a1a",
-    flex: 1,
-  },
-
-  customBadge: {
-    backgroundColor: "#FFF3E0",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-
-  customBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FF9800",
-  },
-
-  amenityActions: {
+  // AMENITIES
+  amenitiesGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-
-  deleteButton: {
-    padding: 4,
-  },
-
-  addCustomButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexWrap: "wrap",
     gap: 8,
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: "#2196F3",
-    borderStyle: "dashed",
-  },
-
-  addCustomButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#2196F3",
-  },
-
-  customInputContainer: {
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#2196F3",
-  },
-
-  customInput: {
-    backgroundColor: "#f5f5f5",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    color: "#1a1a1a",
     marginBottom: 12,
   },
 
-  customInputActions: {
+  amenityChip: {
     flexDirection: "row",
-    gap: 12,
-  },
-
-  customInputCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "#f5f5f5",
     alignItems: "center",
+    gap: 6,
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    position: "relative",
   },
 
-  customInputCancelText: {
-    fontSize: 16,
+  amenityChipActive: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+
+  amenityChipText: {
+    fontSize: 13,
     fontWeight: "600",
     color: "#666",
   },
 
-  customInputAdd: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+  amenityChipTextActive: {
+    color: "#2196F3",
+  },
+
+  amenityCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#2196F3",
     alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
   },
 
-  customInputAddDisabled: {
-    opacity: 0.5,
+  // CUSTOM AMENITIES
+  customAmenityCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
   },
 
-  customInputAddText: {
-    fontSize: 16,
+  customAmenityContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    position: "relative",
+  },
+
+  customAmenityContentActive: {
+    backgroundColor: "#FFF3E0",
+    borderColor: "#FF9800",
+  },
+
+  customIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  customIconActive: {
+    backgroundColor: "#FFE0B2",
+  },
+
+  customAmenityText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+  },
+
+  customAmenityTextActive: {
+    color: "#E65100",
+  },
+
+  customBadge: {
+    backgroundColor: "#FF9800",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+
+  customBadgeText: {
+    fontSize: 9,
     fontWeight: "700",
     color: "white",
   },
 
-  saveButton: {
-    flexDirection: "row",
+  deleteCustomButton: {
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#2196F3",
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 24,
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  
-  saveButtonDisabled: { 
-    opacity: 0.5,
-  },
-  
-  saveButtonText: { 
-    color: "white", 
-    fontSize: 18, 
-    fontWeight: "700",
   },
 
-  // ✅ MODAL
+  addServiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#f8f9fa",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+  },
+
+  addServiceIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  addServiceText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+
+  // MODAL
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -411,7 +456,7 @@ export const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
 
   modalContent: {
@@ -422,28 +467,52 @@ export const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#e9ecef",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+
   modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
   },
 
+  modalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     color: "#1a1a1a",
+    marginBottom: 4,
+  },
+
+  modalSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "center",
   },
 
   modalInput: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 14,
+    fontSize: 14,
     color: "#1a1a1a",
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: "#2196F3",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
 
   modalActions: {
@@ -455,22 +524,32 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
 
   modalCancelText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#666",
   },
 
   modalAddButton: {
     flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 14,
     borderRadius: 12,
     backgroundColor: "#2196F3",
-    alignItems: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   modalAddButtonDisabled: {
@@ -478,7 +557,7 @@ export const styles = StyleSheet.create({
   },
 
   modalAddText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "white",
   },

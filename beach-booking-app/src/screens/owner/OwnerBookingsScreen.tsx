@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback } from "react";
@@ -17,15 +18,22 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../config/api";
 
 /* =========================
+   UTILITY: Controlla se una prenotazione è conclusa
+========================= */
+function isBookingCompleted(date: string, endTime: string): boolean {
+  const now = new Date();
+  const bookingDate = new Date(date + "T" + endTime);
+  return bookingDate < now;
+}
+
+/* =========================
    CARD PRENOTAZIONE
 ========================= */
 function BookingCard({ item, onPress }: { item: any; onPress: () => void }) {
   const cancelled = item.status === "cancelled";
   
-  const bookingDate = new Date(item.date + "T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const isPast = bookingDate < today;
+  // ✅ Una prenotazione è conclusa se l'orario di fine è passato
+  const isCompleted = isBookingCompleted(item.date, item.endTime);
 
   const strutturaName = item.campo?.struttura?.name ?? "Struttura sconosciuta";
   const campoName = item.campo?.name ?? "Campo";
@@ -52,7 +60,7 @@ function BookingCard({ item, onPress }: { item: any; onPress: () => void }) {
         icon: "close-circle",
       };
     }
-    if (isPast) {
+    if (isCompleted) {
       return {
         text: "CONCLUSA",
         color: "#757575",
@@ -94,7 +102,7 @@ function BookingCard({ item, onPress }: { item: any; onPress: () => void }) {
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={16} color="#666" />
           <Text style={styles.date}>
-            {bookingDate.toLocaleDateString("it-IT", {
+            {new Date(item.date + "T12:00:00").toLocaleDateString("it-IT", {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -541,7 +549,8 @@ export default function OwnerBookingsScreen() {
   const [filterDate, setFilterDate] = useState(route.params?.filterDate || "");
   const [filterCampo, setFilterCampo] = useState(route.params?.filterCampoId || "");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
-  const [statusFilter, setStatusFilter] = useState<"active" | "cancelled" | "completed">("active"); // ✅ Default: Attive
+  const [filterUsername, setFilterUsername] = useState(""); // ✅ NUOVO
+  const [statusFilter, setStatusFilter] = useState<"active" | "cancelled" | "completed">("active");
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [showStatoModal, setShowStatoModal] = useState(false);
@@ -628,21 +637,16 @@ export default function OwnerBookingsScreen() {
   const applyFilters = useCallback(() => {
     let result = bookings;
 
-    // ✅ Filtro per stato
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    // ✅ Filtro per stato (considerando l'orario di fine)
     if (statusFilter === "active") {
       result = result.filter((b) => {
-        const bookingDate = new Date(b.date + "T00:00:00");
-        return b.status === "confirmed" && bookingDate >= today;
+        return b.status === "confirmed" && !isBookingCompleted(b.date, b.endTime);
       });
     } else if (statusFilter === "cancelled") {
       result = result.filter((b) => b.status === "cancelled");
     } else if (statusFilter === "completed") {
       result = result.filter((b) => {
-        const bookingDate = new Date(b.date + "T00:00:00");
-        return b.status === "confirmed" && bookingDate < today;
+        return b.status === "confirmed" && isBookingCompleted(b.date, b.endTime);
       });
     }
 
@@ -658,8 +662,17 @@ export default function OwnerBookingsScreen() {
       result = result.filter((b) => b.campo?._id === filterCampo);
     }
 
+    // ✅ Filtro per nome utente
+    if (filterUsername.trim()) {
+      const searchLower = filterUsername.toLowerCase().trim();
+      result = result.filter((b) => {
+        const userName = b.user?.name?.toLowerCase() || "";
+        return userName.includes(searchLower);
+      });
+    }
+
     setFilteredBookings(result);
-  }, [bookings, filterDate, filterCampo, filterStruttura, statusFilter]);
+  }, [bookings, filterDate, filterCampo, filterStruttura, filterUsername, statusFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -675,9 +688,10 @@ export default function OwnerBookingsScreen() {
     setFilterDate("");
     setFilterCampo("");
     setFilterStruttura("");
+    setFilterUsername(""); // ✅ Reset ricerca
   };
 
-  const hasActiveFilters = filterDate || filterCampo || filterStruttura;
+  const hasActiveFilters = filterDate || filterCampo || filterStruttura || filterUsername;
 
   const handleBookingPress = (booking: any) => {
     navigation.navigate("OwnerDettaglioPrenotazione", {
@@ -711,6 +725,23 @@ export default function OwnerBookingsScreen() {
               color="#2196F3"
             />
           </Pressable>
+        </View>
+
+        {/* ✅ BARRA DI RICERCA */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cerca per nome utente..."
+            placeholderTextColor="#999"
+            value={filterUsername}
+            onChangeText={setFilterUsername}
+          />
+          {filterUsername.length > 0 && (
+            <Pressable onPress={() => setFilterUsername("")} hitSlop={8}>
+              <Ionicons name="close-circle" size={20} color="#999" />
+            </Pressable>
+          )}
         </View>
 
         {/* FILTRI COMPATTI */}
@@ -778,7 +809,7 @@ export default function OwnerBookingsScreen() {
             </Pressable>
           )}
 
-          {/* 4. Stato - BLU di default (sempre "attivo") */}
+          {/* 4. Stato */}
           <Pressable
             style={[styles.filterChip, styles.filterChipActive]}
             onPress={() => setShowStatoModal(true)}
@@ -934,6 +965,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // ✅ BARRA RICERCA
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    gap: 8,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1a1a1a",
   },
 
   loadingContainer: {

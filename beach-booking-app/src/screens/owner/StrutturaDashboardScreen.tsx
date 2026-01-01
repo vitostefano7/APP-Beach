@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 
@@ -47,6 +48,7 @@ const SPORT_MAP: { [key: string]: string } = {
   beach_volley: "Beach Volley",
   padel: "Padel",
   tennis: "Tennis",
+  volley: "Volley",
 };
 
 export default function StrutturaDashboardScreen() {
@@ -72,40 +74,24 @@ export default function StrutturaDashboardScreen() {
 
       // Carica struttura
       const strutturaUrl = `${API_URL}/strutture/${strutturaId}`;
-      console.log("📞 Chiamata API struttura:", strutturaUrl);
       const strutturaRes = await fetch(strutturaUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("📡 Struttura response status:", strutturaRes.status);
       const strutturaData = await strutturaRes.json();
-      console.log("✅ Struttura caricata:", strutturaData.name);
       setStruttura(strutturaData);
 
       // Carica TUTTI i campi (anche non attivi) per l'owner
       const campiUrl = `${API_URL}/campi/owner/struttura/${strutturaId}`;
-      console.log("📞 Chiamata API campi:", campiUrl);
-      
       const campiRes = await fetch(campiUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      console.log("📡 Campi response status:", campiRes.status);
       const campiData = await campiRes.json();
-      console.log("📋 Campi ricevuti dal server:");
-      console.log("   - Numero totale:", campiData.length);
-      console.log("   - Dettaglio:", JSON.stringify(campiData.map((c: any) => ({ 
-        nome: c.name, 
-        attivo: c.isActive 
-      })), null, 2));
-      
       setCampi(campiData);
-      console.log("✅ State campi aggiornato, lunghezza:", campiData.length);
 
       // Carica prenotazioni per questa struttura
       try {
         const bookingsUrl = `${API_URL}/bookings/owner`;
-        console.log("📞 Chiamata API bookings:", bookingsUrl);
-        
         const bookingsRes = await fetch(bookingsUrl, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -119,7 +105,6 @@ export default function StrutturaDashboardScreen() {
             booking.campo?.struttura?._id === strutturaId
           );
           
-          console.log(`✅ Prenotazioni attive per questa struttura: ${strutturaBookings.length}`);
           setBookingsCount(strutturaBookings.length);
         }
       } catch (error) {
@@ -130,13 +115,11 @@ export default function StrutturaDashboardScreen() {
       console.error("❌ Errore caricamento dati:", error);
     } finally {
       setLoading(false);
-      console.log("✅ Caricamento completato");
     }
   }, [token, strutturaId]);
 
   useFocusEffect(
     useCallback(() => {
-      console.log("👁️ Dashboard in focus");
       let isActive = true;
 
       if (isActive) {
@@ -145,14 +128,13 @@ export default function StrutturaDashboardScreen() {
 
       return () => {
         isActive = false;
-        console.log("👁️ Dashboard out of focus");
       };
     }, [loadData])
   );
 
   const handleDeleteStruttura = async () => {
     Alert.alert(
-      "⚠️ Elimina struttura",
+      "Elimina struttura",
       `Sei sicuro di voler eliminare "${struttura?.name}"?\n\n` +
       `Verranno eliminati anche tutti i ${campi.length} campi associati.\n\n` +
       `Questa azione NON può essere annullata.`,
@@ -160,22 +142,19 @@ export default function StrutturaDashboardScreen() {
         { 
           text: "Annulla", 
           style: "cancel",
-          onPress: () => console.log("❌ Eliminazione annullata")
         },
         {
-          text: "Elimina definitivamente",
+          text: "Elimina",
           style: "destructive",
           onPress: async () => {
             try {
-              console.log("🗑️ Eliminazione struttura:", strutturaId);
               const response = await fetch(`${API_URL}/strutture/${strutturaId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
               });
 
               if (response.ok) {
-                console.log("✅ Struttura eliminata con successo");
-                Alert.alert("✅ Successo", "Struttura e campi eliminati con successo", [
+                Alert.alert("Successo", "Struttura eliminata con successo", [
                   {
                     text: "OK",
                     onPress: () => {
@@ -188,11 +167,9 @@ export default function StrutturaDashboardScreen() {
                 ]);
               } else {
                 const error = await response.json();
-                console.error("❌ Errore eliminazione:", error);
                 Alert.alert("Errore", error.message || "Impossibile eliminare la struttura");
               }
             } catch (error) {
-              console.error("❌ Errore connessione:", error);
               Alert.alert("Errore", "Errore di connessione");
             }
           },
@@ -202,16 +179,12 @@ export default function StrutturaDashboardScreen() {
   };
 
   const handleGoToBookings = () => {
-    console.log("📅 Navigazione verso prenotazioni filtrate per struttura:", strutturaId);
     navigation.navigate("OwnerBookings", {
       filterStrutturaId: strutturaId,
     });
   };
 
-  console.log("🎨 Rendering dashboard - campi.length:", campi.length);
-
   if (loading) {
-    console.log("⏳ Mostrando loading...");
     return (
       <SafeAreaView style={styles.safe}>
         <ActivityIndicator
@@ -224,165 +197,200 @@ export default function StrutturaDashboardScreen() {
   }
 
   if (!struttura) {
-    console.log("❌ Nessuna struttura trovata");
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.errorText}>Struttura non trovata</Text>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#ccc" />
+          <Text style={styles.errorText}>Struttura non trovata</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   const campiAttivi = campi.filter((c) => c.isActive);
-  const campiNonAttivi = campi.filter((c) => !c.isActive);
-  console.log("📊 Campi attivi:", campiAttivi.length, "- Non attivi:", campiNonAttivi.length);
-  
-  const prezzoMedio =
-    campi.length > 0
-      ? campi.reduce((sum, c) => sum + c.pricePerHour, 0) / campi.length
-      : 0;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()}>
-            <Text style={styles.back}>←</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <Pressable onPress={loadData}>
-            <Text style={styles.back}>🔄</Text>
-          </Pressable>
+      {/* FIXED HEADER */}
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Dashboard</Text>
+        <Pressable onPress={loadData} style={styles.refreshButton}>
+          <Ionicons name="reload" size={22} color="#007AFF" />
+        </Pressable>
+      </View>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* INFO STRUTTURA */}
+        <View style={styles.strutturaCard}>
+          <View style={styles.strutturaHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.strutturaNome}>{struttura.name}</Text>
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={14} color="#666" />
+                <Text style={styles.locationText}>{struttura.location.city}</Text>
+              </View>
+            </View>
+            <View style={[styles.statusBadge, struttura.isActive && styles.statusBadgeActive]}>
+              <View style={[styles.statusDot, struttura.isActive && styles.statusDotActive]} />
+              <Text style={[styles.statusText, struttura.isActive && styles.statusTextActive]}>
+                {struttura.isActive ? "Attiva" : "Non attiva"}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.strutturaNome}>{struttura.name}</Text>
-        <Text style={styles.subtitle}>
-          📍 {struttura.location.city} •{" "}
-          {struttura.isActive ? (
-            <Text style={styles.green}>Attiva</Text>
-          ) : (
-            <Text style={styles.red}>Non attiva</Text>
-          )}
-        </Text>
-
-        {/* KPI */}
-        <View style={styles.row}>
+        {/* KPI CARDS */}
+        <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>CAMPI TOTALI</Text>
+            <View style={[styles.kpiIcon, { backgroundColor: "#E3F2FD" }]}>
+              <Ionicons name="grid" size={18} color="#2196F3" />
+            </View>
             <Text style={styles.kpiValue}>{campi.length}</Text>
+            <Text style={styles.kpiLabel}>Campi totali</Text>
           </View>
 
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>CAMPI ATTIVI</Text>
+            <View style={[styles.kpiIcon, { backgroundColor: "#E8F5E9" }]}>
+              <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+            </View>
             <Text style={styles.kpiValue}>{campiAttivi.length}</Text>
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>PREZZO MEDIO</Text>
-            <Text style={styles.kpiValue}>€{prezzoMedio.toFixed(0)}/h</Text>
+            <Text style={styles.kpiLabel}>Campi attivi</Text>
           </View>
 
-          {/* KPI PRENOTAZIONI - ORA CLICCABILE */}
-          <Pressable 
-            style={[styles.kpiCard, styles.kpiCardClickable]} 
-            onPress={handleGoToBookings}
-          >
-            <Text style={styles.kpiLabel}>PRENOTAZIONI</Text>
+          <Pressable style={[styles.kpiCard, styles.kpiCardClickable]} onPress={handleGoToBookings}>
+            <View style={[styles.kpiIcon, { backgroundColor: "#F3E5F5" }]}>
+              <Ionicons name="calendar" size={18} color="#9C27B0" />
+            </View>
             <Text style={styles.kpiValue}>{bookingsCount}</Text>
-            <Text style={styles.kpiSubtext}>Tocca per vedere →</Text>
+            <Text style={styles.kpiLabel}>Prenotazioni</Text>
+            <View style={styles.tapHint}>
+              <Ionicons name="arrow-forward" size={10} color="#9C27B0" />
+            </View>
           </Pressable>
         </View>
 
-        {/* STATO CAMPI */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>I tuoi campi</Text>
-          {campi.length > 0 && (
-            <Pressable
-              style={styles.addButtonSmall}
-              onPress={() =>
-                navigation.navigate("AggiungiCampo", { strutturaId })
-              }
-            >
-              <Text style={styles.addButtonTextSmall}>+ Aggiungi</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {campi.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Nessun campo disponibile</Text>
-            <Pressable
-              style={styles.addButton}
-              onPress={() =>
-                navigation.navigate("AggiungiCampo", { strutturaId })
-              }
-            >
-              <Text style={styles.addButtonText}>+ Aggiungi campo</Text>
-            </Pressable>
+        {/* SEZIONE CAMPI */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <Ionicons name="basketball" size={20} color="#2196F3" />
+              <Text style={styles.sectionTitle}>Campi</Text>
+            </View>
+            {campi.length > 0 && (
+              <Pressable
+                style={styles.addButtonSmall}
+                onPress={() => navigation.navigate("AggiungiCampo", { strutturaId })}
+              >
+                <Ionicons name="add" size={16} color="white" />
+                <Text style={styles.addButtonTextSmall}>Aggiungi</Text>
+              </Pressable>
+            )}
           </View>
-        ) : (
-          campi.map((campo) => {
-            console.log("🎨 Rendering campo:", campo.name, "- attivo:", campo.isActive);
-            return (
+
+          {campi.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="basketball-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>Nessun campo disponibile</Text>
+              <Pressable
+                style={styles.addButton}
+                onPress={() => navigation.navigate("AggiungiCampo", { strutturaId })}
+              >
+                <Ionicons name="add" size={18} color="white" />
+                <Text style={styles.addButtonText}>Aggiungi campo</Text>
+              </Pressable>
+            </View>
+          ) : (
+            campi.map((campo) => (
               <View key={campo._id} style={styles.campoCard}>
                 <View style={styles.campoHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.bold}>{campo.name}</Text>
-                    <Text style={styles.gray}>
-                      {SPORT_MAP[campo.sport] || campo.sport}
-                      {campo.indoor ? " • Coperto" : " • All'aperto"}
-                    </Text>
+                  <View style={styles.sportIcon}>
+                    <Ionicons 
+                      name={campo.sport === "beach_volley" ? "basketball" : "tennisball"} 
+                      size={20} 
+                      color="#2196F3" 
+                    />
                   </View>
-                  {campo.isActive ? (
-                    <Text style={styles.green}>● Attivo</Text>
-                  ) : (
-                    <Text style={styles.red}>● Non attivo</Text>
-                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.campoName}>{campo.name}</Text>
+                    <View style={styles.campoMeta}>
+                      <Text style={styles.sportBadge}>
+                        {SPORT_MAP[campo.sport] || campo.sport}
+                      </Text>
+                      {campo.indoor && (
+                        <View style={styles.indoorBadge}>
+                          <Ionicons name="business" size={10} color="#666" />
+                          <Text style={styles.indoorText}>Indoor</Text>
+                        </View>
+                      )}
+                      <View style={[styles.statusIndicator, campo.isActive && styles.statusIndicatorActive]}>
+                        <View style={[styles.statusDotSmall, campo.isActive && styles.statusDotSmallActive]} />
+                        <Text style={[styles.statusTextSmall, campo.isActive && styles.statusTextSmallActive]}>
+                          {campo.isActive ? "Attivo" : "Non attivo"}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
+                
                 <View style={styles.campoFooter}>
-                  <Text style={styles.priceText}>€{campo.pricePerHour}/h</Text>
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.priceValue}>€{campo.pricePerHour}</Text>
+                    <Text style={styles.priceLabel}>/ora</Text>
+                  </View>
                   <Pressable
-                    onPress={() =>
-                      navigation.navigate("DettaglioCampo", { campoId: campo._id })
-                    }
+                    style={styles.detailsButton}
+                    onPress={() => navigation.navigate("DettaglioCampo", { campoId: campo._id })}
                   >
-                    <Text style={styles.linkText}>Dettagli →</Text>
+                    <Text style={styles.detailsButtonText}>Dettagli</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#007AFF" />
                   </Pressable>
                 </View>
               </View>
-            );
-          })
-        )}
+            ))
+          )}
+        </View>
 
         {/* AZIONI RAPIDE */}
-        <Text style={styles.sectionTitle}>Azioni rapide</Text>
-        
-        <Pressable
-          style={styles.actionButton}
-          onPress={() =>
-            navigation.navigate("ModificaStruttura", { strutturaId })
-          }
-        >
-          <Text style={styles.actionButtonText}>✏️ Modifica struttura</Text>
-        </Pressable>
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons name="flash" size={20} color="#FF9800" />
+            <Text style={styles.sectionTitle}>Azioni rapide</Text>
+          </View>
+          
+          <Pressable
+            style={styles.actionButton}
+            onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })}
+          >
+            <View style={styles.actionButtonLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: "#E3F2FD" }]}>
+                <Ionicons name="create" size={18} color="#2196F3" />
+              </View>
+              <Text style={styles.actionButtonText}>Modifica struttura</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </Pressable>
 
-        <Pressable
-          style={styles.actionButton}
-          onPress={() => console.log("Visualizza statistiche")}
-        >
-          <Text style={styles.actionButtonText}>📊 Statistiche (coming soon)</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.actionButton, styles.actionButtonDanger]}
-          onPress={handleDeleteStruttura}
-        >
-          <Text style={[styles.actionButtonText, styles.actionButtonDangerText]}>
-            🗑️ Elimina struttura
-          </Text>
-        </Pressable>
+          <Pressable
+            style={[styles.actionButton, styles.actionButtonDanger]}
+            onPress={handleDeleteStruttura}
+          >
+            <View style={styles.actionButtonLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: "#FFEBEE" }]}>
+                <Ionicons name="trash" size={18} color="#F44336" />
+              </View>
+              <Text style={[styles.actionButtonText, { color: "#F44336" }]}>
+                Elimina struttura
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#F44336" />
+          </Pressable>
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -391,158 +399,383 @@ export default function StrutturaDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
-  container: { padding: 16 },
+  safe: { 
+    flex: 1, 
+    backgroundColor: "#f8f9fa" 
+  },
 
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
   },
-  back: { fontSize: 20, fontWeight: "800" },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: { 
+    fontSize: 17, 
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  strutturaNome: { fontSize: 24, fontWeight: "900", marginBottom: 4 },
-  subtitle: { color: "#666", marginBottom: 16, fontSize: 14 },
+  scrollContent: { 
+    padding: 16,
+  },
 
-  row: { flexDirection: "row", gap: 12, marginBottom: 16 },
-
-  kpiCard: {
-    flex: 1,
+  // STRUTTURA CARD
+  strutturaCard: {
     backgroundColor: "white",
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#eee",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  
+  strutturaHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  strutturaNome: { 
+    fontSize: 20, 
+    fontWeight: "800",
+    color: "#1a1a1a",
+    marginBottom: 4,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  locationText: { 
+    color: "#666", 
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFEBEE",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  statusBadgeActive: {
+    backgroundColor: "#E8F5E9",
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#F44336",
+  },
+  statusDotActive: {
+    backgroundColor: "#4CAF50",
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#F44336",
+  },
+  statusTextActive: {
+    color: "#4CAF50",
+  },
+
+  // KPI ROW
+  kpiRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    position: "relative",
+  },
   kpiCardClickable: {
-    borderColor: "#007AFF",
-    borderWidth: 2,
+    borderWidth: 1,
+    borderColor: "#9C27B0",
   },
-  
-  kpiLabel: { color: "#666", fontWeight: "700", fontSize: 12 },
-  kpiValue: { fontSize: 28, fontWeight: "900", marginTop: 6 },
-  kpiSubtext: { color: "#007AFF", fontSize: 11, marginTop: 2, fontWeight: "600" },
+  kpiIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  kpiValue: { 
+    fontSize: 22, 
+    fontWeight: "800",
+    color: "#1a1a1a",
+    marginBottom: 2,
+  },
+  kpiLabel: { 
+    color: "#666", 
+    fontWeight: "600", 
+    fontSize: 10,
+  },
+  tapHint: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+  },
 
-  sectionTitle: { fontSize: 20, fontWeight: "800", marginBottom: 12 },
-
+  // SECTIONS
+  section: {
+    marginBottom: 20,
+  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
+  sectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: { 
+    fontSize: 17, 
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
 
   addButtonSmall: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     backgroundColor: "#007AFF",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
+  },
+  addButtonTextSmall: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 13,
   },
 
-  addButtonTextSmall: {
+  // EMPTY STATE
+  emptyCard: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 32,
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyText: {
+    color: "#999",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  addButtonText: {
     color: "white",
     fontWeight: "700",
     fontSize: 14,
   },
 
+  // CAMPO CARD
   campoCard: {
     backgroundColor: "white",
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 14,
-    borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 12,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   campoHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
-
+  sportIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  campoName: { 
+    fontWeight: "700", 
+    fontSize: 15,
+    color: "#1a1a1a",
+    marginBottom: 4,
+  },
+  campoMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  sportBadge: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "600",
+  },
+  indoorBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  indoorText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#666",
+  },
+  statusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  statusDotSmall: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#F44336",
+  },
+  statusDotSmallActive: {
+    backgroundColor: "#4CAF50",
+  },
+  statusTextSmall: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#F44336",
+  },
+  statusTextSmallActive: {
+    color: "#4CAF50",
+  },
   campoFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
-  emptyCard: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#eee",
-    alignItems: "center",
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
   },
-
-  emptyText: {
-    color: "#999",
-    fontSize: 16,
-    marginBottom: 16,
-  },
-
-  addButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-
-  addButtonText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-
-  actionButton: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 10,
-  },
-
-  actionButtonDanger: {
-    borderColor: "#FF3B30",
-  },
-
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-
-  actionButtonDangerText: {
-    color: "#FF3B30",
-  },
-
-  bold: { fontWeight: "800", fontSize: 16 },
-  gray: { color: "#666", marginTop: 4, fontSize: 14 },
-  green: { color: "#1E9E5A", fontWeight: "700", fontSize: 14 },
-  red: { color: "#E54848", fontWeight: "700", fontSize: 14 },
-  blue: { color: "#2b8cee", fontWeight: "700", fontSize: 14 },
-
-  priceText: {
+  priceValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#007AFF",
+    color: "#4CAF50",
   },
-
-  linkText: {
+  priceLabel: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "600",
+  },
+  detailsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  detailsButtonText: {
     color: "#007AFF",
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 13,
   },
 
+  // ACTION BUTTONS
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  actionButtonDanger: {
+    borderWidth: 1,
+    borderColor: "#FFEBEE",
+  },
+  actionButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+  },
+
+  // ERROR
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
   errorText: {
-    textAlign: "center",
-    marginTop: 50,
-    fontSize: 16,
+    fontSize: 14,
     color: "#666",
+    fontWeight: "600",
   },
 });

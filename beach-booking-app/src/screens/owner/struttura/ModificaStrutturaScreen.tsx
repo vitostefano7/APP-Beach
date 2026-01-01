@@ -45,13 +45,9 @@ export default function ModificaStrutturaScreen() {
 
   const [openingHours, setOpeningHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
   
-  // ✅ Amenities attive
   const [amenities, setAmenities] = useState<string[]>([]);
-  
-  // ✅ Amenities custom salvate (anche se disattivate)
   const [customAmenities, setCustomAmenities] = useState<string[]>([]);
   
-  // ✅ Modal input custom
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
 
@@ -80,12 +76,9 @@ export default function ModificaStrutturaScreen() {
         setOpeningHours(data.openingHours);
       }
 
-      // ✅ Carica amenities
       if (data.amenities) {
         if (Array.isArray(data.amenities)) {
           setAmenities(data.amenities);
-          
-          // Estrai custom amenities (anche disattivate saranno in questo array)
           const customs = data.amenities.filter((a: string) => isCustomAmenity(a));
           setCustomAmenities(customs);
         } else {
@@ -93,7 +86,6 @@ export default function ModificaStrutturaScreen() {
             .filter(([_, value]) => value === true)
             .map(([key]) => key);
           setAmenities(activeAmenities);
-          
           const customs = activeAmenities.filter((a: string) => isCustomAmenity(a));
           setCustomAmenities(customs);
         }
@@ -108,14 +100,12 @@ export default function ModificaStrutturaScreen() {
     }
   };
 
-  // ✅ Toggle amenity predefinita o custom
   const toggleAmenity = (key: string) => {
     setAmenities((prev) =>
       prev.includes(key) ? prev.filter((a) => a !== key) : [...prev, key]
     );
   };
 
-  // ✅ Aggiungi custom amenity
   const addCustomAmenity = () => {
     const trimmed = customAmenityInput.trim();
     
@@ -129,14 +119,12 @@ export default function ModificaStrutturaScreen() {
       return;
     }
 
-    // Aggiungi sia alla lista custom che alle amenities attive
     setCustomAmenities((prev) => [...prev, trimmed]);
     setAmenities((prev) => [...prev, trimmed]);
     setCustomAmenityInput("");
     setShowCustomModal(false);
   };
 
-  // ✅ Elimina definitivamente custom amenity
   const removeCustomAmenity = (amenity: string) => {
     Alert.alert("Rimuovi servizio", `Vuoi rimuovere definitivamente "${amenity}"?`, [
       { text: "Annulla", style: "cancel" },
@@ -169,7 +157,7 @@ export default function ModificaStrutturaScreen() {
     if (isActive) {
       Alert.alert(
         "Disattiva struttura",
-        "Disattivando la struttura, non sarà più visibile agli utenti e non potranno essere effettuate nuove prenotazioni. Continuare?",
+        "La struttura non sarà più visibile agli utenti. Continuare?",
         [
           { text: "Annulla", style: "cancel" },
           { text: "Disattiva", style: "destructive", onPress: () => setIsActive(false) },
@@ -198,14 +186,14 @@ export default function ModificaStrutturaScreen() {
         body: JSON.stringify({
           name,
           description,
-          amenities, // Solo le attive
+          amenities,
           openingHours,
           isActive,
         }),
       });
 
       if (response.ok) {
-        Alert.alert("Successo", "Struttura aggiornata con successo!", [
+        Alert.alert("Successo", "Struttura aggiornata!", [
           { text: "OK", onPress: () => navigation.goBack() },
         ]);
       } else {
@@ -214,7 +202,6 @@ export default function ModificaStrutturaScreen() {
       }
     } catch (error) {
       Alert.alert("Errore", "Errore di connessione");
-      console.error(error);
     } finally {
       setSaving(false);
     }
@@ -223,177 +210,284 @@ export default function ModificaStrutturaScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator size="large" color="#2196F3" style={{ marginTop: 100 }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text style={styles.loadingText}>Caricamento...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Struttura</Text>
         <Pressable 
           onPress={handleSave}
           disabled={saving}
-          style={[styles.saveHeaderButton, saving && styles.saveHeaderButtonDisabled]}
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
         >
-          <Text style={styles.saveHeaderButtonText}>
-            {saving ? "..." : "Salva"}
-          </Text>
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={18} color="white" />
+              <Text style={styles.saveButtonText}>Salva</Text>
+            </>
+          )}
         </Pressable>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {/* STATO */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <View style={styles.statusLeft}>
-              <View style={[styles.statusIcon, isActive ? styles.statusIconActive : styles.statusIconInactive]}>
-                <Ionicons name={isActive ? "checkmark-circle" : "close-circle"} size={24} color={isActive ? "#4CAF50" : "#E53935"} />
-              </View>
-              <View>
-                <Text style={styles.statusTitle}>Struttura {isActive ? "attiva" : "non attiva"}</Text>
-                <Text style={styles.statusSubtitle}>{isActive ? "Visibile agli utenti" : "Nascosta agli utenti"}</Text>
-              </View>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* STATUS TOGGLE */}
+        <Pressable 
+          style={[styles.statusCard, !isActive && styles.statusCardInactive]}
+          onPress={handleToggleActive}
+        >
+          <View style={styles.statusContent}>
+            <View style={[styles.statusIconContainer, !isActive && styles.statusIconContainerInactive]}>
+              <Ionicons 
+                name={isActive ? "checkmark-circle" : "close-circle"} 
+                size={28} 
+                color={isActive ? "#4CAF50" : "#F44336"} 
+              />
             </View>
-            <Switch value={isActive} onValueChange={handleToggleActive} trackColor={{ false: "#E0E0E0", true: "#4CAF50" }} thumbColor={isActive ? "white" : "#f4f3f4"} />
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>
+                {isActive ? "Struttura attiva" : "Struttura non attiva"}
+              </Text>
+              <Text style={styles.statusSubtitle}>
+                {isActive ? "Visibile e prenotabile" : "Nascosta agli utenti"}
+              </Text>
+            </View>
+            <Switch 
+              value={isActive} 
+              onValueChange={handleToggleActive}
+              trackColor={{ false: "#E0E0E0", true: "#4CAF50" }}
+              thumbColor="white"
+            />
           </View>
-          {!isActive && (
-            <View style={styles.warningBox}>
-              <Ionicons name="warning" size={16} color="#FF9800" />
-              <Text style={styles.warningText}>La struttura è nascosta. Gli utenti non possono vederla o prenotare.</Text>
+        </Pressable>
+
+        {/* INFO BASE */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="information-circle" size={20} color="#2196F3" />
+            <Text style={styles.cardTitle}>Informazioni base</Text>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nome struttura</Text>
+            <TextInput 
+              style={styles.input} 
+              value={name} 
+              onChangeText={setName} 
+              placeholder="Nome struttura" 
+              placeholderTextColor="#999" 
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Descrizione</Text>
+            <TextInput 
+              style={[styles.input, styles.textArea]} 
+              value={description} 
+              onChangeText={setDescription} 
+              placeholder="Descrizione della struttura..." 
+              placeholderTextColor="#999" 
+              multiline 
+              numberOfLines={4} 
+            />
+          </View>
+
+          <View style={styles.infoBox}>
+            <Ionicons name="location" size={16} color="#666" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoBoxTitle}>Indirizzo (non modificabile)</Text>
+              <Text style={styles.infoBoxText}>{address}, {city}</Text>
             </View>
-          )}
+          </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Informazioni base</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Nome struttura *</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nome struttura" placeholderTextColor="#999" />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Descrizione</Text>
-          <TextInput style={[styles.input, styles.textArea]} value={description} onChangeText={setDescription} placeholder="Descrizione..." placeholderTextColor="#999" multiline numberOfLines={4} />
-        </View>
-
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#2196F3" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.infoText}>Indirizzo e posizione non possono essere modificati</Text>
-            <Text style={styles.infoAddress}>{address || "Non disponibile"}, {city}</Text>
+        {/* ORARI */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="time" size={20} color="#FF9800" />
+            <Text style={styles.cardTitle}>Orari di apertura</Text>
           </View>
-        </View>
 
-        <Text style={styles.sectionTitle}>Orari di apertura</Text>
-
-        {DAYS.map(({ key, label }) => (
-          <View key={key} style={styles.dayRow}>
-            <View style={styles.dayHeader}>
-              <Text style={styles.dayLabel}>{label}</Text>
-              <View style={styles.dayToggle}>
-                <Text style={styles.dayToggleLabel}>{openingHours[key]?.closed ? "Chiuso" : "Aperto"}</Text>
-                <Switch value={!openingHours[key]?.closed} onValueChange={() => toggleDayClosed(key)} trackColor={{ false: "#E0E0E0", true: "#2196F3" }} />
+          {DAYS.map(({ key, label }) => (
+            <View key={key} style={styles.dayCard}>
+              <View style={styles.dayHeader}>
+                <Text style={styles.dayLabel}>{label}</Text>
+                <View style={styles.dayStatusContainer}>
+                  <Text style={[styles.dayStatus, openingHours[key]?.closed && styles.dayStatusClosed]}>
+                    {openingHours[key]?.closed ? "Chiuso" : "Aperto"}
+                  </Text>
+                  <Switch 
+                    value={!openingHours[key]?.closed} 
+                    onValueChange={() => toggleDayClosed(key)}
+                    trackColor={{ false: "#E0E0E0", true: "#2196F3" }}
+                    thumbColor="white"
+                  />
+                </View>
               </View>
+              
+              {!openingHours[key]?.closed && (
+                <View style={styles.timeContainer}>
+                  <View style={styles.timeBox}>
+                    <Ionicons name="sunny" size={14} color="#FF9800" />
+                    <TextInput 
+                      style={styles.timeInput} 
+                      value={openingHours[key]?.open || "09:00"} 
+                      onChangeText={(v) => updateOpeningHour(key, "open", v)} 
+                      placeholder="09:00" 
+                      placeholderTextColor="#999" 
+                    />
+                  </View>
+                  
+                  <View style={styles.timeDivider}>
+                    <View style={styles.timeDividerLine} />
+                    <Ionicons name="arrow-forward" size={12} color="#2196F3" />
+                    <View style={styles.timeDividerLine} />
+                  </View>
+                  
+                  <View style={styles.timeBox}>
+                    <Ionicons name="moon" size={14} color="#9C27B0" />
+                    <TextInput 
+                      style={styles.timeInput} 
+                      value={openingHours[key]?.close || "22:00"} 
+                      onChangeText={(v) => updateOpeningHour(key, "close", v)} 
+                      placeholder="22:00" 
+                      placeholderTextColor="#999" 
+                    />
+                  </View>
+                </View>
+              )}
             </View>
-            {!openingHours[key]?.closed && (
-              <View style={styles.timeRow}>
-                <View style={styles.timeInputContainer}>
-                  <Ionicons name="time-outline" size={16} color="#666" />
-                  <TextInput style={styles.timeInput} value={openingHours[key]?.open || "09:00"} onChangeText={(v) => updateOpeningHour(key, "open", v)} placeholder="09:00" placeholderTextColor="#999" />
-                </View>
-                <Text style={styles.timeSeparator}>→</Text>
-                <View style={styles.timeInputContainer}>
-                  <Ionicons name="time-outline" size={16} color="#666" />
-                  <TextInput style={styles.timeInput} value={openingHours[key]?.close || "22:00"} onChangeText={(v) => updateOpeningHour(key, "close", v)} placeholder="22:00" placeholderTextColor="#999" />
-                </View>
-              </View>
-            )}
+          ))}
+        </View>
+
+        {/* SERVIZI */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="star" size={20} color="#FFC107" />
+            <Text style={styles.cardTitle}>Servizi ({amenities.length})</Text>
           </View>
-        ))}
 
-        <Text style={styles.sectionTitle}>Servizi disponibili ({amenities.length})</Text>
-
-        {/* PREDEFINITE */}
-        {AVAILABLE_AMENITIES.map(({ key, label, icon }) => (
-          <View key={key} style={styles.amenityRow}>
-            <View style={styles.amenityLeft}>
-              <View style={[styles.amenityIcon, amenities.includes(key) && styles.amenityIconActive]}>
-                <Ionicons name={icon as any} size={20} color={amenities.includes(key) ? "#2196F3" : "#666"} />
-              </View>
-              <Text style={styles.amenityLabel}>{label}</Text>
-            </View>
-            <Switch value={amenities.includes(key)} onValueChange={() => toggleAmenity(key)} trackColor={{ false: "#E0E0E0", true: "#2196F3" }} />
+          <View style={styles.amenitiesGrid}>
+            {AVAILABLE_AMENITIES.map(({ key, label, icon }) => {
+              const isSelected = amenities.includes(key);
+              return (
+                <Pressable 
+                  key={key} 
+                  style={[styles.amenityChip, isSelected && styles.amenityChipActive]}
+                  onPress={() => toggleAmenity(key)}
+                >
+                  <Ionicons 
+                    name={icon as any} 
+                    size={18} 
+                    color={isSelected ? "#2196F3" : "#999"} 
+                  />
+                  <Text style={[styles.amenityChipText, isSelected && styles.amenityChipTextActive]}>
+                    {label}
+                  </Text>
+                  {isSelected && (
+                    <View style={styles.amenityCheck}>
+                      <Ionicons name="checkmark" size={12} color="white" />
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
-        ))}
 
-        {/* ✅ CUSTOM (tutte, anche disattivate) */}
-        {customAmenities.map((customAmenity) => {
-          const isActive = amenities.includes(customAmenity);
-          
-          return (
-            <View key={customAmenity} style={styles.amenityRow}>
-              <View style={styles.amenityLeft}>
-                <View style={[styles.amenityIcon, isActive && styles.amenityIconActive]}>
-                  <Ionicons name="add-circle" size={20} color={isActive ? "#2196F3" : "#666"} />
-                </View>
-                <Text style={[styles.amenityLabel, !isActive && { color: "#999" }]}>
-                  {customAmenity}
-                </Text>
-                <View style={styles.customBadge}>
-                  <Text style={styles.customBadgeText}>Custom</Text>
-                </View>
-              </View>
-              <View style={styles.amenityActions}>
-                <Switch value={isActive} onValueChange={() => toggleAmenity(customAmenity)} trackColor={{ false: "#E0E0E0", true: "#2196F3" }} />
-                <Pressable onPress={() => removeCustomAmenity(customAmenity)} style={styles.deleteButton} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={22} color="#E53935" />
+          {/* CUSTOM AMENITIES */}
+          {customAmenities.map((customAmenity) => {
+            const isSelected = amenities.includes(customAmenity);
+            return (
+              <View key={customAmenity} style={styles.customAmenityCard}>
+                <Pressable 
+                  style={[styles.customAmenityContent, isSelected && styles.customAmenityContentActive]}
+                  onPress={() => toggleAmenity(customAmenity)}
+                >
+                  <View style={[styles.customIcon, isSelected && styles.customIconActive]}>
+                    <Ionicons name="star" size={16} color={isSelected ? "#FF9800" : "#999"} />
+                  </View>
+                  <Text style={[styles.customAmenityText, isSelected && styles.customAmenityTextActive]}>
+                    {customAmenity}
+                  </Text>
+                  <View style={styles.customBadge}>
+                    <Text style={styles.customBadgeText}>Custom</Text>
+                  </View>
+                  {isSelected && (
+                    <View style={styles.amenityCheck}>
+                      <Ionicons name="checkmark" size={12} color="white" />
+                    </View>
+                  )}
+                </Pressable>
+                <Pressable 
+                  onPress={() => removeCustomAmenity(customAmenity)} 
+                  style={styles.deleteCustomButton}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close-circle" size={22} color="#F44336" />
                 </Pressable>
               </View>
-            </View>
-          );
-        })}
+            );
+          })}
 
-        {/* AGGIUNGI */}
-        <Pressable style={styles.addCustomButton} onPress={() => setShowCustomModal(true)}>
-          <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
-          <Text style={styles.addCustomButtonText}>Aggiungi servizio personalizzato</Text>
-        </Pressable>
+          <Pressable style={styles.addServiceButton} onPress={() => setShowCustomModal(true)}>
+            <View style={styles.addServiceIconContainer}>
+              <Ionicons name="add" size={20} color="#2196F3" />
+            </View>
+            <Text style={styles.addServiceText}>Aggiungi servizio personalizzato</Text>
+            <Ionicons name="arrow-forward" size={16} color="#2196F3" />
+          </Pressable>
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* ✅ MODAL CUSTOM AMENITY */}
+      {/* MODAL */}
       <Modal visible={showCustomModal} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
-          <Pressable style={styles.modalBackdrop} onPress={() => {
-            setShowCustomModal(false);
-            setCustomAmenityInput("");
-          }} />
+          <Pressable 
+            style={styles.modalBackdrop} 
+            onPress={() => {
+              setShowCustomModal(false);
+              setCustomAmenityInput("");
+            }} 
+          />
           
           <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            
             <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="add-circle" size={24} color="#2196F3" />
+              </View>
               <Text style={styles.modalTitle}>Nuovo servizio</Text>
-              <Pressable onPress={() => {
-                setShowCustomModal(false);
-                setCustomAmenityInput("");
-              }}>
-                <Ionicons name="close" size={28} color="#333" />
-              </Pressable>
+              <Text style={styles.modalSubtitle}>Aggiungi un servizio personalizzato alla tua struttura</Text>
             </View>
 
             <TextInput
               style={styles.modalInput}
               value={customAmenityInput}
               onChangeText={setCustomAmenityInput}
-              placeholder="Es: Campo da calcetto, Spazio bimbi..."
+              placeholder="Es: Spazio bimbi, Wi-Fi gratuito..."
               placeholderTextColor="#999"
               autoFocus
             />
@@ -416,6 +510,7 @@ export default function ModificaStrutturaScreen() {
                 onPress={addCustomAmenity}
                 disabled={!customAmenityInput.trim()}
               >
+                <Ionicons name="add" size={18} color="white" />
                 <Text style={styles.modalAddText}>Aggiungi</Text>
               </Pressable>
             </View>

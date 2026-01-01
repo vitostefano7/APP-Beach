@@ -8,6 +8,7 @@ import {
   Platform,
   ActivityIndicator,
   Keyboard,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,17 +32,30 @@ type Message = {
   createdAt: string;
 };
 
+type UserProfile = {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  createdAt: string;
+};
+
 export default function OwnerChatScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
 
-  const { conversationId, strutturaName, userName } = route.params;
+  const { conversationId, strutturaName, userName, userId } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  
+  // ✅ MODAL PROFILO UTENTE
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -80,6 +94,56 @@ export default function OwnerChatScreen() {
       console.error("Errore caricamento messaggi:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ CARICA PROFILO UTENTE
+  const loadUserProfile = async () => {
+    if (!token) {
+      console.log("❌ Nessun token disponibile");
+      return;
+    }
+    
+    if (!userId) {
+      console.log("❌ userId non presente nei params:", route.params);
+      return;
+    }
+
+    try {
+      setLoadingProfile(true);
+      
+      console.log("🔍 Caricamento profilo per userId:", userId);
+      console.log("📞 Chiamata API:", `${API_URL}/users/${userId}`);
+      
+      const res = await fetch(`${API_URL}/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("📡 Response status:", res.status);
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("✅ Profilo caricato:", data);
+        setUserProfile(data);
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Errore response:", res.status, errorText);
+      }
+    } catch (error) {
+      console.error("❌ Errore caricamento profilo:", error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleOpenProfile = () => {
+    console.log("👆 Apertura profilo utente");
+    console.log("📋 Route params completi:", route.params);
+    console.log("🆔 userId:", userId);
+    
+    setShowUserProfile(true);
+    if (!userProfile) {
+      loadUserProfile();
     }
   };
 
@@ -130,6 +194,15 @@ export default function OwnerChatScreen() {
     return date.toLocaleTimeString("it-IT", {
       hour: "2-digit",
       minute: "2-digit",
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
@@ -203,14 +276,18 @@ export default function OwnerChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
 
-        <View style={styles.headerCenter}>
+        {/* ✅ HEADER CLICCABILE PER APRIRE PROFILO */}
+        <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
           <View style={styles.headerAvatar}>
             <Ionicons name="person" size={24} color="#2196F3" />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {userName}
-            </Text>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {userName}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#999" />
+            </View>
             <View style={styles.headerSubtitleRow}>
               <Ionicons name="business-outline" size={12} color="#666" />
               <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -218,7 +295,7 @@ export default function OwnerChatScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.ownerBadge}>
           <Ionicons name="shield-checkmark" size={18} color="#4CAF50" />
@@ -294,6 +371,106 @@ export default function OwnerChatScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ✅ MODAL PROFILO UTENTE */}
+      <Modal
+        visible={showUserProfile}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowUserProfile(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowUserProfile(false)}
+        >
+          <Pressable 
+            style={styles.modalContent} 
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHandle} />
+            
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Profilo utente</Text>
+              <Pressable onPress={() => setShowUserProfile(false)} hitSlop={10}>
+                <Ionicons name="close" size={28} color="#333" />
+              </Pressable>
+            </View>
+
+            {loadingProfile ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color="#2196F3" />
+                <Text style={styles.modalLoadingText}>Caricamento...</Text>
+              </View>
+            ) : userProfile ? (
+              <View style={styles.profileContent}>
+                <View style={styles.profileAvatarContainer}>
+                  <View style={styles.profileAvatar}>
+                    <Ionicons name="person" size={48} color="#2196F3" />
+                  </View>
+                </View>
+
+                <View style={styles.profileInfo}>
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="person-outline" size={20} color="#2196F3" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Nome</Text>
+                      <Text style={styles.profileValue}>{userProfile.name}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="mail-outline" size={20} color="#FF9800" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Email</Text>
+                      <Text style={styles.profileValue}>{userProfile.email}</Text>
+                    </View>
+                  </View>
+
+                  {userProfile.phone && (
+                    <View style={styles.profileRow}>
+                      <View style={styles.profileIconContainer}>
+                        <Ionicons name="call-outline" size={20} color="#4CAF50" />
+                      </View>
+                      <View style={styles.profileRowContent}>
+                        <Text style={styles.profileLabel}>Telefono</Text>
+                        <Text style={styles.profileValue}>{userProfile.phone}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="calendar-outline" size={20} color="#9C27B0" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Cliente dal</Text>
+                      <Text style={styles.profileValue}>
+                        {formatDate(userProfile.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.modalError}>
+                <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
+                <Text style={styles.modalErrorText}>
+                  Impossibile caricare il profilo
+                </Text>
+                {!userId && (
+                  <Text style={styles.modalErrorSubtext}>
+                    ID utente mancante
+                  </Text>
+                )}
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

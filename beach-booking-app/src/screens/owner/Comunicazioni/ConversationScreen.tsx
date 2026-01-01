@@ -130,6 +130,7 @@ export default function OwnerConversationsScreen() {
             conversationId: item._id,
             strutturaName: item.struttura.name,
             userName: item.user.name,
+            userId: item.user._id, // ✅ Aggiunto userId
           });
           setTimeout(() => refreshUnreadCount(), 1000);
         }}
@@ -218,16 +219,7 @@ export default function OwnerConversationsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Comunicazioni</Text>
-          {totalUnread > 0 && (
-            <View style={styles.totalUnreadBadge}>
-              <Text style={styles.totalUnreadText}>
-                {totalUnread > 99 ? "99+" : totalUnread}
-              </Text>
-            </View>
-          )}
-        </View>
+        <Text style={styles.headerTitle}>Comunicazioni</Text>
 
         <View style={styles.filterContainer}>
           <Pressable
