@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -28,6 +29,10 @@ import {
   isPastSlot,
 } from "../utils-player/FieldDetailsScreen-utils";
 
+/* =======================
+   TYPES
+======================= */
+
 type Slot = {
   time: string;
   enabled: boolean;
@@ -42,27 +47,47 @@ type CalendarDay = {
   isClosed?: boolean;
 };
 
+type DurationPrice = {
+  oneHour: number;
+  oneHourHalf: number;
+};
+
+type TimeSlot = {
+  start: string;
+  end: string;
+  label: string;
+  prices: DurationPrice;
+  daysOfWeek?: number[]; // 🆕 0=dom, 1=lun, ..., 6=sab
+};
+
+type DateOverride = {
+  date: string;
+  label: string;
+  prices: DurationPrice;
+};
+
+type PeriodOverride = {
+  startDate: string;
+  endDate: string;
+  label: string;
+  prices: DurationPrice;
+};
+
 type PricingRules = {
   mode: "flat" | "advanced";
-  flatPrices?: {
-    oneHour: number;
-    oneHourHalf: number;
-  };
-  basePrices?: {
-    oneHour: number;
-    oneHourHalf: number;
-  };
+  flatPrices?: DurationPrice;
+  basePrices?: DurationPrice;
   timeSlotPricing?: {
     enabled: boolean;
-    slots: Array<{
-      start: string;
-      end: string;
-      label: string;
-      prices: {
-        oneHour: number;
-        oneHourHalf: number;
-      };
-    }>;
+    slots: TimeSlot[];
+  };
+  dateOverrides?: {
+    enabled: boolean;
+    dates: DateOverride[];
+  };
+  periodOverrides?: {
+    enabled: boolean;
+    periods: PeriodOverride[];
   };
 };
 
@@ -78,7 +103,6 @@ type Campo = {
   isActive: boolean;
 };
 
-// Mappa dei giorni della settimana
 const DAYS_OF_WEEK = [
   { key: "monday", label: "Lunedì" },
   { key: "tuesday", label: "Martedì" },
@@ -89,12 +113,43 @@ const DAYS_OF_WEEK = [
   { key: "sunday", label: "Domenica" },
 ];
 
+/* =======================
+   PRICING UTILS (CLIENT-SIDE)
+======================= */
+
 /**
- * 🧮 Calcola il prezzo in base al pricing rules del campo
+ * 📅 Ottieni il giorno della settimana da una data
+ */
+function getDayOfWeek(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  return dateObj.getDay();
+}
+
+/**
+ * ⏰ Verifica se un orario è in un range
+ */
+function isTimeInRange(time: string, start: string, end: string): boolean {
+  const timeToMinutes = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const timeMin = timeToMinutes(time);
+  const startMin = timeToMinutes(start);
+  const endMin = timeToMinutes(end);
+
+  return timeMin >= startMin && timeMin < endMin;
+}
+
+/**
+ * 🎯 CALCOLO DETERMINISTICO DEL PREZZO
+ * Implementa la gerarchia completa lato client
  */
 function calculatePrice(
   campo: Campo,
   duration: number,
+  dateStr?: string,
   startTime?: string
 ): number {
   const pricing = campo.pricingRules;
@@ -104,36 +159,82 @@ function calculatePrice(
     return campo.pricePerHour * duration;
   }
 
-  // FLAT MODE
+  // FLAT MODE (Livello 5)
   if (pricing.mode === "flat") {
     return duration === 1
       ? pricing.flatPrices?.oneHour || campo.pricePerHour
-      : pricing.flatPrices?.oneHourHalf || (campo.pricePerHour * 1.4);
+      : pricing.flatPrices?.oneHourHalf || campo.pricePerHour * 1.4;
   }
 
-  // ADVANCED MODE
+  // ADVANCED MODE - Gerarchia deterministica
   let selectedPrices = pricing.basePrices;
 
-  // Controlla se c'è una fascia oraria che copre questo orario
-  if (pricing.timeSlotPricing?.enabled && startTime && pricing.timeSlotPricing.slots?.length > 0) {
-    const timeSlot = pricing.timeSlotPricing.slots.find(
-      (slot) => startTime >= slot.start && startTime < slot.end
-    );
-    if (timeSlot && timeSlot.prices) {
-      selectedPrices = timeSlot.prices;
+  // LIVELLO 1A: Date Override (priorità massima)
+  if (pricing.dateOverrides?.enabled && dateStr && pricing.dateOverrides.dates?.length > 0) {
+    const dateOverride = pricing.dateOverrides.dates.find((d) => d.date === dateStr);
+    if (dateOverride) {
+      selectedPrices = dateOverride.prices;
+      return duration === 1 ? selectedPrices.oneHour : selectedPrices.oneHourHalf;
     }
   }
 
-  // Ritorna il prezzo in base alla durata
+  // LIVELLO 1B: Period Override
+  if (pricing.periodOverrides?.enabled && dateStr && pricing.periodOverrides.periods?.length > 0) {
+    const periodOverride = pricing.periodOverrides.periods.find(
+      (p) => dateStr >= p.startDate && dateStr <= p.endDate
+    );
+    if (periodOverride) {
+      selectedPrices = periodOverride.prices;
+      return duration === 1 ? selectedPrices.oneHour : selectedPrices.oneHourHalf;
+    }
+  }
+
+  // LIVELLO 2: Time Slot con Days of Week
+  if (pricing.timeSlotPricing?.enabled && startTime && dateStr && pricing.timeSlotPricing.slots?.length > 0) {
+    const dayOfWeek = getDayOfWeek(dateStr);
+
+    // Prima cerca fasce con daysOfWeek definito
+    const specificSlot = pricing.timeSlotPricing.slots.find((slot) => {
+      if (!slot.daysOfWeek || slot.daysOfWeek.length === 0) {
+        return false; // Skip fasce generiche
+      }
+      if (!slot.daysOfWeek.includes(dayOfWeek)) {
+        return false; // Giorno non corrisponde
+      }
+      return isTimeInRange(startTime, slot.start, slot.end);
+    });
+
+    if (specificSlot && specificSlot.prices) {
+      selectedPrices = specificSlot.prices;
+      return duration === 1 ? selectedPrices.oneHour : selectedPrices.oneHourHalf;
+    }
+  }
+
+  // LIVELLO 3: Time Slot Generico (senza daysOfWeek)
+  if (pricing.timeSlotPricing?.enabled && startTime && pricing.timeSlotPricing.slots?.length > 0) {
+    const genericSlot = pricing.timeSlotPricing.slots.find((slot) => {
+      if (slot.daysOfWeek && slot.daysOfWeek.length > 0) {
+        return false; // Skip fasce specifiche
+      }
+      return isTimeInRange(startTime, slot.start, slot.end);
+    });
+
+    if (genericSlot && genericSlot.prices) {
+      selectedPrices = genericSlot.prices;
+      return duration === 1 ? selectedPrices.oneHour : selectedPrices.oneHourHalf;
+    }
+  }
+
+  // LIVELLO 4: Base Price
   if (duration === 1) {
     return selectedPrices?.oneHour || campo.pricePerHour;
   } else {
-    return selectedPrices?.oneHourHalf || (campo.pricePerHour * 1.4);
+    return selectedPrices?.oneHourHalf || campo.pricePerHour * 1.4;
   }
 }
 
 /**
- * 📊 Ottieni label del prezzo (per mostrare variazioni)
+ * 📊 Ottieni label del prezzo con range se necessario
  */
 function getPriceLabel(campo: Campo, duration: number): string {
   const pricing = campo.pricingRules;
@@ -145,15 +246,29 @@ function getPriceLabel(campo: Campo, duration: number): string {
   }
 
   // ADVANCED MODE - controlla se ci sono variazioni
+  let minPrice = calculatePrice(campo, duration);
+  let maxPrice = minPrice;
+
+  // Controlla date overrides
+  if (pricing.dateOverrides?.enabled && pricing.dateOverrides.dates?.length > 0) {
+    pricing.dateOverrides.dates.forEach((dateOv) => {
+      const price = duration === 1 ? dateOv.prices.oneHour : dateOv.prices.oneHourHalf;
+      minPrice = Math.min(minPrice, price);
+      maxPrice = Math.max(maxPrice, price);
+    });
+  }
+
+  // Controlla period overrides
+  if (pricing.periodOverrides?.enabled && pricing.periodOverrides.periods?.length > 0) {
+    pricing.periodOverrides.periods.forEach((period) => {
+      const price = duration === 1 ? period.prices.oneHour : period.prices.oneHourHalf;
+      minPrice = Math.min(minPrice, price);
+      maxPrice = Math.max(maxPrice, price);
+    });
+  }
+
+  // Controlla time slots
   if (pricing.timeSlotPricing?.enabled && pricing.timeSlotPricing.slots?.length > 0) {
-    const basePrice = duration === 1
-      ? pricing.basePrices?.oneHour || campo.pricePerHour
-      : pricing.basePrices?.oneHourHalf || (campo.pricePerHour * 1.4);
-
-    let minPrice = basePrice;
-    let maxPrice = basePrice;
-
-    // Trova min e max tra tutte le fasce
     pricing.timeSlotPricing.slots.forEach((slot) => {
       if (slot.prices) {
         const slotPrice = duration === 1 ? slot.prices.oneHour : slot.prices.oneHourHalf;
@@ -161,17 +276,110 @@ function getPriceLabel(campo: Campo, duration: number): string {
         maxPrice = Math.max(maxPrice, slotPrice);
       }
     });
+  }
 
-    // Se ci sono variazioni, mostra range
-    if (minPrice !== maxPrice) {
-      return `da €${minPrice.toFixed(2)}`;
+  // Se ci sono variazioni, mostra range
+  if (minPrice !== maxPrice) {
+    return `da €${minPrice.toFixed(2)}`;
+  }
+
+  // Nessuna variazione
+  return `€${minPrice.toFixed(2)}`;
+}
+
+/**
+ * 🎯 NUOVO: Ottieni prezzo per una data specifica (per le card durata)
+ * Calcola min/max tra gli slot disponibili per quella data
+ */
+function getPriceLabelForDate(
+  campo: Campo,
+  duration: number,
+  dateStr: string,
+  availableSlots: Slot[]
+): string {
+  if (availableSlots.length === 0) {
+    return getPriceLabel(campo, duration);
+  }
+
+  // Calcola prezzo per ogni slot disponibile
+  const prices = availableSlots.map((slot) =>
+    calculatePrice(campo, duration, dateStr, slot.time)
+  );
+
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+
+  // Se tutti gli slot hanno lo stesso prezzo
+  if (minPrice === maxPrice) {
+    return `€${minPrice.toFixed(2)}`;
+  }
+
+  // Se ci sono variazioni
+  return `da €${minPrice.toFixed(2)}`;
+}
+
+/**
+ * 🏷️ Ottieni label della fascia di prezzo applicata
+ */
+function getPricingLabel(
+  campo: Campo,
+  dateStr: string,
+  startTime: string
+): string | null {
+  const pricing = campo.pricingRules;
+
+  if (!pricing || pricing.mode === "flat") {
+    return null;
+  }
+
+  // Date override
+  if (pricing.dateOverrides?.enabled && pricing.dateOverrides.dates?.length > 0) {
+    const dateOverride = pricing.dateOverrides.dates.find((d) => d.date === dateStr);
+    if (dateOverride) {
+      return `📅 ${dateOverride.label}`;
     }
   }
 
-  // Nessuna variazione, mostra prezzo base
-  const price = calculatePrice(campo, duration);
-  return `€${price.toFixed(2)}`;
+  // Period override
+  if (pricing.periodOverrides?.enabled && pricing.periodOverrides.periods?.length > 0) {
+    const periodOverride = pricing.periodOverrides.periods.find(
+      (p) => dateStr >= p.startDate && dateStr <= p.endDate
+    );
+    if (periodOverride) {
+      return `📆 ${periodOverride.label}`;
+    }
+  }
+
+  // Time slot con day
+  if (pricing.timeSlotPricing?.enabled && pricing.timeSlotPricing.slots?.length > 0) {
+    const dayOfWeek = getDayOfWeek(dateStr);
+    const specificSlot = pricing.timeSlotPricing.slots.find((slot) => {
+      if (!slot.daysOfWeek || slot.daysOfWeek.length === 0) return false;
+      if (!slot.daysOfWeek.includes(dayOfWeek)) return false;
+      return isTimeInRange(startTime, slot.start, slot.end);
+    });
+    if (specificSlot) {
+      return `⏰ ${specificSlot.label}`;
+    }
+  }
+
+  // Time slot generico
+  if (pricing.timeSlotPricing?.enabled && pricing.timeSlotPricing.slots?.length > 0) {
+    const genericSlot = pricing.timeSlotPricing.slots.find((slot) => {
+      if (slot.daysOfWeek && slot.daysOfWeek.length > 0) return false;
+      return isTimeInRange(startTime, slot.start, slot.end);
+    });
+    if (genericSlot) {
+      return `⏰ ${genericSlot.label}`;
+    }
+  }
+
+  return null;
 }
+
+/* =======================
+   MAIN COMPONENT
+======================= */
 
 export default function FieldDetailsScreen() {
   const route = useRoute<any>();
@@ -188,6 +396,7 @@ export default function FieldDetailsScreen() {
   const [selectedSlot, setSelectedSlot] = useState<Record<string, string>>({});
   const [selectedDuration, setSelectedDuration] = useState<Record<string, number>>({});
   const [isFavorite, setIsFavorite] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   if (!struttura) {
     return (
@@ -234,6 +443,26 @@ export default function FieldDetailsScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Ricarica i campi con pricing aggiornati
+      const res = await fetch(`${API_URL}/campi/struttura/${struttura._id}`);
+      const data = await res.json();
+      const campiData = Array.isArray(data) ? data : [];
+      setCampi(campiData);
+
+      // Ricarica calendari se ci sono campi espansi
+      if (expandedCampoId && calendars[expandedCampoId]) {
+        await loadCalendar(expandedCampoId, currentMonths[expandedCampoId] || new Date());
+      }
+    } catch (err) {
+      console.error("Errore refresh:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const toggleFavorite = async () => {
     if (!token) return;
 
@@ -256,45 +485,28 @@ export default function FieldDetailsScreen() {
   };
 
   const startChat = async () => {
-    console.log("🔵 startChat chiamata");
-    
     if (!token) {
-      console.log("❌ Nessun token");
       alert("Effettua il login per chattare con la struttura");
       return;
     }
 
-    console.log("🔵 Token presente, fetching conversation...");
-    console.log("🔵 Struttura ID:", struttura._id);
-
     try {
       const url = `${API_URL}/api/conversations/struttura/${struttura._id}`;
-      console.log("🔵 URL:", url);
-
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("🔵 Response status:", res.status);
-
       if (res.ok) {
         const conversation = await res.json();
-        console.log("✅ Conversation ricevuta:", conversation);
-        
-        console.log("🔵 Navigating to Chat (same stack)...");
-        
-        // ✅ Chat è nello STESSO STACK, naviga direttamente!
         navigation.navigate("Chat", {
           conversationId: conversation._id,
           strutturaName: struttura.name,
         });
       } else {
         const errorText = await res.text();
-        console.error("❌ Response non OK:", res.status, errorText);
         alert(`Errore: ${res.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error("❌ Errore catch:", error);
       alert("Impossibile aprire la chat. Riprova più tardi.");
     }
   };
@@ -317,12 +529,28 @@ export default function FieldDetailsScreen() {
     }
   };
 
-  const toggleCampo = (campoId: string) => {
+  const toggleCampo = async (campoId: string) => {
     const isExpanding = expandedCampoId !== campoId;
     setExpandedCampoId(isExpanding ? campoId : null);
 
-    if (isExpanding && !calendars[campoId]) {
-      loadCalendar(campoId, currentMonths[campoId] || new Date());
+    if (isExpanding) {
+      // 🔄 Ricarica i pricing rules aggiornati
+      try {
+        const res = await fetch(`${API_URL}/campi/${campoId}`);
+        if (res.ok) {
+          const updatedCampo = await res.json();
+          setCampi((prev) =>
+            prev.map((c) => (c._id === campoId ? { ...c, pricingRules: updatedCampo.pricingRules } : c))
+          );
+        }
+      } catch (err) {
+        console.error("Errore ricaricamento pricing:", err);
+      }
+
+      // Carica calendario se non presente
+      if (!calendars[campoId]) {
+        loadCalendar(campoId, currentMonths[campoId] || new Date());
+      }
     }
   };
 
@@ -338,15 +566,12 @@ export default function FieldDetailsScreen() {
     setSelectedDuration((prev) => ({ ...prev, [campoId]: 0 }));
   };
 
-  /**
-   * Verifica se uno slot ha disponibilità consecutiva per la durata richiesta
-   */
   const hasConsecutiveAvailability = (
     slots: Slot[],
     startIndex: number,
     durationHours: number
   ): boolean => {
-    const slotsNeeded = durationHours * 2; // 1h = 2 slot, 1.5h = 3 slot
+    const slotsNeeded = durationHours * 2;
 
     if (startIndex + slotsNeeded > slots.length) {
       return false;
@@ -362,9 +587,6 @@ export default function FieldDetailsScreen() {
     return true;
   };
 
-  /**
-   * Filtra gli slot mostrando solo quelli che hanno disponibilità consecutiva
-   */
   const getAvailableSlots = (
     slots: Slot[],
     durationHours: number,
@@ -438,13 +660,14 @@ export default function FieldDetailsScreen() {
       .map(([key]) => key);
   }, [struttura.amenities]);
 
-  // 🔍 DEBUG - Verifica orari di apertura
-  console.log("📊 Struttura openingHours:", struttura.openingHours);
-  console.log("📊 Struttura completa:", struttura);
-
   return (
     <View style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#2196F3"]} />
+        }
+      >
         <View style={styles.galleryContainer}>
           <ScrollView
             horizontal
@@ -456,7 +679,6 @@ export default function FieldDetailsScreen() {
               <Image key={i} source={{ uri: img }} style={styles.galleryImage} />
             ))}
           </ScrollView>
-
 
           {token && (
             <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
@@ -486,14 +708,7 @@ export default function FieldDetailsScreen() {
 
         {token && (
           <View style={styles.chatSection}>
-            <Pressable 
-              style={styles.chatButton} 
-              onPress={() => {
-                console.log("BOTTONE PREMUTO!");
-                alert("Bottone cliccato!");
-                startChat();
-              }}
-            >
+            <Pressable style={styles.chatButton} onPress={startChat}>
               <Ionicons name="chatbubble-outline" size={20} color="white" />
               <Text style={styles.chatButtonText}>Contatta la struttura</Text>
               <Ionicons name="arrow-forward" size={16} color="white" />
@@ -501,7 +716,6 @@ export default function FieldDetailsScreen() {
           </View>
         )}
 
-        {/* ORARI DI APERTURA */}
         {struttura.openingHours && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -512,9 +726,7 @@ export default function FieldDetailsScreen() {
             <View style={styles.openingHoursContainer}>
               {DAYS_OF_WEEK.map(({ key, label }) => {
                 const dayHours = struttura.openingHours[key];
-                
                 if (!dayHours) return null;
-
                 const isClosed = dayHours.closed === true;
 
                 return (
@@ -795,7 +1007,6 @@ export default function FieldDetailsScreen() {
                               </View>
                             ) : (
                               <>
-                                {/* STEP 1: Selezione Durata */}
                                 {!selectedDuration[campo._id] ? (
                                   <View style={styles.durationSelection}>
                                     <Text style={styles.durationTitle}>
@@ -806,55 +1017,98 @@ export default function FieldDetailsScreen() {
                                     </Text>
 
                                     <View style={styles.durationButtons}>
-                                      <Pressable
-                                        style={styles.durationCard}
-                                        onPress={() => {
-                                          setSelectedDuration((prev) => ({ ...prev, [campo._id]: 1 }));
-                                        }}
-                                      >
-                                        <View style={styles.durationCardHeader}>
-                                          <Ionicons name="time" size={24} color="#2196F3" />
-                                          <View style={styles.durationBadge}>
-                                            <Text style={styles.durationBadgeText}>Popolare</Text>
-                                          </View>
-                                        </View>
-                                        <Text style={styles.durationCardTitle}>1 Ora</Text>
-                                        <Text style={styles.durationCardSubtitle}>Partita standard</Text>
-                                        <View style={styles.durationCardPrice}>
-                                          <Text style={styles.durationCardPriceAmount}>
-                                            {getPriceLabel(campo, 1)}
-                                          </Text>
-                                        </View>
-                                        <View style={styles.durationCardFooter}>
-                                          <Ionicons name="arrow-forward" size={16} color="#2196F3" />
-                                        </View>
-                                      </Pressable>
+                                      {/* CARD 1 ORA */}
+                                      {(() => {
+                                        const slots1h = getAvailableSlots(
+                                          selectedDayData.slots,
+                                          1,
+                                          selectedDateStr
+                                        );
+                                        const priceLabel1h = getPriceLabelForDate(
+                                          campo,
+                                          1,
+                                          selectedDateStr,
+                                          slots1h
+                                        );
 
-                                      <Pressable
-                                        style={styles.durationCard}
-                                        onPress={() => {
-                                          setSelectedDuration((prev) => ({ ...prev, [campo._id]: 1.5 }));
-                                        }}
-                                      >
-                                        <View style={styles.durationCardHeader}>
-                                          <Ionicons name="time" size={24} color="#FF9800" />
-                                        </View>
-                                        <Text style={styles.durationCardTitle}>1h 30m</Text>
-                                        <Text style={styles.durationCardSubtitle}>Partita lunga</Text>
-                                        <View style={styles.durationCardPrice}>
-                                          <Text style={styles.durationCardPriceAmount}>
-                                            {getPriceLabel(campo, 1.5)}
-                                          </Text>
-                                        </View>
-                                        <View style={styles.durationCardFooter}>
-                                          <Ionicons name="arrow-forward" size={16} color="#FF9800" />
-                                        </View>
-                                      </Pressable>
+                                        return (
+                                          <Pressable
+                                            style={styles.durationCard}
+                                            onPress={() => {
+                                              setSelectedDuration((prev) => ({ ...prev, [campo._id]: 1 }));
+                                            }}
+                                            disabled={slots1h.length === 0}
+                                          >
+                                            <View style={styles.durationCardHeader}>
+                                              <Ionicons name="time" size={24} color="#2196F3" />
+                                              <View style={styles.durationBadge}>
+                                                <Text style={styles.durationBadgeText}>Popolare</Text>
+                                              </View>
+                                            </View>
+                                            <Text style={styles.durationCardTitle}>1 Ora</Text>
+                                            <Text style={styles.durationCardSubtitle}>Partita standard</Text>
+                                            <View style={styles.durationCardPrice}>
+                                              <Text style={styles.durationCardPriceAmount}>
+                                                {slots1h.length > 0 ? priceLabel1h : "Non disponibile"}
+                                              </Text>
+                                            </View>
+                                            <View style={styles.durationCardFooter}>
+                                              <Ionicons
+                                                name={slots1h.length > 0 ? "arrow-forward" : "close-circle"}
+                                                size={16}
+                                                color={slots1h.length > 0 ? "#2196F3" : "#999"}
+                                              />
+                                            </View>
+                                          </Pressable>
+                                        );
+                                      })()}
+
+                                      {/* CARD 1.5 ORE */}
+                                      {(() => {
+                                        const slots15h = getAvailableSlots(
+                                          selectedDayData.slots,
+                                          1.5,
+                                          selectedDateStr
+                                        );
+                                        const priceLabel15h = getPriceLabelForDate(
+                                          campo,
+                                          1.5,
+                                          selectedDateStr,
+                                          slots15h
+                                        );
+
+                                        return (
+                                          <Pressable
+                                            style={styles.durationCard}
+                                            onPress={() => {
+                                              setSelectedDuration((prev) => ({ ...prev, [campo._id]: 1.5 }));
+                                            }}
+                                            disabled={slots15h.length === 0}
+                                          >
+                                            <View style={styles.durationCardHeader}>
+                                              <Ionicons name="time" size={24} color="#FF9800" />
+                                            </View>
+                                            <Text style={styles.durationCardTitle}>1h 30m</Text>
+                                            <Text style={styles.durationCardSubtitle}>Partita lunga</Text>
+                                            <View style={styles.durationCardPrice}>
+                                              <Text style={styles.durationCardPriceAmount}>
+                                                {slots15h.length > 0 ? priceLabel15h : "Non disponibile"}
+                                              </Text>
+                                            </View>
+                                            <View style={styles.durationCardFooter}>
+                                              <Ionicons
+                                                name={slots15h.length > 0 ? "arrow-forward" : "close-circle"}
+                                                size={16}
+                                                color={slots15h.length > 0 ? "#FF9800" : "#999"}
+                                              />
+                                            </View>
+                                          </Pressable>
+                                        );
+                                      })()}
                                     </View>
                                   </View>
                                 ) : (
                                   <>
-                                    {/* STEP 2: Mostra Durata Selezionata */}
                                     <View style={styles.selectedDurationBanner}>
                                       <View style={styles.selectedDurationLeft}>
                                         <Ionicons name="time" size={20} color="#2196F3" />
@@ -873,106 +1127,112 @@ export default function FieldDetailsScreen() {
                                       </Pressable>
                                     </View>
 
-                                    {/* STEP 3: Mostra Solo Slot Disponibili */}
-                                    <>
-                                      {(() => {
-                                        const availableSlots = getAvailableSlots(
-                                          selectedDayData.slots,
-                                          selectedDuration[campo._id],
-                                          selectedDateStr
-                                        );
+                                    {(() => {
+                                      const availableSlots = getAvailableSlots(
+                                        selectedDayData.slots,
+                                        selectedDuration[campo._id],
+                                        selectedDateStr
+                                      );
 
-                                        if (availableSlots.length === 0) {
-                                          return (
-                                            <View style={styles.noSlotsBox}>
-                                              <Ionicons name="sad-outline" size={48} color="#FF9800" />
-                                              <Text style={styles.noSlotsTitle}>
-                                                Nessuno slot disponibile
-                                              </Text>
-                                              <Text style={styles.noSlotsText}>
-                                                Non ci sono slot consecutivi disponibili per{" "}
-                                                {selectedDuration[campo._id] === 1 ? "1 ora" : "1 ora e 30 minuti"}.
-                                                {"\n"}Prova con una durata diversa o scegli un altro giorno.
-                                              </Text>
-                                              <Pressable
-                                                style={styles.changeDurationBtn2}
-                                                onPress={() => {
-                                                  setSelectedDuration((prev) => ({ ...prev, [campo._id]: 0 }));
-                                                }}
-                                              >
-                                                <Text style={styles.changeDurationText2}>
-                                                  Cambia Durata
-                                                </Text>
-                                              </Pressable>
-                                            </View>
-                                          );
-                                        }
-
+                                      if (availableSlots.length === 0) {
                                         return (
-                                          <>
-                                            <Text style={styles.selectSlotHint}>
-                                              Seleziona l'orario di inizio ({availableSlots.length} disponibili)
+                                          <View style={styles.noSlotsBox}>
+                                            <Ionicons name="sad-outline" size={48} color="#FF9800" />
+                                            <Text style={styles.noSlotsTitle}>
+                                              Nessuno slot disponibile
                                             </Text>
-
-                                            <ScrollView
-                                              horizontal
-                                              showsHorizontalScrollIndicator={false}
-                                              contentContainerStyle={styles.slotsScrollContent}
-                                              style={styles.slotsScroll}
+                                            <Text style={styles.noSlotsText}>
+                                              Non ci sono slot consecutivi disponibili per{" "}
+                                              {selectedDuration[campo._id] === 1 ? "1 ora" : "1 ora e 30 minuti"}.
+                                              {"\n"}Prova con una durata diversa o scegli un altro giorno.
+                                            </Text>
+                                            <Pressable
+                                              style={styles.changeDurationBtn2}
+                                              onPress={() => {
+                                                setSelectedDuration((prev) => ({ ...prev, [campo._id]: 0 }));
+                                              }}
                                             >
-                                              {availableSlots.map((slot, i) => {
-                                                const isSlotSelected = selectedSlot[campo._id] === slot.time;
+                                              <Text style={styles.changeDurationText2}>
+                                                Cambia Durata
+                                              </Text>
+                                            </Pressable>
+                                          </View>
+                                        );
+                                      }
 
-                                                // Calcola orario di fine e prezzo
-                                                const [h, m] = slot.time.split(":").map(Number);
-                                                const totalMinutes = h * 60 + m + (selectedDuration[campo._id] * 60);
-                                                const endH = Math.floor(totalMinutes / 60);
-                                                const endM = totalMinutes % 60;
-                                                const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+                                      return (
+                                        <>
+                                          <Text style={styles.selectSlotHint}>
+                                            Seleziona l'orario di inizio ({availableSlots.length} disponibili)
+                                          </Text>
 
-                                                // 🆕 Calcola prezzo per questo slot specifico
-                                                const slotPrice = calculatePrice(campo, selectedDuration[campo._id], slot.time);
+                                          <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.slotsScrollContent}
+                                            style={styles.slotsScroll}
+                                          >
+                                            {availableSlots.map((slot, i) => {
+                                              const isSlotSelected = selectedSlot[campo._id] === slot.time;
 
-                                                return (
-                                                  <Pressable
-                                                    key={`${selectedDateStr}-${slot.time}-${i}`}
-                                                    style={[
-                                                      styles.slotChip,
-                                                      styles.slotAvailable,
-                                                      isSlotSelected && styles.slotSelected,
-                                                    ]}
-                                                    onPress={() => {
-                                                      setSelectedSlot((prev) => ({
-                                                        ...prev,
-                                                        [campo._id]: isSlotSelected ? "" : slot.time,
-                                                      }));
-                                                    }}
-                                                  >
-                                                    <View style={styles.slotMainContent}>
-                                                      <Ionicons
-                                                        name={isSlotSelected ? "checkmark-circle" : "time-outline"}
-                                                        size={14}
-                                                        color={isSlotSelected ? "white" : "#4CAF50"}
-                                                      />
-                                                      <View style={styles.slotTimeContainer}>
-                                                        <Text
-                                                          style={[
-                                                            styles.slotTime,
-                                                            isSlotSelected && styles.slotTimeSelected,
-                                                          ]}
-                                                        >
-                                                          {slot.time}
-                                                        </Text>
-                                                        <Text
-                                                          style={[
-                                                            styles.slotEndTime,
-                                                            isSlotSelected && styles.slotEndTimeSelected,
-                                                          ]}
-                                                        >
-                                                          → {endTime}
-                                                        </Text>
-                                                      </View>
+                                              const [h, m] = slot.time.split(":").map(Number);
+                                              const totalMinutes = h * 60 + m + (selectedDuration[campo._id] * 60);
+                                              const endH = Math.floor(totalMinutes / 60);
+                                              const endM = totalMinutes % 60;
+                                              const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+
+                                              // 🆕 Calcola prezzo con gerarchia completa
+                                              const slotPrice = calculatePrice(
+                                                campo,
+                                                selectedDuration[campo._id],
+                                                selectedDateStr,
+                                                slot.time
+                                              );
+
+                                              // 🆕 Ottieni label fascia
+                                              const pricingLabel = getPricingLabel(campo, selectedDateStr, slot.time);
+
+                                              return (
+                                                <Pressable
+                                                  key={`${selectedDateStr}-${slot.time}-${i}`}
+                                                  style={[
+                                                    styles.slotChip,
+                                                    styles.slotAvailable,
+                                                    isSlotSelected && styles.slotSelected,
+                                                  ]}
+                                                  onPress={() => {
+                                                    setSelectedSlot((prev) => ({
+                                                      ...prev,
+                                                      [campo._id]: isSlotSelected ? "" : slot.time,
+                                                    }));
+                                                  }}
+                                                >
+                                                  <View style={styles.slotMainContent}>
+                                                    <Ionicons
+                                                      name={isSlotSelected ? "checkmark-circle" : "time-outline"}
+                                                      size={14}
+                                                      color={isSlotSelected ? "white" : "#4CAF50"}
+                                                    />
+                                                    <View style={styles.slotTimeContainer}>
+                                                      <Text
+                                                        style={[
+                                                          styles.slotTime,
+                                                          isSlotSelected && styles.slotTimeSelected,
+                                                        ]}
+                                                      >
+                                                        {slot.time}
+                                                      </Text>
+                                                      <Text
+                                                        style={[
+                                                          styles.slotEndTime,
+                                                          isSlotSelected && styles.slotEndTimeSelected,
+                                                        ]}
+                                                      >
+                                                        → {endTime}
+                                                      </Text>
                                                     </View>
+                                                  </View>
+                                                  <View style={styles.slotPriceContainer}>
                                                     <Text
                                                       style={[
                                                         styles.slotPrice,
@@ -981,58 +1241,74 @@ export default function FieldDetailsScreen() {
                                                     >
                                                       €{slotPrice.toFixed(2)}
                                                     </Text>
-                                                  </Pressable>
-                                                );
-                                              })}
-                                            </ScrollView>
-
-                                            {selectedSlot[campo._id] && (
-                                              <Pressable
-                                                style={styles.prenotaBtn}
-                                                onPress={() => {
-                                                  const [h, m] = selectedSlot[campo._id].split(":").map(Number);
-                                                  const totalMinutes = h * 60 + m + (selectedDuration[campo._id] * 60);
-                                                  const endH = Math.floor(totalMinutes / 60);
-                                                  const endM = totalMinutes % 60;
-                                                  const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-
-                                                  const finalPrice = calculatePrice(
-                                                    campo,
-                                                    selectedDuration[campo._id],
-                                                    selectedSlot[campo._id]
-                                                  );
-
-                                                  navigation.navigate("ConfermaPrenotazione", {
-                                                    campoId: campo._id,
-                                                    campoName: campo.name,
-                                                    strutturaName: struttura.name,
-                                                    sport: campo.sport,
-                                                    date: selectedDateStr,
-                                                    startTime: selectedSlot[campo._id],
-                                                    endTime: endTime,
-                                                    duration: selectedDuration[campo._id],
-                                                    price: finalPrice,
-                                                  });
-                                                }}
-                                              >
-                                                <View style={styles.prenotaBtnLeft}>
-                                                  <Ionicons name="calendar" size={20} color="white" />
-                                                  <View>
-                                                    <Text style={styles.prenotaBtnText}>Prenota ora</Text>
-                                                    <Text style={styles.prenotaBtnTime}>
-                                                      {selectedSlot[campo._id]} • {selectedDuration[campo._id] === 1 ? "1h" : "1h 30m"}
-                                                    </Text>
+                                                    {pricingLabel && (
+                                                      <Text
+                                                        style={[
+                                                          styles.slotPricingLabel,
+                                                          isSlotSelected && styles.slotPricingLabelSelected,
+                                                        ]}
+                                                      >
+                                                        {pricingLabel}
+                                                      </Text>
+                                                    )}
                                                   </View>
+                                                </Pressable>
+                                              );
+                                            })}
+                                          </ScrollView>
+
+                                          {selectedSlot[campo._id] && (
+                                            <Pressable
+                                              style={styles.prenotaBtn}
+                                              onPress={() => {
+                                                const [h, m] = selectedSlot[campo._id].split(":").map(Number);
+                                                const totalMinutes = h * 60 + m + (selectedDuration[campo._id] * 60);
+                                                const endH = Math.floor(totalMinutes / 60);
+                                                const endM = totalMinutes % 60;
+                                                const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+
+                                                const finalPrice = calculatePrice(
+                                                  campo,
+                                                  selectedDuration[campo._id],
+                                                  selectedDateStr,
+                                                  selectedSlot[campo._id]
+                                                );
+
+                                                navigation.navigate("ConfermaPrenotazione", {
+                                                  campoId: campo._id,
+                                                  campoName: campo.name,
+                                                  strutturaName: struttura.name,
+                                                  sport: campo.sport,
+                                                  date: selectedDateStr,
+                                                  startTime: selectedSlot[campo._id],
+                                                  endTime: endTime,
+                                                  duration: selectedDuration[campo._id],
+                                                  price: finalPrice,
+                                                });
+                                              }}
+                                            >
+                                              <View style={styles.prenotaBtnLeft}>
+                                                <Ionicons name="calendar" size={20} color="white" />
+                                                <View>
+                                                  <Text style={styles.prenotaBtnText}>Prenota ora</Text>
+                                                  <Text style={styles.prenotaBtnTime}>
+                                                    {selectedSlot[campo._id]} • {selectedDuration[campo._id] === 1 ? "1h" : "1h 30m"}
+                                                  </Text>
                                                 </View>
-                                                <Text style={styles.prenotaBtnPrice}>
-                                                  €{calculatePrice(campo, selectedDuration[campo._id], selectedSlot[campo._id]).toFixed(2)}
-                                                </Text>
-                                              </Pressable>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                    </>
+                                              </View>
+                                              <Text style={styles.prenotaBtnPrice}>
+                                                €{calculatePrice(
+                                                  campo,
+                                                  selectedDuration[campo._id],
+                                                  selectedDateStr,
+                                                  selectedSlot[campo._id]
+                                                ).toFixed(2)}
+                                              </Text>
+                                            </Pressable>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </>
                                 )}
                               </>

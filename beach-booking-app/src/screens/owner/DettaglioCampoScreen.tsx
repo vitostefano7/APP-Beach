@@ -31,12 +31,15 @@ const SPORT_MAP: { [key: string]: string } = {
   beach_volley: "Beach Volley",
   padel: "Padel",
   tennis: "Tennis",
+  volley: "Volley",
 };
 
 const SURFACE_MAP: { [key: string]: string } = {
   sand: "Sabbia",
   hardcourt: "Cemento",
   grass: "Erba",
+  pvc: "PVC",
+  cement: "Cemento",
 };
 
 export default function DettaglioCampoScreen() {
@@ -70,7 +73,6 @@ export default function DettaglioCampoScreen() {
     }
   }, [campoId, token]);
 
-  // ✅ Ricarica quando la schermata torna in focus
   useFocusEffect(
     useCallback(() => {
       loadCampo();
@@ -195,7 +197,7 @@ export default function DettaglioCampoScreen() {
           {campo.pricingRules?.mode === "flat" && (
             <>
               <View style={styles.priceDetailRow}>
-                <Text style={styles.priceDetailLabel}>Tariffa unica</Text>
+                <Text style={styles.priceDetailLabel}>💵 Tariffa Fissa</Text>
               </View>
               <View style={styles.priceDetailRow}>
                 <Text style={styles.priceDetailDuration}>1 ora</Text>
@@ -215,9 +217,118 @@ export default function DettaglioCampoScreen() {
           {/* Se ADVANCED MODE */}
           {campo.pricingRules?.mode === "advanced" && (
             <>
+              {/* Date Speciali */}
+              {campo.pricingRules.dateOverrides?.enabled &&
+                campo.pricingRules.dateOverrides.dates?.length > 0 && (
+                  <>
+                    <Text style={styles.priceHierarchyTitle}>📅 Date Speciali (Priorità 1)</Text>
+                    {campo.pricingRules.dateOverrides.dates.map(
+                      (dateOv: any, index: number) => (
+                        <View key={index} style={styles.priceSection}>
+                          <View style={styles.priceSectionHeader}>
+                            <Text style={styles.priceSectionTitle}>
+                              {dateOv.label}
+                            </Text>
+                            <Text style={styles.priceSectionDate}>{dateOv.date}</Text>
+                          </View>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1 ora</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{dateOv.prices?.oneHour || 20}
+                            </Text>
+                          </View>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{dateOv.prices?.oneHourHalf || 28}
+                            </Text>
+                          </View>
+                        </View>
+                      )
+                    )}
+                  </>
+                )}
+
+              {/* Periodi Speciali */}
+              {campo.pricingRules.periodOverrides?.enabled &&
+                campo.pricingRules.periodOverrides.periods?.length > 0 && (
+                  <>
+                    <Text style={styles.priceHierarchyTitle}>📆 Periodi Speciali (Priorità 2)</Text>
+                    {campo.pricingRules.periodOverrides.periods.map(
+                      (period: any, index: number) => (
+                        <View key={index} style={styles.priceSection}>
+                          <View style={styles.priceSectionHeader}>
+                            <Text style={styles.priceSectionTitle}>
+                              {period.label}
+                            </Text>
+                            <Text style={styles.priceSectionDate}>
+                              {period.startDate} → {period.endDate}
+                            </Text>
+                          </View>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1 ora</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{period.prices?.oneHour || 20}
+                            </Text>
+                          </View>
+                          <View style={styles.priceDetailRow}>
+                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                            <Text style={styles.priceDetailValue}>
+                              €{period.prices?.oneHourHalf || 28}
+                            </Text>
+                          </View>
+                        </View>
+                      )
+                    )}
+                  </>
+                )}
+
+              {/* Fasce Orarie */}
+              {campo.pricingRules.timeSlotPricing?.enabled &&
+                campo.pricingRules.timeSlotPricing.slots?.length > 0 && (
+                  <>
+                    <Text style={styles.priceHierarchyTitle}>⏰ Fasce Orarie (Priorità 3-4)</Text>
+                    {campo.pricingRules.timeSlotPricing.slots.map(
+                      (slot: any, index: number) => {
+                        const daysLabels = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+                        const hasDays = slot.daysOfWeek && slot.daysOfWeek.length > 0;
+                        const daysText = hasDays
+                          ? slot.daysOfWeek.map((d: number) => daysLabels[d]).join(", ")
+                          : "Tutti i giorni";
+
+                        return (
+                          <View key={index} style={styles.priceSection}>
+                            <View style={styles.priceSectionHeader}>
+                              <Text style={styles.priceSectionTitle}>
+                                {slot.label} ({slot.start}-{slot.end})
+                              </Text>
+                              <Text style={styles.priceSectionDays}>{daysText}</Text>
+                            </View>
+                            <View style={styles.priceDetailRow}>
+                              <Text style={styles.priceDetailDuration}>1 ora</Text>
+                              <Text style={styles.priceDetailValue}>
+                                €{slot.prices?.oneHour || 20}
+                              </Text>
+                            </View>
+                            <View style={styles.priceDetailRow}>
+                              <Text style={styles.priceDetailDuration}>1.5 ore</Text>
+                              <Text style={styles.priceDetailValue}>
+                                €{slot.prices?.oneHourHalf || 28}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      }
+                    )}
+                  </>
+                )}
+
               {/* Prezzo Base */}
+              <Text style={styles.priceHierarchyTitle}>💵 Prezzo Base (Priorità 5)</Text>
               <View style={styles.priceSection}>
-                <Text style={styles.priceSectionTitle}>Prezzo Base</Text>
+                <Text style={styles.priceSectionSubtitle}>
+                  Quando nessuna regola specifica si applica
+                </Text>
                 <View style={styles.priceDetailRow}>
                   <Text style={styles.priceDetailDuration}>1 ora</Text>
                   <Text style={styles.priceDetailValue}>
@@ -231,34 +342,6 @@ export default function DettaglioCampoScreen() {
                   </Text>
                 </View>
               </View>
-
-              {/* Fasce Orarie */}
-              {campo.pricingRules.timeSlotPricing?.enabled &&
-                campo.pricingRules.timeSlotPricing.slots?.length > 0 && (
-                  <>
-                    {campo.pricingRules.timeSlotPricing.slots.map(
-                      (slot: any, index: number) => (
-                        <View key={index} style={styles.priceSection}>
-                          <Text style={styles.priceSectionTitle}>
-                            {slot.label} ({slot.start}-{slot.end})
-                          </Text>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1 ora</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{slot.prices?.oneHour || 20}
-                            </Text>
-                          </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{slot.prices?.oneHourHalf || 28}
-                            </Text>
-                          </View>
-                        </View>
-                      )
-                    )}
-                  </>
-                )}
             </>
           )}
 
@@ -391,16 +474,46 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 16, color: "#666" },
   infoValue: { fontSize: 16, fontWeight: "600" },
   priceValue: { fontSize: 15, fontWeight: "800", color: "#007AFF" },
+  priceHierarchyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2196F3",
+    marginTop: 16,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "#E3F2FD",
+  },
   priceSection: {
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f5f5f5",
   },
+  priceSectionHeader: {
+    marginBottom: 8,
+  },
   priceSectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#007AFF",
+    color: "#333",
+    marginBottom: 4,
+  },
+  priceSectionDate: {
+    fontSize: 13,
+    color: "#2196F3",
+    fontWeight: "600",
+  },
+  priceSectionDays: {
+    fontSize: 12,
+    color: "#FF9800",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  priceSectionSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    fontStyle: "italic",
     marginBottom: 8,
   },
   priceDetailRow: {
