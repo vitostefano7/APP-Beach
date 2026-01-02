@@ -122,6 +122,34 @@ export const updatePlayerProfile = async (
 };
 
 /**
+ * GET /users/preferences
+ * Ottiene le preferenze dell'utente
+ */
+export const getPreferences = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+
+    const preferences = await UserPreferences.findOne({ user: userId });
+
+    if (!preferences) {
+      // Ritorna default se non esistono
+      return res.json({
+        pushNotifications: false,
+        darkMode: false,
+      });
+    }
+
+    res.json(preferences);
+  } catch (error) {
+    console.error("getPreferences error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
  * PATCH /users/me/preferences
  */
 export const updatePreferences = async (
