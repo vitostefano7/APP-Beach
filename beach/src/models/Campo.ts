@@ -20,36 +20,78 @@ export interface DurationPrice {
   oneHourHalf: number;
 }
 
+/**
+ * Fascia oraria con supporto per giorni specifici
+ * - Se daysOfWeek è undefined/null → fascia generica (valida tutti i giorni)
+ * - Se daysOfWeek è definito → fascia specifica per quei giorni (priorità maggiore)
+ */
 export interface TimeSlotPricing {
-  start: string;
-  end: string;
-  label: string; // es. "Mattina", "Sera", "Peak"
-  prices: DurationPrice; // prezzi specifici per questa fascia
+  start: string; // es. "09:00"
+  end: string; // es. "18:00"
+  label: string; // es. "Mattina", "Sera lunedì"
+  prices: DurationPrice;
+  daysOfWeek?: number[]; // 0=dom, 1=lun, ..., 6=sab (opzionale)
+}
+
+/**
+ * Override di prezzo per una data specifica
+ * Priorità massima: sovrascrive tutto
+ */
+export interface DatePriceOverride {
+  date: string; // formato YYYY-MM-DD
+  label: string; // es. "Capodanno", "Ferragosto"
+  prices: DurationPrice;
+}
+
+/**
+ * Override di prezzo per un periodo
+ * Priorità massima: sovrascrive tutto
+ */
+export interface PeriodPriceOverride {
+  startDate: string; // formato YYYY-MM-DD
+  endDate: string; // formato YYYY-MM-DD
+  label: string; // es. "Natale", "Estate"
+  prices: DurationPrice;
 }
 
 export interface PlayerCountPricing {
-  count: number; // numero di giocatori (es. 4, 6, 8)
-  label: string; // es. "4 giocatori", "6 giocatori"
-  prices: DurationPrice; // prezzi specifici per questo numero
+  count: number;
+  label: string;
+  prices: DurationPrice;
 }
 
 export interface PricingRules {
   // Modalità: flat o advanced
-  mode: "flat" | "advanced"; // "flat" = prezzi fissi, "advanced" = prezzi variabili
+  mode: "flat" | "advanced";
 
-  // FLAT MODE - Prezzi fissi per durata
+  // FLAT MODE - Prezzi fissi per durata (livello 5 - priorità minima)
   flatPrices: DurationPrice;
 
-  // ADVANCED MODE - Prezzi base (usati quando altre regole non sono attive)
+  // ADVANCED MODE - Prezzi base (livello 4)
   basePrices: DurationPrice;
 
-  // Fasce orarie (opzionale)
+  // Fasce orarie (livello 2 e 3)
+  // - Con daysOfWeek definito = livello 2 (priorità alta)
+  // - Senza daysOfWeek = livello 3 (priorità media)
   timeSlotPricing: {
     enabled: boolean;
     slots: TimeSlotPricing[];
   };
 
-  // Prezzi per numero giocatori (opzionale, solo beach volley)
+  // Override per date specifiche (livello 1 - priorità massima)
+  dateOverrides: {
+    enabled: boolean;
+    dates: DatePriceOverride[];
+  };
+
+  // Override per periodi (livello 1 - priorità massima)
+  periodOverrides: {
+    enabled: boolean;
+    periods: PeriodPriceOverride[];
+  };
+
+  // Prezzi per numero giocatori (solo beach volley)
+  // Nota: non fa parte della gerarchia principale, è un layer aggiuntivo
   playerCountPricing: {
     enabled: boolean;
     prices: PlayerCountPricing[];
@@ -104,6 +146,63 @@ const TimeSlotPricingSchema = new Schema<TimeSlotPricing>(
     end: { type: String, required: true },
     label: { type: String, required: true },
     prices: { type: DurationPriceSchema, required: true },
+    daysOfWeek: {
+      type: [Number],
+      required: false,
+      validate: {
+        validator: function (arr: number[]) {
+          if (!arr || arr.length === 0) return true;
+          return arr.every((day) => day >= 0 && day <= 6);
+        },
+        message: "daysOfWeek deve contenere valori tra 0 (domenica) e 6 (sabato)",
+      },
+    },
+  },
+  { _id: false }
+);
+
+const DatePriceOverrideSchema = new Schema<DatePriceOverride>(
+  {
+    date: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v: string) {
+          return /^\d{4}-\d{2}-\d{2}$/.test(v);
+        },
+        message: "date deve essere in formato YYYY-MM-DD",
+      },
+    },
+    label: { type: String, required: true },
+    prices: { type: DurationPriceSchema, required: true },
+  },
+  { _id: false }
+);
+
+const PeriodPriceOverrideSchema = new Schema<PeriodPriceOverride>(
+  {
+    startDate: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v: string) {
+          return /^\d{4}-\d{2}-\d{2}$/.test(v);
+        },
+        message: "startDate deve essere in formato YYYY-MM-DD",
+      },
+    },
+    endDate: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v: string) {
+          return /^\d{4}-\d{2}-\d{2}$/.test(v);
+        },
+        message: "endDate deve essere in formato YYYY-MM-DD",
+      },
+    },
+    label: { type: String, required: true },
+    prices: { type: DurationPriceSchema, required: true },
   },
   { _id: false }
 );
@@ -141,6 +240,22 @@ const PricingRulesSchema = new Schema<PricingRules>(
       enabled: { type: Boolean, default: false },
       slots: {
         type: [TimeSlotPricingSchema],
+        default: [],
+      },
+    },
+
+    dateOverrides: {
+      enabled: { type: Boolean, default: false },
+      dates: {
+        type: [DatePriceOverrideSchema],
+        default: [],
+      },
+    },
+
+    periodOverrides: {
+      enabled: { type: Boolean, default: false },
+      periods: {
+        type: [PeriodPriceOverrideSchema],
         default: [],
       },
     },
@@ -241,7 +356,6 @@ const CampoSchema = new Schema<ICampo>(
       default: true,
     },
 
-    // 🆕 NUOVO SISTEMA DI PRICING
     pricingRules: {
       type: PricingRulesSchema,
       default: function () {
@@ -262,6 +376,14 @@ const CampoSchema = new Schema<ICampo>(
           timeSlotPricing: {
             enabled: false,
             slots: [],
+          },
+          dateOverrides: {
+            enabled: false,
+            dates: [],
+          },
+          periodOverrides: {
+            enabled: false,
+            periods: [],
           },
           playerCountPricing: {
             enabled: false,

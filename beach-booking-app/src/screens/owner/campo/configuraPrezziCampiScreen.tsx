@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Switch,
   TextInput,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback } from "react";
@@ -30,6 +31,20 @@ interface TimeSlot {
   end: string;
   label: string;
   prices: DurationPrice;
+  daysOfWeek?: number[]; // 🆕 0=dom, 1=lun, ..., 6=sab
+}
+
+interface DateOverride {
+  date: string; // YYYY-MM-DD
+  label: string;
+  prices: DurationPrice;
+}
+
+interface PeriodOverride {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;
+  label: string;
+  prices: DurationPrice;
 }
 
 interface PricingRules {
@@ -40,7 +55,17 @@ interface PricingRules {
     enabled: boolean;
     slots: TimeSlot[];
   };
+  dateOverrides: {
+    enabled: boolean;
+    dates: DateOverride[];
+  };
+  periodOverrides: {
+    enabled: boolean;
+    periods: PeriodOverride[];
+  };
 }
+
+const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
 /* =======================
    COMPONENT
@@ -54,11 +79,21 @@ export default function ConfiguraPrezziCampoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDaysModal, setShowDaysModal] = useState(false);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<"date" | "period-start" | "period-end">("date");
+  const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
+  const [editingPeriodIndex, setEditingPeriodIndex] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  
   const [pricing, setPricing] = useState<PricingRules>({
     mode: "flat",
     flatPrices: { oneHour: 20, oneHourHalf: 28 },
     basePrices: { oneHour: 20, oneHourHalf: 28 },
     timeSlotPricing: { enabled: false, slots: [] },
+    dateOverrides: { enabled: false, dates: [] },
+    periodOverrides: { enabled: false, periods: [] },
   });
 
   /* =======================
@@ -81,6 +116,8 @@ export default function ConfiguraPrezziCampoScreen() {
         flatPrices: rules.flatPrices || { oneHour: 20, oneHourHalf: 28 },
         basePrices: rules.basePrices || { oneHour: 20, oneHourHalf: 28 },
         timeSlotPricing: rules.timeSlotPricing || { enabled: false, slots: [] },
+        dateOverrides: rules.dateOverrides || { enabled: false, dates: [] },
+        periodOverrides: rules.periodOverrides || { enabled: false, periods: [] },
       });
     } catch {
       Alert.alert("Errore", "Impossibile caricare i prezzi");
@@ -89,7 +126,6 @@ export default function ConfiguraPrezziCampoScreen() {
     }
   }, [campoId, token]);
 
-  // ✅ Ricarica quando la schermata torna in focus
   useFocusEffect(
     useCallback(() => {
       loadPricing();
@@ -132,7 +168,7 @@ export default function ConfiguraPrezziCampoScreen() {
   };
 
   /* =======================
-     HANDLERS
+     HANDLERS - BASE
   ======================= */
 
   const updateFlatPrice = (type: "oneHour" | "oneHourHalf", value: string) => {
@@ -159,6 +195,10 @@ export default function ConfiguraPrezziCampoScreen() {
     }));
   };
 
+  /* =======================
+     HANDLERS - TIME SLOTS
+  ======================= */
+
   const toggleTimeSlot = () => {
     setPricing((prev) => ({
       ...prev,
@@ -180,7 +220,7 @@ export default function ConfiguraPrezziCampoScreen() {
             start: "09:00",
             end: "13:00",
             label: "Mattina",
-            prices: { oneHour: 15, oneHourHalf: 21 },
+            prices: { oneHour: 30, oneHourHalf: 42 },
           },
         ],
       },
@@ -191,9 +231,7 @@ export default function ConfiguraPrezziCampoScreen() {
     setPricing((prev) => {
       const newSlots = [...(prev.timeSlotPricing?.slots || [])];
       
-      if (!newSlots[index]) {
-        return prev;
-      }
+      if (!newSlots[index]) return prev;
       
       if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
         const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
@@ -233,9 +271,244 @@ export default function ConfiguraPrezziCampoScreen() {
     }));
   };
 
+  const openDaysModal = (index: number) => {
+    setEditingSlotIndex(index);
+    setShowDaysModal(true);
+  };
+
+  const toggleDay = (day: number) => {
+    if (editingSlotIndex === null) return;
+    
+    setPricing((prev) => {
+      const newSlots = [...prev.timeSlotPricing.slots];
+      const slot = newSlots[editingSlotIndex];
+      
+      const currentDays = slot.daysOfWeek || [];
+      const hasDayIndex = currentDays.indexOf(day);
+      
+      if (hasDayIndex >= 0) {
+        // Rimuovi il giorno
+        slot.daysOfWeek = currentDays.filter((d) => d !== day);
+      } else {
+        // Aggiungi il giorno
+        slot.daysOfWeek = [...currentDays, day].sort();
+      }
+      
+      // Se non ci sono giorni, rimuovi l'array
+      if (slot.daysOfWeek.length === 0) {
+        delete slot.daysOfWeek;
+      }
+      
+      return {
+        ...prev,
+        timeSlotPricing: { ...prev.timeSlotPricing, slots: newSlots },
+      };
+    });
+  };
+
   /* =======================
-     SIMULAZIONE
+     HANDLERS - DATE OVERRIDES
   ======================= */
+
+  const toggleDateOverrides = () => {
+    setPricing((prev) => ({
+      ...prev,
+      dateOverrides: {
+        ...prev.dateOverrides,
+        enabled: !prev.dateOverrides.enabled,
+      },
+    }));
+  };
+
+  const addDateOverride = () => {
+    const today = new Date().toISOString().split("T")[0];
+    setPricing((prev) => ({
+      ...prev,
+      dateOverrides: {
+        ...prev.dateOverrides,
+        dates: [
+          ...prev.dateOverrides.dates,
+          {
+            date: today,
+            label: "Evento speciale",
+            prices: { oneHour: 50, oneHourHalf: 70 },
+          },
+        ],
+      },
+    }));
+  };
+
+  const openDatePicker = (index: number) => {
+    setEditingDateIndex(index);
+    setDatePickerMode("date");
+    const currentDate = pricing.dateOverrides.dates[index]?.date;
+    if (currentDate) {
+      const [y, m] = currentDate.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+    setShowDatePicker(true);
+  };
+
+  const handleDateSelect = (dateStr: string) => {
+    if (editingDateIndex !== null && datePickerMode === "date") {
+      updateDateOverride(editingDateIndex, "date", dateStr);
+    } else if (editingPeriodIndex !== null) {
+      if (datePickerMode === "period-start") {
+        updatePeriodOverride(editingPeriodIndex, "startDate", dateStr);
+      } else if (datePickerMode === "period-end") {
+        updatePeriodOverride(editingPeriodIndex, "endDate", dateStr);
+      }
+    }
+    setShowDatePicker(false);
+  };
+
+  const updateDateOverride = (index: number, field: string, value: any) => {
+    setPricing((prev) => {
+      const newDates = [...prev.dateOverrides.dates];
+      
+      if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+        const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+        newDates[index] = {
+          ...newDates[index],
+          prices: {
+            ...newDates[index].prices,
+            [priceField]: parseFloat(value) || 0,
+          },
+        };
+      } else {
+        newDates[index] = {
+          ...newDates[index],
+          [field]: value,
+        };
+      }
+      
+      return {
+        ...prev,
+        dateOverrides: { ...prev.dateOverrides, dates: newDates },
+      };
+    });
+  };
+
+  const removeDateOverride = (index: number) => {
+    setPricing((prev) => ({
+      ...prev,
+      dateOverrides: {
+        ...prev.dateOverrides,
+        dates: prev.dateOverrides.dates.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  /* =======================
+     HANDLERS - PERIOD OVERRIDES
+  ======================= */
+
+  const togglePeriodOverrides = () => {
+    setPricing((prev) => ({
+      ...prev,
+      periodOverrides: {
+        ...prev.periodOverrides,
+        enabled: !prev.periodOverrides.enabled,
+      },
+    }));
+  };
+
+  const addPeriodOverride = () => {
+    const today = new Date();
+    const startDate = today.toISOString().split("T")[0];
+    const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+    
+    setPricing((prev) => ({
+      ...prev,
+      periodOverrides: {
+        ...prev.periodOverrides,
+        periods: [
+          ...prev.periodOverrides.periods,
+          {
+            startDate,
+            endDate,
+            label: "Periodo speciale",
+            prices: { oneHour: 40, oneHourHalf: 56 },
+          },
+        ],
+      },
+    }));
+  };
+
+  const openPeriodPicker = (index: number, mode: "start" | "end") => {
+    setEditingPeriodIndex(index);
+    setDatePickerMode(mode === "start" ? "period-start" : "period-end");
+    const period = pricing.periodOverrides.periods[index];
+    const dateStr = mode === "start" ? period.startDate : period.endDate;
+    if (dateStr) {
+      const [y, m] = dateStr.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+    setShowDatePicker(true);
+  };
+
+  const updatePeriodOverride = (index: number, field: string, value: any) => {
+    setPricing((prev) => {
+      const newPeriods = [...prev.periodOverrides.periods];
+      
+      if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+        const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+        newPeriods[index] = {
+          ...newPeriods[index],
+          prices: {
+            ...newPeriods[index].prices,
+            [priceField]: parseFloat(value) || 0,
+          },
+        };
+      } else {
+        newPeriods[index] = {
+          ...newPeriods[index],
+          [field]: value,
+        };
+      }
+      
+      return {
+        ...prev,
+        periodOverrides: { ...prev.periodOverrides, periods: newPeriods },
+      };
+    });
+  };
+
+  const removePeriodOverride = (index: number) => {
+    setPricing((prev) => ({
+      ...prev,
+      periodOverrides: {
+        ...prev.periodOverrides,
+        periods: prev.periodOverrides.periods.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  /* =======================
+     RENDER HELPERS
+  ======================= */
+
+  const renderDaysOfWeek = (slot: TimeSlot, index: number) => {
+    const selectedDays = slot.daysOfWeek || [];
+    const isGeneric = selectedDays.length === 0;
+    
+    return (
+      <Pressable
+        style={styles.daysSelector}
+        onPress={() => openDaysModal(index)}
+      >
+        <Ionicons name="calendar-outline" size={16} color="#666" />
+        <Text style={styles.daysSelectorText}>
+          {isGeneric
+            ? "Tutti i giorni"
+            : selectedDays.map((d) => DAYS_LABELS[d]).join(", ")}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color="#666" />
+      </Pressable>
+    );
+  };
 
   const renderSimulation = () => {
     if (pricing.mode === "flat") {
@@ -244,7 +517,7 @@ export default function ConfiguraPrezziCampoScreen() {
       
       return (
         <View style={styles.simulationContent}>
-          <Text style={styles.simulationScenario}>Tariffa Fissa</Text>
+          <Text style={styles.simulationScenario}>💵 Tariffa Fissa</Text>
           <View style={styles.simRow}>
             <Text style={styles.simLabel}>1 ora:</Text>
             <Text style={styles.simPrice}>€{oneHour.toFixed(2)}</Text>
@@ -257,44 +530,88 @@ export default function ConfiguraPrezziCampoScreen() {
       );
     }
 
-    // ADVANCED
-    const hasTimeSlots = pricing.timeSlotPricing?.enabled && pricing.timeSlotPricing.slots?.length > 0;
+    // ADVANCED - mostra gerarchia
+    const simulations = [];
 
-    if (!hasTimeSlots) {
-      const oneHour = pricing.basePrices?.oneHour || 20;
-      const oneHourHalf = pricing.basePrices?.oneHourHalf || 28;
-      
-      return (
-        <View style={styles.simulationContent}>
-          <Text style={styles.simulationScenario}>Prezzo Base</Text>
-          <View style={styles.simRow}>
-            <Text style={styles.simLabel}>1 ora:</Text>
-            <Text style={styles.simPrice}>€{oneHour.toFixed(2)}</Text>
-          </View>
-          <View style={styles.simRow}>
-            <Text style={styles.simLabel}>1.5 ore:</Text>
-            <Text style={styles.simPrice}>€{oneHourHalf.toFixed(2)}</Text>
-          </View>
-        </View>
-      );
+    // Livello 1: Date override
+    if (pricing.dateOverrides.enabled && pricing.dateOverrides.dates.length > 0) {
+      const dateEx = pricing.dateOverrides.dates[0];
+      simulations.push({
+        emoji: "📅",
+        title: `Data: ${dateEx.label}`,
+        subtitle: dateEx.date,
+        oneHour: dateEx.prices.oneHour,
+        oneHourHalf: dateEx.prices.oneHourHalf,
+      });
     }
 
-    // Con fasce orarie - mostra esempio sera
-    const eveningSlot = pricing.timeSlotPricing.slots.find((s) =>
-      s.label.toLowerCase().includes("sera")
-    ) || pricing.timeSlotPricing.slots[pricing.timeSlotPricing.slots.length - 1];
+    // Livello 2: Period override
+    if (pricing.periodOverrides.enabled && pricing.periodOverrides.periods.length > 0) {
+      const periodEx = pricing.periodOverrides.periods[0];
+      simulations.push({
+        emoji: "📆",
+        title: `Periodo: ${periodEx.label}`,
+        subtitle: `${periodEx.startDate} → ${periodEx.endDate}`,
+        oneHour: periodEx.prices.oneHour,
+        oneHourHalf: periodEx.prices.oneHourHalf,
+      });
+    }
+
+    // Livello 3: Time slot con giorno
+    if (pricing.timeSlotPricing.enabled && pricing.timeSlotPricing.slots.length > 0) {
+      const slotWithDay = pricing.timeSlotPricing.slots.find((s) => s.daysOfWeek && s.daysOfWeek.length > 0);
+      if (slotWithDay) {
+        const days = slotWithDay.daysOfWeek!.map((d) => DAYS_LABELS[d]).join(", ");
+        simulations.push({
+          emoji: "⏰",
+          title: `${slotWithDay.label} (${days})`,
+          subtitle: `${slotWithDay.start} - ${slotWithDay.end}`,
+          oneHour: slotWithDay.prices.oneHour,
+          oneHourHalf: slotWithDay.prices.oneHourHalf,
+        });
+      }
+    }
+
+    // Livello 4: Time slot generico
+    if (pricing.timeSlotPricing.enabled && pricing.timeSlotPricing.slots.length > 0) {
+      const genericSlot = pricing.timeSlotPricing.slots.find((s) => !s.daysOfWeek || s.daysOfWeek.length === 0);
+      if (genericSlot) {
+        simulations.push({
+          emoji: "⏰",
+          title: genericSlot.label,
+          subtitle: `${genericSlot.start} - ${genericSlot.end} (tutti i giorni)`,
+          oneHour: genericSlot.prices.oneHour,
+          oneHourHalf: genericSlot.prices.oneHourHalf,
+        });
+      }
+    }
+
+    // Livello 5: Base price
+    simulations.push({
+      emoji: "💵",
+      title: "Prezzo Base",
+      subtitle: "Default (quando nessuna regola si applica)",
+      oneHour: pricing.basePrices.oneHour,
+      oneHourHalf: pricing.basePrices.oneHourHalf,
+    });
 
     return (
       <View style={styles.simulationContent}>
-        <Text style={styles.simulationScenario}>{eveningSlot.label}</Text>
-        <View style={styles.simRow}>
-          <Text style={styles.simLabel}>1 ora:</Text>
-          <Text style={styles.simPrice}>€{(eveningSlot.prices?.oneHour || 20).toFixed(2)}</Text>
-        </View>
-        <View style={styles.simRow}>
-          <Text style={styles.simLabel}>1.5 ore:</Text>
-          <Text style={styles.simPrice}>€{(eveningSlot.prices?.oneHourHalf || 28).toFixed(2)}</Text>
-        </View>
+        <Text style={styles.simulationHeader}>
+          🎯 Gerarchia Prezzi (dalla più alta alla più bassa):
+        </Text>
+        {simulations.map((sim, idx) => (
+          <View key={idx} style={styles.simCard}>
+            <Text style={styles.simCardTitle}>
+              {sim.emoji} {sim.title}
+            </Text>
+            <Text style={styles.simCardSubtitle}>{sim.subtitle}</Text>
+            <View style={styles.simCardPrices}>
+              <Text style={styles.simCardPrice}>1h: €{sim.oneHour}</Text>
+              <Text style={styles.simCardPrice}>1.5h: €{sim.oneHourHalf}</Text>
+            </View>
+          </View>
+        ))}
       </View>
     );
   };
@@ -360,7 +677,7 @@ export default function ConfiguraPrezziCampoScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.radioLabel}>Pricing Dinamico</Text>
               <Text style={styles.radioDescription}>
-                Prezzi variabili per fascia oraria
+                Prezzi variabili per fascia oraria, data o periodo
               </Text>
             </View>
           </Pressable>
@@ -406,7 +723,7 @@ export default function ConfiguraPrezziCampoScreen() {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>💵 Prezzi Base</Text>
               <Text style={styles.cardDescription}>
-                Usati quando non c'è una fascia oraria specifica
+                Usati quando nessuna regola specifica si applica
               </Text>
 
               <View style={styles.priceRow}>
@@ -436,6 +753,179 @@ export default function ConfiguraPrezziCampoScreen() {
               </View>
             </View>
 
+            {/* DATE SPECIALI */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>📅 Date Speciali</Text>
+                <Switch
+                  value={pricing.dateOverrides.enabled}
+                  onValueChange={toggleDateOverrides}
+                />
+              </View>
+              <Text style={styles.cardDescription}>
+                Prezzi per date specifiche (es. Natale, Capodanno) - Priorità massima
+              </Text>
+
+              {pricing.dateOverrides.enabled && (
+                <View style={styles.configContent}>
+                  {pricing.dateOverrides.dates.map((dateOv, index) => (
+                    <View key={index} style={styles.overrideCard}>
+                      <View style={styles.overrideHeader}>
+                        <TextInput
+                          style={styles.overrideLabelInput}
+                          value={dateOv.label}
+                          onChangeText={(v) => updateDateOverride(index, "label", v)}
+                          placeholder="Nome evento"
+                        />
+                        <Pressable onPress={() => removeDateOverride(index)}>
+                          <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                        </Pressable>
+                      </View>
+
+                      <Pressable
+                        style={styles.dateInputPressable}
+                        onPress={() => openDatePicker(index)}
+                      >
+                        <Text style={styles.dateInputText}>{dateOv.date}</Text>
+                        <Ionicons name="calendar-outline" size={18} color="#2196F3" />
+                      </Pressable>
+
+                      <View style={styles.slotPriceRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.slotPriceLabel}>1h</Text>
+                          <View style={styles.priceInputContainer}>
+                            <Text style={styles.euroSign}>€</Text>
+                            <TextInput
+                              style={styles.priceInputField}
+                              value={dateOv.prices.oneHour.toString()}
+                              onChangeText={(v) =>
+                                updateDateOverride(index, "prices.oneHour", v)
+                              }
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                        </View>
+
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.slotPriceLabel}>1.5h</Text>
+                          <View style={styles.priceInputContainer}>
+                            <Text style={styles.euroSign}>€</Text>
+                            <TextInput
+                              style={styles.priceInputField}
+                              value={dateOv.prices.oneHourHalf.toString()}
+                              onChangeText={(v) =>
+                                updateDateOverride(index, "prices.oneHourHalf", v)
+                              }
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+
+                  <Pressable style={styles.addButton} onPress={addDateOverride}>
+                    <Ionicons name="add-circle" size={20} color="#2196F3" />
+                    <Text style={styles.addButtonText}>Aggiungi data speciale</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+
+            {/* PERIODI SPECIALI */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>📆 Periodi Speciali</Text>
+                <Switch
+                  value={pricing.periodOverrides.enabled}
+                  onValueChange={togglePeriodOverrides}
+                />
+              </View>
+              <Text style={styles.cardDescription}>
+                Prezzi per periodi (es. Estate, Natale) - Alta priorità
+              </Text>
+
+              {pricing.periodOverrides.enabled && (
+                <View style={styles.configContent}>
+                  {pricing.periodOverrides.periods.map((period, index) => (
+                    <View key={index} style={styles.overrideCard}>
+                      <View style={styles.overrideHeader}>
+                        <TextInput
+                          style={styles.overrideLabelInput}
+                          value={period.label}
+                          onChangeText={(v) => updatePeriodOverride(index, "label", v)}
+                          placeholder="Nome periodo"
+                        />
+                        <Pressable onPress={() => removePeriodOverride(index)}>
+                          <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                        </Pressable>
+                      </View>
+
+                      <View style={styles.periodDatesRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.dateLabel}>Dal</Text>
+                          <Pressable
+                            style={styles.dateInputPressable}
+                            onPress={() => openPeriodPicker(index, "start")}
+                          >
+                            <Text style={styles.dateInputText}>{period.startDate}</Text>
+                            <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                          </Pressable>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.dateLabel}>Al</Text>
+                          <Pressable
+                            style={styles.dateInputPressable}
+                            onPress={() => openPeriodPicker(index, "end")}
+                          >
+                            <Text style={styles.dateInputText}>{period.endDate}</Text>
+                            <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                          </Pressable>
+                        </View>
+                      </View>
+
+                      <View style={styles.slotPriceRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.slotPriceLabel}>1h</Text>
+                          <View style={styles.priceInputContainer}>
+                            <Text style={styles.euroSign}>€</Text>
+                            <TextInput
+                              style={styles.priceInputField}
+                              value={period.prices.oneHour.toString()}
+                              onChangeText={(v) =>
+                                updatePeriodOverride(index, "prices.oneHour", v)
+                              }
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                        </View>
+
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.slotPriceLabel}>1.5h</Text>
+                          <View style={styles.priceInputContainer}>
+                            <Text style={styles.euroSign}>€</Text>
+                            <TextInput
+                              style={styles.priceInputField}
+                              value={period.prices.oneHourHalf.toString()}
+                              onChangeText={(v) =>
+                                updatePeriodOverride(index, "prices.oneHourHalf", v)
+                              }
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+
+                  <Pressable style={styles.addButton} onPress={addPeriodOverride}>
+                    <Ionicons name="add-circle" size={20} color="#2196F3" />
+                    <Text style={styles.addButtonText}>Aggiungi periodo</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+
             {/* FASCE ORARIE */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -445,6 +935,9 @@ export default function ConfiguraPrezziCampoScreen() {
                   onValueChange={toggleTimeSlot}
                 />
               </View>
+              <Text style={styles.cardDescription}>
+                Prezzi per fasce orarie, opzionalmente per giorni specifici
+              </Text>
 
               {pricing.timeSlotPricing.enabled && (
                 <View style={styles.configContent}>
@@ -461,6 +954,8 @@ export default function ConfiguraPrezziCampoScreen() {
                           <Ionicons name="trash-outline" size={20} color="#FF3B30" />
                         </Pressable>
                       </View>
+
+                      {renderDaysOfWeek(slot, index)}
 
                       <View style={styles.timeSlotTimeRow}>
                         <View style={styles.timeInputWrapper}>
@@ -547,6 +1042,175 @@ export default function ConfiguraPrezziCampoScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* MODAL GIORNI */}
+      <Modal
+        visible={showDaysModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDaysModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowDaysModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleziona Giorni</Text>
+            <Text style={styles.modalDescription}>
+              Lascia vuoto per applicare la fascia a tutti i giorni
+            </Text>
+
+            <View style={styles.daysGrid}>
+              {DAYS_LABELS.map((day, index) => {
+                const slot = pricing.timeSlotPricing.slots[editingSlotIndex || 0];
+                const isSelected = slot?.daysOfWeek?.includes(index) || false;
+
+                return (
+                  <Pressable
+                    key={index}
+                    style={[
+                      styles.dayChip,
+                      isSelected && styles.dayChipSelected,
+                    ]}
+                    onPress={() => toggleDay(index)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayChipText,
+                        isSelected && styles.dayChipTextSelected,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              style={styles.modalCloseButton}
+              onPress={() => setShowDaysModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Chiudi</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* MODAL DATE PICKER */}
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>
+              {datePickerMode === "date"
+                ? "Seleziona Data"
+                : datePickerMode === "period-start"
+                ? "Data Inizio"
+                : "Data Fine"}
+            </Text>
+
+            {/* Month selector */}
+            <View style={styles.calendarMonthSelector}>
+              <Pressable
+                onPress={() => {
+                  const newMonth = new Date(selectedMonth);
+                  newMonth.setMonth(newMonth.getMonth() - 1);
+                  setSelectedMonth(newMonth);
+                }}
+                style={styles.calendarMonthBtn}
+              >
+                <Ionicons name="chevron-back" size={24} color="#2196F3" />
+              </Pressable>
+
+              <Text style={styles.calendarMonthText}>
+                {selectedMonth.toLocaleDateString("it-IT", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </Text>
+
+              <Pressable
+                onPress={() => {
+                  const newMonth = new Date(selectedMonth);
+                  newMonth.setMonth(newMonth.getMonth() + 1);
+                  setSelectedMonth(newMonth);
+                }}
+                style={styles.calendarMonthBtn}
+              >
+                <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+              </Pressable>
+            </View>
+
+            {/* Calendar grid */}
+            <View style={styles.calendarGrid}>
+              {/* Week days header */}
+              <View style={styles.calendarWeekHeader}>
+                {["D", "L", "M", "M", "G", "V", "S"].map((day, i) => (
+                  <Text key={i} style={styles.calendarWeekDay}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Days */}
+              <View style={styles.calendarDays}>
+                {(() => {
+                  const year = selectedMonth.getFullYear();
+                  const month = selectedMonth.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                  const days = [];
+
+                  // Empty cells before month start
+                  for (let i = 0; i < firstDay; i++) {
+                    days.push(
+                      <View key={`empty-${i}`} style={styles.calendarDayCell} />
+                    );
+                  }
+
+                  // Days of month
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(
+                      2,
+                      "0"
+                    )}-${String(day).padStart(2, "0")}`;
+
+                    days.push(
+                      <Pressable
+                        key={day}
+                        style={styles.calendarDayCell}
+                        onPress={() => handleDateSelect(dateStr)}
+                      >
+                        <View style={styles.calendarDayInner}>
+                          <Text style={styles.calendarDayText}>{day}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  }
+
+                  return days;
+                })()}
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.modalCloseButton}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={styles.modalCloseText}>Chiudi</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -589,9 +1253,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
+  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
   cardDescription: { fontSize: 13, color: "#666", marginBottom: 12 },
   radioOption: {
     flexDirection: "row",
@@ -670,6 +1334,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     flex: 1,
   },
+  daysSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  daysSelectorText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    flex: 1,
+  },
   timeSlotTimeRow: {
     flexDirection: "row",
     gap: 8,
@@ -697,6 +1378,63 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontWeight: "600",
   },
+  overrideCard: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  overrideHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  overrideLabelInput: {
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+  },
+  dateInput: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  dateInputPressable: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dateInputText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  periodDatesRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -715,6 +1453,12 @@ const styles = StyleSheet.create({
   },
   simulationContent: {
     gap: 8,
+  },
+  simulationHeader: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#2E7D32",
+    marginBottom: 12,
   },
   simulationScenario: {
     fontSize: 15,
@@ -740,6 +1484,34 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1B5E20",
   },
+  simCard: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#C8E6C9",
+  },
+  simCardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#2E7D32",
+    marginBottom: 4,
+  },
+  simCardSubtitle: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 8,
+  },
+  simCardPrices: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  simCardPrice: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1B5E20",
+  },
   saveButton: {
     backgroundColor: "#2196F3",
     padding: 16,
@@ -749,4 +1521,113 @@ const styles = StyleSheet.create({
   },
   saveButtonDisabled: { opacity: 0.5 },
   saveButtonText: { color: "white", fontSize: 18, fontWeight: "700" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 24,
+  },
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 24,
+  },
+  dayChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+  },
+  dayChipSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+  dayChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  dayChipTextSelected: {
+    color: "#2196F3",
+  },
+  modalCloseButton: {
+    backgroundColor: "#2196F3",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCloseText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  calendarMonthSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  calendarMonthBtn: {
+    padding: 8,
+  },
+  calendarMonthText: {
+    fontSize: 18,
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
+  calendarGrid: {
+    marginBottom: 20,
+  },
+  calendarWeekHeader: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  calendarWeekDay: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#999",
+  },
+  calendarDays: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  calendarDayCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    padding: 4,
+  },
+  calendarDayInner: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#f8f9fa",
+  },
+  calendarDayText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
 });

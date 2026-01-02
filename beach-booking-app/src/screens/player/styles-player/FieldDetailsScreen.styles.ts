@@ -720,15 +720,30 @@ export const styles = StyleSheet.create({
   slotEndTimeSelected: {
     color: "rgba(255, 255, 255, 0.8)",
   },
+  // 🆕 Container per prezzo e label
+  slotPriceContainer: {
+    alignItems: "center",
+    gap: 2,
+  },
   slotPrice: {
     fontSize: 15,
     fontWeight: "800",
     color: "#4CAF50",
     textAlign: "center",
-    marginTop: 2,
   },
   slotPriceSelected: {
     color: "white",
+  },
+  // 🆕 Label fascia di prezzo
+  slotPricingLabel: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  slotPricingLabelSelected: {
+    color: "rgba(255, 255, 255, 0.8)",
   },
 
   prenotaBtn: {

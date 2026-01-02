@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Campo from "../models/Campo";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { validatePricingRules } from "../utils/pricingUtils";
 
 /**
  * 💰 AGGIORNA LE REGOLE DI PRICING DI UN CAMPO
@@ -32,16 +33,26 @@ export const updateCampoPricing = async (req: AuthRequest, res: Response) => {
 
     // Valida flatPrices o basePrices in base alla modalità
     if (pricingRules.mode === "flat") {
-      if (!pricingRules.flatPrices || 
-          typeof pricingRules.flatPrices.oneHour !== "number" ||
-          typeof pricingRules.flatPrices.oneHourHalf !== "number") {
+      if (
+        !pricingRules.flatPrices ||
+        typeof pricingRules.flatPrices.oneHour !== "number" ||
+        typeof pricingRules.flatPrices.oneHourHalf !== "number"
+      ) {
         return res.status(400).json({ message: "Dati pricing non validi: flatPrices richiesti" });
       }
+      if (pricingRules.flatPrices.oneHour < 0 || pricingRules.flatPrices.oneHourHalf < 0) {
+        return res.status(400).json({ message: "I prezzi non possono essere negativi" });
+      }
     } else {
-      if (!pricingRules.basePrices || 
-          typeof pricingRules.basePrices.oneHour !== "number" ||
-          typeof pricingRules.basePrices.oneHourHalf !== "number") {
+      if (
+        !pricingRules.basePrices ||
+        typeof pricingRules.basePrices.oneHour !== "number" ||
+        typeof pricingRules.basePrices.oneHourHalf !== "number"
+      ) {
         return res.status(400).json({ message: "Dati pricing non validi: basePrices richiesti" });
+      }
+      if (pricingRules.basePrices.oneHour < 0 || pricingRules.basePrices.oneHourHalf < 0) {
+        return res.status(400).json({ message: "I prezzi non possono essere negativi" });
       }
     }
 
@@ -50,28 +61,146 @@ export const updateCampoPricing = async (req: AuthRequest, res: Response) => {
       const slots = pricingRules.timeSlotPricing.slots || [];
 
       for (const slot of slots) {
-        if (slot.start >= slot.end) {
+        // Valida formato orari
+        if (!/^\d{2}:\d{2}$/.test(slot.start) || !/^\d{2}:\d{2}$/.test(slot.end)) {
           return res.status(400).json({
-            message: `Fascia oraria non valida: ${slot.label}`,
+            message: `Formato orario non valido per fascia: ${slot.label}`,
           });
         }
-        if (!slot.prices || 
-            typeof slot.prices.oneHour !== "number" ||
-            typeof slot.prices.oneHourHalf !== "number") {
+
+        // Valida range
+        if (slot.start >= slot.end) {
+          return res.status(400).json({
+            message: `Fascia oraria non valida: ${slot.label} (start >= end)`,
+          });
+        }
+
+        // Valida prezzi
+        if (
+          !slot.prices ||
+          typeof slot.prices.oneHour !== "number" ||
+          typeof slot.prices.oneHourHalf !== "number"
+        ) {
           return res.status(400).json({
             message: `Prezzi non validi per fascia: ${slot.label}`,
+          });
+        }
+
+        if (slot.prices.oneHour < 0 || slot.prices.oneHourHalf < 0) {
+          return res.status(400).json({
+            message: `Prezzi negativi per fascia: ${slot.label}`,
+          });
+        }
+
+        // Valida daysOfWeek (opzionale)
+        if (slot.daysOfWeek) {
+          if (!Array.isArray(slot.daysOfWeek)) {
+            return res.status(400).json({
+              message: `daysOfWeek deve essere un array per fascia: ${slot.label}`,
+            });
+          }
+          for (const day of slot.daysOfWeek) {
+            if (typeof day !== "number" || day < 0 || day > 6) {
+              return res.status(400).json({
+                message: `daysOfWeek non valido per fascia: ${slot.label} (valori ammessi: 0-6)`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Validazione date overrides
+    if (pricingRules.dateOverrides?.enabled) {
+      const dates = pricingRules.dateOverrides.dates || [];
+
+      for (const dateOverride of dates) {
+        // Valida formato data
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOverride.date)) {
+          return res.status(400).json({
+            message: `Formato data non valido: ${dateOverride.date} (richiesto YYYY-MM-DD)`,
+          });
+        }
+
+        // Valida prezzi
+        if (
+          !dateOverride.prices ||
+          typeof dateOverride.prices.oneHour !== "number" ||
+          typeof dateOverride.prices.oneHourHalf !== "number"
+        ) {
+          return res.status(400).json({
+            message: `Prezzi non validi per data: ${dateOverride.label}`,
+          });
+        }
+
+        if (dateOverride.prices.oneHour < 0 || dateOverride.prices.oneHourHalf < 0) {
+          return res.status(400).json({
+            message: `Prezzi negativi per data: ${dateOverride.label}`,
           });
         }
       }
     }
 
-    // Aggiorna pricing rules
+    // Validazione period overrides
+    if (pricingRules.periodOverrides?.enabled) {
+      const periods = pricingRules.periodOverrides.periods || [];
+
+      for (const period of periods) {
+        // Valida formato date
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(period.startDate)) {
+          return res.status(400).json({
+            message: `Formato startDate non valido: ${period.startDate} (richiesto YYYY-MM-DD)`,
+          });
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(period.endDate)) {
+          return res.status(400).json({
+            message: `Formato endDate non valido: ${period.endDate} (richiesto YYYY-MM-DD)`,
+          });
+        }
+
+        // Valida range
+        if (period.startDate > period.endDate) {
+          return res.status(400).json({
+            message: `Periodo non valido: ${period.label} (startDate > endDate)`,
+          });
+        }
+
+        // Valida prezzi
+        if (
+          !period.prices ||
+          typeof period.prices.oneHour !== "number" ||
+          typeof period.prices.oneHourHalf !== "number"
+        ) {
+          return res.status(400).json({
+            message: `Prezzi non validi per periodo: ${period.label}`,
+          });
+        }
+
+        if (period.prices.oneHour < 0 || period.prices.oneHourHalf < 0) {
+          return res.status(400).json({
+            message: `Prezzi negativi per periodo: ${period.label}`,
+          });
+        }
+      }
+    }
+
+    // 🔍 Validazione avanzata: sovrapposizioni
+    const validationErrors = validatePricingRules(pricingRules);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        message: "Errori di validazione",
+        errors: validationErrors,
+      });
+    }
+
+    // ✅ Aggiorna pricing rules
     (campo as any).pricingRules = pricingRules;
 
     // Aggiorna anche pricePerHour per retrocompatibilità
-    const basePrice = pricingRules.mode === "flat" 
-      ? pricingRules.flatPrices.oneHour 
-      : pricingRules.basePrices.oneHour;
+    const basePrice =
+      pricingRules.mode === "flat"
+        ? pricingRules.flatPrices.oneHour
+        : pricingRules.basePrices.oneHour;
     (campo as any).pricePerHour = basePrice;
 
     await campo.save();
@@ -92,14 +221,16 @@ export const getCampoPricing = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const campo = await Campo.findById(id).select("pricingRules sport name pricePerHour");
+    const campo = await Campo.findById(id).select(
+      "pricingRules sport name pricePerHour"
+    );
     if (!campo) {
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     // Se il campo non ha pricingRules, crea una struttura di default
     let pricingRules = (campo as any).pricingRules;
-    
+
     if (!pricingRules || !pricingRules.mode) {
       const basePrice = (campo as any).pricePerHour || 20;
       pricingRules = {
@@ -116,6 +247,18 @@ export const getCampoPricing = async (req: Request, res: Response) => {
           enabled: false,
           slots: [],
         },
+        dateOverrides: {
+          enabled: false,
+          dates: [],
+        },
+        periodOverrides: {
+          enabled: false,
+          periods: [],
+        },
+        playerCountPricing: {
+          enabled: false,
+          prices: [],
+        },
       };
     }
 
@@ -127,6 +270,37 @@ export const getCampoPricing = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("❌ getCampoPricing error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * 🔍 VALIDA LE REGOLE DI PRICING (endpoint pubblico per testing)
+ * POST /campi/pricing/validate
+ */
+export const validateCampoPricingRules = async (req: Request, res: Response) => {
+  try {
+    const { pricingRules } = req.body;
+
+    if (!pricingRules) {
+      return res.status(400).json({ message: "pricingRules richiesto" });
+    }
+
+    const errors = validatePricingRules(pricingRules);
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        valid: false,
+        errors,
+      });
+    }
+
+    res.json({
+      valid: true,
+      message: "Regole di pricing valide",
+    });
+  } catch (err) {
+    console.error("❌ validateCampoPricingRules error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

@@ -5,6 +5,7 @@ import Campo from "../models/Campo";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { calculatePrice } from "../utils/pricingUtils";
 
 /* =====================================================
    PLAYER
@@ -13,17 +14,18 @@ import { AuthRequest } from "../middleware/authMiddleware";
 /**
  * 📌 CREA PRENOTAZIONE
  * POST /bookings
- * Body: { campoId, date, startTime }
+ * Body: { campoId, date, startTime, duration }
  */
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { campoId, date, startTime } = req.body;
+    const { campoId, date, startTime, duration = "1h" } = req.body;
 
-    console.log("📝 Nuova prenotazione:", {
+    console.log("🏐 Nuova prenotazione:", {
       campoId,
       date,
       startTime,
+      duration,
       userId: user?.id,
     });
 
@@ -31,6 +33,13 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res
         .status(400)
         .json({ message: "Dati mancanti: campoId, date, startTime richiesti" });
+    }
+
+    // Valida duration
+    if (duration !== "1h" && duration !== "1.5h") {
+      return res
+        .status(400)
+        .json({ message: "Duration non valida: ammessi solo '1h' o '1.5h'" });
     }
 
     if (user.role === "owner") {
@@ -63,7 +72,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Slot non disponibile" });
     }
 
-    // ❌ Verifica conflitto prenotazione
+    // ⛔ Verifica conflitto prenotazione
     const conflict = await Booking.findOne({
       campo: campoId,
       date,
@@ -75,18 +84,67 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Orario già prenotato" });
     }
 
-    // Calcola endTime (30 minuti dopo)
+    // 🔍 Se durata è 1.5h, verifica che anche il secondo slot sia disponibile
+    let secondSlot = null;
+    if (duration === "1.5h") {
+      const [h, m] = startTime.split(":").map(Number);
+      let nextH = h;
+      let nextM = m + 30;
+      if (nextM >= 60) {
+        nextH++;
+        nextM = 0;
+      }
+      const nextSlotTime = `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}`;
+
+      secondSlot = (calendarDay as any).slots.find((s: any) => s.time === nextSlotTime);
+
+      if (!secondSlot) {
+        return res.status(400).json({
+          message: "Slot successivo non trovato per prenotazione da 1.5h",
+        });
+      }
+
+      if (!secondSlot.enabled) {
+        return res.status(400).json({
+          message: "Slot successivo non disponibile per prenotazione da 1.5h",
+        });
+      }
+
+      // Verifica conflitto anche sul secondo slot
+      const secondConflict = await Booking.findOne({
+        campo: campoId,
+        date,
+        startTime: nextSlotTime,
+        status: "confirmed",
+      });
+
+      if (secondConflict) {
+        return res.status(400).json({
+          message: "Slot successivo già prenotato",
+        });
+      }
+    }
+
+    // 💰 Calcola prezzo usando il sistema deterministico
+    const price = calculatePrice(
+      (campo as any).pricingRules,
+      date,
+      startTime,
+      duration
+    );
+
+    console.log(`💰 Prezzo calcolato: €${price} (${duration})`);
+
+    // Calcola endTime
+    const durationMinutes = duration === "1h" ? 60 : 90;
     const [h, m] = String(startTime).split(":").map(Number);
     let endH = h;
-    let endM = m + 30;
+    let endM = m + durationMinutes;
     if (endM >= 60) {
-      endH++;
-      endM = 0;
+      endH += Math.floor(endM / 60);
+      endM = endM % 60;
     }
-    const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(
-      2,
-      "0"
-    )}`;
+    const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
     // ✅ Crea booking
     const booking = await Booking.create({
@@ -95,12 +153,15 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       date,
       startTime,
       endTime,
-      price: (campo as any).pricePerHour,
+      price,
       status: "confirmed",
     });
 
     // 🔒 Disabilita lo slot nel calendario
     slot.enabled = false;
+    if (secondSlot) {
+      secondSlot.enabled = false;
+    }
     await calendarDay.save();
 
     console.log("✅ Prenotazione creata:", booking._id);
@@ -248,6 +309,28 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
       );
       if (slot) {
         slot.enabled = true;
+
+        // Se la prenotazione durava 1.5h, riabilita anche il secondo slot
+        const startTime = (booking as any).startTime;
+        const endTime = (booking as any).endTime;
+        const [startH, startM] = startTime.split(":").map(Number);
+        const [endH, endM] = endTime.split(":").map(Number);
+        const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+        if (durationMinutes === 90) {
+          let nextH = startH;
+          let nextM = startM + 30;
+          if (nextM >= 60) {
+            nextH++;
+            nextM = 0;
+          }
+          const nextSlotTime = `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}`;
+          const secondSlot = (calendarDay as any).slots.find((s: any) => s.time === nextSlotTime);
+          if (secondSlot) {
+            secondSlot.enabled = true;
+          }
+        }
+
         await calendarDay.save();
         console.log("✅ Slot riabilitato nel calendario");
       }
@@ -437,6 +520,28 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
       );
       if (slot) {
         slot.enabled = true;
+
+        // Se la prenotazione durava 1.5h, riabilita anche il secondo slot
+        const startTime = (booking as any).startTime;
+        const endTime = (booking as any).endTime;
+        const [startH, startM] = startTime.split(":").map(Number);
+        const [endH, endM] = endTime.split(":").map(Number);
+        const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+        if (durationMinutes === 90) {
+          let nextH = startH;
+          let nextM = startM + 30;
+          if (nextM >= 60) {
+            nextH++;
+            nextM = 0;
+          }
+          const nextSlotTime = `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}`;
+          const secondSlot = (calendarDay as any).slots.find((s: any) => s.time === nextSlotTime);
+          if (secondSlot) {
+            secondSlot.enabled = true;
+          }
+        }
+
         await calendarDay.save();
         console.log("✅ Slot riabilitato nel calendario");
       }
