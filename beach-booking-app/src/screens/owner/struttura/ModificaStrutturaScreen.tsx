@@ -10,11 +10,12 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
@@ -42,6 +43,7 @@ export default function ModificaStrutturaScreen() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [images, setImages] = useState<string[]>([]);
 
   const [openingHours, setOpeningHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
   
@@ -51,13 +53,8 @@ export default function ModificaStrutturaScreen() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
 
-  useEffect(() => {
-    loadStruttura();
-  }, []);
-
   const loadStruttura = async () => {
     try {
-      setLoading(true);
       const response = await fetch(`${API_URL}/strutture/${strutturaId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -71,6 +68,7 @@ export default function ModificaStrutturaScreen() {
       setAddress(data.location?.address || "");
       setCity(data.location?.city || "");
       setIsActive(data.isActive !== false);
+      setImages(data.images || []);
 
       if (data.openingHours && Object.keys(data.openingHours).length > 0) {
         setOpeningHours(data.openingHours);
@@ -99,6 +97,19 @@ export default function ModificaStrutturaScreen() {
       setLoading(false);
     }
   };
+
+  // ✅ Caricamento iniziale
+  useEffect(() => {
+    loadStruttura();
+  }, []);
+
+  // ✅ Ricarica quando torni dalla schermata (senza loop)
+  useFocusEffect(
+    useCallback(() => {
+      // Ricarica solo se non è il primo render
+      loadStruttura();
+    }, [strutturaId])
+  );
 
   const toggleAmenity = (key: string) => {
     setAmenities((prev) =>
@@ -277,6 +288,72 @@ export default function ModificaStrutturaScreen() {
             />
           </View>
         </Pressable>
+
+        {/* 📸 SEZIONE IMMAGINI */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="images" size={20} color="#9C27B0" />
+            <Text style={styles.cardTitle}>Immagini ({images.length}/10)</Text>
+          </View>
+
+          {images.length === 0 ? (
+            <Pressable
+              style={styles.emptyImagesBox}
+              onPress={() => navigation.navigate("GestisciImmaginiStruttura", {
+                strutturaId: strutturaId
+              })}
+            >
+              <View style={styles.emptyImagesIconContainer}>
+                <Ionicons name="images-outline" size={40} color="#9C27B0" />
+              </View>
+              <Text style={styles.emptyImagesTitle}>Nessuna foto</Text>
+              <Text style={styles.emptyImagesSubtitle}>
+                Aggiungi foto per rendere la tua struttura più attraente
+              </Text>
+              <View style={styles.addImagesButton}>
+                <Ionicons name="add" size={18} color="white" />
+                <Text style={styles.addImagesButtonText}>Aggiungi foto</Text>
+              </View>
+            </Pressable>
+          ) : (
+            <>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.imagesScroll}
+              >
+                {images.map((img, index) => (
+                  <View key={index} style={styles.imagePreviewCard}>
+                    <Image
+                      source={{ uri: `${API_URL}${img}` }}
+                      style={styles.imagePreview}
+                      resizeMode="cover"
+                    />
+                    {index === 0 && (
+                      <View style={styles.mainImageBadge}>
+                        <Ionicons name="star" size={10} color="white" />
+                        <Text style={styles.mainImageBadgeText}>Principale</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+
+              <Pressable
+                style={styles.manageImagesButton}
+                onPress={() => navigation.navigate("GestisciImmaginiStruttura", {
+                  strutturaId: strutturaId
+                })}
+              >
+                <View style={styles.manageImagesIconContainer}>
+                  <Ionicons name="create" size={16} color="#9C27B0" />
+                </View>
+                <Text style={styles.manageImagesText}>Gestisci immagini</Text>
+                <Ionicons name="arrow-forward" size={16} color="#9C27B0" />
+              </Pressable>
+            </>
+          )}
+        </View>
 
         {/* INFO BASE */}
         <View style={styles.card}>

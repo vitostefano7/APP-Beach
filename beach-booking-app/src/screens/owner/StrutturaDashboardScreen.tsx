@@ -6,14 +6,18 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
+
+const { width } = Dimensions.get("window");
 
 interface Struttura {
   _id: string;
@@ -21,6 +25,7 @@ interface Struttura {
   description?: string;
   location: { city: string };
   isActive: boolean;
+  images?: string[];
 }
 
 interface Campo {
@@ -61,6 +66,20 @@ export default function StrutturaDashboardScreen() {
   const [struttura, setStruttura] = useState<Struttura | null>(null);
   const [campi, setCampi] = useState<Campo[]>([]);
   const [bookingsCount, setBookingsCount] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // 🎠 Carosello automatico ogni 3 secondi
+  useEffect(() => {
+    if (!struttura?.images || struttura.images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === struttura.images!.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [struttura?.images]);
 
   const loadData = useCallback(async () => {
     if (!token) {
@@ -209,6 +228,11 @@ export default function StrutturaDashboardScreen() {
 
   const campiAttivi = campi.filter((c) => c.isActive);
 
+  // ✅ URL immagine corrente
+  const currentImageUri = struttura.images?.length
+    ? `${API_URL}${struttura.images[currentImageIndex]}`
+    : null;
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* FIXED HEADER */}
@@ -226,8 +250,33 @@ export default function StrutturaDashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* INFO STRUTTURA */}
+        {/* INFO STRUTTURA + IMMAGINI */}
         <View style={styles.strutturaCard}>
+          {/* 🎠 CAROSELLO IMMAGINI */}
+          {currentImageUri && (
+            <View style={styles.imageContainer}>
+              <Image 
+                source={{ uri: currentImageUri }} 
+                style={styles.strutturaImage}
+                resizeMode="cover"
+              />
+              
+              {/* BADGE GESTISCI IMMAGINI */}
+              <Pressable
+                style={styles.manageImagesButton}
+                onPress={() => navigation.navigate("GestisciImmaginiStruttura", {
+                  strutturaId: struttura._id
+                })}
+              >
+                <Ionicons name="images" size={14} color="white" />
+                <Text style={styles.manageImagesText}>
+                  {struttura.images!.length}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* HEADER STRUTTURA */}
           <View style={styles.strutturaHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.strutturaNome}>{struttura.name}</Text>
@@ -243,6 +292,23 @@ export default function StrutturaDashboardScreen() {
               </Text>
             </View>
           </View>
+
+          {/* SE NON CI SONO IMMAGINI */}
+          {!struttura.images?.length && (
+            <Pressable
+              style={styles.noImagesPrompt}
+              onPress={() => navigation.navigate("GestisciImmaginiStruttura", {
+                strutturaId: struttura._id
+              })}
+            >
+              <Ionicons name="images-outline" size={32} color="#ccc" />
+              <Text style={styles.noImagesText}>Aggiungi foto della struttura</Text>
+              <View style={styles.addPhotoButton}>
+                <Ionicons name="add" size={16} color="#2196F3" />
+                <Text style={styles.addPhotoText}>Aggiungi foto</Text>
+              </View>
+            </Pressable>
+          )}
         </View>
 
         {/* KPI CARDS */}
@@ -437,11 +503,11 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
-  // STRUTTURA CARD
+  // STRUTTURA CARD + IMMAGINI
   strutturaCard: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
+    overflow: "hidden",
     marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -449,10 +515,70 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  
+  // 🎠 IMMAGINI
+  imageContainer: {
+    width: "100%",
+    height: 180,
+    position: "relative",
+  },
+  strutturaImage: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f0f0f0",
+  },
+  manageImagesButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  manageImagesText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  
+  // NO IMAGES STATE
+  noImagesPrompt: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  noImagesText: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  addPhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addPhotoText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+
   strutturaHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
+    padding: 16,
   },
   strutturaNome: { 
     fontSize: 20, 

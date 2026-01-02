@@ -12,12 +12,14 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 import API_URL from "../../config/api";
 
@@ -99,10 +101,6 @@ const AVAILABLE_AMENITIES = [
   { key: "bar", label: "Bar", icon: "beer" },
 ];
 
-const isCustomAmenity = (amenity: string) => {
-  return !AVAILABLE_AMENITIES.find((a) => a.key === amenity);
-};
-
 /* =======================
    COMPONENT
 ======================= */
@@ -128,7 +126,11 @@ export default function CreaStrutturaScreen() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Step 2: Orari
+  // Step 2: Immagini
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Step 3: Orari
   const [openingHours, setOpeningHours] = useState<OpeningHours>({
     monday: { open: "09:00", close: "22:00", closed: false },
     tuesday: { open: "09:00", close: "22:00", closed: false },
@@ -139,19 +141,111 @@ export default function CreaStrutturaScreen() {
     sunday: { open: "09:00", close: "22:00", closed: false },
   });
 
-  // Step 3: Servizi
+  // Step 4: Servizi
   const [amenities, setAmenities] = useState<string[]>([]);
   const [customAmenities, setCustomAmenities] = useState<string[]>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
 
-  // Step 4: Campi
+  // Step 5: Campi
   const [campi, setCampi] = useState<Campo[]>([]);
 
   // Pricing Modal
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [editingCampoId, setEditingCampoId] = useState<string | null>(null);
   const [tempPricing, setTempPricing] = useState<PricingRules | null>(null);
+
+  /* =======================
+     IMAGE HANDLERS
+  ======================= */
+
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== "granted") {
+      Alert.alert(
+        "Permesso negato",
+        "Devi consentire l'accesso alla galleria per caricare immagini"
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 10 - selectedImages.length,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map(asset => asset.uri);
+      setSelectedImages(prev => [...prev, ...newImages]);
+    }
+  };
+
+  const removeImage = (uri: string) => {
+    setSelectedImages(prev => prev.filter(img => img !== uri));
+  };
+
+  const moveImageUp = (index: number) => {
+    if (index === 0) return;
+    setSelectedImages(prev => {
+      const newImages = [...prev];
+      [newImages[index - 1], newImages[index]] = [newImages[index], newImages[index - 1]];
+      return newImages;
+    });
+  };
+
+const uploadImages = async (strutturaId: string) => {
+  if (selectedImages.length === 0) return;
+  setUploadingImages(true);
+
+  try {
+    for (const imageUri of selectedImages) {
+      const formData = new FormData();
+
+      // Estraiamo l'estensione del file
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+
+      // Costruiamo l'oggetto file correttamente per React Native
+      // Usiamo 'as any' perché i tipi FormData di default non prevedono uri/name/type
+      formData.append("image", {
+        uri: Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
+        name: `photo-${Date.now()}.${fileType}`,
+      } as any);
+
+      console.log(`Invio immagine a: ${API_URL}/strutture/${strutturaId}/images`);
+
+      const response = await fetch(
+        `${API_URL}/strutture/${strutturaId}/images`,
+        {
+          method: "POST",
+          headers: {
+            // IMPORTANTE: NON aggiungere 'Content-Type'
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("Errore server upload:", responseData);
+        throw new Error(responseData.message || "Errore durante l'upload");
+      }
+
+      console.log("Immagine caricata con successo:", responseData);
+    }
+  } catch (error) {
+    console.error("Errore fatale upload immagini:", error);
+    Alert.alert("Errore", "Impossibile caricare le immagini. La struttura è stata creata, ma le foto potrebbero mancare.");
+  } finally {
+    setUploadingImages(false);
+  }
+};
 
   /* =======================
      AMENITIES HANDLERS
@@ -243,20 +337,15 @@ export default function CreaStrutturaScreen() {
         
         const newCampo = { ...c, [field]: value };
         
-        // Auto-set surface based on sport and indoor
         if (field === "sport") {
           if (value === "beach_volley") {
-            // Beach volley è sempre sabbia (indoor o outdoor)
             newCampo.surface = "sand";
           } else if (value === "volley") {
-            // Volley: indoor = pvc, outdoor = cement
             newCampo.surface = newCampo.indoor ? "pvc" : "cement";
           }
         } else if (field === "indoor" && c.sport === "volley") {
-          // Solo volley cambia superficie con indoor
           newCampo.surface = value ? "pvc" : "cement";
         }
-        // Beach volley mantiene sabbia sia indoor che outdoor
         
         return newCampo;
       })
@@ -480,7 +569,7 @@ export default function CreaStrutturaScreen() {
     return true;
   };
 
-  const validateStep4 = () => {
+  const validateStep5 = () => {
     if (campi.length === 0) {
       Alert.alert("Attenzione", "Aggiungi almeno un campo");
       return false;
@@ -504,9 +593,9 @@ export default function CreaStrutturaScreen() {
 
   const handleNext = () => {
     if (currentStep === 1 && !validateStep1()) return;
-    if (currentStep === 4 && !validateStep4()) return;
+    if (currentStep === 5 && !validateStep5()) return;
 
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
       handleCreate();
@@ -562,6 +651,11 @@ export default function CreaStrutturaScreen() {
 
       const { struttura } = await strutturaResponse.json();
       console.log("✅ Struttura creata:", struttura._id);
+
+      // 🆕 Upload immagini
+      if (selectedImages.length > 0) {
+        await uploadImages(struttura._id);
+      }
 
       if (campiData.length > 0) {
         const campiResponse = await fetch(`${API_URL}/campi`, {
@@ -681,6 +775,98 @@ export default function CreaStrutturaScreen() {
 
   const renderStep2 = () => (
     <>
+      <Text style={styles.sectionTitle}>Immagini della struttura</Text>
+      
+      <View style={styles.infoBox}>
+        <Ionicons name="information-circle" size={20} color="#2196F3" />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.infoText}>
+            📸 Carica fino a 10 foto
+          </Text>
+          <Text style={styles.infoSubtext}>
+            La prima immagine sarà quella principale
+          </Text>
+        </View>
+      </View>
+
+      <Pressable
+        style={[
+          styles.addImagesButton,
+          selectedImages.length >= 10 && styles.addImagesButtonDisabled,
+        ]}
+        onPress={pickImages}
+        disabled={selectedImages.length >= 10}
+      >
+        <Ionicons 
+          name="cloud-upload-outline" 
+          size={24} 
+          color={selectedImages.length >= 10 ? "#999" : "white"} 
+        />
+        <Text style={[
+          styles.addImagesText,
+          selectedImages.length >= 10 && styles.addImagesTextDisabled
+        ]}>
+          {selectedImages.length >= 10
+            ? "Limite massimo raggiunto"
+            : selectedImages.length === 0
+            ? "Aggiungi Immagini"
+            : `Aggiungi altre immagini (${selectedImages.length}/10)`}
+        </Text>
+      </Pressable>
+
+      {selectedImages.length === 0 ? (
+        <View style={styles.emptyImagesState}>
+          <Ionicons name="images-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyImagesText}>Nessuna immagine</Text>
+          <Text style={styles.emptyImagesSubtext}>
+            Le immagini aiutano ad attirare più clienti
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.imagesGrid}>
+          {selectedImages.map((imageUri, index) => (
+            <View key={index} style={styles.imageCard}>
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+
+              {index === 0 && (
+                <View style={styles.mainBadge}>
+                  <Ionicons name="star" size={12} color="white" />
+                  <Text style={styles.mainBadgeText}>Principale</Text>
+                </View>
+              )}
+
+              <View style={styles.imageActions}>
+                {index > 0 && (
+                  <Pressable
+                    style={styles.imageActionButton}
+                    onPress={() => moveImageUp(index)}
+                  >
+                    <Ionicons name="arrow-up" size={16} color="white" />
+                  </Pressable>
+                )}
+
+                <Pressable
+                  style={[styles.imageActionButton, styles.imageActionButtonDanger]}
+                  onPress={() => removeImage(imageUri)}
+                >
+                  <Ionicons name="trash-outline" size={16} color="white" />
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {selectedImages.length > 0 && (
+        <Text style={styles.imageHint}>
+          💡 Usa la freccia verso l'alto per spostare un'immagine in prima posizione
+        </Text>
+      )}
+    </>
+  );
+
+  const renderStep3 = () => (
+    <>
       <Text style={styles.sectionTitle}>Orari di apertura</Text>
       {DAYS.map(({ key, label }) => (
         <View key={key} style={styles.dayRow}>
@@ -715,7 +901,7 @@ export default function CreaStrutturaScreen() {
     </>
   );
 
-  const renderStep3 = () => (
+  const renderStep4 = () => (
     <>
       <Text style={styles.sectionTitle}>Servizi disponibili ({amenities.length})</Text>
 
@@ -764,7 +950,7 @@ export default function CreaStrutturaScreen() {
     </>
   );
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <>
       <Text style={styles.sectionTitle}>Campi sportivi</Text>
       {campi.map((campo, index) => {
@@ -878,7 +1064,6 @@ export default function CreaStrutturaScreen() {
               </View>
             </View>
 
-            {/* PRICING BUTTON */}
             <Pressable
               style={styles.pricingButton}
               onPress={() => openPricingModal(campo.id)}
@@ -924,7 +1109,6 @@ export default function CreaStrutturaScreen() {
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {/* MODE */}
             <View style={styles.modalCard}>
               <Text style={styles.modalCardTitle}>💰 Modalità Pricing</Text>
 
@@ -965,7 +1149,6 @@ export default function CreaStrutturaScreen() {
               </Pressable>
             </View>
 
-            {/* FLAT MODE */}
             {tempPricing.mode === "flat" && (
               <View style={styles.modalCard}>
                 <Text style={styles.modalCardTitle}>💵 Prezzi Fissi</Text>
@@ -998,7 +1181,6 @@ export default function CreaStrutturaScreen() {
               </View>
             )}
 
-            {/* ADVANCED MODE */}
             {tempPricing.mode === "advanced" && (
               <>
                 <View style={styles.modalCard}>
@@ -1034,7 +1216,6 @@ export default function CreaStrutturaScreen() {
                   </View>
                 </View>
 
-                {/* TIME SLOTS */}
                 <View style={styles.modalCard}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.modalCardTitle}>⏰ Fasce Orarie</Text>
@@ -1142,7 +1323,7 @@ export default function CreaStrutturaScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Crea struttura</Text>
         <Text style={styles.stepIndicator}>
-          Step {currentStep}/4
+          Step {currentStep}/5
         </Text>
       </View>
 
@@ -1156,9 +1337,9 @@ export default function CreaStrutturaScreen() {
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
+        {currentStep === 5 && renderStep5()}
       </ScrollView>
 
-      {/* FIXED BOTTOM BUTTONS */}
       <View style={styles.fixedButtonContainer}>
         <View style={styles.buttonRow}>
           <Pressable
@@ -1188,7 +1369,7 @@ export default function CreaStrutturaScreen() {
             <Text style={styles.buttonPrimaryText}>
               {loading
                 ? "Creazione..."
-                : currentStep === 4
+                : currentStep === 5
                 ? "Crea struttura"
                 : "Avanti"}
             </Text>
@@ -1196,8 +1377,6 @@ export default function CreaStrutturaScreen() {
         </View>
       </View>
 
-      {/* MODALS */}
-      {/* Custom Amenity Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1253,7 +1432,6 @@ export default function CreaStrutturaScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Pricing Modal */}
       {renderPricingModal()}
     </SafeAreaView>
   );
@@ -1279,7 +1457,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { 
     padding: 16,
-    paddingBottom: 100, // Spazio per i bottoni fissi
+    paddingBottom: 100,
   },
   sectionTitle: { fontSize: 17, fontWeight: "700", marginBottom: 14 },
   section: { marginBottom: 14 },
@@ -1308,6 +1486,129 @@ const styles = StyleSheet.create({
   },
   suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
   suggestionText: { fontSize: 13, color: "#333" },
+  
+  // IMMAGINI
+  infoBox: {
+    flexDirection: "row",
+    backgroundColor: "#E3F2FD",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196F3",
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1565C0",
+    marginBottom: 4,
+  },
+  infoSubtext: {
+    fontSize: 12,
+    color: "#1976D2",
+  },
+  addImagesButton: {
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 24,
+  },
+  addImagesButtonDisabled: {
+    backgroundColor: "#E0E0E0",
+  },
+  addImagesText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  addImagesTextDisabled: {
+    color: "#999",
+  },
+  emptyImagesState: {
+    alignItems: "center",
+    padding: 40,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+    borderStyle: "dashed",
+  },
+  emptyImagesText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyImagesSubtext: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+  },
+  imagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  imageCard: {
+    width: "48%",
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#e9ecef",
+    position: "relative",
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  mainBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "#FFB800",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  mainBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  imageActions: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    gap: 6,
+  },
+  imageActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageActionButtonDanger: {
+    backgroundColor: "rgba(244, 67, 54, 0.9)",
+  },
+  imageHint: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 12,
+  },
+
+  // ORARI
   dayRow: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -1447,11 +1748,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
-  switchDescription: {
-    fontSize: 10,
-    color: "#999",
-    marginTop: 2,
-  },
   surfaceDisplay: {
     flexDirection: "row",
     alignItems: "center",
@@ -1542,7 +1838,7 @@ const styles = StyleSheet.create({
   buttonPrimaryText: { color: "white", fontSize: 16, fontWeight: "700" },
   buttonSecondaryText: { color: "#333", fontSize: 16, fontWeight: "600" },
 
-  // CUSTOM AMENITY MODAL (BOTTOM)
+  // CUSTOM AMENITY MODAL
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -1606,7 +1902,7 @@ const styles = StyleSheet.create({
     color: "white",
   },
 
-  // PRICING MODAL (FULL SCREEN)
+  // PRICING MODAL
   modalSafe: {
     flex: 1,
     backgroundColor: "#f8f9fa",

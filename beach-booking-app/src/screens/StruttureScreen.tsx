@@ -76,6 +76,9 @@ export default function StruttureScreen() {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [userClearedCity, setUserClearedCity] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  
+  // ✅ State per carousel immagini
+  const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (isFirstLoad && preferences?.preferredLocation?.city) {
@@ -86,6 +89,25 @@ export default function StruttureScreen() {
       setIsFirstLoad(false);
     }
   }, [preferences, isFirstLoad]);
+
+  // ✅ Carousel automatico per le immagini (3 secondi)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndexes((prev) => {
+        const newIndexes = { ...prev };
+        filteredStrutture.forEach((struttura) => {
+          if (struttura.images && struttura.images.length > 1) {
+            const currentIndex = prev[struttura._id] || 0;
+            newIndexes[struttura._id] = 
+              currentIndex === struttura.images.length - 1 ? 0 : currentIndex + 1;
+          }
+        });
+        return newIndexes;
+      });
+    }, 3000); // Cambia immagine ogni 3 secondi
+
+    return () => clearInterval(interval);
+  }, [filteredStrutture]);
 
   useFocusEffect(
     useCallback(() => {
@@ -374,24 +396,31 @@ export default function StruttureScreen() {
 
   const markers = viewMode === "map" ? getMarkersForZoom() : [];
 
-  const renderCard = ({ item }: { item: Struttura }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("FieldDetails", {
-          struttura: item,
-          from: "list",
-        })
-      }
-    >
-      {item.images?.length ? (
-        <Image
-          source={{ uri: item.images[0] }}
-          style={styles.image}
-        />
-      ) : (
-        <View style={styles.image} />
-      )}
+  const renderCard = ({ item }: { item: Struttura }) => {
+    const currentIndex = currentImageIndexes[item._id] || 0;
+    const imageUri = item.images?.length 
+      ? `${API_URL}${item.images[currentIndex]}`
+      : null;
+
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={() =>
+          navigation.navigate("FieldDetails", {
+            struttura: item,
+            from: "list",
+          })
+        }
+      >
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.image} />
+        )}
 
       <View
         style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}
@@ -464,6 +493,7 @@ export default function StruttureScreen() {
       </View>
     </Pressable>
   );
+};
 
   const renderListHeader = () => (
     <>
@@ -495,35 +525,43 @@ export default function StruttureScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.favoritesScroll}
             >
-              {favoriteStrutture.map((fav) => (
-                <Pressable
-                  key={fav._id}
-                  style={styles.favoriteCard}
-                  onPress={() =>
-                    navigation.navigate("FieldDetails", {
-                      struttura: fav,
-                      from: "favorites",
-                    })
-                  }
-                >
-                  {fav.images?.length ? (
-                    <Image
-                      source={{ uri: fav.images[0] }}
-                      style={styles.favoriteImage}
-                    />
-                  ) : (
-                    <View style={styles.favoriteImage} />
-                  )}
-                  <View style={styles.favoriteContent}>
-                    <Text style={styles.favoriteTitle} numberOfLines={1}>
-                      {fav.name}
-                    </Text>
-                    <Text style={styles.favoriteCity} numberOfLines={1}>
-                      {fav.location.city}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
+              {favoriteStrutture.map((fav) => {
+                const currentIndex = currentImageIndexes[fav._id] || 0;
+                const imageUri = fav.images?.length 
+                  ? `${API_URL}${fav.images[currentIndex]}`
+                  : null;
+
+                return (
+                  <Pressable
+                    key={fav._id}
+                    style={styles.favoriteCard}
+                    onPress={() =>
+                      navigation.navigate("FieldDetails", {
+                        struttura: fav,
+                        from: "favorites",
+                      })
+                    }
+                  >
+                    {imageUri ? (
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.favoriteImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.favoriteImage} />
+                    )}
+                    <View style={styles.favoriteContent}>
+                      <Text style={styles.favoriteTitle} numberOfLines={1}>
+                        {fav.name}
+                      </Text>
+                      <Text style={styles.favoriteCity} numberOfLines={1}>
+                        {fav.location.city}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           )}
         </View>
@@ -666,8 +704,9 @@ export default function StruttureScreen() {
 
                     {selectedMarker.images?.length ? (
                       <Image
-                        source={{ uri: selectedMarker.images[0] }}
+                        source={{ uri: `${API_URL}${selectedMarker.images[0]}` }}
                         style={styles.mapModalImage}
+                        resizeMode="cover"
                       />
                     ) : (
                       <View style={styles.mapModalImage} />
@@ -1051,4 +1090,4 @@ function AdvancedFiltersModal({
       </Modal>
     </Modal>
   );
-}
+} 

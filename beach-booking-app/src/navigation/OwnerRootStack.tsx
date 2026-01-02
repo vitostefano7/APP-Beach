@@ -13,6 +13,7 @@ import DettaglioPrenotazioneOwnerScreen from "../screens/owner/prenotazioni/Dett
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCampiScreen";
 import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
+import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
 
 
 export type OwnerRootStackParamList = {
@@ -83,6 +84,10 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="Chat" 
         component={ChatScreen} 
+      />
+      <Stack.Screen 
+        name="GestisciImmaginiStruttura" 
+        component={GestisciImmaginiStruttura} 
       />
     </Stack.Navigator>
   );

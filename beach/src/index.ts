@@ -1,52 +1,64 @@
   import express from "express";
-  import mongoose from "mongoose";
-  import authRoutes from "./routes/authRoutes";
-  import userRoutes from "./routes/userRoutes";
-  import struttureRoutes from "./routes/struttureRoutes";
-  import bookingRoutes from "./routes/bookingRoutes";  // ⬅️ UNO SOLO (minuscolo)
-  import ownerRoutes from "./routes/ownerRoutes";      // ⬅️ minuscolo
-  import campiRoutes from "./routes/campiRoutes";
-  import campoCalendarRoutes from "./routes/campoCalendarRoutes";
-  import matchRoutes from "./routes/matchRoutes";
-  import userPreferencesRoutes from './routes/userPreferencesRoutes';
-  import conversazioneRoute from './routes/conversazioneRoutes';
+import path from "path";
+import mongoose from "mongoose";
+import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/userRoutes";
+import struttureRoutes from "./routes/struttureRoutes";
+import bookingRoutes from "./routes/bookingRoutes";
+import ownerRoutes from "./routes/ownerRoutes";
+import campiRoutes from "./routes/campiRoutes";
+import campoCalendarRoutes from "./routes/campoCalendarRoutes";
+import matchRoutes from "./routes/matchRoutes";
+import userPreferencesRoutes from "./routes/userPreferencesRoutes";
+import conversazioneRoute from "./routes/conversazioneRoutes";
+import struttureImagesRoutes from "./routes/struttureImagesRoutes";
 
+const app = express();
+app.use(express.json());
 
-  const app = express();
-  app.use(express.json());
+async function start() {
+  try {
+    await mongoose.connect(
+      "mongodb://admin:adminpass@localhost:27017/beach?authSource=admin"
+    );
+    console.log("✅ MongoDB Connected");
 
-  async function start() {
-    try {
-      await mongoose.connect(
-        "mongodb://admin:adminpass@localhost:27017/beach?authSource=admin"
-      );
-      console.log("✅ MongoDB Connected");
+    app.get("/", (_req, res) => {
+      res.send("Backend Beach Booking API ✅");
+    });
 
-      app.get("/", (_req, res) => {
-        res.send("Backend Beach Booking API ✅");
-      });
+    // ✅ Serve immagini statiche (PRIMA di tutte le routes)
+    app.use("/images", express.static(path.join(__dirname, "../src/images")));
 
-      // Route registration
-      app.use("/auth", authRoutes);
-      app.use("/users", userRoutes);
-      app.use("/strutture", struttureRoutes);
-      app.use("/bookings", bookingRoutes);  // ⬅️ UNA SOLA VOLTA!
-      app.use("/owner", ownerRoutes);
-      app.use("/campi", campiRoutes);
-      app.use("/calendar", campoCalendarRoutes);  // Stesso base path per calendar routes
-      app.use("/matches", matchRoutes);
-      app.use('/users', userPreferencesRoutes);  // ← Deve esserci questa riga
-      app.use('/api/conversations', conversazioneRoute);
-      app.use('/users', userRoutes);
+    // Route registration
+    app.use("/auth", authRoutes);
+    app.use("/users", userRoutes);
+    app.use("/users", userPreferencesRoutes);
+    
+    // ✅ Routes immagini PRIMA di struttureRoutes
+    app.use("/strutture", struttureImagesRoutes);
+    app.use("/strutture", struttureRoutes);
+    
+    app.use("/bookings", bookingRoutes);
+    app.use("/owner", ownerRoutes);
+    app.use("/campi", campiRoutes);
+    app.use("/calendar", campoCalendarRoutes);
+    app.use("/matches", matchRoutes);
+    app.use("/api/conversations", conversazioneRoute);
 
-
-      
-      app.listen(3000, () => {
-        console.log("✅ Server started on port 3000");
-      });
-    } catch (err) {
-      console.error("❌ Errore connessione MongoDB", err);
-    }
+    app.listen(3000, () => {
+      console.log("✅ Server started on port 3000");
+    });
+  } catch (err) {
+    console.error("❌ Errore connessione MongoDB", err);
   }
+}
 
-  start();
+start();
+
+// ============================================
+// IMPORTANTE:
+// Le routes delle immagini DEVONO essere
+// registrate PRIMA di struttureRoutes
+// altrimenti /:id cattura anche /:id/images
+// ============================================
