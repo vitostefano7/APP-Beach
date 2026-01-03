@@ -20,11 +20,11 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { Calendar } from 'react-native-calendars';
-import API_URL from "../config/api";
-import { AuthContext } from "../context/AuthContext";
+import API_URL from "../../../config/api";
+import { AuthContext } from "../../../context/AuthContext";
 
 // ✅ Import stili
-import { styles } from "./player/styles-player/StruttureScreen.styles";
+import { styles } from "../styles-player/StruttureScreen.styles";
 // ✅ Import utils e types
 import {
   Struttura,
@@ -33,7 +33,7 @@ import {
   calculateDistance,
   filterStrutture,
   countActiveFilters,
-} from "./player/utils-player/StruttureScreen-utils";
+} from "../utils-player/StruttureScreen-utils";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);

@@ -8,22 +8,29 @@ import {
   Image,
   Alert,
   Linking,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { useContext, useEffect, useState, useRef } from "react";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../config/api";
+import API_URL from "../../../config/api";
+
+const { width } = Dimensions.get("window");
 
 export default function DettaglioPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { bookingId } = route.params;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
+  
+  // ✅ State per carousel
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     loadBooking();
@@ -47,6 +54,31 @@ export default function DettaglioPrenotazioneScreen() {
       setLoading(false);
     }
   };
+
+  // ✅ Carousel automatico
+  useEffect(() => {
+    if (!booking?.campo?.struttura?.images?.length || booking.campo.struttura.images.length <= 1) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) =>
+        prevIndex === booking.campo.struttura.images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [booking]);
+
+  // ✅ Scroll automatico gallery
+  useEffect(() => {
+    if (scrollViewRef.current && booking?.campo?.struttura?.images?.length > 1) {
+      scrollViewRef.current.scrollTo({
+        x: currentImageIndex * width,
+        animated: true,
+      });
+    }
+  }, [currentImageIndex, booking]);
 
   const handleCancel = () => {
     Alert.alert(
@@ -87,34 +119,33 @@ export default function DettaglioPrenotazioneScreen() {
   };
 
   const openChat = async () => {
-  try {
-    console.log('💬 Apertura chat con struttura:', booking.campo.struttura._id);
-    
-    const res = await fetch(
-      `${API_URL}/api/conversations/struttura/${booking.campo.struttura._id}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
+    try {
+      console.log('💬 Apertura chat con struttura:', booking.campo.struttura._id);
+      
+      const res = await fetch(
+        `${API_URL}/api/conversations/struttura/${booking.campo.struttura._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        console.error('❌ Errore creazione conversazione:', res.status);
+        throw new Error();
       }
-    );
 
-    if (!res.ok) {
-      console.error('❌ Errore creazione conversazione:', res.status);
-      throw new Error();
+      const conversation = await res.json();
+      console.log('✅ Conversazione ottenuta:', conversation._id);
+
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: booking.campo.struttura.name,
+      });
+    } catch (error) {
+      console.error("❌ Errore apertura chat:", error);
+      Alert.alert("Errore", "Impossibile aprire la chat");
     }
-
-    const conversation = await res.json();
-    console.log('✅ Conversazione ottenuta:', conversation._id);
-
-    // ✅ Chat è nello STESSO STACK, naviga direttamente!
-    navigation.navigate("Chat", {
-      conversationId: conversation._id,
-      strutturaName: booking.campo.struttura.name,
-    });
-  } catch (error) {
-    console.error("❌ Errore apertura chat:", error);
-    Alert.alert("Errore", "Impossibile aprire la chat");
-  }
-};
+  };
 
   const goToInserisciRisultato = () => {
     navigation.navigate("InserisciRisultato", { bookingId });
@@ -140,24 +171,65 @@ export default function DettaglioPrenotazioneScreen() {
   const isPast = bookingDate < today;
   const canInsertResult = !isCancelled && isPast && !booking.match;
 
+  // ✅ Prepara array immagini con API_URL
+  const images = booking.campo.struttura.images?.length
+    ? booking.campo.struttura.images.map((img: string) => `${API_URL}${img}`)
+    : [];
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView 
         style={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* IMMAGINE HEADER CON OVERLAY */}
+        {/* IMMAGINE HEADER CON CAROUSEL */}
         <View style={styles.imageContainer}>
-          {booking.campo.struttura.images?.length > 0 ? (
-            <Image
-              source={{ uri: booking.campo.struttura.images[0] }}
-              style={styles.headerImage}
-            />
+          {images.length > 0 ? (
+            <>
+              <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                style={styles.headerImageScroll}
+                onMomentumScrollEnd={(event) => {
+                  const newIndex = Math.round(
+                    event.nativeEvent.contentOffset.x / width
+                  );
+                  setCurrentImageIndex(newIndex);
+                }}
+              >
+                {images.map((img: string, i: number) => (
+                  <Image
+                    key={i}
+                    source={{ uri: img }}
+                    style={styles.headerImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+
+              {/* Indicatori pagina */}
+              {images.length > 1 && (
+                <View style={styles.pagination}>
+                  {images.map((_: string, i: number) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.paginationDot,
+                        i === currentImageIndex && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="basketball" size={64} color="#ccc" />
             </View>
           )}
+          
           <View style={styles.imageOverlay} />
           
           {/* Back button */}
@@ -380,10 +452,18 @@ const styles = StyleSheet.create({
     height: 280,
     position: "relative",
   },
-  headerImage: {
+  
+  // ✅ NUOVO: ScrollView per carousel
+  headerImageScroll: {
     width: "100%",
     height: "100%",
   },
+  
+  headerImage: {
+    width: width,
+    height: 280,
+  },
+  
   placeholderImage: {
     width: "100%",
     height: "100%",
@@ -391,6 +471,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  
   imageOverlay: {
     position: "absolute",
     top: 0,
@@ -399,6 +480,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.3)",
   },
+  
+  // ✅ NUOVO: Indicatori carousel
+  pagination: {
+    position: "absolute",
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  paginationDotActive: {
+    backgroundColor: "white",
+    width: 24,
+  },
+  
   backButton: {
     position: "absolute",
     top: 16,
@@ -409,7 +512,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
+  
   statusBadge: {
     position: "absolute",
     top: 16,
@@ -420,6 +525,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    zIndex: 10,
   },
   statusConfirmed: {
     backgroundColor: "#4CAF50",

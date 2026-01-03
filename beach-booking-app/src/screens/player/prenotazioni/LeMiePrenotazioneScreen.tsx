@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../config/api";
+import API_URL from "../../../config/api";
 
 /* =========================
    TYPES
