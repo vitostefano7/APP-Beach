@@ -28,10 +28,16 @@ async function start() {
     });
 
     // ✅ Serve immagini statiche (PRIMA di tutte le routes)
-    // Il path deve puntare alla cartella images dentro beach/
-    const imagesPath = path.join(__dirname, "../../beach/images");
-    console.log("📁 Serving images from:", imagesPath);
-    app.use("/images", express.static(imagesPath));
+    
+    // Immagini profilo utente → beach/images/profilo
+    const profileImagesPath = path.join(__dirname, "../../beach/images/profilo");
+    console.log("📁 Serving profile images from:", profileImagesPath);
+    app.use("/images/profilo", express.static(profileImagesPath));
+    
+    // Immagini strutture → beach/images/strutture
+    const struttureImagesPath = path.join(__dirname, "../../beach/images/strutture");
+    console.log("📁 Serving strutture images from:", struttureImagesPath);
+    app.use("/images/strutture", express.static(struttureImagesPath));
 
     // Route registration
     app.use("/auth", authRoutes);

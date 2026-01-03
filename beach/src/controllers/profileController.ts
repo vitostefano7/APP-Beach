@@ -228,7 +228,7 @@ export const uploadAvatar = async (
 
     // ✅ Elimina il vecchio avatar se esiste
     if (user.avatarUrl) {
-      const oldFilePath = path.join(__dirname, "../../", user.avatarUrl);
+      const oldFilePath = path.join(__dirname, "../../../", user.avatarUrl);
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
         console.log("🗑️ Vecchio avatar eliminato:", oldFilePath);

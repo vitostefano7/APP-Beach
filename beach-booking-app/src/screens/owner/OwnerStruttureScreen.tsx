@@ -23,6 +23,28 @@ function StrutturaCard({ item }: { item: any }) {
   const navigation = useNavigation<any>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // ✅ URL assoluto per React Native
+  const getImageUri = (index: number) => {
+    if (!item.images || item.images.length === 0) {
+      return "https://images.unsplash.com/photo-1545262810-77515befe149?w=400";
+    }
+    
+    const imagePath = item.images[index];
+    // Se l'immagine è già un URL completo, restituiscila così com'è
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Altrimenti, aggiungi l'API_URL
+    // Rimuovi eventuali doppi slash
+    const baseUrl = API_URL.replace(/\/$/, '');
+    const cleanImagePath = imagePath.replace(/^\//, '');
+    
+    return `${baseUrl}/${cleanImagePath}`;
+  };
+
+  const imageUri = getImageUri(currentImageIndex);
+
   // 🎠 Carosello automatico ogni 3 secondi
   useEffect(() => {
     if (!item.images || item.images.length <= 1) return;
@@ -36,10 +58,11 @@ function StrutturaCard({ item }: { item: any }) {
     return () => clearInterval(interval);
   }, [item.images]);
 
-  // ✅ URL assoluto per React Native
-  const imageUri = item.images?.length
-    ? `${API_URL}${item.images[currentImageIndex]}`
-    : "https://images.unsplash.com/photo-1545262810-77515befe149?w=400";
+  // Debug logging
+  useEffect(() => {
+    console.log("Image Url: ", imageUri);
+    console.log("ITEM images:", item.images);
+  }, [imageUri, item.images]);
 
   return (
     <Pressable
@@ -51,7 +74,12 @@ function StrutturaCard({ item }: { item: any }) {
       }
     >
       {/* IMMAGINE */}
-      <Image source={{ uri: imageUri }} style={styles.cardImage} />
+      <Image 
+        source={{ uri: imageUri }} 
+        style={styles.cardImage}
+        onError={(e) => console.log("Image loading error:", e.nativeEvent.error)}
+        //defaultSource={require('../../assets/default-struttura.jpg')} // Aggiungi un'immagine di fallback se vuoi
+      />
 
       {/* BADGE STATO */}
       <View
@@ -143,6 +171,13 @@ export default function OwnerStruttureScreen() {
       });
 
       const data = await response.json();
+      
+      // Debug per vedere i dati ricevuti
+      console.log("Strutture data received:", data);
+      if (data.length > 0) {
+        console.log("First struttura images:", data[0].images);
+      }
+      
       setStrutture(data);
     } catch (error) {
       console.error("❌ Errore caricamento strutture:", error);
