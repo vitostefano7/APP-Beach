@@ -3,7 +3,7 @@ import Campo from "../models/Campo";
 import Struttura from "../models/Strutture";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import { AuthRequest } from "../middleware/authMiddleware";
-import Booking from "../models/Booking"; // ✅ AGGIUNTO
+import Booking from "../models/Booking";
 
 
 /* =====================================================
@@ -170,7 +170,7 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Crea i campi con weeklySchedule default
+    // ✅ CORREZIONE: Crea i campi includendo pricingRules
     const campiToCreate = campi.map((c: any) => ({
       struttura: strutturaId,
       name: c.name,
@@ -189,13 +189,29 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
         saturday: { enabled: true, open: "09:00", close: "22:00" },
         sunday: { enabled: true, open: "09:00", close: "22:00" },
       },
+      // ✅ AGGIUNTO: pricingRules (usa quello inviato dal frontend o crea default)
+      pricingRules: c.pricingRules || {
+        mode: "flat",
+        flatPrices: { 
+          oneHour: c.pricePerHour || 20, 
+          oneHourHalf: (c.pricePerHour || 20) * 1.4 
+        },
+        basePrices: { 
+          oneHour: c.pricePerHour || 20, 
+          oneHourHalf: (c.pricePerHour || 20) * 1.4 
+        },
+        timeSlotPricing: { enabled: false, slots: [] },
+        dateOverrides: { enabled: false, dates: [] },
+        periodOverrides: { enabled: false, periods: [] },
+        playerCountPricing: { enabled: false, prices: [] },
+      },
     }));
 
     const createdCampi = await Campo.insertMany(campiToCreate);
     console.log(`✅ ${createdCampi.length} campi creati per struttura ${strutturaId}`);
 
     // 🔥 GENERAZIONE CALENDARIO ANNUALE AUTOMATICA
-       console.log("🚀 Avvio generazione calendari annuali...");
+    console.log("🚀 Avvio generazione calendari annuali...");
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
     
@@ -259,9 +275,9 @@ export const getCampoCalendarByMonth = async (
 
     console.log(`✅ Trovati ${days.length} giorni per ${month}`);
     res.json(days);
-  } catch (error) {
-    console.error("❌ getCampoCalendarByMonth error:", error);
-    res.status(500).json({ message: "Errore calendario" });
+  } catch (err) {
+    console.error("❌ getCampoCalendarByMonth error:", err);
+    res.status(500).json({ message: "Errore caricamento calendario" });
   }
 };
 
@@ -270,28 +286,33 @@ export const getCampoCalendarByMonth = async (
 ===================================================== */
 export const updateCampo = async (req: AuthRequest, res: Response) => {
   try {
-    console.log("✏️  PUT /campi/:id (UPDATE)");
-    const campo = await Campo.findById(req.params.id);
+    console.log("🔄 PUT /campi/:id");
+    const { id } = req.params;
+    const { 
+      name, 
+      sport, 
+      surface, 
+      maxPlayers, 
+      indoor, 
+      pricePerHour, 
+      isActive,
+      weeklySchedule 
+    } = req.body;
 
+    const campo = await Campo.findById(id).populate("struttura");
     if (!campo) {
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     // Verifica ownership
-    const struttura = await Struttura.findOne({
-      _id: campo.struttura,
-      owner: req.user!.id,
-    });
-
-    if (!struttura) {
+    if ((campo.struttura as any).owner.toString() !== req.user!.id) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    const { name, sport, surface, maxPlayers, indoor, pricePerHour, isActive, weeklySchedule } = req.body;
-
-    if (name) campo.name = name;
-    if (sport) campo.sport = sport;
-    if (surface) campo.surface = surface;
+    // Aggiorna solo i campi forniti
+    if (name !== undefined) campo.name = name;
+    if (sport !== undefined) campo.sport = sport;
+    if (surface !== undefined) campo.surface = surface;
     if (maxPlayers !== undefined) campo.maxPlayers = maxPlayers;
     if (indoor !== undefined) campo.indoor = indoor;
     if (pricePerHour !== undefined) campo.pricePerHour = pricePerHour;
@@ -359,8 +380,6 @@ export const deleteCampo = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// campoController.ts - Aggiungi/modifica queste funzioni
-
 /**
  * 📌 CHIUDE UN GIORNO COMPLETAMENTE
  * DELETE /campi/:campoId/calendar/:date
@@ -392,7 +411,7 @@ export const closeCalendarDay = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Giorno non trovato" });
     }
 
-    // ❌ Cancella tutte le prenotazioni confermате per questo giorno
+    // ❌ Cancella tutte le prenotazioni confermate per questo giorno
     const bookingsToCancel = await Booking.find({
       campo: campoId,
       date,

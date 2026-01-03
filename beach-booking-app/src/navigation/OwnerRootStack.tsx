@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import OwnerTabs from "./OwnerTabs";
 import StrutturaDashboardScreen from "../screens/owner/StrutturaDashboardScreen";
-import CreaStrutturaScreen from "../screens/owner/CreaStrutturaScreen";
+import CreaStrutturaScreen from "../screens/owner/struttura/CreaStruttura/CreaStrutturaScreen";
 import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
 import ModificaStrutturaScreen from "../screens/owner/struttura/ModificaStrutturaScreen";
 import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";

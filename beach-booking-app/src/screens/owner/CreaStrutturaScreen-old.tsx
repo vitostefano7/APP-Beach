@@ -56,8 +56,25 @@ interface TimeSlot {
   end: string;
   label: string;
   prices: DurationPrice;
+  daysOfWeek?: number[]; // ✅ 0=dom, 1=lun, ..., 6=sab
 }
 
+// ✅ NUOVA INTERFACE
+interface DateOverride {
+  date: string; // YYYY-MM-DD
+  label: string;
+  prices: DurationPrice;
+}
+
+// ✅ NUOVA INTERFACE
+interface PeriodOverride {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;
+  label: string;
+  prices: DurationPrice;
+}
+
+// ✅ INTERFACE AGGIORNATA
 interface PricingRules {
   mode: "flat" | "advanced";
   flatPrices: DurationPrice;
@@ -65,6 +82,14 @@ interface PricingRules {
   timeSlotPricing: {
     enabled: boolean;
     slots: TimeSlot[];
+  };
+  dateOverrides: {
+    enabled: boolean;
+    dates: DateOverride[];
+  };
+  periodOverrides: {
+    enabled: boolean;
+    periods: PeriodOverride[];
   };
 }
 
@@ -77,6 +102,7 @@ interface Campo {
   indoor: boolean;
   pricingRules: PricingRules;
 }
+
 
 /* =======================
    CONSTANTS
@@ -100,6 +126,8 @@ const AVAILABLE_AMENITIES = [
   { key: "restaurant", label: "Ristorante", icon: "restaurant" },
   { key: "bar", label: "Bar", icon: "beer" },
 ];
+
+const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
 /* =======================
    COMPONENT
@@ -154,6 +182,14 @@ export default function CreaStrutturaScreen() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [editingCampoId, setEditingCampoId] = useState<string | null>(null);
   const [tempPricing, setTempPricing] = useState<PricingRules | null>(null);
+  const [showDaysModal, setShowDaysModal] = useState(false);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<"date" | "period-start" | "period-end">("date");
+  const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
+  const [editingPeriodIndex, setEditingPeriodIndex] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+
 
   /* =======================
      IMAGE HANDLERS
@@ -363,119 +399,364 @@ const uploadImages = async (strutturaId: string) => {
     ]);
   };
 
-  /* =======================
-     PRICING HANDLERS
-  ======================= */
 
-  const openPricingModal = (campoId: string) => {
-    const campo = campi.find(c => c.id === campoId);
-    if (!campo) return;
-    
-    setEditingCampoId(campoId);
-    setTempPricing({ ...campo.pricingRules });
-    setShowPricingModal(true);
+/* =======================
+   HANDLERS COMPLETI PER PRICING AVANZATO
+   (Da aggiungere nella sezione PRICING HANDLERS)
+======================= */
+
+const openPricingModal = (campoId: string) => {
+  const campo = campi.find(c => c.id === campoId);
+  if (!campo) return;
+  
+  setEditingCampoId(campoId);
+  
+  // Assicura che dateOverrides e periodOverrides esistano
+  const pricingWithDefaults = {
+    ...campo.pricingRules,
+    dateOverrides: campo.pricingRules.dateOverrides || { enabled: false, dates: [] },
+    periodOverrides: campo.pricingRules.periodOverrides || { enabled: false, periods: [] },
   };
+  
+  setTempPricing(pricingWithDefaults);
+  setShowPricingModal(true);
+};
 
-  const savePricing = () => {
-    if (!editingCampoId || !tempPricing) return;
-    
-    setCampi(prev =>
-      prev.map(c =>
-        c.id === editingCampoId ? { ...c, pricingRules: tempPricing } : c
-      )
-    );
-    
-    setShowPricingModal(false);
-    setEditingCampoId(null);
-    setTempPricing(null);
-  };
+const savePricing = () => {
+  if (!editingCampoId || !tempPricing) return;
+  
+  setCampi(prev =>
+    prev.map(c =>
+      c.id === editingCampoId ? { ...c, pricingRules: tempPricing } : c
+    )
+  );
+  
+  setShowPricingModal(false);
+  setEditingCampoId(null);
+  setTempPricing(null);
+};
 
-  const updateTempPricingFlat = (type: "oneHour" | "oneHourHalf", value: string) => {
-    if (!tempPricing) return;
-    const num = parseFloat(value) || 0;
-    setTempPricing({
-      ...tempPricing,
-      flatPrices: { ...tempPricing.flatPrices, [type]: num },
-    });
-  };
+const updateTempPricingFlat = (type: "oneHour" | "oneHourHalf", value: string) => {
+  if (!tempPricing) return;
+  const num = parseFloat(value) || 0;
+  setTempPricing({
+    ...tempPricing,
+    flatPrices: { ...tempPricing.flatPrices, [type]: num },
+  });
+};
 
-  const updateTempPricingBase = (type: "oneHour" | "oneHourHalf", value: string) => {
-    if (!tempPricing) return;
-    const num = parseFloat(value) || 0;
-    setTempPricing({
-      ...tempPricing,
-      basePrices: { ...tempPricing.basePrices, [type]: num },
-    });
-  };
+const updateTempPricingBase = (type: "oneHour" | "oneHourHalf", value: string) => {
+  if (!tempPricing) return;
+  const num = parseFloat(value) || 0;
+  setTempPricing({
+    ...tempPricing,
+    basePrices: { ...tempPricing.basePrices, [type]: num },
+  });
+};
 
-  const toggleTempTimeSlot = () => {
-    if (!tempPricing) return;
-    setTempPricing({
-      ...tempPricing,
-      timeSlotPricing: {
-        ...tempPricing.timeSlotPricing,
-        enabled: !tempPricing.timeSlotPricing.enabled,
-      },
-    });
-  };
+const toggleTempTimeSlot = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      enabled: !tempPricing.timeSlotPricing.enabled,
+    },
+  });
+};
 
-  const addTempTimeSlot = () => {
-    if (!tempPricing) return;
-    setTempPricing({
-      ...tempPricing,
-      timeSlotPricing: {
-        ...tempPricing.timeSlotPricing,
-        slots: [
-          ...tempPricing.timeSlotPricing.slots,
-          {
-            start: "09:00",
-            end: "13:00",
-            label: "Mattina",
-            prices: { oneHour: 15, oneHourHalf: 21 },
-          },
-        ],
-      },
-    });
-  };
-
-  const updateTempTimeSlot = (index: number, field: string, value: any) => {
-    if (!tempPricing) return;
-    
-    const newSlots = [...tempPricing.timeSlotPricing.slots];
-    if (!newSlots[index]) return;
-    
-    if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
-      const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
-      newSlots[index] = {
-        ...newSlots[index],
-        prices: {
-          ...newSlots[index].prices,
-          [priceField]: parseFloat(value) || 0,
+const addTempTimeSlot = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: [
+        ...tempPricing.timeSlotPricing.slots,
+        {
+          start: "09:00",
+          end: "13:00",
+          label: "Mattina",
+          prices: { oneHour: 25, oneHourHalf: 35 },
         },
-      };
-    } else {
-      newSlots[index] = { ...newSlots[index], [field]: value };
-    }
-    
-    setTempPricing({
-      ...tempPricing,
-      timeSlotPricing: {
-        ...tempPricing.timeSlotPricing,
-        slots: newSlots,
-      },
-    });
-  };
+      ],
+    },
+  });
+};
 
-  const removeTempTimeSlot = (index: number) => {
-    if (!tempPricing) return;
-    setTempPricing({
-      ...tempPricing,
-      timeSlotPricing: {
-        ...tempPricing.timeSlotPricing,
-        slots: tempPricing.timeSlotPricing.slots.filter((_, i) => i !== index),
+const updateTempTimeSlot = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newSlots = [...tempPricing.timeSlotPricing.slots];
+  if (!newSlots[index]) return;
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newSlots[index] = {
+      ...newSlots[index],
+      prices: {
+        ...newSlots[index].prices,
+        [priceField]: parseFloat(value) || 0,
       },
-    });
-  };
+    };
+  } else {
+    newSlots[index] = { ...newSlots[index], [field]: value };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: newSlots,
+    },
+  });
+};
+
+const removeTempTimeSlot = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: tempPricing.timeSlotPricing.slots.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openDaysModal = (slotIndex: number) => {
+  setEditingSlotIndex(slotIndex);
+  setShowDaysModal(true);
+};
+
+const toggleDay = (day: number) => {
+  if (editingSlotIndex === null || !tempPricing) return;
+  
+  const newSlots = [...tempPricing.timeSlotPricing.slots];
+  const slot = newSlots[editingSlotIndex];
+  
+  const currentDays = slot.daysOfWeek || [];
+  const dayIndex = currentDays.indexOf(day);
+  
+  if (dayIndex >= 0) {
+    // Rimuovi il giorno
+    slot.daysOfWeek = currentDays.filter((d) => d !== day);
+  } else {
+    // Aggiungi il giorno
+    slot.daysOfWeek = [...currentDays, day].sort();
+  }
+  
+  // Se non ci sono giorni, rimuovi l'array
+  if (slot.daysOfWeek.length === 0) {
+    delete slot.daysOfWeek;
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: { ...tempPricing.timeSlotPricing, slots: newSlots },
+  });
+};
+
+const toggleTempDateOverrides = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      enabled: !tempPricing.dateOverrides.enabled,
+    },
+  });
+};
+
+const addTempDateOverride = () => {
+  if (!tempPricing) return;
+  const today = new Date().toISOString().split("T")[0];
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      dates: [
+        ...tempPricing.dateOverrides.dates,
+        {
+          date: today,
+          label: "Evento speciale",
+          prices: { oneHour: 50, oneHourHalf: 70 },
+        },
+      ],
+    },
+  });
+};
+
+const updateTempDateOverride = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newDates = [...tempPricing.dateOverrides.dates];
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newDates[index] = {
+      ...newDates[index],
+      prices: {
+        ...newDates[index].prices,
+        [priceField]: parseFloat(value) || 0,
+      },
+    };
+  } else {
+    newDates[index] = {
+      ...newDates[index],
+      [field]: value,
+    };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: { ...tempPricing.dateOverrides, dates: newDates },
+  });
+};
+
+const removeTempDateOverride = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      dates: tempPricing.dateOverrides.dates.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openDatePicker = (index: number) => {
+  setEditingDateIndex(index);
+  setDatePickerMode("date");
+  if (tempPricing) {
+    const currentDate = tempPricing.dateOverrides.dates[index]?.date;
+    if (currentDate) {
+      const [y, m] = currentDate.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+  }
+  setShowDatePicker(true);
+};
+
+const toggleTempPeriodOverrides = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      enabled: !tempPricing.periodOverrides.enabled,
+    },
+  });
+};
+
+const addTempPeriodOverride = () => {
+  if (!tempPricing) return;
+  const today = new Date();
+  const startDate = today.toISOString().split("T")[0];
+  const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+  
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      periods: [
+        ...tempPricing.periodOverrides.periods,
+        {
+          startDate,
+          endDate,
+          label: "Periodo speciale",
+          prices: { oneHour: 40, oneHourHalf: 56 },
+        },
+      ],
+    },
+  });
+};
+
+const updateTempPeriodOverride = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newPeriods = [...tempPricing.periodOverrides.periods];
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newPeriods[index] = {
+      ...newPeriods[index],
+      prices: {
+        ...newPeriods[index].prices,
+        [priceField]: parseFloat(value) || 0,
+      },
+    };
+  } else {
+    newPeriods[index] = {
+      ...newPeriods[index],
+      [field]: value,
+    };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: { ...tempPricing.periodOverrides, periods: newPeriods },
+  });
+};
+
+const removeTempPeriodOverride = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      periods: tempPricing.periodOverrides.periods.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openPeriodPicker = (index: number, mode: "start" | "end") => {
+  setEditingPeriodIndex(index);
+  setDatePickerMode(mode === "start" ? "period-start" : "period-end");
+  if (tempPricing) {
+    const period = tempPricing.periodOverrides.periods[index];
+    const dateStr = mode === "start" ? period.startDate : period.endDate;
+    if (dateStr) {
+      const [y, m] = dateStr.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+  }
+  setShowDatePicker(true);
+};
+
+const handleDateSelect = (dateStr: string) => {
+  if (editingDateIndex !== null && datePickerMode === "date" && tempPricing) {
+    updateTempDateOverride(editingDateIndex, "date", dateStr);
+  } else if (editingPeriodIndex !== null && tempPricing) {
+    if (datePickerMode === "period-start") {
+      updateTempPeriodOverride(editingPeriodIndex, "startDate", dateStr);
+    } else if (datePickerMode === "period-end") {
+      updateTempPeriodOverride(editingPeriodIndex, "endDate", dateStr);
+    }
+  }
+  setShowDatePicker(false);
+};
+
+const renderDaysOfWeek = (slot: TimeSlot, index: number) => {
+  const selectedDays = slot.daysOfWeek || [];
+  const isGeneric = selectedDays.length === 0;
+  
+  return (
+    <Pressable
+      style={styles.daysSelector}
+      onPress={() => openDaysModal(index)}
+    >
+      <Ionicons name="calendar-outline" size={16} color="#666" />
+      <Text style={styles.daysSelectorText}>
+        {isGeneric
+          ? "Tutti i giorni"
+          : selectedDays.map((d) => DAYS_LABELS[d]).join(", ")}
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color="#666" />
+    </Pressable>
+  );
+};
 
   /* =======================
      ADDRESS AUTOCOMPLETE
@@ -1241,6 +1522,9 @@ const uploadImages = async (strutturaId: string) => {
                             </Pressable>
                           </View>
 
+                          {/* Days of Week Selector */}
+                          {renderDaysOfWeek(slot, index)}
+
                           <View style={styles.timeSlotTimeRow}>
                             <View style={styles.timeInputWrapper}>
                               <Text style={styles.timeLabel}>Dalle</Text>
@@ -1304,6 +1588,187 @@ const uploadImages = async (strutturaId: string) => {
                     </>
                   )}
                 </View>
+
+                {/* ============================================
+                    DATE SPECIALI (DATE OVERRIDES)
+                ============================================ */}
+                {tempPricing.dateOverrides && (
+                <View style={styles.modalCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.modalCardTitle}>📅 Date Speciali</Text>
+                    <Switch
+                      value={tempPricing.dateOverrides.enabled}
+                      onValueChange={toggleTempDateOverrides}
+                    />
+                  </View>
+                  <Text style={styles.cardDescription}>
+                    Prezzi per date specifiche (es. Natale, Capodanno) - Priorità massima
+                  </Text>
+
+                  {tempPricing.dateOverrides.enabled && (
+                    <>
+                      {tempPricing.dateOverrides.dates.map((dateOv, index) => (
+                        <View key={index} style={styles.timeSlotCard}>
+                          <View style={styles.timeSlotHeader}>
+                            <TextInput
+                              style={styles.timeSlotLabelInput}
+                              value={dateOv.label}
+                              onChangeText={(v) => updateTempDateOverride(index, "label", v)}
+                              placeholder="Nome evento"
+                            />
+                            <Pressable onPress={() => removeTempDateOverride(index)}>
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                            </Pressable>
+                          </View>
+
+                          <Pressable
+                            style={styles.dateInputPressable}
+                            onPress={() => openDatePicker(index)}
+                          >
+                            <Text style={styles.dateInputText}>{dateOv.date}</Text>
+                            <Ionicons name="calendar-outline" size={18} color="#2196F3" />
+                          </Pressable>
+
+                          <View style={styles.slotPriceRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={dateOv.prices.oneHour.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempDateOverride(index, "prices.oneHour", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1.5h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={dateOv.prices.oneHourHalf.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempDateOverride(index, "prices.oneHourHalf", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+
+                      <Pressable style={styles.addButton} onPress={addTempDateOverride}>
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
+                        <Text style={styles.addButtonText}>Aggiungi data speciale</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+                )}
+
+                {/* ============================================
+                    PERIODI SPECIALI (PERIOD OVERRIDES)
+                ============================================ */}
+                {tempPricing.periodOverrides && (
+                <View style={styles.modalCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.modalCardTitle}>📆 Periodi Speciali</Text>
+                    <Switch
+                      value={tempPricing.periodOverrides.enabled}
+                      onValueChange={toggleTempPeriodOverrides}
+                    />
+                  </View>
+                  <Text style={styles.cardDescription}>
+                    Prezzi per periodi (es. Estate, Inverno) - Alta priorità
+                  </Text>
+
+                  {tempPricing.periodOverrides.enabled && (
+                    <>
+                      {tempPricing.periodOverrides.periods.map((period, index) => (
+                        <View key={index} style={styles.timeSlotCard}>
+                          <View style={styles.timeSlotHeader}>
+                            <TextInput
+                              style={styles.timeSlotLabelInput}
+                              value={period.label}
+                              onChangeText={(v) => updateTempPeriodOverride(index, "label", v)}
+                              placeholder="Nome periodo"
+                            />
+                            <Pressable onPress={() => removeTempPeriodOverride(index)}>
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                            </Pressable>
+                          </View>
+
+                          <View style={styles.periodDatesRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.dateLabel}>Dal</Text>
+                              <Pressable
+                                style={styles.dateInputPressable}
+                                onPress={() => openPeriodPicker(index, "start")}
+                              >
+                                <Text style={styles.dateInputText}>{period.startDate}</Text>
+                                <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                              </Pressable>
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.dateLabel}>Al</Text>
+                              <Pressable
+                                style={styles.dateInputPressable}
+                                onPress={() => openPeriodPicker(index, "end")}
+                              >
+                                <Text style={styles.dateInputText}>{period.endDate}</Text>
+                                <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                              </Pressable>
+                            </View>
+                          </View>
+
+                          <View style={styles.slotPriceRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={period.prices.oneHour.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempPeriodOverride(index, "prices.oneHour", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1.5h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={period.prices.oneHourHalf.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempPeriodOverride(index, "prices.oneHourHalf", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+
+                      <Pressable style={styles.addButton} onPress={addTempPeriodOverride}>
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
+                        <Text style={styles.addButtonText}>Aggiungi periodo</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+                )}
               </>
             )}
 
@@ -1317,6 +1782,178 @@ const uploadImages = async (strutturaId: string) => {
   /* =======================
      MAIN RENDER
   ======================= */
+
+  const renderDaysModal = () => (
+  <Modal
+    visible={showDaysModal}
+    transparent
+    animationType="slide"
+    onRequestClose={() => setShowDaysModal(false)}
+  >
+    <Pressable
+      style={styles.modalOverlay}
+      onPress={() => setShowDaysModal(false)}
+    >
+      <View style={styles.modalContentBottom} onStartShouldSetResponder={() => true}>
+        <Text style={styles.modalTitle}>Seleziona Giorni</Text>
+        <Text style={styles.modalDescription}>
+          Lascia vuoto per applicare la fascia a tutti i giorni
+        </Text>
+
+        <View style={styles.daysGrid}>
+          {DAYS_LABELS.map((day, index) => {
+            const slot = tempPricing?.timeSlotPricing.slots[editingSlotIndex || 0];
+            const isSelected = slot?.daysOfWeek?.includes(index) || false;
+
+            return (
+              <Pressable
+                key={index}
+                style={[
+                  styles.dayChip,
+                  isSelected && styles.dayChipSelected,
+                ]}
+                onPress={() => toggleDay(index)}
+              >
+                <Text
+                  style={[
+                    styles.dayChipText,
+                    isSelected && styles.dayChipTextSelected,
+                  ]}
+                >
+                  {day}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Pressable
+          style={styles.modalCloseButton}
+          onPress={() => setShowDaysModal(false)}
+        >
+          <Text style={styles.modalCloseText}>Chiudi</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  </Modal>
+);
+
+
+const renderDatePickerModal = () => (
+  <Modal
+    visible={showDatePicker}
+    transparent
+    animationType="slide"
+    onRequestClose={() => setShowDatePicker(false)}
+  >
+    <Pressable
+      style={styles.modalOverlay}
+      onPress={() => setShowDatePicker(false)}
+    >
+      <View style={styles.modalContentBottom} onStartShouldSetResponder={() => true}>
+        <Text style={styles.modalTitle}>
+          {datePickerMode === "date"
+            ? "Seleziona Data"
+            : datePickerMode === "period-start"
+            ? "Data Inizio"
+            : "Data Fine"}
+        </Text>
+
+        {/* Month selector */}
+        <View style={styles.calendarMonthSelector}>
+          <Pressable
+            onPress={() => {
+              const newMonth = new Date(selectedMonth);
+              newMonth.setMonth(newMonth.getMonth() - 1);
+              setSelectedMonth(newMonth);
+            }}
+            style={styles.calendarMonthBtn}
+          >
+            <Ionicons name="chevron-back" size={24} color="#2196F3" />
+          </Pressable>
+
+          <Text style={styles.calendarMonthText}>
+            {selectedMonth.toLocaleDateString("it-IT", {
+              month: "long",
+              year: "numeric",
+            })}
+          </Text>
+
+          <Pressable
+            onPress={() => {
+              const newMonth = new Date(selectedMonth);
+              newMonth.setMonth(newMonth.getMonth() + 1);
+              setSelectedMonth(newMonth);
+            }}
+            style={styles.calendarMonthBtn}
+          >
+            <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+          </Pressable>
+        </View>
+
+        {/* Calendar grid */}
+        <View style={styles.calendarGrid}>
+          {/* Week days header */}
+          <View style={styles.calendarWeekHeader}>
+            {["D", "L", "M", "M", "G", "V", "S"].map((day, i) => (
+              <Text key={i} style={styles.calendarWeekDay}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          {/* Days */}
+          <View style={styles.calendarDays}>
+            {(() => {
+              const year = selectedMonth.getFullYear();
+              const month = selectedMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+              const days = [];
+
+              // Empty cells before month start
+              for (let i = 0; i < firstDay; i++) {
+                days.push(
+                  <View key={`empty-${i}`} style={styles.calendarDayCell} />
+                );
+              }
+
+              // Days of month
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(
+                  2,
+                  "0"
+                )}-${String(day).padStart(2, "0")}`;
+
+                days.push(
+                  <Pressable
+                    key={day}
+                    style={styles.calendarDayCell}
+                    onPress={() => handleDateSelect(dateStr)}
+                  >
+                    <View style={styles.calendarDayInner}>
+                      <Text style={styles.calendarDayText}>{day}</Text>
+                    </View>
+                  </Pressable>
+                );
+              }
+
+              return days;
+            })()}
+          </View>
+        </View>
+
+        <Pressable
+          style={styles.modalCloseButton}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <Text style={styles.modalCloseText}>Chiudi</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  </Modal>
+);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -1433,6 +2070,8 @@ const uploadImages = async (strutturaId: string) => {
       </Modal>
 
       {renderPricingModal()}
+      {renderDaysModal()}
+      {renderDatePickerModal()}
     </SafeAreaView>
   );
 }
@@ -2075,4 +2714,174 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   addButtonText: { fontSize: 13, fontWeight: "600", color: "#2196F3" },
+
+  // ✅ Stili per Days of Week selector
+daysSelector: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 12,
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+},
+daysSelectorText: {
+  fontSize: 13,
+  fontWeight: "600",
+  color: "#666",
+  flex: 1,
+},
+
+// ✅ Stili per Days Modal
+daysGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 8,
+  marginBottom: 24,
+},
+dayChip: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 20,
+  backgroundColor: "#f8f9fa",
+  borderWidth: 2,
+  borderColor: "#e9ecef",
+},
+dayChipSelected: {
+  backgroundColor: "#E3F2FD",
+  borderColor: "#2196F3",
+},
+dayChipText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#666",
+},
+dayChipTextSelected: {
+  color: "#2196F3",
+},
+
+// ✅ Stili per Date Picker
+dateInputPressable: {
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 10,
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+  marginBottom: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+dateInputText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+},
+dateLabel: {
+  fontSize: 12,
+  color: "#666",
+  marginBottom: 4,
+  fontWeight: "600",
+},
+periodDatesRow: {
+  flexDirection: "row",
+  gap: 8,
+  marginBottom: 12,
+},
+
+// ✅ Stili per Calendar Grid
+calendarMonthSelector: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 20,
+  paddingHorizontal: 8,
+},
+calendarMonthBtn: {
+  padding: 8,
+},
+calendarMonthText: {
+  fontSize: 18,
+  fontWeight: "700",
+  textTransform: "capitalize",
+},
+calendarGrid: {
+  marginBottom: 20,
+},
+calendarWeekHeader: {
+  flexDirection: "row",
+  marginBottom: 8,
+},
+calendarWeekDay: {
+  flex: 1,
+  textAlign: "center",
+  fontSize: 14,
+  fontWeight: "700",
+  color: "#999",
+},
+calendarDays: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+},
+calendarDayCell: {
+  width: `${100 / 7}%`,
+  aspectRatio: 1,
+  padding: 4,
+},
+calendarDayInner: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  backgroundColor: "#f8f9fa",
+},
+calendarDayText: {
+  fontSize: 16,
+  fontWeight: "600",
+  color: "#333",
+},
+
+// ✅ Stili per Modal Bottom
+modalContentBottom: {
+  backgroundColor: "white",
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 24,
+  paddingBottom: 40,
+},
+modalTitle: {
+  fontSize: 20,
+  fontWeight: "800",
+  marginBottom: 8,
+},
+modalDescription: {
+  fontSize: 14,
+  color: "#666",
+  marginBottom: 24,
+},
+modalCloseButton: {
+  backgroundColor: "#2196F3",
+  padding: 16,
+  borderRadius: 12,
+  alignItems: "center",
+},
+modalCloseText: {
+  color: "white",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+// ✅ Stili già esistenti da verificare/completare
+timeInputModal: {
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 8,
+  fontSize: 13,
+  textAlign: "center",
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+  fontWeight: "600",
+},
 });
