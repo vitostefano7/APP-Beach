@@ -5,25 +5,37 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Image,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 import API_URL from "../../config/api";
 
 export default function OwnerProfileScreen() {
-  const { token, logout, user } = useContext(AuthContext);
+  const { token, logout, user, updateUser } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
   const [stats, setStats] = useState({
     strutture: 0,
     prenotazioni: 0,
     incassoTotale: 0,
   });
+
+  // ✅ Sincronizza avatarUrl quando user cambia nel context
+  useEffect(() => {
+    console.log("👤 Owner User context aggiornato, avatarUrl:", user?.avatarUrl);
+    if (user?.avatarUrl) {
+      setAvatarUrl(user.avatarUrl);
+    }
+  }, [user?.avatarUrl]);
 
   useEffect(() => {
     fetchOwnerProfile();
@@ -47,7 +59,13 @@ export default function OwnerProfileScreen() {
         return;
       }
 
-      await res.json();
+      const profileData = await res.json();
+      
+      // ✅ Aggiorna avatar se presente
+      if (profileData.user?.avatarUrl) {
+        console.log("✅ Owner Setting avatarUrl:", profileData.user.avatarUrl);
+        setAvatarUrl(profileData.user.avatarUrl);
+      }
 
       // Carica statistiche (opzionale)
       try {
@@ -83,6 +101,171 @@ export default function OwnerProfileScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Funzione per cambiare avatar
+  const changeAvatar = () => {
+    if (avatarUrl) {
+      Alert.alert(
+        "Cambia immagine profilo",
+        "Come vuoi caricare la tua foto?",
+        [
+          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
+          { text: "Galleria", onPress: pickImageFromGallery },
+          { text: "Fotocamera", onPress: takePhotoWithCamera },
+          { 
+            text: "Rimuovi foto", 
+            onPress: removeAvatar,
+            style: "destructive" as const
+          },
+        ],
+        { cancelable: true }
+      );
+    } else {
+      Alert.alert(
+        "Cambia immagine profilo",
+        "Come vuoi caricare la tua foto?",
+        [
+          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
+          { text: "Galleria", onPress: pickImageFromGallery },
+          { text: "Fotocamera", onPress: takePhotoWithCamera },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          "Permesso negato",
+          "Devi concedere il permesso per accedere alle foto"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadAvatar(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Errore selezione immagine:", error);
+      Alert.alert("Errore", "Impossibile selezionare l'immagine");
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          "Permesso negato",
+          "Devi concedere il permesso per usare la fotocamera"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadAvatar(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Errore fotocamera:", error);
+      Alert.alert("Errore", "Impossibile scattare la foto");
+    }
+  };
+
+  const uploadAvatar = async (imageUri: string) => {
+    try {
+      const formData = new FormData();
+      
+      const filename = imageUri.split("/").pop() || "avatar.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      formData.append("avatar", {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as any);
+
+      const res = await fetch(`${API_URL}/users/me/avatar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const json = await res.json();
+
+      if (res.ok) {
+        console.log("✅ Owner Avatar caricato:", json.avatarUrl);
+        setAvatarUrl(json.avatarUrl);
+        
+        // ✅ Aggiorna il contesto user
+        if (updateUser) {
+          updateUser({ ...user, avatarUrl: json.avatarUrl });
+        }
+        
+        Alert.alert("Successo", "Immagine profilo aggiornata!");
+      } else {
+        console.log("❌ Errore upload:", json.message);
+        Alert.alert("Errore", json.message || "Impossibile caricare l'immagine");
+      }
+    } catch (error) {
+      console.error("Upload avatar error:", error);
+      Alert.alert("Errore", "Impossibile caricare l'immagine");
+    }
+  };
+
+  const removeAvatar = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users/me/avatar`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setAvatarUrl(null);
+        
+        // ✅ Aggiorna il contesto user
+        if (updateUser) {
+          updateUser({ ...user, avatarUrl: null });
+        }
+        
+        Alert.alert("Successo", "Immagine profilo rimossa!");
+      } else {
+        Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+      }
+    } catch (error) {
+      console.error("Remove avatar error:", error);
+      Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+    }
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.split(" ");
+    return parts.length >= 2
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : name.substring(0, 2).toUpperCase();
   };
 
   /* =========================
@@ -125,14 +308,24 @@ export default function OwnerProfileScreen() {
         {/* HEADER CON AVATAR */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user.name.charAt(0).toUpperCase()}
-              </Text>
+            {/* ✅ AVATAR con immagine o iniziali */}
+            <Pressable style={styles.avatar} onPress={changeAvatar}>
+              {avatarUrl ? (
+                <Image 
+                  source={{ uri: `${API_URL}${avatarUrl}?t=${Date.now()}` }} 
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarText}>
+                    {getInitials(user.name)}
+                  </Text>
+                </View>
+              )}
               <View style={styles.ownerBadge}>
                 <Ionicons name="business" size={14} color="white" />
               </View>
-            </View>
+            </Pressable>
 
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{user.name}</Text>
@@ -408,10 +601,23 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
+    overflow: "hidden",
+    position: "relative",
+  },
+
+  // ✅ NUOVO: per mostrare l'immagine avatar
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  // ✅ NUOVO: placeholder quando non c'è immagine
+  avatarPlaceholder: {
+    width: "100%",
+    height: "100%",
     backgroundColor: "#2196F3",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
   },
 
   avatarText: { 

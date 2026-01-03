@@ -1,4 +1,4 @@
-  import express from "express";
+import express from "express";
 import path from "path";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
@@ -28,7 +28,10 @@ async function start() {
     });
 
     // ✅ Serve immagini statiche (PRIMA di tutte le routes)
-    app.use("/images", express.static(path.join(__dirname, "../src/images")));
+    // Il path deve puntare alla cartella images dentro beach/
+    const imagesPath = path.join(__dirname, "../../beach/images");
+    console.log("📁 Serving images from:", imagesPath);
+    app.use("/images", express.static(imagesPath));
 
     // Route registration
     app.use("/auth", authRoutes);
@@ -58,7 +61,10 @@ start();
 
 // ============================================
 // IMPORTANTE:
-// Le routes delle immagini DEVONO essere
-// registrate PRIMA di struttureRoutes
-// altrimenti /:id cattura anche /:id/images
+// 1. Le routes delle immagini DEVONO essere
+//    registrate PRIMA di struttureRoutes
+//    altrimenti /:id cattura anche /:id/images
+// 2. Il path delle immagini è relativo a dist/
+//    quindi usiamo ../../images per tornare
+//    alla root del progetto
 // ============================================

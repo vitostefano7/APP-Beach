@@ -8,7 +8,10 @@ import {
   updatePreferences,
   updateMe,
   changePassword,
+  uploadAvatar,
+  deleteAvatar,
 } from "../controllers/profileController";
+import { uploadAvatar as uploadMiddleware } from "../middleware/uploadProfiloImages";
 
 const router = express.Router();
 
@@ -21,6 +24,18 @@ const router = express.Router();
  * USER BASE
  */
 router.patch("/me", requireAuth, updateMe);
+
+/**
+ * AVATAR UPLOAD
+ * ✅ NUOVO: Upload e gestione immagine profilo
+ */
+router.post(
+  "/me/avatar", 
+  requireAuth, 
+  uploadMiddleware.single("avatar"), 
+  uploadAvatar
+);
+router.delete("/me/avatar", requireAuth, deleteAvatar);
 
 /**
  * PROFILE (schermata profilo)

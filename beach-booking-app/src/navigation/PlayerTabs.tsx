@@ -19,9 +19,9 @@ export default function PlayerTabs() {
   }, [refreshUnreadCount]);
 
   // DEBUG
-  console.log('🚨🚨🚨 PLAYERTABS unreadCount:', unreadCount);
+  /*console.log('🚨🚨🚨 PLAYERTABS unreadCount:', unreadCount);
   console.log('🚨🚨🚨 PLAYERTABS typeof:', typeof unreadCount);
-  console.log('🚨🚨🚨 PLAYERTABS > 0?:', unreadCount > 0);
+  console.log('🚨🚨🚨 PLAYERTABS > 0?:', unreadCount > 0);*/
 
   return (
     <Tab.Navigator
