@@ -9,12 +9,14 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 
 export default function SetupPreferencesScreen({ route, navigation }: any) {
-  const { userId, token, name } = route.params || {};
+  const { login } = useContext(AuthContext);
+  const { userId, token, name, email, role, avatarUrl } = route.params || {};
 
   const [city, setCity] = useState("");
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
@@ -30,9 +32,36 @@ export default function SetupPreferencesScreen({ route, navigation }: any) {
     }
   };
 
-  const handleSkip = () => {
-    // Torna alla schermata Login
-    navigation.replace("Login");
+  // ✅ Funzione per fare login automatico
+  const performLogin = async () => {
+    if (!token) {
+      console.log("⚠️ [SETUP] Nessun token, navigo al Login");
+      navigation.replace("Login");
+      return;
+    }
+
+    try {
+      const userData = {
+        id: userId,
+        name: name,
+        email: email,
+        role: role,
+        avatarUrl: avatarUrl,
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log("🔐 [SETUP] Eseguo login automatico con:", userData);
+      await login(token, userData);
+      console.log("✅ [SETUP] Login completato!");
+    } catch (error) {
+      console.error("❌ [SETUP] Errore durante login:", error);
+      navigation.replace("Login");
+    }
+  };
+
+  const handleSkip = async () => {
+    console.log("⏭️ [SETUP] Skip preferenze, login automatico");
+    await performLogin();
   };
 
   const handleSave = async () => {
@@ -41,7 +70,6 @@ export default function SetupPreferencesScreen({ route, navigation }: any) {
     console.log("🏐 [SETUP] Sport selezionati:", selectedSports);
     console.log("🔑 [SETUP] Token presente:", !!token);
 
-    // Se non abbiamo il token, semplicemente skippa
     if (!token) {
       console.log("⚠️ [SETUP] Nessun token disponibile, skip al login");
       handleSkip();
@@ -132,18 +160,16 @@ export default function SetupPreferencesScreen({ route, navigation }: any) {
         console.log("⏭️ [SETUP] Nessuna città inserita, skip geocoding");
       }
 
-      if (res.ok) {
-        console.log("✅ [SETUP] Salvataggio completato, navigo al login");
-        navigation.replace("Login");
-      } else {
-        console.error("❌ [SETUP] Errore salvataggio preferenze, procedo al login");
-        handleSkip();
-      }
+      console.log("✅ [SETUP] Salvataggio completato, procedo con login");
+      
+      // ✅ Esegui login automatico dopo aver salvato le preferenze
+      await performLogin();
+
     } catch (error) {
       console.error("💥 [SETUP] Errore durante salvataggio:", error);
       console.error("📍 [SETUP] Stack trace:", (error as Error).stack);
-      // Anche in caso di errore, vai al login
-      handleSkip();
+      // Anche in caso di errore, fai login
+      await performLogin();
     } finally {
       setLoading(false);
       console.log("🏁 [SETUP] Processo completato");
