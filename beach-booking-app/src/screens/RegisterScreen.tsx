@@ -174,26 +174,16 @@ export default function RegisterScreen({ navigation }: any) {
         return;
       }
 
-      // ✅ Crea oggetto user corretto per il context
-      const userData = {
-        id: data.id,
+      // ✅ Naviga alla schermata di setup preferenze
+      navigation.navigate("SetupPreferences", {
+        userId: data.id,
+        token: data.token,
         name: data.name,
         email: data.email,
         role: data.role,
         avatarUrl: data.avatarUrl,
-        createdAt: new Date().toISOString(),
-      };
-      
-      console.log("👤 Salvataggio user nel context:", userData);
+      });
 
-      // ✅ Salva token e user
-      await login(data.token, userData);
-
-      Alert.alert(
-        "Registrazione completata!",
-        `Benvenuto ${data.name}!`,
-        [{ text: "OK" }]
-      );
     } catch (error) {
       console.error("Register error:", error);
       Alert.alert("Errore", "Impossibile registrarsi. Riprova più tardi.");
