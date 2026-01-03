@@ -1,290 +1,266 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: "#f8f9fa" 
+  safe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
   },
-  
-  loading: { 
-    flex: 1, 
-    alignItems: "center", 
-    justifyContent: "center", 
-    gap: 12 
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
   },
-  
-  loadingText: { 
-    color: "#666", 
-    fontWeight: "600", 
-    fontSize: 16 
+  loadingText: {
+    fontSize: 16,
+    color: "#999",
   },
-  
-  hero: { 
-    backgroundColor: "white", 
-    alignItems: "center", 
-    paddingTop: 24, 
-    paddingBottom: 32 
+  hero: {
+    backgroundColor: "#fff",
+    paddingTop: 30,
+    paddingBottom: 24,
+    alignItems: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  
-  avatarContainer: { 
-    position: "relative", 
-    marginBottom: 16 
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 16,
   },
-  
-  avatar: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 50, 
-    backgroundColor: "#2196F3", 
-    alignItems: "center", 
-    justifyContent: "center", 
-    borderWidth: 4, 
-    borderColor: "white", 
-    shadowColor: "#000", 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 8, 
-    elevation: 4 
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: "#ef8f00",
   },
-  
-  avatarText: { 
-    color: "white", 
-    fontSize: 36, 
-    fontWeight: "800" 
+  // ✅ NUOVO: per mostrare l'immagine avatar
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
-  
-  editAvatarButton: { 
-    position: "absolute", 
-    bottom: 0, 
-    right: 0, 
-    width: 32, 
-    height: 32, 
-    borderRadius: 16, 
-    backgroundColor: "#4CAF50", 
-    alignItems: "center", 
-    justifyContent: "center", 
-    borderWidth: 3, 
-    borderColor: "white" 
+  // ✅ NUOVO: placeholder quando non c'è immagine
+  avatarPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#ef8f00",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  
-  name: { 
-    fontSize: 24, 
-    fontWeight: "800", 
-    color: "#1a1a1a", 
-    marginBottom: 4 
+  avatarText: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#fff",
   },
-  
-  email: { 
-    color: "#666", 
-    fontSize: 14, 
-    marginBottom: 12 
+  editAvatarButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#ef8f00",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
   },
-  
-  memberBadge: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 6, 
-    backgroundColor: "#E3F2FD", 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 20 
+  name: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 4,
   },
-  
-  memberText: { 
-    fontSize: 12, 
-    fontWeight: "600", 
-    color: "#2196F3" 
+  email: {
+    fontSize: 15,
+    color: "#666",
+    marginBottom: 12,
   },
-  
-  stats: { 
-    flexDirection: "row", 
-    gap: 12, 
-    paddingHorizontal: 16, 
-    marginTop: -20, 
-    marginBottom: 16 
+  memberBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  
-  statCard: { 
-    flex: 1, 
-    backgroundColor: "white", 
-    borderRadius: 16, 
-    padding: 16, 
-    alignItems: "center", 
-    shadowColor: "#000", 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 8, 
-    elevation: 2 
+  memberText: {
+    fontSize: 12,
+    color: "#2196F3",
+    fontWeight: "600",
   },
-  
-  statIconBox: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 24, 
-    alignItems: "center", 
-    justifyContent: "center", 
+  stats: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 8,
     position: "relative",
   },
-
   statBadge: {
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: "#FF5252",
-    borderRadius: 10,
+    backgroundColor: "#F44336",
     minWidth: 20,
     height: 20,
-    paddingHorizontal: 6,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: "#fff",
   },
-
   statBadgeText: {
-    color: "white",
+    color: "#fff",
     fontSize: 10,
     fontWeight: "700",
   },
-  
-  statValue: { 
-    fontSize: 20, 
-    fontWeight: "800", 
-    color: "#1a1a1a", 
-    marginBottom: 4 
+  statValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
   },
-  
-  statLabel: { 
-    fontSize: 11, 
-    color: "#999", 
-    fontWeight: "600", 
-    textAlign: "center" 
+  statLabel: {
+    fontSize: 12,
+    color: "#666",
   },
-  
-  favorite: { 
-    backgroundColor: "#FFEBEE", 
-    marginHorizontal: 16, 
-    marginBottom: 16, 
-    padding: 16, 
-    borderRadius: 16, 
-    borderWidth: 2, 
-    borderColor: "#F44336", 
-    borderStyle: "dashed" 
+  favorite: {
+    margin: 16,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  
-  favoriteHeader: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 8, 
-    marginBottom: 8 
+  favoriteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
   },
-  
-  favoriteTitle: { 
-    fontSize: 13, 
-    fontWeight: "700", 
-    color: "#F44336" 
+  favoriteTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
   },
-  
-  favoriteName: { 
-    fontSize: 18, 
-    fontWeight: "800", 
-    color: "#1a1a1a" 
+  favoriteName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
   },
-  
-  sectionTitle: { 
-    fontSize: 13, 
-    fontWeight: "800", 
-    color: "#999", 
-    textTransform: "uppercase", 
-    letterSpacing: 0.5, 
-    marginLeft: 16, 
-    marginBottom: 12 
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
   },
-  
-  card: { 
-    backgroundColor: "white", 
-    marginHorizontal: 16, 
-    marginBottom: 16, 
-    borderRadius: 16, 
-    padding: 16, 
-    shadowColor: "#000", 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 8, 
-    elevation: 2 
+  card: {
+    marginHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  
-  menuItem: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 12 
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
   },
-  
-  menuIcon: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 22, 
-    alignItems: "center", 
-    justifyContent: "center" 
+  menuIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  
-  menuTitle: { 
-    fontSize: 15, 
-    fontWeight: "700", 
-    color: "#1a1a1a", 
-    marginBottom: 2 
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 2,
   },
-  
-  menuSubtitle: { 
-    fontSize: 13, 
-    color: "#666" 
+  menuSubtitle: {
+    fontSize: 13,
+    color: "#999",
   },
-  
-  prefRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 12 
+  divider: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginLeft: 72,
   },
-  
-  prefIcon: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    alignItems: "center", 
-    justifyContent: "center" 
+  prefRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
   },
-  
-  divider: { 
-    height: 1, 
-    backgroundColor: "#f0f0f0", 
-    marginVertical: 16 
+  prefIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  
-  logout: { 
-    marginHorizontal: 16, 
-    marginTop: 8, 
-    padding: 16, 
-    borderRadius: 12, 
-    backgroundColor: "#FFEBEE", 
-    flexDirection: "row", 
-    justifyContent: "center", 
-    alignItems: "center", 
-    gap: 8, 
-    borderWidth: 1.5, 
-    borderColor: "#F44336" 
+  logout: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#ffe5e5",
   },
-  
-  logoutText: { 
-    color: "#F44336", 
-    fontWeight: "700", 
-    fontSize: 16 
+  logoutText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#F44336",
   },
-  
-  version: { 
-    textAlign: "center", 
-    color: "#999", 
-    fontSize: 12, 
-    marginTop: 20 
+  version: {
+    textAlign: "center",
+    fontSize: 13,
+    color: "#999",
+    marginTop: 20,
   },
 });

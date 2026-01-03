@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import OwnerTabs from "./OwnerTabs";
 import StrutturaDashboardScreen from "../screens/owner/StrutturaDashboardScreen";
-import CreaStrutturaScreen from "../screens/owner/CreaStrutturaScreen";
+import CreaStrutturaScreen from "../screens/owner/struttura/CreaStruttura/CreaStrutturaScreen";
 import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
 import ModificaStrutturaScreen from "../screens/owner/struttura/ModificaStrutturaScreen";
 import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";
@@ -13,6 +13,7 @@ import DettaglioPrenotazioneOwnerScreen from "../screens/owner/prenotazioni/Dett
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCampiScreen";
 import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
+import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
 
 
 export type OwnerRootStackParamList = {
@@ -83,6 +84,10 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="Chat" 
         component={ChatScreen} 
+      />
+      <Stack.Screen 
+        name="GestisciImmaginiStruttura" 
+        component={GestisciImmaginiStruttura} 
       />
     </Stack.Navigator>
   );

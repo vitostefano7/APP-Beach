@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   role: "player" | "owner";
   isActive: boolean;
+  avatarUrl?: string; // ✅ NUOVO: URL dell'immagine profilo
 }
 
 const UserSchema = new Schema<IUser>(
@@ -32,6 +33,11 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: true,
     },
+
+    avatarUrl: { 
+      type: String, 
+      default: null 
+    }, // ✅ NUOVO
   },
   { timestamps: true }
 );

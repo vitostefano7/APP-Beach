@@ -1,4 +1,6 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
+
+const { width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   safe: {
@@ -26,10 +28,18 @@ export const styles = StyleSheet.create({
     height: 280,
     position: "relative",
   },
-  headerImage: {
+  
+  // ✅ NUOVO: ScrollView per carousel
+  headerImageScroll: {
     width: "100%",
     height: "100%",
   },
+  
+  headerImage: {
+    width: width,
+    height: 280,
+  },
+  
   placeholderImage: {
     width: "100%",
     height: "100%",
@@ -37,6 +47,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  
   imageOverlay: {
     position: "absolute",
     top: 0,
@@ -45,6 +56,29 @@ export const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.3)",
   },
+  
+  // ✅ NUOVO: Indicatori carousel
+  pagination: {
+    position: "absolute",
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    zIndex: 5,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  paginationDotActive: {
+    backgroundColor: "white",
+    width: 24,
+  },
+  
   backButton: {
     position: "absolute",
     top: 16,
@@ -55,7 +89,9 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
+  
   statusBadge: {
     position: "absolute",
     top: 16,
@@ -66,6 +102,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    zIndex: 10,
   },
   statusConfirmed: {
     backgroundColor: "#4CAF50",

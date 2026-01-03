@@ -1,43 +1,115 @@
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Image,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 
+/* =========================
+   STRUTTURA CARD
+========================= */
+
 function StrutturaCard({ item }: { item: any }) {
   const navigation = useNavigation<any>();
-  
-  const imageUri = item.images?.[0] || "https://images.unsplash.com/photo-1545262810-77515befe149?w=400";
-  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // ✅ URL assoluto per React Native
+  const getImageUri = (index: number) => {
+    if (!item.images || item.images.length === 0) {
+      return "https://images.unsplash.com/photo-1545262810-77515befe149?w=400";
+    }
+    
+    const imagePath = item.images[index];
+    // Se l'immagine è già un URL completo, restituiscila così com'è
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Altrimenti, aggiungi l'API_URL
+    // Rimuovi eventuali doppi slash
+    const baseUrl = API_URL.replace(/\/$/, '');
+    const cleanImagePath = imagePath.replace(/^\//, '');
+    
+    return `${baseUrl}/${cleanImagePath}`;
+  };
+
+  const imageUri = getImageUri(currentImageIndex);
+
+  // 🎠 Carosello automatico ogni 3 secondi
+  useEffect(() => {
+    if (!item.images || item.images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === item.images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [item.images]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Image Url: ", imageUri);
+    console.log("ITEM images:", item.images);
+  }, [imageUri, item.images]);
+
   return (
     <Pressable
       style={styles.card}
       onPress={() =>
-        navigation.navigate("StrutturaDashboard", { strutturaId: item._id })
+        navigation.navigate("StrutturaDashboard", {
+          strutturaId: item._id,
+        })
       }
     >
-      {/* Immagine */}
+      {/* IMMAGINE */}
       <Image 
         source={{ uri: imageUri }} 
         style={styles.cardImage}
-        /*defaultSource={require('../../assets/placeholder.png')} */ // Opzionale
+        onError={(e) => console.log("Image loading error:", e.nativeEvent.error)}
+        //defaultSource={require('../../assets/default-struttura.jpg')} // Aggiungi un'immagine di fallback se vuoi
       />
-      
-      {/* Badge Stato */}
-      <View style={[styles.statusBadge, !item.isActive && styles.statusBadgeInactive]}>
-        <View style={[styles.statusDot, !item.isActive && styles.statusDotInactive]} />
-        <Text style={[styles.statusText, !item.isActive && styles.statusTextInactive]}>
+
+      {/* BADGE STATO */}
+      <View
+        style={[
+          styles.statusBadge,
+          !item.isActive && styles.statusBadgeInactive,
+        ]}
+      >
+        <View
+          style={[
+            styles.statusDot,
+            !item.isActive && styles.statusDotInactive,
+          ]}
+        />
+        <Text
+          style={[
+            styles.statusText,
+            !item.isActive && styles.statusTextInactive,
+          ]}
+        >
           {item.isActive ? "Attiva" : "Non attiva"}
         </Text>
       </View>
 
-      {/* Content */}
+      {/* CONTENUTO */}
       <View style={styles.cardContent}>
-        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-        
+        <Text style={styles.cardName} numberOfLines={1}>
+          {item.name}
+        </Text>
+
         <View style={styles.cardInfo}>
           <View style={styles.infoRow}>
             <Ionicons name="location" size={14} color="#666" />
@@ -45,28 +117,29 @@ function StrutturaCard({ item }: { item: any }) {
               {item.location?.city || "Città non specificata"}
             </Text>
           </View>
-          
+
           {item.campiCount !== undefined && (
             <View style={styles.infoRow}>
               <Ionicons name="basketball" size={14} color="#666" />
               <Text style={styles.infoText}>
-                {item.campiCount || 0} {item.campiCount === 1 ? 'campo' : 'campi'}
+                {item.campiCount}{" "}
+                {item.campiCount === 1 ? "campo" : "campi"}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Footer con azione */}
+        {/* FOOTER */}
         <View style={styles.cardFooter}>
-          <View style={styles.statsRow}>
-            {item.bookingsCount !== undefined && (
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.bookingsCount || 0}</Text>
-                <Text style={styles.statLabel}>Prenotazioni</Text>
-              </View>
-            )}
-          </View>
-          
+          {item.bookingsCount !== undefined && (
+            <View>
+              <Text style={styles.statValue}>
+                {item.bookingsCount || 0}
+              </Text>
+              <Text style={styles.statLabel}>Prenotazioni</Text>
+            </View>
+          )}
+
           <View style={styles.viewDetailsButton}>
             <Text style={styles.viewDetailsText}>Gestisci</Text>
             <Ionicons name="chevron-forward" size={16} color="#2196F3" />
@@ -77,37 +150,46 @@ function StrutturaCard({ item }: { item: any }) {
   );
 }
 
+/* =========================
+   MAIN SCREEN
+========================= */
+
 export default function OwnerStruttureScreen() {
   const { token } = useContext(AuthContext);
   const [strutture, setStrutture] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
 
-  // Funzione per caricare le strutture
   const loadStrutture = useCallback(async () => {
     if (!token) return;
-    
+
     try {
       const response = await fetch(`${API_URL}/strutture/owner/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
       const data = await response.json();
-      console.log("📋 Strutture caricate:", data.length);
+      
+      // Debug per vedere i dati ricevuti
+      console.log("Strutture data received:", data);
+      if (data.length > 0) {
+        console.log("First struttura images:", data[0].images);
+      }
+      
       setStrutture(data);
     } catch (error) {
       console.error("❌ Errore caricamento strutture:", error);
     }
   }, [token]);
 
-  // Carica le strutture quando la schermata è in focus
   useFocusEffect(
     useCallback(() => {
-      console.log("🔄 Schermata in focus - ricarico strutture");
       loadStrutture();
     }, [loadStrutture])
   );
 
-  // Pull to refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadStrutture();
@@ -117,14 +199,16 @@ export default function OwnerStruttureScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* HEADER */}
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Le mie strutture</Text>
             <Text style={styles.subtitle}>
-              {strutture.length} {strutture.length === 1 ? 'struttura' : 'strutture'}
+              {strutture.length}{" "}
+              {strutture.length === 1 ? "struttura" : "strutture"}
             </Text>
           </View>
+
           <Pressable
             style={styles.addButton}
             onPress={() => navigation.navigate("CreaStruttura")}
@@ -133,38 +217,45 @@ export default function OwnerStruttureScreen() {
           </Pressable>
         </View>
 
-        {/* Lista */}
+        {/* LISTA */}
         <FlatList
           data={strutture}
-          keyExtractor={item => item._id}
+          keyExtractor={(item) => item._id}
           renderItem={({ item }) => <StrutturaCard item={item} />}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#2196F3"]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="business-outline" size={64} color="#ccc" />
-              </View>
+              <Ionicons
+                name="business-outline"
+                size={64}
+                color="#ccc"
+              />
               <Text style={styles.emptyTitle}>Nessuna struttura</Text>
               <Text style={styles.emptyText}>
-                Crea la tua prima struttura per iniziare a gestire prenotazioni
+                Crea la tua prima struttura per iniziare
               </Text>
               <Pressable
                 style={styles.emptyButton}
                 onPress={() => navigation.navigate("CreaStruttura")}
               >
-                <Ionicons name="add-circle" size={20} color="white" />
-                <Text style={styles.emptyButtonText}>Crea struttura</Text>
+                <Ionicons
+                  name="add-circle"
+                  size={20}
+                  color="white"
+                />
+                <Text style={styles.emptyButtonText}>
+                  Crea struttura
+                </Text>
               </Pressable>
             </View>
-          }
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh}
-              tintColor="#2196F3"
-              colors={["#2196F3"]}
-            />
           }
         />
       </View>
@@ -172,76 +263,47 @@ export default function OwnerStruttureScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: "#f8f9fa",
-  },
-  
-  container: { 
-    flex: 1,
-  },
+/* =========================
+   STYLES
+========================= */
 
-  // HEADER
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  container: { flex: 1 },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
+    padding: 16,
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
   },
 
-  title: { 
-    fontSize: 28, 
-    fontWeight: "800",
-    color: "#1a1a1a",
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 2,
-    fontWeight: "500",
-  },
+  title: { fontSize: 26, fontWeight: "800" },
+  subtitle: { fontSize: 14, color: "#666" },
 
   addButton: {
     backgroundColor: "#2196F3",
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
 
-  // LISTA
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
+  listContent: { paddingHorizontal: 16, paddingBottom: 20 },
 
-  // CARD
   card: {
     backgroundColor: "white",
     borderRadius: 20,
     marginBottom: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
     elevation: 4,
   },
 
   cardImage: {
     width: "100%",
     height: 160,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#eee",
   },
 
   statusBadge: {
@@ -249,16 +311,15 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(76, 175, 80, 0.95)",
+    backgroundColor: "rgba(76,175,80,0.95)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    gap: 6,
+    alignItems: "center",
   },
 
   statusBadgeInactive: {
-    backgroundColor: "rgba(229, 57, 53, 0.95)",
+    backgroundColor: "rgba(229,57,53,0.95)",
   },
 
   statusDot: {
@@ -266,6 +327,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: "white",
+    marginRight: 6,
   },
 
   statusDotInactive: {
@@ -276,28 +338,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.5,
   },
 
   statusTextInactive: {
     color: "white",
   },
 
-  cardContent: {
-    padding: 16,
-  },
+  cardContent: { padding: 16 },
+  cardName: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
 
-  cardName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 10,
-  },
-
-  cardInfo: {
-    gap: 8,
-    marginBottom: 12,
-  },
+  cardInfo: { gap: 6, marginBottom: 12 },
 
   infoRow: {
     flexDirection: "row",
@@ -305,41 +355,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
-  infoText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
+  infoText: { fontSize: 14, color: "#666" },
 
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
+    borderTopColor: "#eee",
+    paddingTop: 12,
   },
 
-  statsRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-
-  statItem: {
-    gap: 2,
-  },
-
-  statValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1a1a1a",
-  },
-
-  statLabel: {
-    fontSize: 11,
-    color: "#999",
-    fontWeight: "600",
-  },
+  statValue: { fontSize: 18, fontWeight: "800" },
+  statLabel: { fontSize: 11, color: "#999" },
 
   viewDetailsButton: {
     flexDirection: "row",
@@ -348,62 +376,41 @@ const styles = StyleSheet.create({
   },
 
   viewDetailsText: {
-    fontSize: 14,
     color: "#2196F3",
     fontWeight: "700",
   },
 
-  // EMPTY STATE
   emptyContainer: {
     alignItems: "center",
-    justifyContent: "center",
     paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
   },
 
   emptyTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 8,
+    marginTop: 12,
   },
 
   emptyText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#666",
+    marginVertical: 8,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
   },
 
   emptyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    marginTop: 16,
     backgroundColor: "#2196F3",
     paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
   },
 
   emptyButtonText: {
     color: "white",
-    fontSize: 16,
     fontWeight: "700",
   },
 });

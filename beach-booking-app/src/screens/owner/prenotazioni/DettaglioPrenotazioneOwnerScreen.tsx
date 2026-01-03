@@ -7,9 +7,10 @@ import {
   Image,
   Alert,
   Linking,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,14 +18,20 @@ import API_URL from "../../../config/api";
 import { styles } from "../styles/DettaglioPrenotazioneOwnerScreen.styles";
 import { getSportIcon } from "../utils/DettaglioPrenotazione.utils";
 
+const { width } = Dimensions.get("window");
+
 export default function OwnerDettaglioPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { bookingId } = route.params;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
+  
+  // ✅ State per carousel
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     loadBooking();
@@ -54,6 +61,31 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       setLoading(false);
     }
   };
+
+  // ✅ Carousel automatico
+  useEffect(() => {
+    if (!booking?.campo?.struttura?.images?.length || booking.campo.struttura.images.length <= 1) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) =>
+        prevIndex === booking.campo.struttura.images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [booking]);
+
+  // ✅ Scroll automatico gallery
+  useEffect(() => {
+    if (scrollViewRef.current && booking?.campo?.struttura?.images?.length > 1) {
+      scrollViewRef.current.scrollTo({
+        x: currentImageIndex * width,
+        animated: true,
+      });
+    }
+  }, [currentImageIndex, booking]);
 
   const handleCancel = () => {
     Alert.alert(
@@ -97,7 +129,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
     try {
       console.log('💬 Apertura chat con user:', booking.user._id);
       
-      // ✅ NUOVO ENDPOINT: /api/conversations/user/:userId
       const res = await fetch(
         `${API_URL}/api/conversations/user/${booking.user._id}`,
         {
@@ -113,7 +144,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       const conversation = await res.json();
       console.log('✅ Conversazione ottenuta:', conversation._id);
 
-      // Naviga alla chat con i dati corretti
       navigation.navigate("Chat", {
         conversationId: conversation._id,
         strutturaName: booking.campo.struttura.name,
@@ -149,20 +179,62 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const isPast = bookingDate < today;
   const canInsertResult = !isCancelled && isPast && !booking.match;
 
+  // ✅ Prepara array immagini con API_URL
+  const images = booking.campo?.struttura?.images?.length
+    ? booking.campo.struttura.images.map((img: string) => `${API_URL}${img}`)
+    : [];
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* IMMAGINE HEADER CON CAROUSEL */}
         <View style={styles.imageContainer}>
-          {booking.campo?.struttura?.images?.length > 0 ? (
-            <Image
-              source={{ uri: booking.campo.struttura.images[0] }}
-              style={styles.headerImage}
-            />
+          {images.length > 0 ? (
+            <>
+              <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                style={styles.headerImageScroll}
+                onMomentumScrollEnd={(event) => {
+                  const newIndex = Math.round(
+                    event.nativeEvent.contentOffset.x / width
+                  );
+                  setCurrentImageIndex(newIndex);
+                }}
+              >
+                {images.map((img: string, i: number) => (
+                  <Image
+                    key={i}
+                    source={{ uri: img }}
+                    style={styles.headerImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+
+              {/* Indicatori pagina */}
+              {images.length > 1 && (
+                <View style={styles.pagination}>
+                  {images.map((_: string, i: number) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.paginationDot,
+                        i === currentImageIndex && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="basketball" size={64} color="#ccc" />
             </View>
           )}
+          
           <View style={styles.imageOverlay} />
 
           <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>

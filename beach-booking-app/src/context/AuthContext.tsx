@@ -7,6 +7,7 @@ type User = {
   name?: string;
   email?: string;
   createdAt?: string;
+  avatarUrl?: string; // ✅ NUOVO: per l'immagine profilo
 };
 
 type AuthContextType = {
@@ -15,6 +16,7 @@ type AuthContextType = {
   loading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (userData: Partial<User>) => Promise<void>; // ✅ NUOVO: per aggiornare user
 };
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -52,8 +54,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.clear();
   };
 
+  // ✅ NUOVA FUNZIONE: Aggiorna i dati utente (es. dopo upload avatar)
+  const updateUser = async (userData: Partial<User>) => {
+    if (!user) return;
+
+    const updatedUser = { ...user, ...userData };
+    setUser(updatedUser);
+    await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

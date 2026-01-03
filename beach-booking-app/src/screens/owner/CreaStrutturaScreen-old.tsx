@@ -1,0 +1,2887 @@
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  Pressable,
+  Alert,
+  Switch,
+  FlatList,
+  ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useContext, useState, useRef } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+
+import API_URL from "../../config/api";
+
+/* =======================
+   INTERFACES
+======================= */
+
+interface PlaceSuggestion {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    road?: string;
+    postcode?: string;
+  };
+}
+
+interface OpeningHours {
+  [key: string]: { open: string; close: string; closed: boolean };
+}
+
+interface DurationPrice {
+  oneHour: number;
+  oneHourHalf: number;
+}
+
+interface TimeSlot {
+  start: string;
+  end: string;
+  label: string;
+  prices: DurationPrice;
+  daysOfWeek?: number[]; // ✅ 0=dom, 1=lun, ..., 6=sab
+}
+
+// ✅ NUOVA INTERFACE
+interface DateOverride {
+  date: string; // YYYY-MM-DD
+  label: string;
+  prices: DurationPrice;
+}
+
+// ✅ NUOVA INTERFACE
+interface PeriodOverride {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;
+  label: string;
+  prices: DurationPrice;
+}
+
+// ✅ INTERFACE AGGIORNATA
+interface PricingRules {
+  mode: "flat" | "advanced";
+  flatPrices: DurationPrice;
+  basePrices: DurationPrice;
+  timeSlotPricing: {
+    enabled: boolean;
+    slots: TimeSlot[];
+  };
+  dateOverrides: {
+    enabled: boolean;
+    dates: DateOverride[];
+  };
+  periodOverrides: {
+    enabled: boolean;
+    periods: PeriodOverride[];
+  };
+}
+
+interface Campo {
+  id: string;
+  name: string;
+  sport: "beach_volley" | "volley" | "";
+  surface: "sand" | "cement" | "pvc" | "";
+  maxPlayers: number;
+  indoor: boolean;
+  pricingRules: PricingRules;
+}
+
+
+/* =======================
+   CONSTANTS
+======================= */
+
+const DAYS = [
+  { key: "monday", label: "Lunedì" },
+  { key: "tuesday", label: "Martedì" },
+  { key: "wednesday", label: "Mercoledì" },
+  { key: "thursday", label: "Giovedì" },
+  { key: "friday", label: "Venerdì" },
+  { key: "saturday", label: "Sabato" },
+  { key: "sunday", label: "Domenica" },
+];
+
+const AVAILABLE_AMENITIES = [
+  { key: "toilets", label: "Bagni", icon: "water" },
+  { key: "lockerRoom", label: "Spogliatoi", icon: "shirt" },
+  { key: "showers", label: "Docce", icon: "rainy" },
+  { key: "parking", label: "Parcheggio", icon: "car" },
+  { key: "restaurant", label: "Ristorante", icon: "restaurant" },
+  { key: "bar", label: "Bar", icon: "beer" },
+];
+
+const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+
+/* =======================
+   COMPONENT
+======================= */
+
+export default function CreaStrutturaScreen() {
+  const { token } = useContext(AuthContext);
+  const navigation = useNavigation<any>();
+  const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Step 1: Info base
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [addressInput, setAddressInput] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Step 2: Immagini
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Step 3: Orari
+  const [openingHours, setOpeningHours] = useState<OpeningHours>({
+    monday: { open: "09:00", close: "22:00", closed: false },
+    tuesday: { open: "09:00", close: "22:00", closed: false },
+    wednesday: { open: "09:00", close: "22:00", closed: false },
+    thursday: { open: "09:00", close: "22:00", closed: false },
+    friday: { open: "09:00", close: "22:00", closed: false },
+    saturday: { open: "09:00", close: "22:00", closed: false },
+    sunday: { open: "09:00", close: "22:00", closed: false },
+  });
+
+  // Step 4: Servizi
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [customAmenities, setCustomAmenities] = useState<string[]>([]);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
+
+  // Step 5: Campi
+  const [campi, setCampi] = useState<Campo[]>([]);
+
+  // Pricing Modal
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [editingCampoId, setEditingCampoId] = useState<string | null>(null);
+  const [tempPricing, setTempPricing] = useState<PricingRules | null>(null);
+  const [showDaysModal, setShowDaysModal] = useState(false);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<"date" | "period-start" | "period-end">("date");
+  const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
+  const [editingPeriodIndex, setEditingPeriodIndex] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+
+
+  /* =======================
+     IMAGE HANDLERS
+  ======================= */
+
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== "granted") {
+      Alert.alert(
+        "Permesso negato",
+        "Devi consentire l'accesso alla galleria per caricare immagini"
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 10 - selectedImages.length,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map(asset => asset.uri);
+      setSelectedImages(prev => [...prev, ...newImages]);
+    }
+  };
+
+  const removeImage = (uri: string) => {
+    setSelectedImages(prev => prev.filter(img => img !== uri));
+  };
+
+  const moveImageUp = (index: number) => {
+    if (index === 0) return;
+    setSelectedImages(prev => {
+      const newImages = [...prev];
+      [newImages[index - 1], newImages[index]] = [newImages[index], newImages[index - 1]];
+      return newImages;
+    });
+  };
+
+const uploadImages = async (strutturaId: string) => {
+  if (selectedImages.length === 0) return;
+  setUploadingImages(true);
+
+  try {
+    for (const imageUri of selectedImages) {
+      const formData = new FormData();
+
+      // Estraiamo l'estensione del file
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+
+      // Costruiamo l'oggetto file correttamente per React Native
+      // Usiamo 'as any' perché i tipi FormData di default non prevedono uri/name/type
+      formData.append("image", {
+        uri: Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
+        name: `photo-${Date.now()}.${fileType}`,
+      } as any);
+
+      console.log(`Invio immagine a: ${API_URL}/strutture/${strutturaId}/images`);
+
+      const response = await fetch(
+        `${API_URL}/strutture/${strutturaId}/images`,
+        {
+          method: "POST",
+          headers: {
+            // IMPORTANTE: NON aggiungere 'Content-Type'
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("Errore server upload:", responseData);
+        throw new Error(responseData.message || "Errore durante l'upload");
+      }
+
+      console.log("Immagine caricata con successo:", responseData);
+    }
+  } catch (error) {
+    console.error("Errore fatale upload immagini:", error);
+    Alert.alert("Errore", "Impossibile caricare le immagini. La struttura è stata creata, ma le foto potrebbero mancare.");
+  } finally {
+    setUploadingImages(false);
+  }
+};
+
+  /* =======================
+     AMENITIES HANDLERS
+  ======================= */
+
+  const toggleAmenity = (key: string) => {
+    setAmenities((prev) =>
+      prev.includes(key) ? prev.filter((a) => a !== key) : [...prev, key]
+    );
+  };
+
+  const addCustomAmenity = () => {
+    const trimmed = customAmenityInput.trim();
+    
+    if (!trimmed) {
+      Alert.alert("Errore", "Inserisci il nome del servizio");
+      return;
+    }
+
+    if (customAmenities.includes(trimmed)) {
+      Alert.alert("Attenzione", "Questo servizio è già presente");
+      return;
+    }
+
+    setCustomAmenities((prev) => [...prev, trimmed]);
+    setAmenities((prev) => [...prev, trimmed]);
+    setCustomAmenityInput("");
+    setShowCustomModal(false);
+  };
+
+  const removeCustomAmenity = (amenity: string) => {
+    Alert.alert("Rimuovi servizio", `Vuoi rimuovere definitivamente "${amenity}"?`, [
+      { text: "Annulla", style: "cancel" },
+      {
+        text: "Rimuovi",
+        style: "destructive",
+        onPress: () => {
+          setCustomAmenities((prev) => prev.filter((a) => a !== amenity));
+          setAmenities((prev) => prev.filter((a) => a !== amenity));
+        },
+      },
+    ]);
+  };
+
+  /* =======================
+     OPENING HOURS HANDLERS
+  ======================= */
+
+  const toggleDayClosed = (day: string) => {
+    setOpeningHours(prev => ({
+      ...prev,
+      [day]: { ...prev[day], closed: !prev[day].closed },
+    }));
+  };
+
+  const updateOpeningHour = (day: string, type: "open" | "close", value: string) => {
+    setOpeningHours(prev => ({
+      ...prev,
+      [day]: { ...prev[day], [type]: value },
+    }));
+  };
+
+  /* =======================
+     CAMPI HANDLERS
+  ======================= */
+
+  const addCampo = () => {
+    const newCampo: Campo = {
+      id: Date.now().toString(),
+      name: "",
+      sport: "",
+      surface: "",
+      maxPlayers: 4,
+      indoor: false,
+      pricingRules: {
+        mode: "flat",
+        flatPrices: { oneHour: 20, oneHourHalf: 28 },
+        basePrices: { oneHour: 20, oneHourHalf: 28 },
+        timeSlotPricing: { enabled: false, slots: [] },
+      },
+    };
+    setCampi([...campi, newCampo]);
+  };
+
+  const updateCampo = (id: string, field: keyof Campo, value: any) => {
+    setCampi(prev =>
+      prev.map(c => {
+        if (c.id !== id) return c;
+        
+        const newCampo = { ...c, [field]: value };
+        
+        if (field === "sport") {
+          if (value === "beach_volley") {
+            newCampo.surface = "sand";
+          } else if (value === "volley") {
+            newCampo.surface = newCampo.indoor ? "pvc" : "cement";
+          }
+        } else if (field === "indoor" && c.sport === "volley") {
+          newCampo.surface = value ? "pvc" : "cement";
+        }
+        
+        return newCampo;
+      })
+    );
+  };
+
+  const removeCampo = (id: string) => {
+    Alert.alert("Elimina campo", "Sei sicuro di voler eliminare questo campo?", [
+      { text: "Annulla", style: "cancel" },
+      {
+        text: "Elimina",
+        style: "destructive",
+        onPress: () => setCampi(prev => prev.filter(c => c.id !== id)),
+      },
+    ]);
+  };
+
+
+/* =======================
+   HANDLERS COMPLETI PER PRICING AVANZATO
+   (Da aggiungere nella sezione PRICING HANDLERS)
+======================= */
+
+const openPricingModal = (campoId: string) => {
+  const campo = campi.find(c => c.id === campoId);
+  if (!campo) return;
+  
+  setEditingCampoId(campoId);
+  
+  // Assicura che dateOverrides e periodOverrides esistano
+  const pricingWithDefaults = {
+    ...campo.pricingRules,
+    dateOverrides: campo.pricingRules.dateOverrides || { enabled: false, dates: [] },
+    periodOverrides: campo.pricingRules.periodOverrides || { enabled: false, periods: [] },
+  };
+  
+  setTempPricing(pricingWithDefaults);
+  setShowPricingModal(true);
+};
+
+const savePricing = () => {
+  if (!editingCampoId || !tempPricing) return;
+  
+  setCampi(prev =>
+    prev.map(c =>
+      c.id === editingCampoId ? { ...c, pricingRules: tempPricing } : c
+    )
+  );
+  
+  setShowPricingModal(false);
+  setEditingCampoId(null);
+  setTempPricing(null);
+};
+
+const updateTempPricingFlat = (type: "oneHour" | "oneHourHalf", value: string) => {
+  if (!tempPricing) return;
+  const num = parseFloat(value) || 0;
+  setTempPricing({
+    ...tempPricing,
+    flatPrices: { ...tempPricing.flatPrices, [type]: num },
+  });
+};
+
+const updateTempPricingBase = (type: "oneHour" | "oneHourHalf", value: string) => {
+  if (!tempPricing) return;
+  const num = parseFloat(value) || 0;
+  setTempPricing({
+    ...tempPricing,
+    basePrices: { ...tempPricing.basePrices, [type]: num },
+  });
+};
+
+const toggleTempTimeSlot = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      enabled: !tempPricing.timeSlotPricing.enabled,
+    },
+  });
+};
+
+const addTempTimeSlot = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: [
+        ...tempPricing.timeSlotPricing.slots,
+        {
+          start: "09:00",
+          end: "13:00",
+          label: "Mattina",
+          prices: { oneHour: 25, oneHourHalf: 35 },
+        },
+      ],
+    },
+  });
+};
+
+const updateTempTimeSlot = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newSlots = [...tempPricing.timeSlotPricing.slots];
+  if (!newSlots[index]) return;
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newSlots[index] = {
+      ...newSlots[index],
+      prices: {
+        ...newSlots[index].prices,
+        [priceField]: parseFloat(value) || 0,
+      },
+    };
+  } else {
+    newSlots[index] = { ...newSlots[index], [field]: value };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: newSlots,
+    },
+  });
+};
+
+const removeTempTimeSlot = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: {
+      ...tempPricing.timeSlotPricing,
+      slots: tempPricing.timeSlotPricing.slots.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openDaysModal = (slotIndex: number) => {
+  setEditingSlotIndex(slotIndex);
+  setShowDaysModal(true);
+};
+
+const toggleDay = (day: number) => {
+  if (editingSlotIndex === null || !tempPricing) return;
+  
+  const newSlots = [...tempPricing.timeSlotPricing.slots];
+  const slot = newSlots[editingSlotIndex];
+  
+  const currentDays = slot.daysOfWeek || [];
+  const dayIndex = currentDays.indexOf(day);
+  
+  if (dayIndex >= 0) {
+    // Rimuovi il giorno
+    slot.daysOfWeek = currentDays.filter((d) => d !== day);
+  } else {
+    // Aggiungi il giorno
+    slot.daysOfWeek = [...currentDays, day].sort();
+  }
+  
+  // Se non ci sono giorni, rimuovi l'array
+  if (slot.daysOfWeek.length === 0) {
+    delete slot.daysOfWeek;
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    timeSlotPricing: { ...tempPricing.timeSlotPricing, slots: newSlots },
+  });
+};
+
+const toggleTempDateOverrides = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      enabled: !tempPricing.dateOverrides.enabled,
+    },
+  });
+};
+
+const addTempDateOverride = () => {
+  if (!tempPricing) return;
+  const today = new Date().toISOString().split("T")[0];
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      dates: [
+        ...tempPricing.dateOverrides.dates,
+        {
+          date: today,
+          label: "Evento speciale",
+          prices: { oneHour: 50, oneHourHalf: 70 },
+        },
+      ],
+    },
+  });
+};
+
+const updateTempDateOverride = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newDates = [...tempPricing.dateOverrides.dates];
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newDates[index] = {
+      ...newDates[index],
+      prices: {
+        ...newDates[index].prices,
+        [priceField]: parseFloat(value) || 0,
+      },
+    };
+  } else {
+    newDates[index] = {
+      ...newDates[index],
+      [field]: value,
+    };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: { ...tempPricing.dateOverrides, dates: newDates },
+  });
+};
+
+const removeTempDateOverride = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    dateOverrides: {
+      ...tempPricing.dateOverrides,
+      dates: tempPricing.dateOverrides.dates.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openDatePicker = (index: number) => {
+  setEditingDateIndex(index);
+  setDatePickerMode("date");
+  if (tempPricing) {
+    const currentDate = tempPricing.dateOverrides.dates[index]?.date;
+    if (currentDate) {
+      const [y, m] = currentDate.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+  }
+  setShowDatePicker(true);
+};
+
+const toggleTempPeriodOverrides = () => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      enabled: !tempPricing.periodOverrides.enabled,
+    },
+  });
+};
+
+const addTempPeriodOverride = () => {
+  if (!tempPricing) return;
+  const today = new Date();
+  const startDate = today.toISOString().split("T")[0];
+  const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+  
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      periods: [
+        ...tempPricing.periodOverrides.periods,
+        {
+          startDate,
+          endDate,
+          label: "Periodo speciale",
+          prices: { oneHour: 40, oneHourHalf: 56 },
+        },
+      ],
+    },
+  });
+};
+
+const updateTempPeriodOverride = (index: number, field: string, value: any) => {
+  if (!tempPricing) return;
+  
+  const newPeriods = [...tempPricing.periodOverrides.periods];
+  
+  if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+    const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+    newPeriods[index] = {
+      ...newPeriods[index],
+      prices: {
+        ...newPeriods[index].prices,
+        [priceField]: parseFloat(value) || 0,
+      },
+    };
+  } else {
+    newPeriods[index] = {
+      ...newPeriods[index],
+      [field]: value,
+    };
+  }
+  
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: { ...tempPricing.periodOverrides, periods: newPeriods },
+  });
+};
+
+const removeTempPeriodOverride = (index: number) => {
+  if (!tempPricing) return;
+  setTempPricing({
+    ...tempPricing,
+    periodOverrides: {
+      ...tempPricing.periodOverrides,
+      periods: tempPricing.periodOverrides.periods.filter((_, i) => i !== index),
+    },
+  });
+};
+
+const openPeriodPicker = (index: number, mode: "start" | "end") => {
+  setEditingPeriodIndex(index);
+  setDatePickerMode(mode === "start" ? "period-start" : "period-end");
+  if (tempPricing) {
+    const period = tempPricing.periodOverrides.periods[index];
+    const dateStr = mode === "start" ? period.startDate : period.endDate;
+    if (dateStr) {
+      const [y, m] = dateStr.split("-").map(Number);
+      setSelectedMonth(new Date(y, m - 1, 1));
+    }
+  }
+  setShowDatePicker(true);
+};
+
+const handleDateSelect = (dateStr: string) => {
+  if (editingDateIndex !== null && datePickerMode === "date" && tempPricing) {
+    updateTempDateOverride(editingDateIndex, "date", dateStr);
+  } else if (editingPeriodIndex !== null && tempPricing) {
+    if (datePickerMode === "period-start") {
+      updateTempPeriodOverride(editingPeriodIndex, "startDate", dateStr);
+    } else if (datePickerMode === "period-end") {
+      updateTempPeriodOverride(editingPeriodIndex, "endDate", dateStr);
+    }
+  }
+  setShowDatePicker(false);
+};
+
+const renderDaysOfWeek = (slot: TimeSlot, index: number) => {
+  const selectedDays = slot.daysOfWeek || [];
+  const isGeneric = selectedDays.length === 0;
+  
+  return (
+    <Pressable
+      style={styles.daysSelector}
+      onPress={() => openDaysModal(index)}
+    >
+      <Ionicons name="calendar-outline" size={16} color="#666" />
+      <Text style={styles.daysSelectorText}>
+        {isGeneric
+          ? "Tutti i giorni"
+          : selectedDays.map((d) => DAYS_LABELS[d]).join(", ")}
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color="#666" />
+    </Pressable>
+  );
+};
+
+  /* =======================
+     ADDRESS AUTOCOMPLETE
+  ======================= */
+
+  const searchAddress = async (input: string) => {
+    if (input.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setLoadingSuggestions(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/strutture/search-address?query=${encodeURIComponent(input)}`
+      );
+
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        setSuggestions(data);
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error("❌ Errore autocomplete:", error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const handleAddressChange = (text: string) => {
+    setAddressInput(text);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      searchAddress(text);
+    }, 800);
+  };
+
+  const selectPlace = (place: PlaceSuggestion) => {
+    setShowSuggestions(false);
+    setAddressInput(place.display_name);
+    setSelectedAddress(place.display_name);
+
+    setLat(place.lat);
+    setLng(place.lon);
+
+    if (place.address) {
+      const cityName =
+        place.address.city ||
+        place.address.town ||
+        place.address.village ||
+        place.address.municipality ||
+        "";
+      setCity(cityName);
+    } else {
+      const parts = place.display_name.split(",");
+      if (parts.length >= 2) {
+        setCity(parts[parts.length - 2].trim());
+      }
+    }
+  };
+
+  /* =======================
+     VALIDATION
+  ======================= */
+
+  const validateStep1 = () => {
+    if (!name.trim()) {
+      Alert.alert("Errore", "Il nome è obbligatorio");
+      return false;
+    }
+    if (!selectedAddress || !city.trim()) {
+      Alert.alert("Errore", "Seleziona un indirizzo valido");
+      return false;
+    }
+    if (!lat || !lng) {
+      Alert.alert("Errore", "Coordinate mancanti");
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep5 = () => {
+    if (campi.length === 0) {
+      Alert.alert("Attenzione", "Aggiungi almeno un campo");
+      return false;
+    }
+    for (const campo of campi) {
+      if (!campo.name.trim()) {
+        Alert.alert("Errore", "Inserisci il nome del campo");
+        return false;
+      }
+      if (!campo.sport) {
+        Alert.alert("Errore", "Seleziona lo sport per tutti i campi");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  /* =======================
+     NAVIGATION
+  ======================= */
+
+  const handleNext = () => {
+    if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep === 5 && !validateStep5()) return;
+
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleCreate();
+    }
+  };
+
+  /* =======================
+     CREATE STRUTTURA
+  ======================= */
+
+  const handleCreate = async () => {
+    const strutturaData = {
+      name,
+      description,
+      location: {
+        address: selectedAddress,
+        city,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        coordinates: [parseFloat(lng), parseFloat(lat)],
+      },
+      amenities,
+      openingHours,
+    };
+
+    const campiData = campi.map(c => ({
+      name: c.name,
+      sport: c.sport,
+      surface: c.surface,
+      maxPlayers: c.maxPlayers,
+      indoor: c.indoor,
+      pricePerHour: c.pricingRules.flatPrices.oneHour,
+      pricingRules: c.pricingRules,
+    }));
+
+    setLoading(true);
+
+    try {
+      const strutturaResponse = await fetch(`${API_URL}/strutture`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(strutturaData),
+      });
+
+      if (!strutturaResponse.ok) {
+        const error = await strutturaResponse.json();
+        Alert.alert("Errore", error.message || "Impossibile creare la struttura");
+        return;
+      }
+
+      const { struttura } = await strutturaResponse.json();
+      console.log("✅ Struttura creata:", struttura._id);
+
+      // 🆕 Upload immagini
+      if (selectedImages.length > 0) {
+        await uploadImages(struttura._id);
+      }
+
+      if (campiData.length > 0) {
+        const campiResponse = await fetch(`${API_URL}/campi`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            strutturaId: struttura._id,
+            campi: campiData,
+          }),
+        });
+
+        if (!campiResponse.ok) {
+          const error = await campiResponse.json();
+          console.warn("⚠️ Errore creazione campi:", error.message);
+          Alert.alert(
+            "Attenzione",
+            "Struttura creata ma errore nella creazione dei campi. Puoi aggiungerli dopo.",
+            [{ text: "OK", onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+
+        console.log("✅ Campi creati con successo");
+      }
+
+      Alert.alert("Successo", "Struttura e campi creati con successo!", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      Alert.alert("Errore", "Errore di connessione");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =======================
+     RENDER STEPS
+  ======================= */
+
+  const renderStep1 = () => (
+    <>
+      <View style={styles.section}>
+        <Text style={styles.label}>Nome struttura *</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="Es. Sport Center Milano"
+          placeholderTextColor="#999"
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Descrizione</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Descrivi la tua struttura..."
+          placeholderTextColor="#999"
+          multiline
+          numberOfLines={4}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Indirizzo *</Text>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={addressInput}
+            onChangeText={handleAddressChange}
+            placeholder="Inizia a digitare..."
+            placeholderTextColor="#999"
+          />
+          {loadingSuggestions && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+            </View>
+          )}
+        </View>
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={item => item.place_id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.suggestionItem}
+                  onPress={() => selectPlace(item)}
+                >
+                  <Text style={styles.suggestionText}>📍 {item.display_name}</Text>
+                </Pressable>
+              )}
+              scrollEnabled={false}
+            />
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Città</Text>
+        <TextInput
+          style={[styles.input, styles.inputDisabled]}
+          value={city}
+          editable={false}
+          placeholder="Auto"
+          placeholderTextColor="#999"
+        />
+      </View>
+    </>
+  );
+
+  const renderStep2 = () => (
+    <>
+      <Text style={styles.sectionTitle}>Immagini della struttura</Text>
+      
+      <View style={styles.infoBox}>
+        <Ionicons name="information-circle" size={20} color="#2196F3" />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.infoText}>
+            📸 Carica fino a 10 foto
+          </Text>
+          <Text style={styles.infoSubtext}>
+            La prima immagine sarà quella principale
+          </Text>
+        </View>
+      </View>
+
+      <Pressable
+        style={[
+          styles.addImagesButton,
+          selectedImages.length >= 10 && styles.addImagesButtonDisabled,
+        ]}
+        onPress={pickImages}
+        disabled={selectedImages.length >= 10}
+      >
+        <Ionicons 
+          name="cloud-upload-outline" 
+          size={24} 
+          color={selectedImages.length >= 10 ? "#999" : "white"} 
+        />
+        <Text style={[
+          styles.addImagesText,
+          selectedImages.length >= 10 && styles.addImagesTextDisabled
+        ]}>
+          {selectedImages.length >= 10
+            ? "Limite massimo raggiunto"
+            : selectedImages.length === 0
+            ? "Aggiungi Immagini"
+            : `Aggiungi altre immagini (${selectedImages.length}/10)`}
+        </Text>
+      </Pressable>
+
+      {selectedImages.length === 0 ? (
+        <View style={styles.emptyImagesState}>
+          <Ionicons name="images-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyImagesText}>Nessuna immagine</Text>
+          <Text style={styles.emptyImagesSubtext}>
+            Le immagini aiutano ad attirare più clienti
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.imagesGrid}>
+          {selectedImages.map((imageUri, index) => (
+            <View key={index} style={styles.imageCard}>
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+
+              {index === 0 && (
+                <View style={styles.mainBadge}>
+                  <Ionicons name="star" size={12} color="white" />
+                  <Text style={styles.mainBadgeText}>Principale</Text>
+                </View>
+              )}
+
+              <View style={styles.imageActions}>
+                {index > 0 && (
+                  <Pressable
+                    style={styles.imageActionButton}
+                    onPress={() => moveImageUp(index)}
+                  >
+                    <Ionicons name="arrow-up" size={16} color="white" />
+                  </Pressable>
+                )}
+
+                <Pressable
+                  style={[styles.imageActionButton, styles.imageActionButtonDanger]}
+                  onPress={() => removeImage(imageUri)}
+                >
+                  <Ionicons name="trash-outline" size={16} color="white" />
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {selectedImages.length > 0 && (
+        <Text style={styles.imageHint}>
+          💡 Usa la freccia verso l'alto per spostare un'immagine in prima posizione
+        </Text>
+      )}
+    </>
+  );
+
+  const renderStep3 = () => (
+    <>
+      <Text style={styles.sectionTitle}>Orari di apertura</Text>
+      {DAYS.map(({ key, label }) => (
+        <View key={key} style={styles.dayRow}>
+          <View style={styles.dayHeader}>
+            <Text style={styles.dayLabel}>{label}</Text>
+            <Switch
+              value={!openingHours[key].closed}
+              onValueChange={() => toggleDayClosed(key)}
+            />
+          </View>
+          {!openingHours[key].closed && (
+            <View style={styles.timeRow}>
+              <TextInput
+                style={styles.timeInput}
+                value={openingHours[key].open}
+                onChangeText={v => updateOpeningHour(key, "open", v)}
+                placeholder="09:00"
+                placeholderTextColor="#999"
+              />
+              <Text style={styles.timeSeparator}>-</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={openingHours[key].close}
+                onChangeText={v => updateOpeningHour(key, "close", v)}
+                placeholder="22:00"
+                placeholderTextColor="#999"
+              />
+            </View>
+          )}
+        </View>
+      ))}
+    </>
+  );
+
+  const renderStep4 = () => (
+    <>
+      <Text style={styles.sectionTitle}>Servizi disponibili ({amenities.length})</Text>
+
+      {AVAILABLE_AMENITIES.map(({ key, label, icon }) => (
+        <View key={key} style={styles.amenityRow}>
+          <View style={styles.amenityLeft}>
+            <View style={[styles.amenityIcon, amenities.includes(key) && styles.amenityIconActive]}>
+              <Ionicons name={icon as any} size={18} color={amenities.includes(key) ? "#2196F3" : "#666"} />
+            </View>
+            <Text style={styles.amenityLabel}>{label}</Text>
+          </View>
+          <Switch value={amenities.includes(key)} onValueChange={() => toggleAmenity(key)} />
+        </View>
+      ))}
+
+      {customAmenities.map((customAmenity) => {
+        const isActive = amenities.includes(customAmenity);
+        
+        return (
+          <View key={customAmenity} style={styles.amenityRow}>
+            <View style={styles.amenityLeft}>
+              <View style={[styles.amenityIcon, isActive && styles.amenityIconActive]}>
+                <Ionicons name="add-circle" size={18} color={isActive ? "#2196F3" : "#666"} />
+              </View>
+              <Text style={[styles.amenityLabel, !isActive && { color: "#999" }]}>
+                {customAmenity}
+              </Text>
+              <View style={styles.customBadge}>
+                <Text style={styles.customBadgeText}>Custom</Text>
+              </View>
+            </View>
+            <View style={styles.amenityActions}>
+              <Switch value={isActive} onValueChange={() => toggleAmenity(customAmenity)} />
+              <Pressable onPress={() => removeCustomAmenity(customAmenity)} style={styles.deleteButton} hitSlop={8}>
+                <Ionicons name="trash-outline" size={18} color="#E53935" />
+              </Pressable>
+            </View>
+          </View>
+        );
+      })}
+
+      <Pressable style={styles.addCustomButton} onPress={() => setShowCustomModal(true)}>
+        <Ionicons name="add-circle-outline" size={18} color="#2196F3" />
+        <Text style={styles.addCustomButtonText}>Aggiungi servizio personalizzato</Text>
+      </Pressable>
+    </>
+  );
+
+  const renderStep5 = () => (
+    <>
+      <Text style={styles.sectionTitle}>Campi sportivi</Text>
+      {campi.map((campo, index) => {
+        const getSurfaceLabel = () => {
+          if (campo.sport === "beach_volley") {
+            return campo.indoor ? "Sabbia (Indoor)" : "Sabbia (Outdoor)";
+          }
+          if (campo.sport === "volley") {
+            return campo.indoor ? "PVC (Indoor)" : "Cemento (Outdoor)";
+          }
+          return "Seleziona prima lo sport";
+        };
+
+        const getPricingLabel = () => {
+          if (campo.pricingRules.mode === "flat") {
+            return `€${campo.pricingRules.flatPrices.oneHour}/h`;
+          }
+          const hasSlots = campo.pricingRules.timeSlotPricing.enabled && 
+                          campo.pricingRules.timeSlotPricing.slots.length > 0;
+          return hasSlots ? "Prezzi dinamici" : `€${campo.pricingRules.basePrices.oneHour}/h`;
+        };
+
+        return (
+          <View key={campo.id} style={styles.campoCard}>
+            <View style={styles.campoHeader}>
+              <Text style={styles.campoTitle}>Campo {index + 1}</Text>
+              <Pressable onPress={() => removeCampo(campo.id)} style={styles.deleteIconButton}>
+                <Ionicons name="trash-outline" size={20} color="#E53935" />
+              </Pressable>
+            </View>
+
+            <TextInput
+              style={styles.input}
+              value={campo.name}
+              onChangeText={v => updateCampo(campo.id, "name", v)}
+              placeholder="Nome campo"
+              placeholderTextColor="#999"
+            />
+
+            <View style={styles.pickerRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.miniLabel}>Sport *</Text>
+                <View style={styles.pickerContainer}>
+                  {[
+                    { value: "beach_volley", label: "Beach Volley" },
+                    { value: "volley", label: "Volley" },
+                  ].map(sport => (
+                    <Pressable
+                      key={sport.value}
+                      style={[
+                        styles.chip,
+                        campo.sport === sport.value && styles.chipActive,
+                      ]}
+                      onPress={() => updateCampo(campo.id, "sport", sport.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          campo.sport === sport.value && styles.chipTextActive,
+                        ]}
+                      >
+                        {sport.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.miniLabel}>Campo coperto</Text>
+              </View>
+              <Switch
+                value={campo.indoor}
+                onValueChange={v => updateCampo(campo.id, "indoor", v)}
+              />
+            </View>
+
+            {campo.sport && (
+              <View style={styles.surfaceDisplay}>
+                <Ionicons
+                  name={
+                    campo.surface === "sand"
+                      ? "beach"
+                      : campo.surface === "pvc"
+                      ? "layers"
+                      : "construct"
+                  }
+                  size={18}
+                  color="#4CAF50"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.surfaceDisplayLabel}>Superficie</Text>
+                  <Text style={styles.surfaceDisplayText}>{getSurfaceLabel()}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.miniLabel}>Max giocatori</Text>
+                <TextInput
+                  style={styles.input}
+                  value={campo.maxPlayers.toString()}
+                  onChangeText={v => updateCampo(campo.id, "maxPlayers", parseInt(v) || 4)}
+                  placeholder="4"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                />
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.pricingButton}
+              onPress={() => openPricingModal(campo.id)}
+            >
+              <View style={styles.pricingButtonLeft}>
+                <Ionicons name="cash-outline" size={18} color="#2196F3" />
+                <View>
+                  <Text style={styles.pricingButtonTitle}>Configura Prezzi</Text>
+                  <Text style={styles.pricingButtonSubtitle}>{getPricingLabel()}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#999" />
+            </Pressable>
+          </View>
+        );
+      })}
+
+      <Pressable style={styles.addCampoButton} onPress={addCampo}>
+        <Ionicons name="add-circle" size={18} color="white" />
+        <Text style={styles.addCampoText}>Aggiungi campo</Text>
+      </Pressable>
+    </>
+  );
+
+  /* =======================
+     PRICING MODAL
+  ======================= */
+
+  const renderPricingModal = () => {
+    if (!tempPricing) return null;
+
+    return (
+      <Modal visible={showPricingModal} animationType="slide">
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setShowPricingModal(false)}>
+              <Ionicons name="close" size={26} color="#333" />
+            </Pressable>
+            <Text style={styles.modalHeaderTitle}>Configura Prezzi</Text>
+            <Pressable onPress={savePricing} style={styles.saveModalButton}>
+              <Text style={styles.saveModalButtonText}>Salva</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalCardTitle}>💰 Modalità Pricing</Text>
+
+              <Pressable
+                style={[
+                  styles.radioOption,
+                  tempPricing.mode === "flat" && styles.radioOptionActive,
+                ]}
+                onPress={() => setTempPricing({ ...tempPricing, mode: "flat" })}
+              >
+                <View style={styles.radioCircle}>
+                  {tempPricing.mode === "flat" && <View style={styles.radioCircleInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.radioLabel}>Prezzo Fisso</Text>
+                  <Text style={styles.radioDescription}>
+                    Prezzi uguali per tutte le fasce orarie
+                  </Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.radioOption,
+                  tempPricing.mode === "advanced" && styles.radioOptionActive,
+                ]}
+                onPress={() => setTempPricing({ ...tempPricing, mode: "advanced" })}
+              >
+                <View style={styles.radioCircle}>
+                  {tempPricing.mode === "advanced" && <View style={styles.radioCircleInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.radioLabel}>Pricing Dinamico</Text>
+                  <Text style={styles.radioDescription}>
+                    Prezzi variabili per fascia oraria
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+
+            {tempPricing.mode === "flat" && (
+              <View style={styles.modalCard}>
+                <Text style={styles.modalCardTitle}>💵 Prezzi Fissi</Text>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>1 ora</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.euroSign}>€</Text>
+                    <TextInput
+                      style={styles.priceInputField}
+                      value={tempPricing.flatPrices.oneHour.toString()}
+                      onChangeText={(v) => updateTempPricingFlat("oneHour", v)}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>1.5 ore</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.euroSign}>€</Text>
+                    <TextInput
+                      style={styles.priceInputField}
+                      value={tempPricing.flatPrices.oneHourHalf.toString()}
+                      onChangeText={(v) => updateTempPricingFlat("oneHourHalf", v)}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {tempPricing.mode === "advanced" && (
+              <>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalCardTitle}>💵 Prezzi Base</Text>
+                  <Text style={styles.cardDescription}>
+                    Usati quando non c'è una fascia oraria specifica
+                  </Text>
+
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>1 ora</Text>
+                    <View style={styles.priceInputContainer}>
+                      <Text style={styles.euroSign}>€</Text>
+                      <TextInput
+                        style={styles.priceInputField}
+                        value={tempPricing.basePrices.oneHour.toString()}
+                        onChangeText={(v) => updateTempPricingBase("oneHour", v)}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>1.5 ore</Text>
+                    <View style={styles.priceInputContainer}>
+                      <Text style={styles.euroSign}>€</Text>
+                      <TextInput
+                        style={styles.priceInputField}
+                        value={tempPricing.basePrices.oneHourHalf.toString()}
+                        onChangeText={(v) => updateTempPricingBase("oneHourHalf", v)}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.modalCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.modalCardTitle}>⏰ Fasce Orarie</Text>
+                    <Switch
+                      value={tempPricing.timeSlotPricing.enabled}
+                      onValueChange={toggleTempTimeSlot}
+                    />
+                  </View>
+
+                  {tempPricing.timeSlotPricing.enabled && (
+                    <>
+                      {tempPricing.timeSlotPricing.slots.map((slot, index) => (
+                        <View key={index} style={styles.timeSlotCard}>
+                          <View style={styles.timeSlotHeader}>
+                            <TextInput
+                              style={styles.timeSlotLabelInput}
+                              value={slot.label}
+                              onChangeText={(v) => updateTempTimeSlot(index, "label", v)}
+                              placeholder="Nome fascia"
+                            />
+                            <Pressable onPress={() => removeTempTimeSlot(index)}>
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                            </Pressable>
+                          </View>
+
+                          {/* Days of Week Selector */}
+                          {renderDaysOfWeek(slot, index)}
+
+                          <View style={styles.timeSlotTimeRow}>
+                            <View style={styles.timeInputWrapper}>
+                              <Text style={styles.timeLabel}>Dalle</Text>
+                              <TextInput
+                                style={styles.timeInputModal}
+                                value={slot.start}
+                                onChangeText={(v) => updateTempTimeSlot(index, "start", v)}
+                                placeholder="09:00"
+                              />
+                            </View>
+
+                            <View style={styles.timeInputWrapper}>
+                              <Text style={styles.timeLabel}>Alle</Text>
+                              <TextInput
+                                style={styles.timeInputModal}
+                                value={slot.end}
+                                onChangeText={(v) => updateTempTimeSlot(index, "end", v)}
+                                placeholder="13:00"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={styles.slotPriceRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={slot.prices.oneHour.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempTimeSlot(index, "prices.oneHour", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1.5h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={slot.prices.oneHourHalf.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempTimeSlot(index, "prices.oneHourHalf", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+
+                      <Pressable style={styles.addButton} onPress={addTempTimeSlot}>
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
+                        <Text style={styles.addButtonText}>Aggiungi fascia oraria</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+
+                {/* ============================================
+                    DATE SPECIALI (DATE OVERRIDES)
+                ============================================ */}
+                {tempPricing.dateOverrides && (
+                <View style={styles.modalCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.modalCardTitle}>📅 Date Speciali</Text>
+                    <Switch
+                      value={tempPricing.dateOverrides.enabled}
+                      onValueChange={toggleTempDateOverrides}
+                    />
+                  </View>
+                  <Text style={styles.cardDescription}>
+                    Prezzi per date specifiche (es. Natale, Capodanno) - Priorità massima
+                  </Text>
+
+                  {tempPricing.dateOverrides.enabled && (
+                    <>
+                      {tempPricing.dateOverrides.dates.map((dateOv, index) => (
+                        <View key={index} style={styles.timeSlotCard}>
+                          <View style={styles.timeSlotHeader}>
+                            <TextInput
+                              style={styles.timeSlotLabelInput}
+                              value={dateOv.label}
+                              onChangeText={(v) => updateTempDateOverride(index, "label", v)}
+                              placeholder="Nome evento"
+                            />
+                            <Pressable onPress={() => removeTempDateOverride(index)}>
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                            </Pressable>
+                          </View>
+
+                          <Pressable
+                            style={styles.dateInputPressable}
+                            onPress={() => openDatePicker(index)}
+                          >
+                            <Text style={styles.dateInputText}>{dateOv.date}</Text>
+                            <Ionicons name="calendar-outline" size={18} color="#2196F3" />
+                          </Pressable>
+
+                          <View style={styles.slotPriceRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={dateOv.prices.oneHour.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempDateOverride(index, "prices.oneHour", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1.5h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={dateOv.prices.oneHourHalf.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempDateOverride(index, "prices.oneHourHalf", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+
+                      <Pressable style={styles.addButton} onPress={addTempDateOverride}>
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
+                        <Text style={styles.addButtonText}>Aggiungi data speciale</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+                )}
+
+                {/* ============================================
+                    PERIODI SPECIALI (PERIOD OVERRIDES)
+                ============================================ */}
+                {tempPricing.periodOverrides && (
+                <View style={styles.modalCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.modalCardTitle}>📆 Periodi Speciali</Text>
+                    <Switch
+                      value={tempPricing.periodOverrides.enabled}
+                      onValueChange={toggleTempPeriodOverrides}
+                    />
+                  </View>
+                  <Text style={styles.cardDescription}>
+                    Prezzi per periodi (es. Estate, Inverno) - Alta priorità
+                  </Text>
+
+                  {tempPricing.periodOverrides.enabled && (
+                    <>
+                      {tempPricing.periodOverrides.periods.map((period, index) => (
+                        <View key={index} style={styles.timeSlotCard}>
+                          <View style={styles.timeSlotHeader}>
+                            <TextInput
+                              style={styles.timeSlotLabelInput}
+                              value={period.label}
+                              onChangeText={(v) => updateTempPeriodOverride(index, "label", v)}
+                              placeholder="Nome periodo"
+                            />
+                            <Pressable onPress={() => removeTempPeriodOverride(index)}>
+                              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                            </Pressable>
+                          </View>
+
+                          <View style={styles.periodDatesRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.dateLabel}>Dal</Text>
+                              <Pressable
+                                style={styles.dateInputPressable}
+                                onPress={() => openPeriodPicker(index, "start")}
+                              >
+                                <Text style={styles.dateInputText}>{period.startDate}</Text>
+                                <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                              </Pressable>
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.dateLabel}>Al</Text>
+                              <Pressable
+                                style={styles.dateInputPressable}
+                                onPress={() => openPeriodPicker(index, "end")}
+                              >
+                                <Text style={styles.dateInputText}>{period.endDate}</Text>
+                                <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                              </Pressable>
+                            </View>
+                          </View>
+
+                          <View style={styles.slotPriceRow}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={period.prices.oneHour.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempPeriodOverride(index, "prices.oneHour", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                              <Text style={styles.slotPriceLabel}>1.5h</Text>
+                              <View style={styles.priceInputContainer}>
+                                <Text style={styles.euroSign}>€</Text>
+                                <TextInput
+                                  style={styles.priceInputField}
+                                  value={period.prices.oneHourHalf.toString()}
+                                  onChangeText={(v) =>
+                                    updateTempPeriodOverride(index, "prices.oneHourHalf", v)
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+
+                      <Pressable style={styles.addButton} onPress={addTempPeriodOverride}>
+                        <Ionicons name="add-circle" size={18} color="#2196F3" />
+                        <Text style={styles.addButtonText}>Aggiungi periodo</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+                )}
+              </>
+            )}
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
+  /* =======================
+     MAIN RENDER
+  ======================= */
+
+  const renderDaysModal = () => (
+  <Modal
+    visible={showDaysModal}
+    transparent
+    animationType="slide"
+    onRequestClose={() => setShowDaysModal(false)}
+  >
+    <Pressable
+      style={styles.modalOverlay}
+      onPress={() => setShowDaysModal(false)}
+    >
+      <View style={styles.modalContentBottom} onStartShouldSetResponder={() => true}>
+        <Text style={styles.modalTitle}>Seleziona Giorni</Text>
+        <Text style={styles.modalDescription}>
+          Lascia vuoto per applicare la fascia a tutti i giorni
+        </Text>
+
+        <View style={styles.daysGrid}>
+          {DAYS_LABELS.map((day, index) => {
+            const slot = tempPricing?.timeSlotPricing.slots[editingSlotIndex || 0];
+            const isSelected = slot?.daysOfWeek?.includes(index) || false;
+
+            return (
+              <Pressable
+                key={index}
+                style={[
+                  styles.dayChip,
+                  isSelected && styles.dayChipSelected,
+                ]}
+                onPress={() => toggleDay(index)}
+              >
+                <Text
+                  style={[
+                    styles.dayChipText,
+                    isSelected && styles.dayChipTextSelected,
+                  ]}
+                >
+                  {day}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Pressable
+          style={styles.modalCloseButton}
+          onPress={() => setShowDaysModal(false)}
+        >
+          <Text style={styles.modalCloseText}>Chiudi</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  </Modal>
+);
+
+
+const renderDatePickerModal = () => (
+  <Modal
+    visible={showDatePicker}
+    transparent
+    animationType="slide"
+    onRequestClose={() => setShowDatePicker(false)}
+  >
+    <Pressable
+      style={styles.modalOverlay}
+      onPress={() => setShowDatePicker(false)}
+    >
+      <View style={styles.modalContentBottom} onStartShouldSetResponder={() => true}>
+        <Text style={styles.modalTitle}>
+          {datePickerMode === "date"
+            ? "Seleziona Data"
+            : datePickerMode === "period-start"
+            ? "Data Inizio"
+            : "Data Fine"}
+        </Text>
+
+        {/* Month selector */}
+        <View style={styles.calendarMonthSelector}>
+          <Pressable
+            onPress={() => {
+              const newMonth = new Date(selectedMonth);
+              newMonth.setMonth(newMonth.getMonth() - 1);
+              setSelectedMonth(newMonth);
+            }}
+            style={styles.calendarMonthBtn}
+          >
+            <Ionicons name="chevron-back" size={24} color="#2196F3" />
+          </Pressable>
+
+          <Text style={styles.calendarMonthText}>
+            {selectedMonth.toLocaleDateString("it-IT", {
+              month: "long",
+              year: "numeric",
+            })}
+          </Text>
+
+          <Pressable
+            onPress={() => {
+              const newMonth = new Date(selectedMonth);
+              newMonth.setMonth(newMonth.getMonth() + 1);
+              setSelectedMonth(newMonth);
+            }}
+            style={styles.calendarMonthBtn}
+          >
+            <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+          </Pressable>
+        </View>
+
+        {/* Calendar grid */}
+        <View style={styles.calendarGrid}>
+          {/* Week days header */}
+          <View style={styles.calendarWeekHeader}>
+            {["D", "L", "M", "M", "G", "V", "S"].map((day, i) => (
+              <Text key={i} style={styles.calendarWeekDay}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          {/* Days */}
+          <View style={styles.calendarDays}>
+            {(() => {
+              const year = selectedMonth.getFullYear();
+              const month = selectedMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+              const days = [];
+
+              // Empty cells before month start
+              for (let i = 0; i < firstDay; i++) {
+                days.push(
+                  <View key={`empty-${i}`} style={styles.calendarDayCell} />
+                );
+              }
+
+              // Days of month
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(
+                  2,
+                  "0"
+                )}-${String(day).padStart(2, "0")}`;
+
+                days.push(
+                  <Pressable
+                    key={day}
+                    style={styles.calendarDayCell}
+                    onPress={() => handleDateSelect(dateStr)}
+                  >
+                    <View style={styles.calendarDayInner}>
+                      <Text style={styles.calendarDayText}>{day}</Text>
+                    </View>
+                  </Pressable>
+                );
+              }
+
+              return days;
+            })()}
+          </View>
+        </View>
+
+        <Pressable
+          style={styles.modalCloseButton}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <Text style={styles.modalCloseText}>Chiudi</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  </Modal>
+);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Crea struttura</Text>
+        <Text style={styles.stepIndicator}>
+          Step {currentStep}/5
+        </Text>
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {currentStep === 1 && renderStep1()}
+        {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
+        {currentStep === 5 && renderStep5()}
+      </ScrollView>
+
+      <View style={styles.fixedButtonContainer}>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={() => {
+              if (currentStep > 1) {
+                setCurrentStep(currentStep - 1);
+              } else {
+                navigation.goBack();
+              }
+            }}
+          >
+            <Text style={styles.buttonSecondaryText}>
+              {currentStep === 1 ? "Annulla" : "Indietro"}
+            </Text>
+          </Pressable>
+          
+          <Pressable
+            style={[
+              styles.button,
+              styles.buttonPrimary,
+              loading && styles.buttonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={loading}
+          >
+            <Text style={styles.buttonPrimaryText}>
+              {loading
+                ? "Creazione..."
+                : currentStep === 5
+                ? "Crea struttura"
+                : "Avanti"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <Modal visible={showCustomModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => {
+            setShowCustomModal(false);
+            setCustomAmenityInput("");
+          }} />
+          
+          <View style={styles.modalContentBottom}>
+            <View style={styles.modalHeaderBottom}>
+              <Text style={styles.modalTitleBottom}>Nuovo servizio</Text>
+              <Pressable onPress={() => {
+                setShowCustomModal(false);
+                setCustomAmenityInput("");
+              }}>
+                <Ionicons name="close" size={26} color="#333" />
+              </Pressable>
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              value={customAmenityInput}
+              onChangeText={setCustomAmenityInput}
+              placeholder="Es: Campo da calcetto, Spazio bimbi..."
+              placeholderTextColor="#999"
+              autoFocus
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowCustomModal(false);
+                  setCustomAmenityInput("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>Annulla</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalAddButton,
+                  !customAmenityInput.trim() && styles.modalAddButtonDisabled,
+                ]}
+                onPress={addCustomAmenity}
+                disabled={!customAmenityInput.trim()}
+              >
+                <Text style={styles.modalAddText}>Aggiungi</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {renderPricingModal()}
+      {renderDaysModal()}
+      {renderDatePickerModal()}
+    </SafeAreaView>
+  );
+}
+
+/* =======================
+   STYLES
+======================= */
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "white",
+  },
+  title: { fontSize: 20, fontWeight: "800" },
+  stepIndicator: { fontSize: 13, color: "#007AFF", fontWeight: "600" },
+  container: { flex: 1 },
+  scrollContent: { 
+    padding: 16,
+    paddingBottom: 100,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: "700", marginBottom: 14 },
+  section: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: "600", marginBottom: 6, color: "#333" },
+  miniLabel: { fontSize: 11, fontWeight: "600", marginBottom: 4, color: "#666" },
+  inputWrapper: { position: "relative" },
+  input: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+  },
+  inputDisabled: { backgroundColor: "#f5f5f5", color: "#666" },
+  textArea: { minHeight: 100, textAlignVertical: "top" },
+  row: { flexDirection: "row", marginTop: 12 },
+  loadingContainer: { position: "absolute", right: 12, top: 12 },
+  suggestionsContainer: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    marginTop: 4,
+    maxHeight: 200,
+  },
+  suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  suggestionText: { fontSize: 13, color: "#333" },
+  
+  // IMMAGINI
+  infoBox: {
+    flexDirection: "row",
+    backgroundColor: "#E3F2FD",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196F3",
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1565C0",
+    marginBottom: 4,
+  },
+  infoSubtext: {
+    fontSize: 12,
+    color: "#1976D2",
+  },
+  addImagesButton: {
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 24,
+  },
+  addImagesButtonDisabled: {
+    backgroundColor: "#E0E0E0",
+  },
+  addImagesText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  addImagesTextDisabled: {
+    color: "#999",
+  },
+  emptyImagesState: {
+    alignItems: "center",
+    padding: 40,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+    borderStyle: "dashed",
+  },
+  emptyImagesText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyImagesSubtext: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+  },
+  imagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  imageCard: {
+    width: "48%",
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#e9ecef",
+    position: "relative",
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  mainBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "#FFB800",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  mainBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  imageActions: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    gap: 6,
+  },
+  imageActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageActionButtonDanger: {
+    backgroundColor: "rgba(244, 67, 54, 0.9)",
+  },
+  imageHint: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 12,
+  },
+
+  // ORARI
+  dayRow: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  dayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dayLabel: { fontSize: 14, fontWeight: "600" },
+  timeRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  timeInput: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    padding: 10,
+    textAlign: "center",
+    fontSize: 14,
+  },
+  timeSeparator: { marginHorizontal: 10, fontSize: 16, fontWeight: "700" },
+  
+  // AMENITIES
+  amenityRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  amenityLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  amenityIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  amenityIconActive: {
+    backgroundColor: "#E3F2FD",
+  },
+  amenityLabel: { fontSize: 14, fontWeight: "600", flex: 1 },
+  customBadge: {
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  customBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FF9800",
+  },
+  amenityActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  deleteButton: {
+    padding: 4,
+  },
+  addCustomButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+    marginTop: 6,
+  },
+  addCustomButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+
+  // CAMPI
+  campoCard: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  campoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  campoTitle: { fontSize: 16, fontWeight: "700" },
+  deleteIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FFEBEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerRow: { marginTop: 10 },
+  pickerContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  chipActive: { backgroundColor: "#007AFF", borderColor: "#007AFF" },
+  chipText: { fontSize: 13, color: "#666" },
+  chipTextActive: { color: "white", fontWeight: "600" },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    backgroundColor: "#f8f9fa",
+    padding: 10,
+    borderRadius: 8,
+  },
+  surfaceDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#E8F5E9",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+  },
+  surfaceDisplayLabel: {
+    fontSize: 10,
+    color: "#2E7D32",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  surfaceDisplayText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1B5E20",
+  },
+  pricingButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#2196F3",
+  },
+  pricingButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  pricingButtonTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1976D2",
+  },
+  pricingButtonSubtitle: {
+    fontSize: 12,
+    color: "#1976D2",
+    marginTop: 2,
+  },
+  addCampoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#007AFF",
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  addCampoText: { color: "white", fontSize: 14, fontWeight: "700" },
+  
+  // FIXED BOTTOM BUTTONS
+  fixedButtonContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#e9ecef",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  buttonRow: { flexDirection: "row", gap: 10 },
+  button: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center" },
+  buttonPrimary: { backgroundColor: "#007AFF" },
+  buttonSecondary: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  buttonDisabled: { opacity: 0.5 },
+  buttonPrimaryText: { color: "white", fontSize: 16, fontWeight: "700" },
+  buttonSecondaryText: { color: "#333", fontSize: 16, fontWeight: "600" },
+
+  // CUSTOM AMENITY MODAL
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalContentBottom: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 18,
+  },
+  modalHeaderBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  modalTitleBottom: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  modalInput: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 18,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  modalAddButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+  },
+  modalAddButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalAddText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
+  },
+
+  // PRICING MODAL
+  modalSafe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  saveModalButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  saveModalButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  modalContent: {
+    flex: 1,
+    padding: 14,
+  },
+  modalCard: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  modalCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  cardDescription: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 10,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  radioOptionActive: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioCircleInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#2196F3",
+  },
+  radioLabel: { fontSize: 14, fontWeight: "600" },
+  radioDescription: { fontSize: 12, color: "#666", marginTop: 2 },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  priceLabel: { fontSize: 14, fontWeight: "600" },
+  priceInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    minWidth: 90,
+  },
+  euroSign: { fontSize: 14, fontWeight: "600", marginRight: 4, color: "#666" },
+  priceInputField: {
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "right",
+  },
+  timeSlotCard: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  timeSlotHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  timeSlotLabelInput: {
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
+  },
+  timeSlotTimeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  timeInputWrapper: { flex: 1 },
+  timeLabel: { fontSize: 11, color: "#666", marginBottom: 4, fontWeight: "600" },
+  timeInputModal: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 13,
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    fontWeight: "600",
+  },
+  slotPriceRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  slotPriceLabel: {
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+    marginTop: 6,
+  },
+  addButtonText: { fontSize: 13, fontWeight: "600", color: "#2196F3" },
+
+  // ✅ Stili per Days of Week selector
+daysSelector: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 12,
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+},
+daysSelectorText: {
+  fontSize: 13,
+  fontWeight: "600",
+  color: "#666",
+  flex: 1,
+},
+
+// ✅ Stili per Days Modal
+daysGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 8,
+  marginBottom: 24,
+},
+dayChip: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 20,
+  backgroundColor: "#f8f9fa",
+  borderWidth: 2,
+  borderColor: "#e9ecef",
+},
+dayChipSelected: {
+  backgroundColor: "#E3F2FD",
+  borderColor: "#2196F3",
+},
+dayChipText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#666",
+},
+dayChipTextSelected: {
+  color: "#2196F3",
+},
+
+// ✅ Stili per Date Picker
+dateInputPressable: {
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 10,
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+  marginBottom: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+dateInputText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+},
+dateLabel: {
+  fontSize: 12,
+  color: "#666",
+  marginBottom: 4,
+  fontWeight: "600",
+},
+periodDatesRow: {
+  flexDirection: "row",
+  gap: 8,
+  marginBottom: 12,
+},
+
+// ✅ Stili per Calendar Grid
+calendarMonthSelector: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 20,
+  paddingHorizontal: 8,
+},
+calendarMonthBtn: {
+  padding: 8,
+},
+calendarMonthText: {
+  fontSize: 18,
+  fontWeight: "700",
+  textTransform: "capitalize",
+},
+calendarGrid: {
+  marginBottom: 20,
+},
+calendarWeekHeader: {
+  flexDirection: "row",
+  marginBottom: 8,
+},
+calendarWeekDay: {
+  flex: 1,
+  textAlign: "center",
+  fontSize: 14,
+  fontWeight: "700",
+  color: "#999",
+},
+calendarDays: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+},
+calendarDayCell: {
+  width: `${100 / 7}%`,
+  aspectRatio: 1,
+  padding: 4,
+},
+calendarDayInner: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  backgroundColor: "#f8f9fa",
+},
+calendarDayText: {
+  fontSize: 16,
+  fontWeight: "600",
+  color: "#333",
+},
+
+// ✅ Stili per Modal Bottom
+modalContentBottom: {
+  backgroundColor: "white",
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 24,
+  paddingBottom: 40,
+},
+modalTitle: {
+  fontSize: 20,
+  fontWeight: "800",
+  marginBottom: 8,
+},
+modalDescription: {
+  fontSize: 14,
+  color: "#666",
+  marginBottom: 24,
+},
+modalCloseButton: {
+  backgroundColor: "#2196F3",
+  padding: 16,
+  borderRadius: 12,
+  alignItems: "center",
+},
+modalCloseText: {
+  color: "white",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+// ✅ Stili già esistenti da verificare/completare
+timeInputModal: {
+  backgroundColor: "white",
+  borderRadius: 8,
+  padding: 8,
+  fontSize: 13,
+  textAlign: "center",
+  borderWidth: 1,
+  borderColor: "#e9ecef",
+  fontWeight: "600",
+},
+});

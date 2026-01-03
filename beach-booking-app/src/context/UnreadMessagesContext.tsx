@@ -20,9 +20,9 @@ export const UnreadMessagesProvider = ({ children }: { children: React.ReactNode
   const [loading, setLoading] = useState(false);
 
   const refreshUnreadCount = useCallback(async () => {
-    console.log('🔄 [UnreadContext] refreshUnreadCount CALLED');
+    /*console.log('🔄 [UnreadContext] refreshUnreadCount CALLED');
     console.log('🔄 [UnreadContext] Token exists:', !!token);
-    console.log('🔄 [UnreadContext] User:', user?.name || 'NULL');
+    console.log('🔄 [UnreadContext] User:', user?.name || 'NULL'); */
     
     if (!token || !user) {
       console.log('❌ [UnreadContext] No token or user, setting count to 0');
@@ -39,12 +39,12 @@ export const UnreadMessagesProvider = ({ children }: { children: React.ReactNode
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('📡 [UnreadContext] Response status:', res.status);
+      /*console.log('📡 [UnreadContext] Response status:', res.status);*/
 
       if (res.ok) {
         const data = await res.json();
-        console.log('✅ [UnreadContext] Data received:', data);
-        console.log('🔔 [UnreadContext] Setting unreadCount to:', data.unreadCount);
+        /*console.log('✅ [UnreadContext] Data received:', data);
+        console.log('🔔 [UnreadContext] Setting unreadCount to:', data.unreadCount);*/
         setUnreadCount(data.unreadCount || 0);
       } else {
         console.error('❌ [UnreadContext] Response NOT OK:', res.status);

@@ -356,41 +356,11 @@ const CampoSchema = new Schema<ICampo>(
       default: true,
     },
 
+    // ✅ CORREZIONE: Rimossa la funzione default() che sovrascriveva i pricingRules
+    // Ora usa i valori inviati dal frontend, oppure i default del PricingRulesSchema
     pricingRules: {
       type: PricingRulesSchema,
-      default: function () {
-        const doc = this as any;
-        const basePrice = doc.pricePerHour || 20;
-        const halfPrice = basePrice * 1.4;
-
-        return {
-          mode: "flat",
-          flatPrices: {
-            oneHour: basePrice,
-            oneHourHalf: halfPrice,
-          },
-          basePrices: {
-            oneHour: basePrice,
-            oneHourHalf: halfPrice,
-          },
-          timeSlotPricing: {
-            enabled: false,
-            slots: [],
-          },
-          dateOverrides: {
-            enabled: false,
-            dates: [],
-          },
-          periodOverrides: {
-            enabled: false,
-            periods: [],
-          },
-          playerCountPricing: {
-            enabled: false,
-            prices: [],
-          },
-        };
-      },
+      required: true,
     },
 
     weeklySchedule: {

@@ -172,6 +172,125 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // 📸 IMMAGINI
+  emptyImagesBox: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+
+  emptyImagesIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F3E5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+
+  emptyImagesTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 6,
+  },
+
+  emptyImagesSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+
+  addImagesButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#9C27B0",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: "#9C27B0",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  addImagesButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  imagesScroll: {
+    paddingBottom: 16,
+  },
+
+  imagePreviewCard: {
+    width: 120,
+    height: 90,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#f0f0f0",
+    marginRight: 12,
+  },
+
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+
+  mainImageBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFB800",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  mainImageBadgeText: {
+    color: "white",
+    fontSize: 9,
+    fontWeight: "700",
+  },
+
+  manageImagesButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F3E5F5",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#9C27B0",
+  },
+
+  manageImagesIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  manageImagesText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#9C27B0",
+  },
+
   // INPUTS
   inputGroup: {
     marginBottom: 16,

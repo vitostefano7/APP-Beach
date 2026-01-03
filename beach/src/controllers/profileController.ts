@@ -5,6 +5,8 @@ import PlayerProfile from "../models/PlayerProfile";
 import UserPreferences from "../models/UserPreferences";
 import Booking from "../models/Booking";
 import { AuthRequest } from "../middleware/authMiddleware";
+import fs from "fs";
+import path from "path";
 
 /**
  * GET /users/:userId
@@ -31,7 +33,7 @@ export const getUserProfile = async (
     }
 
     const user = await User.findById(userId).select(
-      "_id name email phone createdAt"
+      "_id name email phone avatarUrl createdAt"
     );
 
     if (!user) {
@@ -201,14 +203,100 @@ export const updateMe = async (
 };
 
 /**
+ * POST /users/me/avatar
+ * Upload avatar immagine profilo
+ */
+export const uploadAvatar = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Nessun file caricato" });
+    }
+
+    console.log("📸 Upload avatar per user:", userId);
+    console.log("📁 File:", req.file.filename);
+
+    // ✅ Trova l'utente e il vecchio avatar
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // ✅ Elimina il vecchio avatar se esiste
+    if (user.avatarUrl) {
+      const oldFilePath = path.join(__dirname, "../../../", user.avatarUrl);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+        console.log("🗑️ Vecchio avatar eliminato:", oldFilePath);
+      }
+    }
+
+    // ✅ Aggiorna l'utente con il nuovo avatar
+    const avatarUrl = `/images/profilo/${req.file.filename}`;
+    user.avatarUrl = avatarUrl;
+    await user.save();
+
+    console.log("✅ Avatar aggiornato:", avatarUrl);
+
+    res.json({
+      message: "Avatar caricato con successo",
+      avatarUrl,
+    });
+  } catch (error) {
+    console.error("❌ uploadAvatar error:", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * DELETE /users/me/avatar
+ * Rimuove avatar
+ */
+export const deleteAvatar = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // ✅ Elimina il file se esiste
+    if (user.avatarUrl) {
+      const filePath = path.join(__dirname, "../../", user.avatarUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log("🗑️ Avatar eliminato:", filePath);
+      }
+    }
+
+    // ✅ Rimuovi avatar dal database
+    user.avatarUrl = undefined;
+    await user.save();
+
+    res.json({ message: "Avatar rimosso con successo" });
+  } catch (error) {
+    console.error("❌ deleteAvatar error:", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
  * POST /users/me/change-password
  */
 export const changePassword = async (
   req: AuthRequest,
   res: Response
 ) => {
-  console.log("🔐 ========== CHANGE PASSWORD CALLED ==========");
-  console.log("📍 Route: POST /users/me/change-password");
+  console.log("🔒 ========== CHANGE PASSWORD CALLED ==========");
+  console.log("🔒 Route: POST /users/me/change-password");
   console.log("👤 User ID:", req.user?.id);
   console.log("📦 Request Body:", {
     hasCurrentPassword: !!req.body.currentPassword,

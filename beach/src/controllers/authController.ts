@@ -10,7 +10,15 @@ const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi env
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
-    console.log("📝 Tentativo registrazione:", { name, email, role });
+    console.log("🔐 Tentativo registrazione:", { name, email, role });
+    console.log("📸 req.file presente?", (req as any).file ? "SÌ" : "NO");
+    if ((req as any).file) {
+      console.log("📸 File info:", {
+        filename: (req as any).file.filename,
+        path: (req as any).file.path,
+        mimetype: (req as any).file.mimetype,
+      });
+    }
 
     if (!name || !email || !password) {
       console.log("❌ Registrazione fallita: campi mancanti");
@@ -27,11 +35,23 @@ export const register = async (req: Request, res: Response) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
+    // ✅ Gestione avatar durante registrazione
+    let avatarUrl: string | undefined = undefined;
+    let tempFilePath: string | undefined = undefined;
+    
+    if ((req as any).file) {
+      console.log("📸 File ricevuto durante registrazione:", (req as any).file.filename);
+      tempFilePath = (req as any).file.path;
+      // Per ora usiamo il filename temporaneo
+      avatarUrl = `/images/profilo/${(req as any).file.filename}`;
+    }
+
     const user = await User.create({
       name,
       email,
       password: hashed,
       role: role === "owner" ? "owner" : "player",
+      ...(avatarUrl && { avatarUrl }), // ✅ Aggiungi solo se esiste
     });
 
     console.log("✅ Utente registrato:", {
@@ -39,7 +59,32 @@ export const register = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl,
     });
+
+    // ✅ Se c'è un file temporaneo, rinominalo con l'userId reale
+    if (tempFilePath && (req as any).file) {
+      const fs = require("fs");
+      const path = require("path");
+      
+      const oldFilename = (req as any).file.filename;
+      const ext = path.extname(oldFilename);
+      const newFilename = `${user._id}_${Date.now()}${ext}`;
+      const newFilePath = path.join(path.dirname(tempFilePath), newFilename);
+      
+      try {
+        fs.renameSync(tempFilePath, newFilePath);
+        console.log("🔄 File rinominato:", oldFilename, "→", newFilename);
+        
+        // Aggiorna avatarUrl nel database
+        user.avatarUrl = `/images/profilo/${newFilename}`;
+        await user.save();
+        
+        console.log("✅ avatarUrl aggiornato nel DB:", user.avatarUrl);
+      } catch (err) {
+        console.error("❌ Errore rinomina file:", err);
+      }
+    }
 
     // 👇 CREA STRUTTURE DI PROFILO SOLO PER PLAYER
     if (user.role === "player") {
@@ -63,7 +108,8 @@ export const register = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token,  // ✅ AGGIUNTO
+      avatarUrl: user.avatarUrl, // ✅ NUOVO
+      token,
     });
   } catch (err) {
     console.error("❌ Register error:", err);
@@ -106,6 +152,7 @@ export const login = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl,
       token: `${token.substring(0, 20)}...`,
     });
 
@@ -118,6 +165,7 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatarUrl: user.avatarUrl, // ✅ NUOVO
       },
     });
   } catch (err) {
