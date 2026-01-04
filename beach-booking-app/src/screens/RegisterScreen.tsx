@@ -1,15 +1,15 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  ScrollView,
   Alert,
   Image,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { AuthContext } from "../context/AuthContext";
@@ -25,6 +25,11 @@ export default function RegisterScreen({ navigation }: any) {
   const [role, setRole] = useState<"player" | "owner">("player");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Refs per gestire il focus
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
 
   // ✅ Funzione per selezionare immagine
   const pickImage = async () => {
@@ -193,134 +198,176 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        <Text style={styles.title}>Crea il tuo account</Text>
-        <Text style={styles.subtitle}>
-          Inizia a prenotare i tuoi campi preferiti
-        </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAwareScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        extraHeight={150}
+        extraScrollHeight={150}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableResetScrollToCoords={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Crea il tuo account</Text>
+          <Text style={styles.subtitle}>
+            Inizia a prenotare i tuoi campi preferiti
+          </Text>
 
-        {/* ✅ AVATAR PICKER */}
-        <View style={styles.avatarSection}>
-          <Pressable style={styles.avatarButton} onPress={selectAvatar}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          {/* ✅ AVATAR PICKER */}
+          <View style={styles.avatarSection}>
+            <Pressable style={styles.avatarButton} onPress={selectAvatar}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="camera" size={32} color="#999" />
+                  <Text style={styles.avatarText}>Aggiungi foto</Text>
+                </View>
+              )}
+            </Pressable>
+            {avatarUri && (
+              <Pressable
+                style={styles.removeAvatar}
+                onPress={() => setAvatarUri(null)}
+              >
+                <Ionicons name="close-circle" size={28} color="#F44336" />
+              </Pressable>
+            )}
+          </View>
+
+          {/* ROLE SELECTOR */}
+          <View style={styles.roleContainer}>
+            <Pressable
+              style={[styles.roleButton, role === "player" && styles.roleActive]}
+              onPress={() => setRole("player")}
+            >
+              <Ionicons
+                name="tennisball"
+                size={24}
+                color={role === "player" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[styles.roleText, role === "player" && styles.roleTextActive]}
+              >
+                Giocatore
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.roleButton, role === "owner" && styles.roleActive]}
+              onPress={() => setRole("owner")}
+            >
+              <Ionicons
+                name="business"
+                size={24}
+                color={role === "owner" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[styles.roleText, role === "owner" && styles.roleTextActive]}
+              >
+                Proprietario
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* FORM FIELDS */}
+          <Text style={styles.label}>Nome completo *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Mario Rossi"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => emailRef.current?.focus()}
+          />
+
+          <Text style={styles.label}>Email *</Text>
+          <TextInput
+            ref={emailRef}
+            style={styles.input}
+            placeholder="email@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => passwordRef.current?.focus()}
+          />
+
+          <Text style={styles.label}>Password *</Text>
+          <TextInput
+            ref={passwordRef}
+            style={styles.input}
+            placeholder="Almeno 8 caratteri"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+          />
+
+          <Text style={styles.label}>Conferma password *</Text>
+          <TextInput
+            ref={confirmPasswordRef}
+            style={styles.input}
+            placeholder="Ripeti la password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleRegister}
+          />
+
+          <Pressable
+            style={[styles.registerButton, loading && { opacity: 0.6 }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
             ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="camera" size={32} color="#999" />
-                <Text style={styles.avatarText}>Aggiungi foto</Text>
-              </View>
+              <Text style={styles.registerButtonText}>Registrati</Text>
             )}
           </Pressable>
-          {avatarUri && (
-            <Pressable
-              style={styles.removeAvatar}
-              onPress={() => setAvatarUri(null)}
-            >
-              <Ionicons name="close-circle" size={28} color="#F44336" />
-            </Pressable>
-          )}
-        </View>
-
-        {/* ROLE SELECTOR */}
-        <View style={styles.roleContainer}>
-          <Pressable
-            style={[styles.roleButton, role === "player" && styles.roleActive]}
-            onPress={() => setRole("player")}
-          >
-            <Ionicons
-              name="tennisball"
-              size={24}
-              color={role === "player" ? "#fff" : "#666"}
-            />
-            <Text
-              style={[styles.roleText, role === "player" && styles.roleTextActive]}
-            >
-              Giocatore
-            </Text>
-          </Pressable>
 
           <Pressable
-            style={[styles.roleButton, role === "owner" && styles.roleActive]}
-            onPress={() => setRole("owner")}
+            style={styles.loginLink}
+            onPress={() => navigation.navigate("Login")}
           >
-            <Ionicons
-              name="business"
-              size={24}
-              color={role === "owner" ? "#fff" : "#666"}
-            />
-            <Text
-              style={[styles.roleText, role === "owner" && styles.roleTextActive]}
-            >
-              Proprietario
+            <Text style={styles.loginLinkText}>
+              Hai già un account? <Text style={styles.loginLinkBold}>Accedi</Text>
             </Text>
           </Pressable>
         </View>
-
-        {/* FORM FIELDS */}
-        <Text style={styles.label}>Nome completo *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Mario Rossi"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
-
-        <Text style={styles.label}>Email *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="email@example.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <Text style={styles.label}>Password *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Almeno 8 caratteri"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <Text style={styles.label}>Conferma password *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ripeti la password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-
-        <Pressable
-          style={[styles.registerButton, loading && { opacity: 0.6 }]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.registerButtonText}>Registrati</Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          style={styles.loginLink}
-          onPress={() => navigation.navigate("Login")}
-        >
-          <Text style={styles.loginLinkText}>
-            Hai già un account? <Text style={styles.loginLinkBold}>Accedi</Text>
-          </Text>
-        </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = {
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  content: {
+    padding: 20,
+    paddingTop: 60, // Spazio extra in alto
+  },
   title: {
     fontSize: 28,
     fontWeight: "700" as const,

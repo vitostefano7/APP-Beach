@@ -5,6 +5,11 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -52,47 +57,81 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Accedi</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>Accedi</Text>
 
-      {/* EMAIL */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        textContentType="emailAddress"
-      />
+            {/* EMAIL */}
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => {
+                // Focus sul campo password quando si preme "next"
+                // Dovrai aggiungere una ref per questo, ma per ora andiamo con questa soluzione
+              }}
+            />
 
-      {/* PASSWORD */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        textContentType="password"
-      />
+            {/* PASSWORD */}
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+            />
 
-      <Pressable
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Accesso..." : "Accedi"}
-        </Text>
-      </Pressable>
+            <Pressable
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Accesso..." : "Accedi"}
+              </Text>
+            </Pressable>
 
-      <Pressable onPress={() => navigation.navigate("Register")}>
-        <Text style={styles.link}>Registrati</Text>
-      </Pressable>
-    </View>
+            <Pressable 
+              style={styles.linkContainer}
+              onPress={() => navigation.navigate("Register")}
+            >
+              <Text style={styles.link}>Non hai un account? Registrati</Text>
+            </Pressable>
+            
+            <Pressable 
+              style={styles.linkContainer}
+              onPress={() => navigation.navigate("ForgotPassword")}
+            >
+              <Text style={[styles.link, styles.smallLink]}>
+                Hai dimenticato la password?
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -102,28 +141,42 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
+  },
+  content: {
     padding: 20,
+    paddingTop: 60, // Spazio in alto per alzare il contenuto
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 40,
+    color: "#1a1a1a",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
+    borderColor: "#e1e1e1",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     fontSize: 16,
+    backgroundColor: "#f9f9f9",
   },
   button: {
     backgroundColor: "#2b8cee",
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 4,
+    padding: 18,
+    borderRadius: 12,
+    marginTop: 8,
+    shadowColor: "#2b8cee",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -134,10 +187,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
   },
+  linkContainer: {
+    marginTop: 20,
+    alignItems: "center",
+  },
   link: {
-    marginTop: 18,
     color: "#2b8cee",
-    textAlign: "center",
     fontWeight: "600",
+    fontSize: 16,
+  },
+  smallLink: {
+    fontSize: 14,
+    color: "#666",
   },
 });
