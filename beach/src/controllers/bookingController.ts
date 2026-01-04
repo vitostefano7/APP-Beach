@@ -166,6 +166,24 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     console.log("✅ Prenotazione creata:", booking._id);
 
+    // 🆕 Crea automaticamente un Match associato
+    const match = await Match.create({
+      booking: new mongoose.Types.ObjectId(booking._id),
+      createdBy: new mongoose.Types.ObjectId(user.id),
+      players: [
+        {
+          user: new mongoose.Types.ObjectId(user.id),
+          status: "confirmed",
+          joinedAt: new Date(),
+        },
+      ],
+      maxPlayers: 4, // Default per beach volley 2v2
+      isPublic: false,
+      status: "draft",
+    });
+
+    console.log("✅ Match creato automaticamente:", match._id);
+
     // Popola i dati per la risposta
     const populatedBooking = await Booking.findById(booking._id)
       .populate({
@@ -188,6 +206,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
  * 📌 PRENOTAZIONI DEL PLAYER (con hasMatch)
  * GET /bookings/me
  */
+// In bookingController.ts - getMyBookings
+// bookingController.ts - getMyBookings (VERSIONE CORRETTA)
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
     console.log("📋 Caricamento prenotazioni utente:", req.user!.id);
@@ -202,19 +222,40 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       })
       .sort({ date: -1, startTime: -1 });
 
-    // ✅ prende tutte le match collegate a queste booking
-    const matches = await Match.find({
-      booking: { $in: bookings.map((b) => b._id) },
-    }).select("booking");
+    // Prende tutti i match collegati
+    const matchIds = bookings.map(b => b._id);
+    const matches = await Match.find({ booking: { $in: matchIds } })
+      .select('booking status players maxPlayers isPublic winner score');
 
-    const matchMap = new Set(matches.map((m) => m.booking.toString()));
+    // Crea una mappa bookingId -> match
+    const matchMap = new Map();
+    matches.forEach(match => {
+      matchMap.set(match.booking.toString(), {
+        _id: match._id,
+        status: match.status,
+        players: match.players,
+        maxPlayers: match.maxPlayers,
+        isPublic: match.isPublic,
+        winner: match.winner,
+        sets: match.score?.sets || [],
+      });
+    });
 
-    const result = bookings.map((b) => ({
-      ...b.toObject(),
-      hasMatch: matchMap.has(b._id.toString()),
-    }));
+    const result = bookings.map(booking => {
+      const bookingObj = booking.toObject();
+      const matchData = matchMap.get(booking._id.toString());
+      
+      return {
+        ...bookingObj,
+        hasMatch: !!matchData,
+        matchId: matchData?._id,
+        match: matchData || null,
+      };
+    });
 
     console.log(`✅ ${result.length} prenotazioni trovate`);
+    console.log(`✅ Prenotazioni con match: ${result.filter(b => b.hasMatch).length}`);
+    
     res.json(result);
   } catch (err) {
     console.error("❌ getMyBookings error:", err);
@@ -226,9 +267,13 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
  * 📌 SINGOLA PRENOTAZIONE
  * GET /bookings/:id
  */
+// bookingController.ts - getBookingById (VERSIONE CORRETTA)
+// bookingController.ts - getBookingById (AGGIORNA)
 export const getBookingById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+
+    console.log('📋 Caricamento prenotazione ID:', id);
 
     const booking = await Booking.findById(id)
       .populate({
@@ -244,21 +289,69 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
-    if (booking.user._id.toString() !== req.user!.id) {
+    if ((booking as any).user._id.toString() !== req.user!.id) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    const match = await Match.findOne({ booking: booking._id });
+    // Cerca il match associato
+    const match = await Match.findOne({ booking: booking._id })
+      .populate("players.user", "name username avatarUrl")
+      .populate("createdBy", "name username avatarUrl");
 
-    res.json({
-      ...booking.toObject(),
-      match: match
-        ? {
-            winner: match.winner,
-            sets: match.score?.sets ?? [],
-          }
-        : null,
+    // Converti tutto in oggetto semplice
+    const bookingObj = booking.toObject({ versionKey: false });
+    
+    // Prepara l'oggetto di risposta
+    const responseData: any = {
+      ...bookingObj,
+    };
+
+    // Se esiste il match, aggiungi i dettagli CONVERTITI IN STRINGHE
+    if (match) {
+      const matchObj = match.toObject({ versionKey: false });
+      
+      // Converti tutti gli ObjectId in stringhe
+      responseData.matchId = matchObj._id.toString();
+      responseData.hasMatch = true;
+      responseData.match = {
+        _id: matchObj._id.toString(),
+        status: matchObj.status,
+        players: matchObj.players.map((p: any) => ({
+          ...p,
+          user: {
+            ...p.user,
+            _id: p.user._id.toString()
+          },
+          _id: p._id ? p._id.toString() : undefined
+        })),
+        maxPlayers: matchObj.maxPlayers,
+        isPublic: matchObj.isPublic,
+        winner: matchObj.winner,
+        sets: matchObj.score?.sets || [],
+        createdBy: {
+          ...matchObj.createdBy,
+          _id: matchObj.createdBy._id.toString()
+        },
+        booking: matchObj.booking ? matchObj.booking.toString() : undefined,
+      };
+    } else {
+      responseData.hasMatch = false;
+      responseData.match = null;
+    }
+
+    // Converti anche gli altri ObjectId in stringhe
+    responseData._id = responseData._id.toString();
+    responseData.user._id = responseData.user._id.toString();
+    responseData.campo._id = responseData.campo._id.toString();
+    responseData.campo.struttura._id = responseData.campo.struttura._id.toString();
+
+    console.log('✅ Prenotazione caricata con match:', {
+      hasMatch: !!match,
+      matchId: match?._id.toString(),
+      matchStatus: match?.status
     });
+
+    res.json(responseData);
   } catch (err) {
     console.error("❌ getBookingById error:", err);
     res.status(500).json({ message: "Errore server" });
@@ -553,4 +646,4 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
     console.error("❌ cancelOwnerBooking error:", err);
     res.status(500).json({ message: "Errore server" });
   }
-};
+};  

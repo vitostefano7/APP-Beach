@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import StruttureStack from "./StruttureStack";
 import BookingsStack from "./BookingsStack";
 import ProfilePlayerStack from "./ProfilePlayerStack";
+import DashboardStack from "./DashboardStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -22,7 +23,9 @@ export default function MainTabs() {
         },
         tabBarIcon: ({ color, focused }) => {
           let iconName: any;
-
+          
+          if (route.name === "Dashboard")
+            iconName = focused ? "home" : "home-outline";
           if (route.name === "Strutture")
             iconName = focused ? "business" : "business-outline";
           if (route.name === "Prenotazioni")
@@ -34,6 +37,7 @@ export default function MainTabs() {
         },
       })}
     >
+      <Tab.Screen name="Dashboard" component={DashboardStack} />
       <Tab.Screen name="Strutture" component={StruttureStack} />
       <Tab.Screen name="Prenotazioni" component={BookingsStack} />
       <Tab.Screen name="Profilo" component={ProfilePlayerStack} />

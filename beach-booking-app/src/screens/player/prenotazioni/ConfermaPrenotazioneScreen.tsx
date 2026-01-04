@@ -32,19 +32,24 @@ export default function ConfermaPrenotazioneScreen() {
 
   const [loading, setLoading] = useState(false);
 
-  // Calcola endTime (30 min dopo)
-  const calculateEndTime = (time: string) => {
+  // Calcola endTime (1 ora dopo per default)
+  const calculateEndTime = (time: string, duration: string = "1h") => {
     const [h, m] = time.split(":").map(Number);
+    const durationMinutes = duration === "1h" ? 60 : 90;
+    
     let endH = h;
-    let endM = m + 30;
+    let endM = m + durationMinutes;
+    
     if (endM >= 60) {
-      endH++;
-      endM = 0;
+      endH += Math.floor(endM / 60);
+      endM = endM % 60;
     }
+    
     return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
   };
 
-  const endTime = calculateEndTime(startTime);
+  const duration = "1h"; // Default 1 ora
+  const endTime = calculateEndTime(startTime, duration);
 
   // Formatta la data
   const formatDate = (dateStr: string) => {
@@ -72,6 +77,7 @@ export default function ConfermaPrenotazioneScreen() {
           campoId,
           date,
           startTime,
+          duration, // 🆕 Aggiungo duration obbligatorio
         }),
       });
 
@@ -168,7 +174,9 @@ export default function ConfermaPrenotazioneScreen() {
               <Text style={styles.detailValue}>
                 {startTime} - {endTime}
               </Text>
-              <Text style={styles.detailHint}>(30 minuti)</Text>
+              <Text style={styles.detailHint}>
+                ({duration === "1h" ? "1 ora" : "1 ora e 30 minuti"})
+              </Text>
             </View>
           </View>
         </View>
@@ -177,7 +185,7 @@ export default function ConfermaPrenotazioneScreen() {
           <Text style={styles.cardTitle}>💰 Pagamento</Text>
           
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Prezzo orario</Text>
+            <Text style={styles.priceLabel}>Prezzo</Text>
             <Text style={styles.priceValue}>€{price}</Text>
           </View>
 
