@@ -5,6 +5,7 @@ import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenota
 import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import HomeScreen from "../screens/player/dashboard/DashboardScreen"; // 🆕 Importa HomeScreen
+import DettaglioInvito from "../screens/player/dashboard/DettaglioInvitoScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,11 @@ export default function DashboardStack() { // ✅ Nome corretto
           title: "Dettagli campo",
           headerBackTitle: "Indietro",
         }}
+      />
+      <Stack.Screen 
+        name="DettaglioInvito" 
+        component={DettaglioInvito}
+        options={{ title: "Dettaglio Invito" }}
       />
     </Stack.Navigator>
   );

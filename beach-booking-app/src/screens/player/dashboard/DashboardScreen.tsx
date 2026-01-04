@@ -5,7 +5,7 @@ import {
   View,
   Pressable,
   ActivityIndicator,
-  Text, // Aggiunto Text mancante
+  Text,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -21,6 +21,18 @@ import MatchHistoryCard from "./components/MatchHistoryCard";
 import EmptyStateCard from "./components/EmptyStateCard";
 import { styles } from "./styles";
 
+// Componente per il titolo degli inviti
+const InviteCardTitle = ({ count }: { count: number }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <Text style={styles.sectionTitle}>Inviti in attesa</Text>
+    {count > 0 && (
+      <View style={styles.inviteCountBadge}>
+        <Text style={styles.inviteCountText}>{count}</Text>
+      </View>
+    )}
+  </View>
+);
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const {
@@ -35,6 +47,16 @@ export default function HomeScreen() {
     onRefresh,
     respondToInvite,
   } = useDashboardData();
+
+  const handleViewInviteDetails = (invite: any) => {
+    console.log("Viewing invite details:", invite);
+    
+    // Naviga alla schermata di dettaglio invito
+    navigation.navigate("DettaglioInvito", {
+      inviteId: invite._id || invite.match?._id,
+      inviteData: invite,
+    });
+  };
 
   if (loading && !refreshing) {
     return (
@@ -99,7 +121,7 @@ export default function HomeScreen() {
         {/* Inviti in Attesa */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <InviteCard.Title count={pendingInvites.length} />
+            <InviteCardTitle count={pendingInvites.length} />
           </View>
           
           {pendingInvites.length > 0 ? (
@@ -108,13 +130,7 @@ export default function HomeScreen() {
                 key={invite._id || invite.match?._id}
                 invite={invite}
                 userId={user?.id}
-                onPress={(bookingId) => {
-                  if (bookingId) {
-                    navigation.navigate("DettaglioPrenotazione", {
-                      bookingId,
-                    });
-                  }
-                }}
+                onViewDetails={handleViewInviteDetails}
                 onRespond={respondToInvite}
               />
             ))

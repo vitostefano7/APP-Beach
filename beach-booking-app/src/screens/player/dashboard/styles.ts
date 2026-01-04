@@ -332,6 +332,30 @@ export const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  // Aggiungi questi stili alla sezione Invite Card:
+expiredBadge: {
+  position: "absolute",
+  top: 12,
+  right: 12,
+  backgroundColor: "#F5F5F5",
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "#E0E0E0",
+},
+expiredBadgeText: {
+  fontSize: 10,
+  fontWeight: "700",
+  color: "#999",
+},
+expiredText: {
+  fontSize: 12,
+  fontStyle: "italic",
+  color: "#999",
+  textAlign: "center",
+  width: "100%",
+},  
   emptyInviteCard: {
     alignItems: "center",
     justifyContent: "center",

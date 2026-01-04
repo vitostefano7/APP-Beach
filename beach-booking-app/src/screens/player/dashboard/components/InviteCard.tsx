@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../../config/api";
 import { formatDate } from "../utils/dateFormatter";
@@ -7,52 +7,115 @@ import { styles } from "../styles";
 
 interface InviteCardProps {
   invite: any;
-  userId?: string; // Aggiungi questa prop
-  onPress: (bookingId?: string) => void;
+  userId?: string;
+  onViewDetails: (invite: any) => void; // Nuova prop per vedere dettagli
   onRespond: (matchId: string, response: "accept" | "decline") => void;
 }
 
-const InviteCard: React.FC<InviteCardProps> = ({ invite, userId, onPress, onRespond }) => {
-  // Gestione di diverse strutture dati
+const InviteCard: React.FC<InviteCardProps> = ({ 
+  invite, 
+  userId, 
+  onViewDetails, 
+  onRespond 
+}) => {
+  console.log("🎯 InviteCard rendering");
+
   const match = invite.match || invite;
   const booking = invite.booking || match.booking;
   const matchId = match._id;
   const createdBy = invite.createdBy || match.createdBy;
   
-  // Trova lo stato del player corrente - usa la prop userId
+  // Trova lo stato del player corrente
   const myPlayer = match.players?.find((p: any) => p.user?._id === userId);
   const myStatus = myPlayer?.status || "unknown";
 
-  console.log(`InviteCard - Match: ${matchId}, My status: ${myStatus}, User ID: ${userId}`);
+  console.log(`Match ID: ${matchId}, My status: ${myStatus}`);
 
-  const handlePress = () => {
-    if (booking?._id) {
-      onPress(booking._id);
-    } else {
-      console.log("Invito senza booking:", match);
-    }
-  };
-
-  const handleRespond = (response: "accept" | "decline", e: any) => {
-    e.stopPropagation();
-    console.log(`Rispondo all'invito ${matchId} con: ${response}`);
-    
-    if (matchId) {
-      onRespond(matchId, response);
-    } else {
-      console.error("Match ID non trovato");
-      alert("Errore: ID invito non valido");
-    }
-  };
-
-  // Se lo status non è "pending", non mostrare la card
+  // Solo se è pending
   if (myStatus !== "pending") {
-    console.log(`Invito ${matchId} non mostrato: status = ${myStatus}, userId = ${userId}`);
+    console.log(`Skipping invite ${matchId}, status: ${myStatus}`);
     return null;
   }
 
+  const handleCardPress = () => {
+    console.log(`Card pressed - showing details for invite: ${matchId}`);
+    onViewDetails(invite);
+  };
+
+  const handleAccept = (e: any) => {
+    e.stopPropagation();
+    console.log(`Accepting invite: ${matchId}`);
+    
+    Alert.alert(
+      "Conferma partecipazione",
+      "Vuoi accettare l'invito a questa partita?",
+      [
+        {
+          text: "Annulla",
+          style: "cancel"
+        },
+        {
+          text: "Accetta",
+          onPress: () => {
+            console.log(`User confirmed accept for match: ${matchId}`);
+            onRespond(matchId, "accept");
+          },
+          style: "default"
+        }
+      ]
+    );
+  };
+
+  const handleDecline = (e: any) => {
+    e.stopPropagation();
+    console.log(`Declining invite: ${matchId}`);
+    
+    Alert.alert(
+      "Rifiuta invito",
+      "Sei sicuro di voler rifiutare questo invito?",
+      [
+        {
+          text: "Annulla",
+          style: "cancel"
+        },
+        {
+          text: "Rifiuta",
+          onPress: () => {
+            console.log(`User confirmed decline for match: ${matchId}`);
+            onRespond(matchId, "decline");
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  };
+
+  // Calcola se la partita è ancora valida (data nel futuro)
+  const isExpired = () => {
+    if (!booking?.date) return false;
+    const matchDate = new Date(booking.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return matchDate < today;
+  };
+
+  const expired = isExpired();
+
   return (
-    <Pressable style={styles.inviteCard} onPress={handlePress}>
+    <Pressable 
+      style={[
+        styles.inviteCard, 
+        expired && { opacity: 0.6, borderLeftColor: "#CCCCCC" }
+      ]} 
+      onPress={handleCardPress}
+      disabled={expired}
+    >
+      {expired && (
+        <View style={styles.expiredBadge}>
+          <Text style={styles.expiredBadgeText}>Scaduto</Text>
+        </View>
+      )}
+
       <View style={styles.inviteHeader}>
         <View style={styles.inviteLeft}>
           {createdBy?.avatarUrl ? (
@@ -69,17 +132,13 @@ const InviteCard: React.FC<InviteCardProps> = ({ invite, userId, onPress, onResp
             <Text style={styles.inviteTitle}>
               {createdBy?.name} ti ha invitato
             </Text>
-            {booking ? (
+            {booking?.campo?.struttura?.name && (
               <View style={styles.inviteDetails}>
                 <Ionicons name="location" size={12} color="#666" />
                 <Text style={styles.inviteDetailText}>
-                  {booking.campo?.struttura?.name || "Campo non specificato"}
+                  {booking.campo.struttura.name}
                 </Text>
               </View>
-            ) : (
-              <Text style={[styles.inviteDetailText, { fontStyle: 'italic' }]}>
-                Partita senza prenotazione
-              </Text>
             )}
           </View>
         </View>
@@ -103,34 +162,31 @@ const InviteCard: React.FC<InviteCardProps> = ({ invite, userId, onPress, onResp
         </View>
       )}
 
-      <View style={styles.inviteActions}>
-        <Pressable
-          style={[styles.inviteActionButton, styles.inviteDecline]}
-          onPress={(e) => handleRespond("decline", e)}
-        >
-          <Text style={styles.inviteDeclineText}>Rifiuta</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.inviteActionButton, styles.inviteAccept]}
-          onPress={(e) => handleRespond("accept", e)}
-        >
-          <Ionicons name="checkmark" size={16} color="white" />
-          <Text style={styles.inviteAcceptText}>Accetta</Text>
-        </Pressable>
-      </View>
+      {!expired ? (
+        <View style={styles.inviteActions}>
+          <Pressable
+            style={[styles.inviteActionButton, styles.inviteDecline]}
+            onPress={handleDecline}
+          >
+            <Text style={styles.inviteDeclineText}>Rifiuta</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.inviteActionButton, styles.inviteAccept]}
+            onPress={handleAccept}
+          >
+            <Ionicons name="checkmark" size={16} color="white" />
+            <Text style={styles.inviteAcceptText}>Accetta</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.inviteActions}>
+          <Text style={styles.expiredText}>
+            Questo invito è scaduto
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 };
-
-InviteCard.Title = ({ count }: { count: number }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-    <Text style={styles.sectionTitle}>Inviti in attesa</Text>
-    {count > 0 && (
-      <View style={styles.inviteCountBadge}>
-        <Text style={styles.inviteCountText}>{count}</Text>
-      </View>
-    )}
-  </View>
-);
 
 export default InviteCard;
