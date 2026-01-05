@@ -33,8 +33,8 @@ export const useDashboardData = () => {
       // Carica prossima prenotazione
       await loadNextBooking();
 
-      // Carica inviti pendenti - usa il nuovo metodo
-      await loadPendingInvitesImproved();
+      // Carica inviti pendenti
+      await loadPendingInvites();
 
       // Carica ultimi match e statistiche
       await loadRecentMatchesAndStats();
@@ -49,244 +49,293 @@ export const useDashboardData = () => {
   };
 
   const loadNextBooking = async () => {
-    try {
-      const bookingsRes = await fetch(`${API_URL}/bookings/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  try {
+    const bookingsRes = await fetch(`${API_URL}/bookings/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    if (bookingsRes.ok) {
+      const bookings = await bookingsRes.json();
       
-      if (bookingsRes.ok) {
-        const bookings = await bookingsRes.json();
-        
-        console.log("TUTTE le prenotazioni ricevute:", bookings.length);
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const upcoming = bookings
-          .filter((b: any) => {
-            const bookingDate = new Date(b.date);
-            bookingDate.setHours(0, 0, 0, 0);
-            return bookingDate >= today && b.status === "confirmed";
-          })
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-        console.log("Prenotazioni future confermate:", upcoming.length);
-        setNextBooking(upcoming[0] || null);
-      }
-    } catch (error) {
-      console.error("Errore caricamento prenotazioni:", error);
-    }
-  };
-
-  const loadPendingInvitesImproved = async () => {
-    try {
-      console.log("=== CARICAMENTO INVITI MIGLIORATO ===");
+      console.log("TUTTE le prenotazioni ricevute:", bookings.length);
       
-      // Prima prova vari endpoint
-      const endpoints = [
-        `${API_URL}/matches/pending-invites`,
-        `${API_URL}/matches/invites/pending`,
-        `${API_URL}/invites/pending`,
-        `${API_URL}/matches?status=draft&player=${user?.id}`,
-        `${API_URL}/matches/pending-invites/me`,
-      ];
+      const now = new Date();
       
-      let invites: any[] = [];
-      
-      for (const endpoint of endpoints) {
+      // Filtra SOLO:
+      // 1. Prenotazioni create dall'utente E attive
+      // 2. Partite dove l'utente è giocatore confermato
+      const relevantBookings = bookings.filter((b: any) => {
+        // 1. Deve essere confermata
+        if (b.status !== "confirmed") {
+          console.log(`Booking ${b._id}: status non confermato (${b.status})`);
+          return false;
+        }
+        
+        // 2. Controlla se è futura
+        let isFuture = false;
         try {
-          console.log(`Provando endpoint: ${endpoint}`);
-          const res = await fetch(endpoint, {
-            headers: { Authorization: `Bearer ${token}` },
+          const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
+          isFuture = bookingDateTime > now;
+        } catch (error) {
+          console.error("Errore parsing data:", error);
+          return false;
+        }
+        
+        if (!isFuture) {
+          console.log(`Booking ${b._id}: non è futura`);
+          return false;
+        }
+        
+        // 3. CASO A: È una prenotazione creata dall'utente
+        const isMyBooking = b.isMyBooking;
+        
+        // DEBUG: Verifica la struttura dei dati
+        console.log(`Booking ${b._id}:`);
+        console.log(`  - isMyBooking: ${b.isMyBooking}`);
+        console.log(`  - hasMatch: ${b.hasMatch}`);
+        if (b.hasMatch && b.match) {
+          console.log(`  - match.players:`, b.match.players?.length || 0);
+          console.log(`  - match.players array:`, JSON.stringify(b.match.players, null, 2));
+          
+          // Cerca l'utente nei giocatori in modo più robusto
+          const myPlayer = b.match.players?.find((p: any) => {
+            // Controlla diversi modi in cui l'ID utente potrebbe essere memorizzato
+            const playerUserId = p.user?._id || p.user || p.userId;
+            console.log(`  - Player check: ${playerUserId} vs ${user?.id}`);
+            return playerUserId === user?.id;
           });
           
-          console.log(`Status ${endpoint}:`, res.status);
-          
-          if (res.ok) {
-            const data = await res.json();
-            console.log(`Endpoint ${endpoint} successo, dati:`, data.length);
-            invites = data;
-            break;
-          } else if (res.status !== 404) {
-            console.log(`Endpoint ${endpoint} errore:`, res.status);
-          }
-        } catch (error) {
-          console.log(`Endpoint ${endpoint} errore fetch:`, error);
-        }
-      }
-      
-      // Se nessun endpoint ha funzionato, carica tutti i match e filtra
-      if (invites.length === 0) {
-        console.log("Nessun endpoint specifico trovato, carico tutti i match...");
-        invites = await loadPendingInvitesFromAllMatches();
-      }
-      
-      console.log("Inviti pendenti finali:", invites.length);
-      
-      // Debug dettagliato degli inviti
-      if (invites.length > 0) {
-        console.log("=== DEBUG DETTAGLIATO INVITI ===");
-        invites.forEach((invite, index) => {
-          const match = invite.match || invite;
-          console.log(`Invito ${index + 1}:`);
-          console.log(`  Match ID: ${match._id}`);
-          console.log(`  Match status: ${match.status}`);
-          console.log(`  Creato da: ${match.createdBy?.name} (${match.createdBy?._id})`);
-          
-          if (match.players && match.players.length > 0) {
-            console.log(`  Numero players: ${match.players.length}`);
-            match.players.forEach((player: any, pIndex: number) => {
-              console.log(`  Player ${pIndex + 1}:`);
-              console.log(`    User: ${player.user?.name} (${player.user?._id})`);
-              console.log(`    Status: ${player.status}`);
-              console.log(`    È l'utente corrente: ${player.user?._id === user?.id}`);
-            });
-          }
-          
-          // Trova il player dell'utente corrente
-          const myPlayer = match.players?.find((p: any) => p.user?._id === user?.id);
+          console.log(`  - myPlayer trovato:`, myPlayer ? 'SI' : 'NO');
           if (myPlayer) {
-            console.log(`  Mio player trovato! Status: ${myPlayer.status}`);
-          } else {
-            console.log(`  ERRORE: Utente corrente non trovato nei players!`);
+            console.log(`  - myPlayer status:`, myPlayer.status);
+            console.log(`  - myPlayer team:`, myPlayer.team);
           }
+        }
+        
+        // 4. CASO B: Ha un match e l'utente è giocatore confermato
+        let isConfirmedPlayer = false;
+        if (b.hasMatch && b.match && b.match.players) {
+          // Cerca l'utente nei giocatori
+          const myPlayer = b.match.players.find((p: any) => {
+            // Verifica in tutti i modi possibili
+            const playerUserId = p.user?._id || p.user || p.userId;
+            return playerUserId === user?.id;
+          });
           
-          if (match.booking) {
-            console.log(`  Prenotazione: ${match.booking.date} ${match.booking.startTime}`);
+          // Se trovato, controlla se è confermato
+          if (myPlayer) {
+            isConfirmedPlayer = myPlayer.status === "confirmed";
+            console.log(`  - isConfirmedPlayer: ${isConfirmedPlayer} (status: ${myPlayer.status})`);
+          }
+        }
+        
+        // MOSTRA se: è una mia prenotazione OPPURE sono confermato nel match
+        const shouldShow = isMyBooking || isConfirmedPlayer;
+        console.log(`  - Should show: ${shouldShow} (myBooking: ${isMyBooking}, confirmed: ${isConfirmedPlayer})`);
+        
+        return shouldShow;
+      });
+      
+      console.log("Prenotazioni rilevanti (mia o confermato):", relevantBookings.length);
+      
+      // Se non ne troviamo, vediamo quali sono tutte le prenotazioni per debug
+      if (relevantBookings.length === 0 && bookings.length > 0) {
+        console.log("=== DEBUG TUTTE LE PRENOTAZIONI ===");
+        bookings.forEach((b: any, index: number) => {
+          console.log(`${index + 1}. ID: ${b._id}`);
+          console.log(`   Data: ${b.date} ${b.startTime}`);
+          console.log(`   Status: ${b.status}`);
+          console.log(`   isMyBooking: ${b.isMyBooking}`);
+          console.log(`   hasMatch: ${b.hasMatch}`);
+          
+          if (b.hasMatch && b.match && b.match.players) {
+            const myPlayer = b.match.players.find((p: any) => {
+              const playerUserId = p.user?._id || p.user || p.userId;
+              return playerUserId === user?.id;
+            });
+            console.log(`   Mio player trovato:`, myPlayer ? 'SI' : 'NO');
+            if (myPlayer) {
+              console.log(`   Mio status: ${myPlayer.status}`);
+              console.log(`   Mio team: ${myPlayer.team}`);
+            }
           }
           console.log('---');
         });
       }
       
-      setPendingInvites(invites);
+      // Ordina per data/orario crescente (le più vicine per prime)
+      relevantBookings.sort((a: any, b: any) => {
+        const dateA = new Date(`${a.date}T${a.startTime}:00`).getTime();
+        const dateB = new Date(`${b.date}T${b.startTime}:00`).getTime();
+        return dateA - dateB;
+      });
       
-    } catch (error) {
-      console.error("Errore caricamento inviti migliorato:", error);
-      // Fallback all'alternativa
-      const fallbackInvites = await loadPendingInvitesFromAllMatches();
-      setPendingInvites(fallbackInvites);
+      setNextBooking(relevantBookings[0] || null);
+      
+      // DEBUG: Log dettagliato
+      if (relevantBookings.length > 0) {
+        console.log("=== PROSSIMA PARTITA TROVATA ===");
+        const next = relevantBookings[0];
+        console.log("ID:", next._id);
+        console.log("Data:", next.date);
+        console.log("Orario:", next.startTime);
+        console.log("Campo:", next.campo?.name);
+        console.log("Creata da me:", next.isMyBooking);
+        
+        if (next.hasMatch && next.match) {
+          const myPlayer = next.match.players?.find((p: any) => {
+            const playerUserId = p.user?._id || p.user || p.userId;
+            return playerUserId === user?.id;
+          });
+          console.log("Mio status nel match:", myPlayer?.status);
+          console.log("Mio team nel match:", myPlayer?.team);
+        }
+      } else {
+        console.log("=== NESSUNA PARTITA RILEVANTE TROVATA ===");
+        console.log("User ID:", user?.id);
+        console.log("User name:", user?.name);
+      }
     }
-  };
+  } catch (error) {
+    console.error("Errore caricamento prossima prenotazione:", error);
+  }
+};
 
-  const loadPendingInvitesFromAllMatches = async (): Promise<any[]> => {
+  const loadPendingInvites = async () => {
     try {
-      console.log("Caricamento di TUTTI i match per filtrare inviti...");
-      const allMatchesRes = await fetch(`${API_URL}/matches/me`, {
+      console.log("=== CARICAMENTO INVITI PENDENTI ===");
+      
+      // Usa SOLO l'endpoint che esiste
+      const res = await fetch(`${API_URL}/matches/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      if (allMatchesRes.ok) {
-        const allMatches = await allMatchesRes.json();
+      if (res.ok) {
+        const allMatches = await res.json();
         console.log("Tutti i match ricevuti:", allMatches.length);
         
-        // Log dettagliato della struttura dei primi 3 match
-        if (allMatches.length > 0) {
-          console.log("=== STRUTTURA DEI PRIMI 3 MATCH ===");
-          allMatches.slice(0, 3).forEach((match: any, index: number) => {
-            console.log(`Match ${index + 1}:`, {
-              id: match._id,
-              status: match.status,
-              playersCount: match.players?.length || 0,
-              createdBy: match.createdBy?.name,
-              hasBooking: !!match.booking
-            });
-            
-            if (match.players && match.players.length > 0) {
-              match.players.forEach((player: any, pIndex: number) => {
-                console.log(`  Player ${pIndex + 1}: ${player.user?.name} - Status: ${player.status}`);
-              });
-            }
-          });
-        }
-        
-        // Filtra match dove l'utente è invitato e non ha ancora risposto
-        const pendingInvitesFromMatches = allMatches.filter((match: any) => {
-          // Verifica che ci siano players
-          if (!match.players || !Array.isArray(match.players)) {
-            console.log(`Match ${match._id} non ha array players valido`);
-            return false;
+        // Filtra gli inviti pendenti
+        const pendingInvites = allMatches.filter((match: any) => {
+          // Verifica che l'utente sia nei players
+          const myPlayer = match.players?.find((p: any) => 
+            p.user?._id === user?.id
+          );
+          
+          if (!myPlayer) {
+            return false; // L'utente non è in questo match
           }
           
-          // Trova il player corrispondente all'utente corrente
-          const myPlayer = match.players.find((p: any) => {
-            // Controlla che il player abbia user e che l'ID corrisponda
-            const isCurrentUser = p.user && p.user._id === user?.id;
-            if (isCurrentUser) {
-              console.log(`Trovato player per utente ${user?.id} in match ${match._id}: status = ${p.status}`);
-            }
-            return isCurrentUser;
-          });
+          // Controlli per determinare se è un invito pendente:
+          // 1. L'utente deve avere status "pending"
+          const isPendingStatus = myPlayer.status === "pending";
           
-          // Un invito è pendente se:
-          // 1. L'utente è nella lista players
-          // 2. Lo status del player è "pending" (non ha ancora risposto)
-          // 3. OPZIONALE: Il match è in stato "draft" o "pending" (ma non sempre)
-          const isPendingInvite = myPlayer && myPlayer.status === "pending";
+          // 2. L'utente NON deve essere il creatore del match
+          const isCreator = match.createdBy?._id === user?.id;
           
-          if (myPlayer && !isPendingInvite) {
-            console.log(`Match ${match._id}: Player trovato ma status = ${myPlayer.status}, non è "pending"`);
-          }
+          // 3. Controlla se è scaduto (opzionale, puoi farlo anche lato client dopo)
+          const isExpired = isInviteExpired(match);
           
-          return isPendingInvite;
+          // È un invito pendente se:
+          // - Lo status è "pending"
+          // - Non è il creatore
+          // - Non è scaduto (se vuoi escludere quelli scaduti)
+          return isPendingStatus && !isCreator && !isExpired;
         });
         
-        console.log("Inviti pendenti (filtrati da tutti i match):", pendingInvitesFromMatches.length);
+        console.log("Inviti pendenti trovati:", pendingInvites.length);
         
-        // Log dettagliato degli inviti trovati
-        if (pendingInvitesFromMatches.length > 0) {
-          console.log("=== INVITI PENDENTI TROVATI ===");
-          pendingInvitesFromMatches.forEach((invite: any, index: number) => {
-            const myPlayer = invite.players.find((p: any) => p.user._id === user?.id);
+        // DEBUG dettagliato
+        if (pendingInvites.length > 0) {
+          console.log("=== DEBUG DETTAGLIATO INVITI ===");
+          pendingInvites.forEach((invite: any, index: number) => {
+            const myPlayer = invite.players?.find((p: any) => p.user?._id === user?.id);
             console.log(`Invito ${index + 1}:`);
             console.log(`  Match ID: ${invite._id}`);
-            console.log(`  Match status: ${invite.status}`);
             console.log(`  Creato da: ${invite.createdBy?.name}`);
             console.log(`  Mio status: ${myPlayer?.status}`);
-            console.log(`  Numero players: ${invite.players.length}`);
+            console.log(`  Data: ${invite.booking?.date}`);
+            console.log(`  Orario: ${invite.booking?.startTime}`);
           });
         }
         
-        return pendingInvitesFromMatches;
+        setPendingInvites(pendingInvites);
+      } else {
+        console.error("Errore caricamento match:", res.status);
+        setPendingInvites([]);
       }
-      return [];
     } catch (error) {
-      console.error("Errore caricamento alternativa inviti:", error);
-      return [];
+      console.error("Errore caricamento inviti:", error);
+      setPendingInvites([]);
+    }
+  };
+
+  // Helper per verificare se un invito è scaduto
+  const isInviteExpired = (match: any): boolean => {
+    const booking = match.booking;
+    if (!booking?.date || !booking?.startTime) {
+      return false;
+    }
+    
+    try {
+      const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+      const cutoffTime = new Date(matchDateTime);
+      cutoffTime.setHours(cutoffTime.getHours() - 2); // Scade 2 ore prima
+      
+      const now = new Date();
+      return now > cutoffTime;
+    } catch (error) {
+      console.error("Errore nel calcolo scadenza:", error);
+      return false;
     }
   };
 
   const loadRecentMatchesAndStats = async () => {
-    try {
-      const matchesRes = await fetch(`${API_URL}/matches/me?status=completed`, {
-        headers: { Authorization: `Bearer ${token}` },
+  try {
+    const matchesRes = await fetch(`${API_URL}/matches/me?status=completed`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    if (matchesRes.ok) {
+      const allMatches = await matchesRes.json();
+      console.log("Match completati ricevuti:", allMatches.length);
+      
+      // Filtra solo quelli con risultati
+      const matchesWithScores = allMatches.filter((m: any) => 
+        m.score?.sets?.length > 0
+      );
+      
+      console.log("Match con risultati:", matchesWithScores.length);
+      
+      // Ordina per data (le più recenti per prime)
+      const sortedMatches = matchesWithScores.sort((a: any, b: any) => {
+        const dateA = new Date(a.playedAt || a.createdAt).getTime();
+        const dateB = new Date(b.playedAt || b.createdAt).getTime();
+        return dateB - dateA; // Decrescente (recenti prima)
       });
       
-      if (matchesRes.ok) {
-        const matches = await matchesRes.json();
-        console.log("Match completati ricevuti:", matches.length);
-        setRecentMatches(matches.slice(0, 5));
+      setRecentMatches(sortedMatches);
 
-        // Calcola statistiche
-        const myMatches = matches.filter((m: any) => {
-          const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
-          return myPlayer && myPlayer.status === "confirmed";
-        });
+      // Calcola statistiche (usa tutti i match completati con risultati)
+      const myMatches = sortedMatches.filter((m: any) => {
+        const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
+        return myPlayer && myPlayer.status === "confirmed";
+      });
 
-        const wins = myMatches.filter((m: any) => {
-          const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
-          return myPlayer && myPlayer.team === m.winner;
-        }).length;
+      const wins = myMatches.filter((m: any) => {
+        const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
+        return myPlayer && myPlayer.team === m.winner;
+      }).length;
 
-        setStats({
-          totalMatches: myMatches.length,
-          wins,
-          winRate: myMatches.length > 0 ? Math.round((wins / myMatches.length) * 100) : 0,
-        });
-      }
-    } catch (error) {
-      console.error("Errore caricamento match:", error);
+      setStats({
+        totalMatches: myMatches.length,
+        wins,
+        winRate: myMatches.length > 0 ? Math.round((wins / myMatches.length) * 100) : 0,
+      });
     }
-  };
+  } catch (error) {
+    console.error("Errore caricamento match:", error);
+  }
+};
 
   const onRefresh = () => {
     console.log("Refresh manuale...");
@@ -295,149 +344,59 @@ export const useDashboardData = () => {
   };
 
   const respondToInvite = async (matchId: string, response: "accept" | "decline") => {
-    try {
-      console.log("=== RISPOSTA INVITO ===");
-      console.log("Match ID:", matchId);
-      console.log("Risposta:", response);
-      console.log("Utente:", user?.name);
-      
-      // Prima vediamo lo stato attuale del match
-      try {
-        const matchRes = await fetch(`${API_URL}/matches/${matchId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        if (matchRes.ok) {
-          const match = await matchRes.json();
-          console.log("Stato attuale del match:");
-          console.log("  Match status:", match.status);
-          console.log("  Players:", match.players?.length);
-          
-          // Trova il player corrente
-          const myPlayer = match.players?.find((p: any) => p.user?._id === user?.id);
-          if (myPlayer) {
-            console.log("  Mio status attuale:", myPlayer.status);
-          }
-        }
-      } catch (debugError) {
-        console.log("Debug match fallito:", debugError);
-      }
-      
-      // Prova endpoint principale
-      console.log("Chiamando endpoint /respond...");
-      const res = await fetch(`${API_URL}/matches/${matchId}/respond`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ action: response }),
-      });
-
-      console.log("Status risposta /respond:", res.status);
-      
-      if (res.ok) {
-        const result = await res.json();
-        console.log("Invito risposto con successo:", result);
-        loadDashboardData();
-      } else {
-        const errorText = await res.text();
-        console.log("Errore endpoint /respond:", errorText);
-        console.log("Provo endpoint alternativo...");
-        await respondToInviteAlternative(matchId, response);
-      }
-    } catch (error) {
-      console.error("Errore risposta invito:", error);
-      alert("Errore nella risposta all'invito. Riprova.");
+  try {
+    console.log("=== RISPOSTA INVITO ===");
+    console.log("Match ID:", matchId);
+    console.log("Risposta:", response);
+    
+    // ✅ Trova il match per ottenere il team assegnato
+    const myInvite = pendingInvites.find((inv: any) => inv._id === matchId);
+    const myPlayer = myInvite?.players?.find((p: any) => p.user._id === user?.id);
+    const assignedTeam = myPlayer?.team;
+    
+    console.log("Team assegnato:", assignedTeam);
+    
+    // Costruisci il body della richiesta
+    const body: any = { action: response };
+    
+    // ✅ Se c'è un team assegnato e stai accettando, includilo
+    if (response === "accept" && assignedTeam) {
+      body.team = assignedTeam;
+      console.log("Includo team nella richiesta:", assignedTeam);
     }
-  };
+    
+    const res = await fetch(`${API_URL}/matches/${matchId}/respond`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-  const respondToInviteAlternative = async (matchId: string, response: "accept" | "decline") => {
-    try {
-      console.log("Provo endpoint alternativo /players/me...");
+    console.log("Status risposta:", res.status);
+    
+    if (res.ok) {
+      console.log("Invito risposto con successo");
       
-      // Alternativa 1: aggiorna lo stato del player
-      const updateRes = await fetch(`${API_URL}/matches/${matchId}/players/me`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          status: response === "accept" ? "confirmed" : "declined" 
-        }),
-      });
-      
-      console.log("Status risposta /players/me:", updateRes.status);
-      
-      if (updateRes.ok) {
-        const result = await updateRes.json();
-        console.log("Stato player aggiornato con successo:", result);
-        loadDashboardData();
-      } else {
-        // Alternativa 2: prova con un endpoint generico
-        console.log("Provo endpoint generico di aggiornamento match...");
-        await respondToInviteDirectUpdate(matchId, response);
-      }
-    } catch (error) {
-      console.error("Errore risposta alternativa:", error);
+      // Rilancia immediatamente l'aggiornamento
+      loadDashboardData();
+    } else {
+      const errorData = await res.json().catch(() => ({ message: "Errore sconosciuto" }));
+      console.error("Errore risposta invito:", errorData);
+      alert(errorData.message || "Errore nella risposta all'invito. Riprova.");
     }
-  };
-
-  const respondToInviteDirectUpdate = async (matchId: string, response: "accept" | "decline") => {
-    try {
-      // Carica il match corrente
-      const matchRes = await fetch(`${API_URL}/matches/${matchId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!matchRes.ok) throw new Error("Impossibile caricare match");
-      
-      const match = await matchRes.json();
-      
-      // Aggiorna lo stato del player corrente
-      const updatedPlayers = match.players.map((player: any) => {
-        if (player.user._id === user?.id) {
-          return {
-            ...player,
-            status: response === "accept" ? "confirmed" : "declined",
-            respondedAt: new Date().toISOString()
-          };
-        }
-        return player;
-      });
-      
-      // Aggiorna il match
-      const updateRes = await fetch(`${API_URL}/matches/${matchId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          players: updatedPlayers,
-          // Se tutti hanno risposto, cambia stato del match
-          status: updatedPlayers.every((p: any) => p.status !== "pending") ? "confirmed" : match.status
-        }),
-      });
-      
-      if (updateRes.ok) {
-        console.log("Match aggiornato direttamente con successo");
-        loadDashboardData();
-      } else {
-        throw new Error("Impossibile aggiornare match");
-      }
-    } catch (error) {
-      console.error("Errore aggiornamento diretto:", error);
-      alert("Impossibile rispondere all'invito. Contatta l'amministratore.");
-    }
-  };
+  } catch (error) {
+    console.error("Errore risposta invito:", error);
+    alert("Errore nella risposta all'invito. Riprova.");
+  }
+};
 
   return {
     loading,
     refreshing,
     nextBooking,
-    pendingInvites,
+    pendingInvites, // Questi ora sono solo gli inviti pendenti VALIDI
     recentMatches,
     stats,
     user,

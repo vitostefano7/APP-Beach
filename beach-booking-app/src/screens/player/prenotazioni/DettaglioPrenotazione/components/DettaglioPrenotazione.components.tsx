@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { View, Text, Pressable, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../../../config/api";
@@ -12,12 +12,14 @@ interface PlayerCardWithTeamProps {
   currentUserId?: string;
   onRemove: () => void;
   onChangeTeam: (team: "A" | "B" | null) => void;
+  onLeave?: () => void; // Nuova prop per annullare la presenza
   currentTeam?: "A" | "B" | null;
   isPending?: boolean;
   isEmptySlot?: boolean;
   onInviteToSlot?: () => void;
   slotNumber?: number;
   maxSlotsPerTeam?: number;
+  matchStatus?: string; // Aggiunto per controllare se il match è ancora modificabile
 }
 
 const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
@@ -26,19 +28,30 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   currentUserId,
   onRemove,
   onChangeTeam,
+  onLeave, // Nuova prop
   currentTeam,
   isPending = false,
   isEmptySlot = false,
   onInviteToSlot,
   slotNumber,
   maxSlotsPerTeam,
+  matchStatus = "open", // Valore di default
 }) => {
   const [showTeamMenu, setShowTeamMenu] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const isCurrentUser = player?.user?._id === currentUserId;
   const isConfirmed = player?.status === "confirmed";
-  const canChangeTeam = isCreator && isConfirmed;
-  const canRemove = isCreator && player?.user?._id !== currentUserId;
+  const isDeclined = player?.status === "declined";
+  const canChangeTeam = isCreator && isConfirmed && matchStatus !== "completed" && matchStatus !== "cancelled";
+  const canRemove = isCreator && player?.user?._id !== currentUserId && matchStatus !== "completed" && matchStatus !== "cancelled";
+  
+  // L'utente può annullare la propria presenza solo se:
+  // 1. È l'utente corrente
+  // 2. È confermato (non in attesa)
+  // 3. Non è il creatore del match
+  // 4. Il match non è completato o cancellato
+  const canLeave = isCurrentUser && isConfirmed && !isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
 
   const getButtonColor = () => {
     if (currentTeam === "A") return "#2196F3";
@@ -49,6 +62,32 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   const handleTeamChange = (team: "A" | "B" | null) => {
     onChangeTeam(team);
     setShowTeamMenu(false);
+  };
+
+  const handleLeaveMatch = () => {
+    if (!onLeave) return;
+    
+    Alert.alert(
+      "Abbandona il match",
+      "Sei sicuro di voler abbandonare questo match?",
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Abbandona",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLeaving(true);
+              await onLeave();
+            } catch (error) {
+              Alert.alert("Errore", "Impossibile abbandonare il match");
+            } finally {
+              setLeaving(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const teamMenuItems = [
@@ -94,7 +133,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
             <Text style={styles.emptySlotText}>Slot {slotNumber}</Text>
             <Text style={styles.emptySlotSubtext}>Disponibile</Text>
           </View>
-          {isCreator && (
+          {isCreator && matchStatus !== "completed" && matchStatus !== "cancelled" && (
             <Pressable 
               style={styles.inviteSlotButton}
               onPress={onInviteToSlot}
@@ -113,7 +152,27 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   }
 
   return (
-    <View style={[styles.playerCard, isPending && styles.playerCardPending]}>
+    <View style={[
+      styles.playerCard, 
+      isPending && styles.playerCardPending,
+      isCurrentUser && styles.currentUserCard,
+      isDeclined && styles.declinedUserCard
+    ]}>
+      {/* Pulsante Abbandona per l'utente corrente */}
+      {canLeave && (
+        <Pressable 
+          style={styles.leaveButton}
+          onPress={handleLeaveMatch}
+          disabled={leaving}
+        >
+          {leaving ? (
+            <Ionicons name="ellipsis-horizontal" size={14} color="#FFF" />
+          ) : (
+            <Ionicons name="exit-outline" size={14} color="#FFF" />
+          )}
+        </Pressable>
+      )}
+
       {/* LEFT */}
       <View style={styles.playerLeft}>
         {player.user?.avatarUrl ? (
@@ -162,11 +221,15 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
             styles.playerStatusBadge,
             isConfirmed
               ? styles.playerStatusConfirmed
-              : styles.playerStatusPending,
+              : isPending
+              ? styles.playerStatusPending
+              : styles.playerStatusDeclined,
           ]}
         >
           <Text style={styles.playerStatusText}>
-            {isConfirmed ? "Confermato" : "In attesa"}
+            {isConfirmed ? "Confermato" : 
+             isPending ? "In attesa" : 
+             "Rifiutato"}
           </Text>
         </View>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -15,37 +15,79 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
-import { formatDate } from "./utils/dateFormatter";
 
 const DettaglioInvito = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { token } = React.useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   
   const { inviteId, inviteData } = route.params as any;
   const [loading, setLoading] = useState(!inviteData);
   const [invite, setInvite] = useState(inviteData);
   const [responding, setResponding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!inviteData) {
       loadInviteDetails();
+    } else {
+      // Verifica che l'utente sia effettivamente un player nel match
+      const isUserPlayer = inviteData.players?.some((p: any) => 
+        p.user?._id === user?.id || p.user === user?.id
+      );
+      
+      if (!isUserPlayer) {
+        setError("Non sei autorizzato a visualizzare questo invito");
+      }
     }
   }, []);
 
   const loadInviteDetails = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      // Usa l'endpoint corretto che include l'autenticazione
       const res = await fetch(`${API_URL}/matches/${inviteId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
       });
       
-      if (res.ok) {
-        const data = await res.json();
-        setInvite(data);
+      if (res.status === 403) {
+        setError("Non sei autorizzato a visualizzare questo invito");
+        return;
       }
+      
+      if (res.status === 404) {
+        setError("Invito non trovato");
+        return;
+      }
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Errore API:", res.status, errorText);
+        setError(`Errore ${res.status}: Impossibile caricare l'invito`);
+        return;
+      }
+      
+      const data = await res.json();
+      
+      // Verifica che l'utente sia un player nel match
+      const isUserPlayer = data.players?.some((p: any) => 
+        p.user?._id === user?.id || p.user === user?.id
+      );
+      
+      if (!isUserPlayer) {
+        setError("Non sei autorizzato a visualizzare questo invito");
+        return;
+      }
+      
+      setInvite(data);
     } catch (error) {
       console.error("Errore caricamento dettagli invito:", error);
+      setError("Impossibile caricare i dettagli dell'invito");
     } finally {
       setLoading(false);
     }
@@ -74,11 +116,23 @@ const DettaglioInvito = () => {
             {
               text: "OK",
               onPress: () => {
-                navigation.goBack();
+                // Se accetta, vai alla prenotazione
+                if (response === "accept" && invite?.booking) {
+                  navigation.navigate("DettaglioPrenotazione", {
+                    bookingId: invite.booking._id || invite.booking,
+                  });
+                } else {
+                  // Se rifiuta, torna indietro
+                  navigation.goBack();
+                }
               }
             }
           ]
         );
+      } else if (res.status === 404) {
+        Alert.alert("Errore", "Invito non trovato o già risposto");
+      } else if (res.status === 403) {
+        Alert.alert("Errore", "Non sei autorizzato a rispondere a questo invito");
       } else {
         throw new Error("Errore nella risposta");
       }
@@ -87,6 +141,34 @@ const DettaglioInvito = () => {
       console.error("Errore risposta invito:", error);
     } finally {
       setResponding(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "Data non disponibile";
+    
+    try {
+      const date = new Date(dateStr + "T12:00:00");
+      const today = new Date();
+      
+      if (date.toDateString() === today.toDateString()) {
+        return "Oggi";
+      } else {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        if (date.toDateString() === tomorrow.toDateString()) {
+          return "Domani";
+        }
+      }
+      
+      return date.toLocaleDateString("it-IT", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+    } catch (error) {
+      return dateStr;
     }
   };
 
@@ -121,6 +203,31 @@ const DettaglioInvito = () => {
     );
   }
 
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Errore</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#F44336" />
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable 
+            style={styles.retryButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.retryButtonText}>Torna indietro</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!invite) {
     return (
       <SafeAreaView style={styles.container}>
@@ -138,7 +245,7 @@ const DettaglioInvito = () => {
     );
   }
 
-  const match = invite.match || invite;
+  const match = invite;
   const booking = invite.booking || match.booking;
   const createdBy = invite.createdBy || match.createdBy;
   const players = match.players || [];
@@ -147,11 +254,21 @@ const DettaglioInvito = () => {
   // Calcola se l'invito è scaduto
   const isExpired = () => {
     if (!booking?.date) return false;
-    const matchDate = new Date(`${booking.date}T${booking.startTime}`);
-    return matchDate < new Date();
+    try {
+      const matchDate = new Date(`${booking.date}T${booking.startTime}`);
+      return matchDate < new Date();
+    } catch {
+      return false;
+    }
   };
 
   const expired = isExpired();
+
+  // Trova lo stato dell'utente corrente
+  const myPlayer = players.find((p: any) => 
+    p.user?._id === user?.id || p.user === user?.id
+  );
+  const myStatus = myPlayer?.status || "unknown";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -189,10 +306,9 @@ const DettaglioInvito = () => {
                   <Ionicons name="person" size={28} color="#999" />
                 </View>
               )}
-              <View style={styles.onlineIndicator} />
             </View>
             <View style={styles.creatorInfo}>
-              <Text style={styles.creatorName}>{createdBy?.name}</Text>
+              <Text style={styles.creatorName}>{createdBy?.name || "Utente"}</Text>
               <Text style={styles.creatorText}>ti ha invitato a una partita</Text>
               <Text style={styles.creatorTime}>
                 {new Date(match.createdAt).toLocaleDateString('it-IT', {
@@ -211,29 +327,33 @@ const DettaglioInvito = () => {
           <View style={styles.bookingSection}>
             <Text style={styles.sectionTitle}>📅 Informazioni Partita</Text>
             
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="calendar" size={20} color="#2196F3" />
+            {booking?.date && (
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="calendar" size={20} color="#2196F3" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Data</Text>
+                  <Text style={styles.infoValue}>
+                    {formatDate(booking.date)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Data</Text>
-                <Text style={styles.infoValue}>
-                  {formatDate(booking?.date)}
-                </Text>
-              </View>
-            </View>
+            )}
             
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="time" size={20} color="#2196F3" />
+            {booking?.startTime && booking?.endTime && (
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="time" size={20} color="#2196F3" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Orario</Text>
+                  <Text style={styles.infoValue}>
+                    {booking.startTime} - {booking.endTime}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Orario</Text>
-                <Text style={styles.infoValue}>
-                  {booking?.startTime} - {booking?.endTime}
-                </Text>
-              </View>
-            </View>
+            )}
 
             {booking?.price && (
               <View style={styles.infoRow}>
@@ -319,46 +439,52 @@ const DettaglioInvito = () => {
           <Text style={styles.sectionTitle}>👥 Partecipanti ({players.length})</Text>
           
           <View style={styles.playersGrid}>
-            {players.map((player: any, index: number) => (
-              <View key={index} style={styles.playerCard}>
-                <View style={styles.playerAvatarContainer}>
-                  {player.user?.avatarUrl ? (
-                    <Image
-                      source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
-                      style={styles.playerAvatar}
-                    />
-                  ) : (
-                    <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={18} color="#999" />
-                    </View>
-                  )}
+            {players.map((player: any, index: number) => {
+              const playerUser = player.user || {};
+              const isCurrentUser = playerUser._id === user?.id || player.user === user?.id;
+              
+              return (
+                <View key={index} style={styles.playerCard}>
+                  <View style={styles.playerAvatarContainer}>
+                    {playerUser.avatarUrl ? (
+                      <Image
+                        source={{ uri: `${API_URL}${playerUser.avatarUrl}` }}
+                        style={styles.playerAvatar}
+                      />
+                    ) : (
+                      <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
+                        <Ionicons name="person" size={18} color="#999" />
+                      </View>
+                    )}
+                    
+                    <View style={[
+                      styles.playerStatusDot,
+                      player.status === 'confirmed' && styles.statusConfirmedDot,
+                      player.status === 'pending' && styles.statusPendingDot,
+                      player.status === 'declined' && styles.statusDeclinedDot,
+                    ]} />
+                  </View>
+                  
+                  <Text style={styles.playerName} numberOfLines={1}>
+                    {playerUser.name || "Giocatore"}
+                    {isCurrentUser && " (Tu)"}
+                  </Text>
                   
                   <View style={[
-                    styles.playerStatusDot,
-                    player.status === 'confirmed' && styles.statusConfirmedDot,
-                    player.status === 'pending' && styles.statusPendingDot,
-                    player.status === 'declined' && styles.statusDeclinedDot,
-                  ]} />
+                    styles.playerStatusBadge,
+                    player.status === 'confirmed' && styles.statusConfirmed,
+                    player.status === 'pending' && styles.statusPending,
+                    player.status === 'declined' && styles.statusDeclined,
+                  ]}>
+                    <Text style={styles.playerStatusText}>
+                      {player.status === 'confirmed' ? '✓' :
+                       player.status === 'pending' ? '?' :
+                       '✗'}
+                    </Text>
+                  </View>
                 </View>
-                
-                <Text style={styles.playerName} numberOfLines={1}>
-                  {player.user?.name}
-                </Text>
-                
-                <View style={[
-                  styles.playerStatusBadge,
-                  player.status === 'confirmed' && styles.statusConfirmed,
-                  player.status === 'pending' && styles.statusPending,
-                  player.status === 'declined' && styles.statusDeclined,
-                ]}>
-                  <Text style={styles.playerStatusText}>
-                    {player.status === 'confirmed' ? '✓' :
-                     player.status === 'pending' ? '?' :
-                     '✗'}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           {/* Legenda stati */}
@@ -378,36 +504,8 @@ const DettaglioInvito = () => {
           </View>
         </View>
 
-        {/* Note/Descrizione */}
-        {match.description && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>📝 Note</Text>
-            <View style={styles.descriptionContainer}>
-              <Ionicons name="chatbubble-outline" size={20} color="#666" style={styles.descriptionIcon} />
-              <Text style={styles.descriptionText}>{match.description}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Campo info */}
-        {booking?.campo && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>🎾 Campo</Text>
-            <View style={styles.fieldInfo}>
-              <Ionicons name="tennisball" size={20} color="#FF6B6B" />
-              <View style={styles.fieldDetails}>
-                <Text style={styles.fieldName}>{booking.campo.name}</Text>
-                <Text style={styles.fieldType}>
-                  {booking.campo.tipo === 'beach' ? 'Beach Tennis' : 
-                   booking.campo.tipo === 'padel' ? 'Padel' : 'Tennis'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
         {/* Azioni */}
-        {!expired && (
+        {myStatus === "pending" && !expired && (
           <View style={styles.actionsContainer}>
             <Pressable
               style={[styles.actionButton, styles.declineButton]}
@@ -435,10 +533,13 @@ const DettaglioInvito = () => {
           </View>
         )}
 
-        {expired && (
+        {(expired || myStatus !== "pending") && (
           <View style={styles.expiredActions}>
             <Text style={styles.expiredMessage}>
-              Questo invito non è più valido perché la data è passata
+              {expired ? "Questo invito non è più valido perché la data è passata" :
+               myStatus === "confirmed" ? "Hai già accettato questo invito" :
+               myStatus === "declined" ? "Hai rifiutato questo invito" :
+               "Invito non disponibile"}
             </Text>
           </View>
         )}
@@ -553,17 +654,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
-  },
-  onlineIndicator: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#4CAF50",
-    borderWidth: 2,
-    borderColor: "white",
   },
   creatorInfo: {
     marginLeft: 16,
@@ -768,40 +858,6 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     color: "#666",
-  },
-  descriptionContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    marginTop: 8,
-  },
-  descriptionIcon: {
-    marginTop: 2,
-  },
-  descriptionText: {
-    fontSize: 15,
-    color: "#666",
-    lineHeight: 22,
-    flex: 1,
-  },
-  fieldInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginTop: 12,
-  },
-  fieldDetails: {
-    flex: 1,
-  },
-  fieldName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  fieldType: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 2,
   },
   actionsContainer: {
     flexDirection: "row",

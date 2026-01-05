@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-export default StyleSheet.create({
+const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#f8f9fa",
@@ -9,53 +9,38 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: 16,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#666",
-  },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#333",
   },
 
   // Stats Bar
   statsBar: {
     flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "white",
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   statItem: {
     flex: 1,
     alignItems: "center",
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "800",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   statPending: {
     color: "#FF9800",
@@ -63,41 +48,38 @@ export default StyleSheet.create({
   statConfirmed: {
     color: "#4CAF50",
   },
+  statDeclined: {
+    color: "#F44336",
+  },
   statExpired: {
     color: "#757575",
   },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-  },
   statDivider: {
     width: 1,
-    backgroundColor: "#f0f0f0",
-    marginHorizontal: 12,
+    height: 24,
+    backgroundColor: "#eee",
   },
 
   // Filters
   filtersContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 8,
     backgroundColor: "white",
-    marginBottom: 8,
-    flexWrap: "wrap",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    gap: 8,
   },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#f8f9fa",
-    borderWidth: 1.5,
-    borderColor: "#f0f0f0",
-    marginBottom: 4,
+    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   filterChipActive: {
     backgroundColor: "#2196F3",
@@ -105,7 +87,7 @@ export default StyleSheet.create({
   },
   filterChipText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#666",
   },
   filterChipTextActive: {
@@ -116,25 +98,29 @@ export default StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: "white",
+    marginLeft: 2,
   },
   filterBadge: {
     backgroundColor: "#FF5252",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
     minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 2,
   },
   filterBadgeText: {
     fontSize: 10,
     fontWeight: "800",
     color: "white",
+    paddingHorizontal: 4,
   },
 
-  // List
+  // List Container
   listContainer: {
-    padding: 20,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 32,
   },
 
   // Invite Card
@@ -145,48 +131,56 @@ export default StyleSheet.create({
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2196F3",
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
     position: "relative",
+    overflow: "hidden",
   },
   expiredCard: {
     backgroundColor: "#fafafa",
-    borderLeftColor: "#BDBDBD",
+    borderColor: "#e0e0e0",
+    opacity: 0.9,
   },
   confirmedCard: {
+    borderLeftWidth: 4,
     borderLeftColor: "#4CAF50",
   },
   declinedCard: {
+    borderLeftWidth: 4,
     borderLeftColor: "#F44336",
   },
 
-  // Badge Scaduto
+  // Expired Badge
   expiredBadge: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#757575",
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#757575",
-    paddingHorizontal: 8,
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   expiredBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     color: "white",
     fontWeight: "600",
   },
 
+  // Card Header
   cardHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   cardHeaderLeft: {
     flexDirection: "row",
@@ -195,14 +189,14 @@ export default StyleSheet.create({
     flex: 1,
   },
   creatorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   creatorAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
@@ -221,28 +215,32 @@ export default StyleSheet.create({
     color: "#666",
   },
   expiredText: {
-    color: "#757575",
+    color: "#999",
+  },
+  declinedText: {
+    color: "#F44336",
+    opacity: 0.8,
   },
 
-  // Status Badge unificato
+  // Status Badge
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   statusBadgeText: {
     fontSize: 11,
     fontWeight: "800",
+    textTransform: "uppercase",
   },
 
-  // Match Info
+  // Match Info Section
   matchInfoSection: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 12,
+    borderRadius: 10,
     padding: 12,
-    gap: 8,
     marginBottom: 12,
   },
   expiredMatchInfo: {
@@ -251,12 +249,13 @@ export default StyleSheet.create({
   matchInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+    marginBottom: 8,
   },
   matchInfoText: {
     fontSize: 14,
     color: "#333",
-    fontWeight: "600",
+    fontWeight: "500",
     flex: 1,
   },
 
@@ -265,14 +264,12 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    marginBottom: 12,
   },
   playersAvatars: {
     flexDirection: "row",
   },
   playerAvatarWrapper: {
-    marginRight: -8,
+    position: "relative",
   },
   playerAvatarOverlap: {
     marginLeft: -12,
@@ -284,19 +281,19 @@ export default StyleSheet.create({
     borderWidth: 2,
     borderColor: "white",
   },
-  expiredPlayerAvatar: {
-    opacity: 0.6,
-    borderColor: "#f5f5f5",
-  },
   playerAvatarSmallPlaceholder: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "#e0e0e0",
-    borderWidth: 2,
-    borderColor: "white",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  expiredPlayerAvatar: {
+    opacity: 0.7,
+    borderColor: "#e0e0e0",
   },
   playersCount: {
     fontSize: 13,
@@ -304,64 +301,57 @@ export default StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Actions
-  cardActions: {
+  // Quick Actions in Card
+  cardQuickActions: {
     flexDirection: "row",
     gap: 8,
+    marginTop: 12,
   },
-  actionButton: {
+  quickActionButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
-  declineButton: {
+  quickDeclineButton: {
     backgroundColor: "#FFEBEE",
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
   },
-  declineButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#F44336",
-  },
-  acceptButton: {
+  quickAcceptButton: {
     backgroundColor: "#2196F3",
   },
-  acceptButtonText: {
+  quickActionText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  quickAcceptText: {
     color: "white",
   },
 
-  // Messaggi
-  expiredMessage: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    padding: 10,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  expiredMessageText: {
-    fontSize: 13,
-    color: "#757575",
-    fontWeight: "500",
-  },
-  
+  // Response Messages
   respondedMessage: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
+    marginTop: 12,
     padding: 10,
-    backgroundColor: "#f9f9f9",
     borderRadius: 8,
-    marginTop: 8,
+  },
+  confirmedMessage: {
+    backgroundColor: "#E8F5E9",
+  },
+  declinedMessage: {
+    backgroundColor: "#FFEBEE",
+  },
+  expiredMessage: {
+    backgroundColor: "#F5F5F5",
   },
   respondedMessageText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
   },
 
@@ -370,7 +360,7 @@ export default StyleSheet.create({
     position: "absolute",
     right: 16,
     top: "50%",
-    transform: [{ translateY: -10 }],
+    marginTop: -10,
   },
 
   // Empty State
@@ -378,13 +368,13 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
-    paddingTop: 60,
+    paddingHorizontal: 32,
+    paddingTop: 64,
   },
   emptyIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
@@ -392,14 +382,43 @@ export default StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "700",
     color: "#333",
+    textAlign: "center",
     marginBottom: 8,
   },
   emptyStateSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#666",
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+
+  // Error State
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 18,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
+
+export default styles;

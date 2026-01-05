@@ -5,6 +5,7 @@ export interface IMatchPlayer {
   team?: "A" | "B";
   joinedAt: Date;
   status: "pending" | "confirmed" | "declined";
+  respondedAt?: Date; // AGGIUNGI QUESTA PROPRIETÀ
 }
 
 export interface IMatchSet {
@@ -47,6 +48,10 @@ const MatchPlayerSchema = new Schema<IMatchPlayer>(
       type: String,
       enum: ["pending", "confirmed", "declined"],
       default: "pending",
+    },
+    respondedAt: { // AGGIUNGI QUESTO CAMPO
+      type: Date,
+      required: false,
     },
   },
   { _id: false }

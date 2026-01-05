@@ -206,28 +206,78 @@ export default function DettaglioMatchScreen() {
   };
 
   const renderMatchSection = () => {
-    if (!match) return null;
+  if (!booking) return null;
+  
+  if (!booking.hasMatch || !booking.match) {
+    if (booking.status === 'confirmed') {
+      return (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Match</Text>
+          <View style={styles.noMatchCard}>
+            <Ionicons name="people-outline" size={48} color="#ccc" />
+            <Text style={styles.noMatchText}>Nessun match associato</Text>
+            <Text style={styles.noMatchSubtext}>
+              Il match non è stato creato o c'è un errore
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    return null;
+  }
 
-    const isCreator = match.createdBy?._id === user?.id;
-    const myPlayer = match.players?.find((p) => p.user?._id === user?.id);
-    const isPendingInvite = myPlayer?.status === "pending";
-    const isConfirmedPlayer = myPlayer?.status === "confirmed";
-    const canInvite = isCreator && match?.status !== "completed" && match?.status !== "cancelled";
-    const confirmedPlayers = match.players?.filter(p => p.status === "confirmed").length || 0;
-    
-    return (
-      <View style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <Ionicons name="trophy" size={32} color="#FF9800" />
+  const match = booking.match;
+  
+  // DEBUG
+  console.log("=== DEBUG MATCH ===");
+  console.log("Match status:", match.status);
+  console.log("Match completed?", match.status === "completed");
+  console.log("Match has score?", match.score);
+  console.log("Match score sets:", match.score?.sets);
+  console.log("Confirmed players:", confirmedPlayers);
+  console.log("Is creator?", isCreator);
+  console.log("Is confirmed player?", isConfirmedPlayer);
+  console.log("===================");
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>Match</Text>
+        <View style={styles.matchHeaderActions}>
+          {canInvite && (
+            <Pressable 
+              style={styles.inviteButton} 
+              onPress={() => {
+                setInviteToTeam(null);
+                setInviteToSlot(null);
+                setInviteModalVisible(true);
+              }}
+            >
+              <Ionicons name="person-add" size={18} color="white" />
+              <Text style={styles.inviteButtonText}>Invita</Text>
+            </Pressable>
+          )}
+          
+          {canJoinPublic && (
+            <Pressable style={styles.joinButton} onPress={joinPublicMatch}>
+              <Ionicons name="person-add" size={18} color="white" />
+              <Text style={styles.joinButtonText}>Unisciti</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.matchStatusCard}>
+        <View style={styles.matchStatusRow}>
           <View style={[
-            styles.statusBadge,
-            match.status === "completed" && styles.statusCompleted,
-            match.status === "open" && styles.statusOpen,
-            match.status === "full" && styles.statusFull,
-            match.status === "draft" && styles.statusDraft,
-            match.status === "cancelled" && styles.statusCancelled,
+            styles.matchStatusBadge,
+            match.status === "completed" && styles.matchStatusCompleted,
+            match.status === "open" && styles.matchStatusOpen,
+            match.status === "full" && styles.matchStatusFull,
+            match.status === "draft" && styles.matchStatusDraft,
+            match.status === "cancelled" && styles.matchStatusCancelled,
           ]}>
-            <Text style={styles.statusText}>
+            <Text style={styles.matchStatusText}>
               {match.status === "completed" ? "Completato" :
                match.status === "full" ? "Completo" :
                match.status === "open" ? "Aperto" :
@@ -235,89 +285,214 @@ export default function DettaglioMatchScreen() {
                match.status === "cancelled" ? "Cancellato" : match.status}
             </Text>
           </View>
-        </View>
 
-        <View style={styles.statusInfo}>
-          <View style={styles.statusInfoItem}>
-            <Ionicons name="people" size={20} color="#666" />
-            <Text style={styles.statusInfoText}>
-              {confirmedPlayers} / {match.maxPlayers} giocatori
-            </Text>
-          </View>
-          <View style={styles.statusInfoItem}>
-            <Ionicons name={match.isPublic ? "globe" : "lock-closed"} size={20} color="#666" />
-            <Text style={styles.statusInfoText}>
-              {match.isPublic ? "Match pubblico" : "Match privato"}
-            </Text>
-          </View>
-          {match.booking && (
-            <View style={styles.statusInfoItem}>
-              <Ionicons name="calendar" size={20} color="#666" />
-              <Text style={styles.statusInfoText}>
-                {formatDate(match.booking.date)} • {formatTime(match.booking.startTime)}
+          <View style={styles.matchInfoRow}>
+            <View style={styles.matchInfoItem}>
+              <Ionicons name="people" size={16} color="#666" />
+              <Text style={styles.matchInfoText}>
+                {confirmedPlayers}/{booking.match.maxPlayers}
               </Text>
             </View>
-          )}
-        </View>
-
-        {/* Creatore del match */}
-        <View style={styles.creatorCard}>
-          <Ionicons name="person-circle" size={24} color="#666" />
-          <View style={styles.creatorInfo}>
-            <Text style={styles.creatorLabel}>Creato da</Text>
-            <Text style={styles.creatorName}>
-              {getField(match, 'createdBy.name', 'Utente sconosciuto')}
-            </Text>
-          </View>
-        </View>
-
-        {/* Info Prenotazione */}
-        {match.booking && (
-          <View style={styles.bookingCard}>
-            <Text style={styles.bookingTitle}>Info Prenotazione</Text>
-            <View style={styles.bookingInfo}>
-              {match.booking.campo?.struttura?.name && (
-                <View style={styles.bookingRow}>
-                  <Ionicons name="business" size={18} color="#666" />
-                  <Text style={styles.bookingText}>
-                    {match.booking.campo.struttura.name}
-                  </Text>
-                </View>
-              )}
-              {match.booking.campo?.name && (
-                <View style={styles.bookingRow}>
-                  <Ionicons name="tennisball" size={18} color="#666" />
-                  <Text style={styles.bookingText}>
-                    {match.booking.campo.name}
-                    {match.booking.campo.sport && ` • ${match.booking.campo.sport}`}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.bookingRow}>
-                <Ionicons name="time" size={18} color="#666" />
-                <Text style={styles.bookingText}>
-                  {formatTime(match.booking.startTime)} - {formatTime(match.booking.endTime)}
+            {pendingPlayers > 0 && (
+              <View style={[styles.matchInfoItem, styles.pendingBadge]}>
+                <Ionicons name="time" size={16} color="#FF9800" />
+                <Text style={[styles.matchInfoText, { color: '#FF9800' }]}>
+                  {pendingPlayers} in attesa
                 </Text>
               </View>
+            )}
+            <View style={styles.matchInfoItem}>
+              <Ionicons 
+                name={match.isPublic ? "globe" : "lock-closed"} 
+                size={16} 
+                color="#666" 
+              />
+              <Text style={styles.matchInfoText}>
+                {match.isPublic ? "Pubblico" : "Privato"}
+              </Text>
             </View>
           </View>
-        )}
-
-        {/* Azioni rapide */}
-        <View style={styles.quickActions}>
-          {canInvite && (
-            <Pressable 
-              style={styles.inviteButton} 
-              onPress={() => setInviteModalVisible(true)}
-            >
-              <Ionicons name="person-add" size={20} color="#2196F3" />
-              <Text style={styles.inviteButtonText}>Invita Giocatori</Text>
-            </Pressable>
-          )}
         </View>
       </View>
-    );
-  };
+
+      {/* === SEZIONE RISULTATI PER MATCH COMPLETATI === */}
+      {match.status === "completed" && match.score && (
+        <ScoreDisplay
+          winner={match.winner!}
+          sets={match.score.sets}
+          isCreator={isCreator}
+          isPlayer={isConfirmedPlayer || isDeclinedPlayer}
+          onEdit={() => setScoreModalVisible(true)}
+          matchStatus={match.status}
+        />
+      )}
+
+      {/* === PULSANTI RISULTATO === */}
+      <View style={styles.scoreActionsContainer}>
+        {/* 1. PULSANTE PER INSERIRE/MODIFICARE RISULTATO (MATCH IN CORSO) */}
+        {(isCreator || isConfirmedPlayer) && 
+         match.status !== "completed" &&
+         match.status !== "cancelled" && 
+         confirmedPlayers >= 2 && (
+          <Pressable
+            style={styles.submitScoreButton}
+            onPress={() => setScoreModalVisible(true)}
+          >
+            <Ionicons name="trophy" size={20} color="#FFF" />
+            <Text style={styles.submitScoreButtonText}>
+              {match.score ? "Modifica Risultato" : "Inserisci Risultato"}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* 2. PULSANTE PER VISUALIZZARE RISULTATO (MATCH COMPLETATI) */}
+        {match.status === "completed" && match.score && (
+          <Pressable
+            style={[styles.submitScoreButton, styles.viewScoreButton]}
+            onPress={() => setScoreModalVisible(true)}
+          >
+            <Ionicons name="eye" size={20} color="#FFF" />
+            <Text style={styles.submitScoreButtonText}>Visualizza Risultato</Text>
+          </Pressable>
+        )}
+
+        {/* 3. PULSANTE VISUALIZZA PER GIOCATORI IN MATCH COMPLETATI (senza score) */}
+        {match.status === "completed" && !match.score && (isCreator || isConfirmedPlayer || isDeclinedPlayer) && (
+          <Pressable
+            style={[styles.submitScoreButton, { backgroundColor: '#9C27B0' }]}
+            onPress={() => setScoreModalVisible(true)}
+          >
+            <Ionicons name="add-circle" size={20} color="#FFF" />
+            <Text style={styles.submitScoreButtonText}>Aggiungi Risultato</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* === CARD PER INVITO PENDENTE === */}
+      {renderPendingInviteCard()}
+
+      {/* === CARD PER INVITO RIFIUTATO === */}
+      {myPlayer?.status === "declined" && (
+        <View style={styles.declinedCard}>
+          <View style={styles.declinedHeader}>
+            <Ionicons name="close-circle" size={24} color="#F44336" />
+            <Text style={styles.declinedTitle}>Invito rifiutato</Text>
+          </View>
+          <Text style={styles.declinedText}>
+            Hai rifiutato l'invito. Vuoi cambiare idea?
+          </Text>
+          <Pressable
+            style={styles.changeResponseButton}
+            onPress={() => handleChangeInviteResponse()}
+            disabled={acceptingInvite}
+          >
+            {acceptingInvite ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <>
+                <Ionicons name="refresh" size={20} color="#FFF" />
+                <Text style={styles.changeResponseButtonText}>Accetta invito</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      )}
+
+      {/* === SEZIONE TEAM PER MATCH MULTIPLAYER === */}
+      {match.maxPlayers > 2 ? (
+        <View style={styles.teamsContainer}>
+          {renderTeamSectionWithSlots("A")}
+          {renderTeamSectionWithSlots("B")}
+        </View>
+      ) : (
+        <View style={styles.playersSection}>
+          <Text style={styles.playersSectionTitle}>Giocatori</Text>
+          <View style={styles.playersGrid}>
+            {match.players?.filter(p => p.status === "confirmed").map((player: any, index: number) => {
+              const isCurrentUser = player.user?._id === user?.id;
+              
+              return (
+                <PlayerCardWithTeam
+                  key={index}
+                  player={player}
+                  isCreator={isCreator}
+                  currentUserId={user?.id}
+                  onRemove={() => player.user?._id && handleRemovePlayer(player.user._id)}
+                  onChangeTeam={(newTeam) => player.user?._id && handleAssignTeam(player.user._id, newTeam)}
+                  onLeave={isCurrentUser && player.status === "confirmed" ? handleLeaveMatch : undefined}
+                  currentTeam={null}
+                  matchStatus={match.status}
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* === GIOCATORI NON ASSEGNATI === */}
+      {match.maxPlayers > 2 && unassignedPlayers > 0 && (
+        <View style={styles.unassignedSection}>
+          <Text style={styles.unassignedTitle}>Giocatori da assegnare ({unassignedPlayers})</Text>
+          <Text style={styles.unassignedSubtitle}>
+            Trascina questi giocatori nei team o clicca su "Bilancia Team" per assegnarli automaticamente
+          </Text>
+          <View style={styles.playersGrid}>
+            {match.players?.filter(p => !p.team && p.status === "confirmed").map((player: any, index: number) => {
+              const isCurrentUser = player.user?._id === user?.id;
+              
+              return (
+                <PlayerCardWithTeam
+                  key={index}
+                  player={player}
+                  isCreator={isCreator}
+                  currentUserId={user?.id}
+                  onRemove={() => player.user?._id && handleRemovePlayer(player.user._id)}
+                  onChangeTeam={(newTeam) => player.user?._id && handleAssignTeam(player.user._id, newTeam)}
+                  onLeave={isCurrentUser && player.status === "confirmed" ? handleLeaveMatch : undefined}
+                  currentTeam={null}
+                  matchStatus={match.status}
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* === INVITI IN ATTESA === */}
+      {pendingPlayers > 0 && (
+        <View style={styles.pendingSection}>
+          <Text style={styles.pendingTitle}>Inviti in attesa ({pendingPlayers})</Text>
+          <View style={styles.playersGrid}>
+            {match.players?.filter(p => p.status === "pending").map((player: any, index: number) => (
+              <PlayerCardWithTeam
+                key={index}
+                player={player}
+                isCreator={isCreator}
+                currentUserId={user?.id}
+                onRemove={() => player.user?._id && handleRemovePlayer(player.user._id)}
+                onChangeTeam={() => {}}
+                currentTeam={null}
+                isPending
+                matchStatus={match.status}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* === PULSANTE BILANCIA TEAM === */}
+      {isCreator && unassignedPlayers > 0 && match.status !== "completed" && (
+        <Pressable
+          style={styles.balanceTeamsButton}
+          onPress={autoAssignTeams}
+        >
+          <Ionicons name="shuffle" size={20} color="#FFF" />
+          <Text style={styles.balanceTeamsButtonText}>Bilancia Team</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+};
 
   const renderPlayersSection = () => {
     if (!match) return null;

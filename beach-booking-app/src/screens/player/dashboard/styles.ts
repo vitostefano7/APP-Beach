@@ -1,4 +1,7 @@
-import { StyleSheet } from "react-native";
+// styles.ts
+import { StyleSheet, Dimensions } from "react-native";
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
   safe: {
@@ -20,53 +23,19 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   showMoreButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: 12,
-  borderTopWidth: 1,
-  borderTopColor: '#f0f0f0',
-  marginTop: 8,
-  gap: 6,
-},
-showMoreText: {
-  fontSize: 14,
-  color: '#2196F3',
-  fontWeight: '500',
-},
-
-  // Debug Section
-  debugSection: {
-    backgroundColor: "#fff3cd",
-    margin: 12,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ffeaa7",
-  },
-  debugTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#856404",
-    marginBottom: 6,
-  },
-  debugText: {
-    fontSize: 11,
-    color: "#856404",
-    marginBottom: 2,
-  },
-  debugButton: {
-    backgroundColor: "#856404",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    marginTop: 8,
+    gap: 6,
   },
-  debugButtonText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "white",
+  showMoreText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '500',
   },
 
   // Header
@@ -347,30 +316,17 @@ showMoreText: {
     shadowRadius: 8,
     elevation: 2,
   },
-  // Aggiungi questi stili alla sezione Invite Card:
-expiredBadge: {
-  position: "absolute",
-  top: 12,
-  right: 12,
-  backgroundColor: "#F5F5F5",
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "#E0E0E0",
-},
-expiredBadgeText: {
-  fontSize: 10,
-  fontWeight: "700",
-  color: "#999",
-},
-expiredText: {
-  fontSize: 12,
-  fontStyle: "italic",
-  color: "#999",
-  textAlign: "center",
-  width: "100%",
-},  
+  inviteCountBadge: {
+    backgroundColor: "#FF9800",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  inviteCountText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "white",
+  },
   emptyInviteCard: {
     alignItems: "center",
     justifyContent: "center",
@@ -498,20 +454,22 @@ expiredText: {
     color: "white",
   },
 
-  // Match History
+  // Match History (per carosello)
   matchHistoryCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    height: 120,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  matchHistoryCardContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    flex: 1,
   },
   matchResultBadge: {
     width: 44,
@@ -519,7 +477,6 @@ expiredText: {
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
   matchWin: {
     backgroundColor: "#FFF8E1",
@@ -529,6 +486,7 @@ expiredText: {
   },
   matchHistoryInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   matchHistoryTitle: {
     fontSize: 15,
@@ -544,13 +502,99 @@ expiredText: {
   matchScore: {
     fontSize: 16,
     fontWeight: "800",
-    marginRight: 12,
+    marginTop: 4,
   },
   matchScoreWin: {
     color: "#4CAF50",
   },
   matchScoreLoss: {
     color: "#F44336",
+  },
+
+  // Carosello Stili
+  carouselSection: {
+    marginBottom: 32,
+    paddingBottom: 16,
+  },
+  carouselHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  carouselControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activeDot: {
+    backgroundColor: '#2196F3',
+  },
+  inactiveDot: {
+    backgroundColor: '#ddd',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '600',
+  },
+  carouselContent: {
+    paddingHorizontal: 12,
+  },
+  carouselCard: {
+    width: '100%',
+    marginBottom: 0,
+  },
+  carouselCounter: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#666',
+    marginTop: 12,
+  },
+  emptyCarouselContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    marginHorizontal: 20,
+  },
+  emptyCarouselText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+  },
+  noCompletedMatches: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderStyle: 'dashed',
+  },
+  noCompletedMatchesText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+    textAlign: 'center',
   },
 
   // FAB
@@ -569,6 +613,208 @@ expiredText: {
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+
+  // Carosello indicatori (per entrambi i caroselli)
+  carouselIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  carouselIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  carouselIndicatorActive: {
+    backgroundColor: '#2196F3',
+    width: 12,
+  },
+  carouselIndicatorInactive: {
+    backgroundColor: '#ddd',
+  },
+  moreDotsText: {
+    fontSize: 10,
+    color: '#999',
+    marginLeft: 4,
+  },
+
+  // Amici suggeriti
+  friendsCountBadge: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  friendsCountText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "white",
+  },
+  suggestedFriendCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    height: 140,
+    width: '100%',
+  },
+  suggestedFriendAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  suggestedFriendAvatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestedFriendInfo: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 6,
+  },
+  suggestedFriendHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  suggestedFriendName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    flex: 1,
+  },
+  winRateBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4CAF50",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  suggestedFriendStats: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  // Badge di priorità
+  priorityBadgeHigh: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  priorityBadgeMedium: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  priorityBadgeLow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#9C27B0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  priorityBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  // Metriche di priorità
+  priorityMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 6,
+  },
+  priorityMetric: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  priorityMetricText: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: '600',
+  },
+
+  // Legenda priorità
+  priorityLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 12,
+    paddingHorizontal: 20,
+    flexWrap: 'wrap',
+  },
+  priorityLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  priorityDotHigh: {
+    backgroundColor: '#2196F3',
+  },
+  priorityDotMedium: {
+    backgroundColor: '#FF9800',
+  },
+  priorityDotLow: {
+    backgroundColor: '#9C27B0',
+  },
+  priorityLegendText: {
+    fontSize: 11,
+    color: "#666",
+  },
+
+  inviteFriendButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+  },
+  inviteFriendText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2196F3",
   },
 
   // Additional styles for debug

@@ -24,11 +24,11 @@ export default function TuttiInvitiScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [invites, setInvites] = useState<any[]>([]);
-  const [allMatches, setAllMatches] = useState<any[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "declined" | "expired">("all");
 
   useFocusEffect(
     useCallback(() => {
+      setFilter("all");
       loadAllMatches();
     }, [])
   );
@@ -45,21 +45,21 @@ export default function TuttiInvitiScreen() {
       if (res.ok) {
         const data = await res.json();
         console.log(`✅ Ricevuti ${data.length} match totali`);
-        setAllMatches(data);
         
-        // Filtra SOLO gli inviti di ALTRI (esclude match creati dall'utente)
         const userInvites = data.filter((match: any) => {
-          const myPlayer = match.players?.find((p: any) => p.user._id === user?.id);
+          const myPlayer = match.players?.find((p: any) => 
+            p.user?._id === user?.id || p.user === user?.id
+          );
           const isCreatedByMe = match.createdBy?._id === user?.id;
           
-          // Solo match dove:
-          // 1. L'utente è un player
-          // 2. NON è il creatore del match (non sono sue partite)
           return myPlayer && !isCreatedByMe;
         });
         
-        console.log(`📋 ${userInvites.length} inviti ricevuti da altri`);
+        console.log(`📋 ${userInvites.length} inviti totali da altri`);
         setInvites(userInvites);
+      } else {
+        console.error("Errore nel caricamento:", res.status);
+        Alert.alert("Errore", "Impossibile caricare gli inviti");
       }
     } catch (error) {
       console.error("Errore caricamento match:", error);
@@ -73,55 +73,6 @@ export default function TuttiInvitiScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadAllMatches();
-  };
-
-  const respondToInvite = async (matchId: string, response: "accept" | "decline") => {
-    try {
-      console.log(`🤔 Risposta invito ${matchId}: ${response}`);
-      
-      Alert.alert(
-        response === "accept" ? "Accetta invito" : "Rifiuta invito",
-        response === "accept" 
-          ? "Sei sicuro di voler accettare questo invito?" 
-          : "Sei sicuro di voler rifiutare questo invito?",
-        [
-          { text: "Annulla", style: "cancel" },
-          {
-            text: response === "accept" ? "Accetta" : "Rifiuta",
-            style: response === "accept" ? "default" : "destructive",
-            onPress: async () => {
-              const res = await fetch(`${API_URL}/matches/${matchId}/respond`, {
-                method: "PATCH",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ action: response }),
-              });
-
-              if (!res.ok) throw new Error();
-
-              Alert.alert(
-                "Successo",
-                response === "accept" 
-                  ? "Invito accettato con successo!" 
-                  : "Invito rifiutato con successo!",
-                [{ text: "OK" }]
-              );
-
-              loadAllMatches();
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error("Errore risposta invito:", error);
-      Alert.alert(
-        "Errore",
-        "Non è stato possibile rispondere all'invito",
-        [{ text: "OK" }]
-      );
-    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -139,7 +90,7 @@ export default function TuttiInvitiScreen() {
         return "Domani";
       } else {
         return date.toLocaleDateString("it-IT", {
-          weekday: "long",
+          weekday: "short",
           day: "numeric",
           month: "short",
         });
@@ -192,38 +143,38 @@ export default function TuttiInvitiScreen() {
     }
   };
 
-  const getFilteredInvites = () => {
-    console.log(`🔍 Filtro attivo: ${filter}`);
-    console.log(`📋 Inviti totali (da altri): ${invites.length}`);
+  const getMyPlayerStatus = (invite: any) => {
+    const myPlayer = invite.players?.find((p: any) => {
+      return p.user?._id === user?.id || p.user === user?.id;
+    });
     
+    return myPlayer?.status || "unknown";
+  };
+
+  const getFilteredInvites = () => {
     if (filter === "all") {
       return invites;
     }
     
     if (filter === "pending") {
-      // Solo pending NON scaduti
       return invites.filter((invite) => {
-        const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-        const isPending = myPlayer?.status === "pending";
+        const status = getMyPlayerStatus(invite);
         const isExpired = isInviteExpired(invite);
-        return isPending && !isExpired;
+        return status === "pending" && !isExpired;
       });
     }
     
     if (filter === "expired") {
-      // Solo pending SCADUTI
       return invites.filter((invite) => {
-        const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-        const isPending = myPlayer?.status === "pending";
+        const status = getMyPlayerStatus(invite);
         const isExpired = isInviteExpired(invite);
-        return isPending && isExpired;
+        return status === "pending" && isExpired;
       });
     }
     
-    // Per "confirmed" e "declined" mostra tutti
     return invites.filter((invite) => {
-      const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-      return myPlayer?.status === filter;
+      const status = getMyPlayerStatus(invite);
+      return status === filter;
     });
   };
 
@@ -234,60 +185,73 @@ export default function TuttiInvitiScreen() {
     
     if (filterType === "pending") {
       return invites.filter((invite) => {
-        const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-        const isPending = myPlayer?.status === "pending";
+        const status = getMyPlayerStatus(invite);
         const isExpired = isInviteExpired(invite);
-        return isPending && !isExpired;
+        return status === "pending" && !isExpired;
       }).length;
     }
     
     if (filterType === "expired") {
       return invites.filter((invite) => {
-        const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-        const isPending = myPlayer?.status === "pending";
+        const status = getMyPlayerStatus(invite);
         const isExpired = isInviteExpired(invite);
-        return isPending && isExpired;
+        return status === "pending" && isExpired;
       }).length;
     }
     
     return invites.filter((invite) => {
-      const myPlayer = invite.players?.find((p: any) => p.user._id === user?.id);
-      return myPlayer?.status === filterType;
+      const status = getMyPlayerStatus(invite);
+      return status === filterType;
     }).length;
+  };
+
+  const canChangeDeclinedResponse = (invite: any) => {
+    const booking = invite.booking;
+    if (!booking?.date || !booking?.startTime) {
+      return false;
+    }
+    
+    try {
+      const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+      const now = new Date();
+      const minutesDiff = (matchDateTime.getTime() - now.getTime()) / (1000 * 60);
+      
+      const confirmedPlayers = invite.players?.filter((p: any) => p.status === "confirmed").length || 0;
+      const hasAvailableSlots = confirmedPlayers < (invite.maxPlayers || 4);
+      
+      return minutesDiff > 30 && hasAvailableSlots;
+    } catch (error) {
+      return false;
+    }
   };
 
   const renderInviteCard = ({ item }: { item: any }) => {
     const booking = item.booking;
-    const myPlayer = item.players?.find((p: any) => p.user._id === user?.id);
-    const myStatus = myPlayer?.status || "unknown";
+    const myStatus = getMyPlayerStatus(item);
     const isExpired = isInviteExpired(item);
     
-    // Determina lo stato di visualizzazione
-    let displayStatus = myStatus;
-    let displayLabel = "In attesa";
-    let displayColor = "#FF9800";
-    let displayIcon = "time";
-    let canRespond = false;
-    
-    if (myStatus === "pending" && isExpired) {
-      displayStatus = "expired";
-      displayLabel = "Scaduto";
-      displayColor = "#757575";
-      displayIcon = "time-outline";
-      canRespond = false;
-    } else if (myStatus === "pending") {
-      canRespond = true;
-    } else if (myStatus === "confirmed") {
-      displayLabel = "Accettato";
-      displayColor = "#4CAF50";
-      displayIcon = "checkmark-circle";
-    } else if (myStatus === "declined") {
-      displayLabel = "Rifiutato";
-      displayColor = "#F44336";
-      displayIcon = "close-circle";
-    }
-
     if (!booking) return null;
+
+    let statusLabel = "In attesa";
+    let statusColor = "#FF9800";
+    let statusIcon = "time";
+    let isActiveInvite = false;
+
+    if (myStatus === "pending" && isExpired) {
+      statusLabel = "Scaduto";
+      statusColor = "#757575";
+      statusIcon = "time-outline";
+    } else if (myStatus === "pending") {
+      isActiveInvite = true;
+    } else if (myStatus === "confirmed") {
+      statusLabel = "Accettato";
+      statusColor = "#4CAF50";
+      statusIcon = "checkmark-circle";
+    } else if (myStatus === "declined") {
+      statusLabel = "Rifiutato";
+      statusColor = "#F44336";
+      statusIcon = "close-circle";
+    }
 
     return (
       <Pressable
@@ -298,14 +262,35 @@ export default function TuttiInvitiScreen() {
           myStatus === "declined" && styles.declinedCard,
         ]}
         onPress={() => {
-          booking &&
+          if (myStatus === "pending" && !isExpired) {
+            navigation.navigate("DettaglioInvito", {
+              inviteId: item._id,
+              inviteData: item,
+            });
+          } else if (myStatus === "pending" && isExpired) {
+            navigation.navigate("InvitoScaduto", {
+              inviteId: item._id,
+              inviteData: item,
+              timeSinceExpiration: getTimeSinceExpiration(item),
+            });
+          } else if (myStatus === "declined") {
+            const canChange = canChangeDeclinedResponse(item);
+            navigation.navigate("DettaglioInvitoRifiutato", {
+              inviteId: item._id,
+              inviteData: item,
+              canChangeResponse: canChange,
+            });
+          } else {
             navigation.navigate("DettaglioPrenotazione", {
               bookingId: booking._id,
+              isInvite: true,
+              inviteStatus: myStatus,
+              matchId: item._id,
             });
+          }
         }}
       >
-        {/* Badge tempo scaduto */}
-        {isExpired && displayStatus === "expired" && (
+        {isExpired && myStatus === "pending" && (
           <View style={styles.expiredBadge}>
             <Ionicons name="time-outline" size={12} color="white" />
             <Text style={styles.expiredBadgeText}>
@@ -314,7 +299,6 @@ export default function TuttiInvitiScreen() {
           </View>
         )}
 
-        {/* Header Card */}
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
             {item.createdBy?.avatarUrl ? (
@@ -330,40 +314,40 @@ export default function TuttiInvitiScreen() {
             <View style={styles.creatorInfo}>
               <Text style={[
                 styles.creatorName,
-                isExpired && styles.expiredText
+                isExpired && styles.expiredText,
+                myStatus === "declined" && styles.declinedText
               ]}>
                 {item.createdBy?.name || "Utente"}
               </Text>
               <Text style={[
                 styles.inviteText,
-                isExpired && styles.expiredText
+                isExpired && styles.expiredText,
+                myStatus === "declined" && styles.declinedText
               ]}>
                 ti ha invitato a giocare
               </Text>
             </View>
           </View>
           
-          {/* Badge Status */}
           <View style={[
             styles.statusBadge,
-            { backgroundColor: displayColor + "20" }
+            { backgroundColor: statusColor + "20" }
           ]}>
             <Ionicons 
-              name={displayIcon as any} 
+              name={statusIcon as any} 
               size={12} 
-              color={displayColor} 
+              color={statusColor} 
               style={{ marginRight: 4 }}
             />
             <Text style={[
               styles.statusBadgeText,
-              { color: displayColor }
+              { color: statusColor }
             ]}>
-              {displayLabel}
+              {statusLabel}
             </Text>
           </View>
         </View>
 
-        {/* Match Info */}
         <View style={[
           styles.matchInfoSection,
           isExpired && styles.expiredMatchInfo
@@ -399,7 +383,6 @@ export default function TuttiInvitiScreen() {
           </View>
         </View>
 
-        {/* Players Preview */}
         <View style={styles.playersPreview}>
           <View style={styles.playersAvatars}>
             {item.players?.slice(0, 4).map((player: any, index: number) => (
@@ -438,65 +421,142 @@ export default function TuttiInvitiScreen() {
           </Text>
         </View>
 
-        {/* Actions - Mostra solo se può rispondere (pending non scaduto) */}
-        {canRespond && (
-          <View style={styles.cardActions}>
+        {isActiveInvite && (
+          <View style={styles.cardQuickActions}>
             <Pressable
-              style={[styles.actionButton, styles.declineButton]}
+              style={[styles.quickActionButton, styles.quickDeclineButton]}
               onPress={(e) => {
                 e.stopPropagation();
-                respondToInvite(item._id, "decline");
+                Alert.alert(
+                  "Rifiuta invito",
+                  "Sei sicuro di voler rifiutare questo invito?",
+                  [
+                    { text: "Annulla", style: "cancel" },
+                    {
+                      text: "Rifiuta",
+                      style: "destructive",
+                      onPress: () => respondToInvite(item._id, "decline")
+                    }
+                  ]
+                );
               }}
             >
-              <Ionicons name="close" size={18} color="#F44336" />
-              <Text style={styles.declineButtonText}>Rifiuta</Text>
+              <Ionicons name="close" size={16} color="#F44336" />
+              <Text style={styles.quickActionText}>Rifiuta</Text>
             </Pressable>
             <Pressable
-              style={[styles.actionButton, styles.acceptButton]}
+              style={[styles.quickActionButton, styles.quickAcceptButton]}
               onPress={(e) => {
                 e.stopPropagation();
-                respondToInvite(item._id, "accept");
+                Alert.alert(
+                  "Accetta invito",
+                  "Sei sicuro di voler accettare questo invito?",
+                  [
+                    { text: "Annulla", style: "cancel" },
+                    {
+                      text: "Accetta",
+                      onPress: () => respondToInvite(item._id, "accept")
+                    }
+                  ]
+                );
               }}
             >
-              <Ionicons name="checkmark" size={18} color="white" />
-              <Text style={styles.acceptButtonText}>Accetta</Text>
+              <Ionicons name="checkmark" size={16} color="white" />
+              <Text style={[styles.quickActionText, styles.quickAcceptText]}>Accetta</Text>
             </Pressable>
           </View>
         )}
 
-        {/* Messaggio se scaduto */}
-        {!canRespond && isExpired && (
-          <View style={styles.expiredMessage}>
-            <Ionicons name="alert-circle-outline" size={16} color="#999" />
-            <Text style={styles.expiredMessageText}>
-              Invito scaduto 2 ore prima della partita
-            </Text>
-          </View>
-        )}
-
-        {/* Messaggio se già risposto */}
-        {!canRespond && !isExpired && myStatus !== "pending" && (
-          <View style={styles.respondedMessage}>
+        {!isActiveInvite && (
+          <View style={[
+            styles.respondedMessage,
+            myStatus === "confirmed" && styles.confirmedMessage,
+            myStatus === "declined" && styles.declinedMessage,
+            isExpired && styles.expiredMessage
+          ]}>
             <Ionicons 
-              name={myStatus === "confirmed" ? "checkmark-circle" : "close-circle"} 
+              name={statusIcon} 
               size={16} 
-              color={myStatus === "confirmed" ? "#4CAF50" : "#F44336"} 
+              color={statusColor} 
             />
             <Text style={[
               styles.respondedMessageText,
-              { color: myStatus === "confirmed" ? "#4CAF50" : "#F44336" }
+              { color: statusColor }
             ]}>
-              {myStatus === "confirmed" ? "Hai accettato questo invito" : "Hai rifiutato questo invito"}
+              {myStatus === "confirmed" ? "Hai accettato questo invito" : 
+               myStatus === "declined" ? "Hai rifiutato questo invito" :
+               "Invito scaduto"}
             </Text>
           </View>
         )}
 
-        {/* Chevron */}
         <View style={styles.chevronContainer}>
-          <Ionicons name="chevron-forward" size={20} color={isExpired ? "#ddd" : "#ccc"} />
+          <Ionicons 
+            name="chevron-forward" 
+            size={20} 
+            color={
+              isExpired ? "#ddd" : 
+              myStatus === "declined" ? "#FFCDD2" : 
+              "#ccc"
+            } 
+          />
         </View>
       </Pressable>
     );
+  };
+
+  const respondToInvite = async (matchId: string, response: "accept" | "decline") => {
+    try {
+      console.log(`🤔 Risposta invito ${matchId}: ${response}`);
+      
+      const myInvite = invites.find((inv: any) => inv._id === matchId);
+      const myPlayer = myInvite?.players?.find((p: any) => 
+        p.user?._id === user?.id || p.user === user?.id
+      );
+      const assignedTeam = myPlayer?.team;
+      
+      console.log("Team assegnato:", assignedTeam);
+      
+      const body: any = { action: response };
+      
+      if (response === "accept" && assignedTeam) {
+        body.team = assignedTeam;
+        console.log("Includo team nella richiesta:", assignedTeam);
+      }
+      
+      const res = await fetch(`${API_URL}/matches/${matchId}/respond`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Errore sconosciuto" }));
+        console.error("❌ Errore risposta:", errorData);
+        throw new Error(errorData.message || "Errore nella risposta");
+      }
+
+      await loadAllMatches();
+      
+      Alert.alert(
+        response === "accept" ? "Invito accettato!" : "Invito rifiutato",
+        response === "accept" 
+          ? "La partita è stata aggiunta alle tue prenotazioni." 
+          : "Hai rifiutato l'invito.",
+        [{ text: "OK" }]
+      );
+
+    } catch (error: any) {
+      console.error("❌ Errore risposta invito:", error);
+      Alert.alert(
+        "Errore",
+        error.message || "Non è stato possibile rispondere all'invito",
+        [{ text: "OK" }]
+      );
+    }
   };
 
   if (loading && !refreshing) {
@@ -512,8 +572,13 @@ export default function TuttiInvitiScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Tutti gli Inviti</Text>
+        <Text style={styles.pageSubtitle}>
+          Gestisci le richieste di partecipazione alle partite
+        </Text>
+      </View>
 
-      {/* Stats Bar */}
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{invites.length}</Text>
@@ -535,6 +600,13 @@ export default function TuttiInvitiScreen() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
+          <Text style={[styles.statValue, styles.statDeclined]}>
+            {getFilterCount("declined")}
+          </Text>
+          <Text style={styles.statLabel}>Rifiutati</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
           <Text style={[styles.statValue, styles.statExpired]}>
             {getFilterCount("expired")}
           </Text>
@@ -542,7 +614,6 @@ export default function TuttiInvitiScreen() {
         </View>
       </View>
 
-      {/* Filters */}
       <View style={styles.filtersContainer}>
         <Pressable
           style={[styles.filterChip, filter === "all" && styles.filterChipActive]}
@@ -605,6 +676,11 @@ export default function TuttiInvitiScreen() {
           >
             Rifiutati
           </Text>
+          {getFilterCount("declined") > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{getFilterCount("declined")}</Text>
+            </View>
+          )}
         </Pressable>
 
         <Pressable
@@ -629,7 +705,6 @@ export default function TuttiInvitiScreen() {
         </Pressable>
       </View>
 
-      {/* Lista */}
       {filteredInvites.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconCircle}>
@@ -653,6 +728,8 @@ export default function TuttiInvitiScreen() {
               ? "Non hai inviti in attesa di risposta"
               : filter === "expired"
               ? "Non hai inviti scaduti"
+              : filter === "declined"
+              ? "Non hai inviti rifiutati"
               : "Non hai inviti in questa categoria"}
           </Text>
         </View>

@@ -1,9 +1,17 @@
 import { Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import Match from "../models/Match";
 import Booking from "../models/Booking";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
+
+// Tipo per user popolato
+interface PopulatedUser {
+  _id: Types.ObjectId;
+  name: string;
+  username: string;
+  avatarUrl?: string;
+}
 
 /**
  * POST /matches/from-booking/:bookingId
@@ -106,7 +114,7 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
 export const invitePlayer = async (req: AuthRequest, res: Response) => {
   try {
     const { matchId } = req.params;
-    const { username, team } = req.body; // 🆕 Aggiungo team opzionale
+    const { username, team } = req.body;
     const userId = req.user!.id;
 
     const match = await Match.findById(matchId);
@@ -143,7 +151,7 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Match pieno" });
     }
 
-    // 🆕 Valida team se fornito
+    // Valida team se fornito
     if (team && team !== "A" && team !== "B") {
       return res.status(400).json({ message: "Team deve essere 'A' o 'B'" });
     }
@@ -152,7 +160,7 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     match.players.push({
       user: userToInvite._id,
       status: "pending",
-      team: team || undefined, // 🆕 Assegna team se fornito
+      team: team || undefined,
       joinedAt: new Date(),
     });
 
@@ -251,18 +259,24 @@ export const respondToInvite = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Trova player
+    // Trova player - deve essere pending
     const playerIndex = match.players.findIndex(
       (p) => p.user.toString() === userId && p.status === "pending"
     );
 
     if (playerIndex === -1) {
-      return res.status(404).json({ message: "Invito non trovato" });
+      return res.status(404).json({ 
+        message: "Invito non trovato o già risposto"
+      });
     }
 
+    console.log(`🤔 Risposta invito: userId=${userId}, action=${action}`);
+
     if (action === "decline") {
-      // Rimuovi player
-      match.players.splice(playerIndex, 1);
+      // Cambia status a "declined"
+      match.players[playerIndex].status = "declined";
+      match.players[playerIndex].respondedAt = new Date();
+      console.log(`✅ Player rifiutato - status impostato a "declined"`);
     } else {
       // Accept
       if (match.maxPlayers > 2 && !team) {
@@ -270,9 +284,11 @@ export const respondToInvite = async (req: AuthRequest, res: Response) => {
       }
 
       match.players[playerIndex].status = "confirmed";
+      match.players[playerIndex].respondedAt = new Date();
       if (team) {
         match.players[playerIndex].team = team;
       }
+      console.log(`✅ Player accettato - status impostato a "confirmed"`);
 
       // Aggiorna status se pieno
       const confirmed = match.players.filter((p) => p.status === "confirmed").length;
@@ -282,12 +298,28 @@ export const respondToInvite = async (req: AuthRequest, res: Response) => {
     }
 
     await match.save();
-    await match.populate("players.user", "username name avatarUrl");
+    
+    // Popola PRIMA di loggare
+    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
+    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+
+    // Ora che user è popolato, possiamo accedere a name
+    console.log(`📊 Match aggiornato:`, {
+      matchId: match._id,
+      players: (match.players as any[]).map(p => ({
+        userId: p.user._id.toString(),
+        name: p.user.name,
+        status: p.status
+      }))
+    });
 
     res.json(match);
   } catch (err) {
     console.error("❌ respondToInvite error:", err);
-    res.status(500).json({ message: "Errore server" });
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
   }
 };
 
@@ -427,8 +459,8 @@ export const getMyMatches = async (req: AuthRequest, res: Response) => {
 
     const matches = await Match.find(query)
       .sort({ createdAt: -1 })
-      .populate("players.user", "username name avatarUrl")
-      .populate("createdBy", "username name avatarUrl")
+      .populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl")
+      .populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl")
       .populate("booking")
       .populate("event");
 
@@ -443,24 +475,35 @@ export const getMyMatches = async (req: AuthRequest, res: Response) => {
  * GET /matches/:matchId
  * Dettaglio match
  */
-// matchController.ts - getMatchById (AGGIORNA)
-// matchController.ts - getMatchById (VERSIONE COMPLETA)
 export const getMatchById = async (req: AuthRequest, res: Response) => {
   try {
     const { matchId } = req.params;
     const userId = req.user!.id;
 
-    console.log('🔍 Caricamento match ID:', matchId);
+    if (!mongoose.Types.ObjectId.isValid(matchId)) {
+      console.log('❌ [getMatchById] ID non valido:', matchId);
+      return res.status(400).json({ 
+        message: "ID match non valido",
+        receivedId: matchId 
+      });
+    }
 
+    console.log('🔍 [getMatchById] Richiesta per:', {
+      matchId,
+      userId,
+      userAgent: req.headers['user-agent']
+    });
+
+    console.log('🔍 [getMatchById] Richiesta per:', {
+      matchId,
+      userId,
+      userAgent: req.headers['user-agent']
+    });
+
+    // Cerca il match con tutte le popolazioni necessarie
     const match = await Match.findById(matchId)
-      .populate({
-        path: "players.user",
-        select: "name username avatarUrl",
-      })
-      .populate({
-        path: "createdBy",
-        select: "name username avatarUrl",
-      })
+      .populate<{ user: PopulatedUser }>("players.user", "name username avatarUrl")
+      .populate<{ createdBy: PopulatedUser }>("createdBy", "name username avatarUrl")
       .populate({
         path: "booking",
         select: "date startTime endTime campo user",
@@ -481,62 +524,128 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
       });
 
     if (!match) {
-      console.log('❌ Match non trovato');
+      console.log('❌ [getMatchById] Match non trovato');
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    console.log('✅ Match trovato:', {
-      id: match._id,
+    // Type assertion dopo popolazione
+    const matchObj = match.toObject();
+    const populatedMatch = matchObj as any;
+
+    console.log('📊 [getMatchById] Match trovato:', {
+      matchId: match._id,
       status: match.status,
-      players: match.players?.length,
-      hasBooking: !!match.booking,
-      hasCreatedBy: !!match.createdBy,
+      isPublic: match.isPublic,
+      createdByName: populatedMatch.createdBy?.name,
+      playersCount: populatedMatch.players?.length,
+      players: populatedMatch.players?.map((p: any) => ({
+        name: p.user?.name,
+        status: p.status,
+      }))
     });
 
-    // Visibilità: pubblico o partecipante
-    const isPlayer = match.players?.some((p: any) => 
-      p.user && p.user._id.toString() === userId
-    ) || false;
+    // Verifica se l'utente è un player
+    const isPlayer = populatedMatch.players?.some((p: any) => {
+      const playerUserId = p.user?._id?.toString();
+      return playerUserId === userId;
+    }) || false;
     
-    const isCreator = match.createdBy?._id.toString() === userId;
+    const isCreator = populatedMatch.createdBy?._id?.toString() === userId;
 
+    console.log('🔐 [getMatchById] Controllo autorizzazione:', {
+      isPublic: match.isPublic,
+      isPlayer,
+      isCreator,
+      shouldAllow: match.isPublic || isPlayer || isCreator
+    });
+
+    // Se il match è privato, controlla i permessi
     if (!match.isPublic && !isPlayer && !isCreator) {
-      console.log('🔒 Accesso negato - Match privato');
-      return res.status(403).json({ message: "Match privato" });
+      console.log('🔒 [getMatchById] Accesso negato - Match privato');
+      console.log('📋 [DEBUG] Dettagli utente richiedente:', {
+        userId,
+        userMatchesPlayers: populatedMatch.players?.map((p: any) => p.user?._id),
+        createdById: populatedMatch.createdBy?._id
+      });
+      
+      return res.status(403).json({ 
+        message: "Non sei autorizzato a visualizzare questo match",
+        debug: {
+          isPublic: match.isPublic,
+          isPlayer,
+          isCreator,
+          userId,
+          matchId: match._id
+        }
+      });
     }
 
-    // Converti per il frontend
-    const responseData = JSON.parse(JSON.stringify({
-      ...match.toObject(),
-      // Garantisce che i campi esistano anche se vuoti
-      booking: match.booking || null,
-      createdBy: match.createdBy || { 
-        _id: userId, 
-        name: "Utente sconosciuto",
-        username: "unknown"
-      },
-      players: match.players?.map(p => ({
-        ...p,
-        user: p.user || { 
-          _id: "unknown", 
-          name: "Giocatore sconosciuto",
-          username: "unknown" 
-        }
-      })) || [],
-    }));
+    res.json(populatedMatch);
+  } catch (err) {
+    console.error("❌ [getMatchById] error:", err);
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
+  }
+};
 
-    console.log('📤 Invio match al frontend:', {
-      matchId: responseData._id,
-      status: responseData.status,
-      booking: !!responseData.booking,
-      createdBy: !!responseData.createdBy,
-      players: responseData.players?.length,
+/**
+ * GET /matches/pending-invites
+ * Restituisce gli inviti pendenti dell'utente
+ */
+export const getPendingInvites = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    
+    console.log('🔍 [getPendingInvites] Richiesta per userId:', userId);
+
+    // Carica tutti i match dell'utente
+    const allMatches = await Match.find({
+      'players.user': userId
+    })
+    .populate<{ createdBy: PopulatedUser }>('createdBy', 'name username avatarUrl')
+    .populate<{ user: PopulatedUser }>('players.user', 'name username avatarUrl')
+    .populate({
+      path: 'booking',
+      populate: [
+        { 
+          path: 'campo', 
+          populate: { 
+            path: 'struttura', 
+            select: 'name location' 
+          } 
+        },
+        { path: 'user', select: 'name email' }
+      ]
+    })
+    .sort({ createdAt: -1 });
+
+    // Filtra solo gli inviti pending dove:
+    // 1. L'utente NON è il creatore
+    // 2. Lo status del player è "pending"
+    const pendingInvites = allMatches.filter(match => {
+      const isCreator = (match.createdBy as any)._id.toString() === userId;
+      
+      // Trova il player corrispondente all'utente
+      const myPlayer = match.players.find((p: any) => 
+        (p.user as any)._id.toString() === userId
+      );
+      
+      const isPending = myPlayer?.status === 'pending';
+      
+      return !isCreator && isPending;
     });
 
-    res.json(responseData);
+    console.log(`✅ [getPendingInvites] Trovati ${pendingInvites.length} inviti pendenti`);
+
+    res.json(pendingInvites);
   } catch (err) {
-    console.error("❌ getMatchById error:", err);
-    res.status(500).json({ message: "Errore server" });
+    console.error('❌ [getPendingInvites] error:', err);
+    res.status(500).json({ 
+      message: 'Errore server',
+      error: err instanceof Error ? err.message : 'Errore sconosciuto'
+    });
   }
 };
 
@@ -573,7 +682,11 @@ export const deleteMatch = async (req: AuthRequest, res: Response) => {
   }
 };
 
-  export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
+/**
+ * PATCH /matches/:matchId/players/:userId/team
+ * Assegna team a giocatore
+ */
+export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
   try {
     const { matchId, userId: playerId } = req.params;
     const { team } = req.body;
@@ -615,12 +728,277 @@ export const deleteMatch = async (req: AuthRequest, res: Response) => {
     await match.save();
 
     const populatedMatch = await Match.findById(matchId)
-      .populate("players.user", "username name avatarUrl")
-      .populate("createdBy", "username name avatarUrl");
+      .populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl")
+      .populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
 
     res.json(populatedMatch);
   } catch (err) {
     console.error("❌ assignPlayerTeam error:", err);
     res.status(500).json({ message: "Errore server" });
+  }
+
+  // In matchController.ts - aggiungi questa funzione
+/**
+ * PATCH /matches/:matchId/update-response
+ * Cambia risposta a un invito (da declined a accepted)
+ */
+
+};
+
+export const updateInviteResponse = async (req: AuthRequest, res: Response) => {
+  try {
+    const { matchId } = req.params;
+    const { action } = req.body;
+    const userId = req.user!.id;
+
+    if (action !== "accept") {
+      return res.status(400).json({ message: "Azione non valida. Solo 'accept' permesso" });
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ message: "Match non trovato" });
+    }
+
+    // Trova player con status "declined"
+    const playerIndex = match.players.findIndex(
+      (p) => p.user.toString() === userId && p.status === "declined"
+    );
+
+    if (playerIndex === -1) {
+      return res.status(404).json({ 
+        message: "Invito rifiutato non trovato",
+        debug: {
+          userId,
+          players: match.players.map(p => ({
+            userId: p.user.toString(),
+            status: p.status
+          }))
+        }
+      });
+    }
+
+    // Controlla se il match è già pieno
+    const confirmedPlayers = match.players.filter(p => p.status === "confirmed").length;
+    if (confirmedPlayers >= match.maxPlayers) {
+      return res.status(400).json({ 
+        message: "Match pieno", 
+        debug: {
+          confirmedPlayers,
+          maxPlayers: match.maxPlayers
+        }
+      });
+    }
+
+    // Controlla se può ancora accettare (30 minuti prima)
+    const booking = await Booking.findById(match.booking);
+    if (booking) {
+      const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+      const now = new Date();
+      const minutesDiff = (matchDateTime.getTime() - now.getTime()) / (1000 * 60);
+      
+      if (minutesDiff <= 30) {
+        return res.status(400).json({ 
+          message: "Non puoi più accettare l'invito (mancano meno di 30 minuti)",
+          debug: {
+            minutesRemaining: minutesDiff
+          }
+        });
+      }
+    }
+
+    // Cambia status a "confirmed"
+    match.players[playerIndex].status = "confirmed";
+    match.players[playerIndex].respondedAt = new Date();
+    
+    // Aggiorna status match se pieno
+    const newConfirmedCount = match.players.filter(p => p.status === "confirmed").length;
+    if (newConfirmedCount === match.maxPlayers) {
+      match.status = "full";
+    } else if (match.status === "full") {
+      match.status = "open";
+    }
+
+    await match.save();
+    
+    // Popola per la risposta
+    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
+    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+
+    console.log(`✅ Risposta cambiata: userId=${userId}, da declined a confirmed`);
+
+    res.json({
+      message: "Risposta cambiata con successo",
+      match
+    });
+  } catch (err) {
+    console.error("❌ updateInviteResponse error:", err);
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
+  }
+}
+
+/**
+ * PATCH /matches/:matchId/leave
+ * Abbandona un match (cambia status da "confirmed" a "declined")
+ */
+/**
+ * PATCH /matches/:matchId/leave
+ * Abbandona un match (cambia status da "confirmed" a "declined")
+ */
+export const leaveMatch = async (req: AuthRequest, res: Response) => {
+  try {
+    const { matchId } = req.params;
+    const userId = req.user!.id;
+
+    console.log(`🚪 [leaveMatch] User ${userId} sta abbandonando match ${matchId}`);
+
+    if (!mongoose.Types.ObjectId.isValid(matchId)) {
+      return res.status(400).json({ message: "ID match non valido" });
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ message: "Match non trovato" });
+    }
+
+    // Trova il player
+    const playerIndex = match.players.findIndex(
+      (p) => p.user.toString() === userId && p.status === "confirmed"
+    );
+
+    if (playerIndex === -1) {
+      return res.status(404).json({ 
+        message: "Non sei un giocatore confermato in questo match" 
+      });
+    }
+
+    // Non può abbandonare se è il creatore
+    if (match.createdBy.toString() === userId) {
+      return res.status(403).json({ 
+        message: "Il creatore non può abbandonare il match. Puoi cancellarlo invece." 
+      });
+    }
+
+    // Non può abbandonare se il match è già completato o cancellato
+    if (match.status === "completed" || match.status === "cancelled") {
+      return res.status(400).json({ 
+        message: "Non puoi abbandonare un match completato o cancellato" 
+      });
+    }
+
+    // ✅ INVECE DI RIMUOVERE, CAMBIA STATUS A "declined"
+    match.players[playerIndex].status = "declined";
+    match.players[playerIndex].respondedAt = new Date();
+    
+    // Rimuovi anche il team assignment
+    match.players[playerIndex].team = undefined;
+
+    console.log(`✅ [leaveMatch] Player status cambiato da "confirmed" a "declined"`);
+
+    // Aggiorna lo status del match se necessario
+    const confirmedCount = match.players.filter(p => p.status === "confirmed").length;
+    
+    if (match.status === "full" && confirmedCount < match.maxPlayers) {
+      match.status = "open";
+      console.log(`📊 [leaveMatch] Match status cambiato da "full" a "open"`);
+    }
+
+    await match.save();
+    
+    // Popola per la risposta
+    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
+    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+
+    console.log(`✅ [leaveMatch] Match aggiornato con successo`);
+
+    res.json({
+      message: "Hai abbandonato il match con successo",
+      match
+    });
+  } catch (err) {
+    console.error("❌ [leaveMatch] error:", err);
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
+  }
+};
+/**
+ * PATCH /matches/:matchId/score
+ * Inserisce o aggiorna il risultato del match (solo creatore)
+ */
+export const submitScore = async (req: AuthRequest, res: Response) => {
+  try {
+    const { matchId } = req.params;
+    const { winner, sets } = req.body;
+    const userId = req.user!.id;
+
+    console.log(`🏆 [submitScore] User ${userId} sta inserendo il risultato per match ${matchId}`);
+
+    if (!mongoose.Types.ObjectId.isValid(matchId)) {
+      return res.status(400).json({ message: "ID match non valido" });
+    }
+
+    // Validazione input
+    if (!winner || !["A", "B"].includes(winner)) {
+      return res.status(400).json({ message: "Winner deve essere 'A' o 'B'" });
+    }
+
+    if (!sets || !Array.isArray(sets) || sets.length === 0) {
+      return res.status(400).json({ message: "Sets è obbligatorio e deve essere un array non vuoto" });
+    }
+
+    // Valida ogni set
+    for (const set of sets) {
+      if (typeof set.teamA !== "number" || typeof set.teamB !== "number") {
+        return res.status(400).json({ message: "Ogni set deve avere teamA e teamB numerici" });
+      }
+      if (set.teamA < 0 || set.teamB < 0 || set.teamA > 99 || set.teamB > 99) {
+        return res.status(400).json({ message: "I punteggi devono essere tra 0 e 99" });
+      }
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ message: "Match non trovato" });
+    }
+
+    // Solo il creatore può inserire il risultato
+    if (match.createdBy.toString() !== userId) {
+      return res.status(403).json({ message: "Solo il creatore può inserire il risultato" });
+    }
+
+    // Il match non deve essere cancellato
+    if (match.status === "cancelled") {
+      return res.status(400).json({ message: "Non puoi inserire il risultato di un match cancellato" });
+    }
+
+    // Aggiorna il risultato
+    match.winner = winner;
+    match.score = { sets };
+    match.status = "completed";
+    match.playedAt = new Date();
+
+    await match.save();
+
+    // Popola per la risposta
+    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
+    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+
+    console.log(`✅ [submitScore] Risultato salvato: Team ${winner} vince ${sets.length} set(s)`);
+
+    res.json({
+      message: "Risultato salvato con successo",
+      match
+    });
+  } catch (err) {
+    console.error("❌ [submitScore] error:", err);
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
   }
 };

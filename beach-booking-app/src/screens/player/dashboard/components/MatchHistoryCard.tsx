@@ -8,9 +8,15 @@ interface MatchHistoryCardProps {
   match: any;
   userId?: string;
   onPress: (bookingId?: string) => void;
+  style?: any;
 }
 
-const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ match, userId, onPress }) => {
+const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ 
+  match, 
+  userId, 
+  onPress,
+  style 
+}) => {
   const myPlayer = match.players.find((p: any) => p.user._id === userId);
   const isWinner = myPlayer && myPlayer.team === match.winner;
 
@@ -21,47 +27,52 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ match, userId, onPr
   };
 
   return (
-    <Pressable style={styles.matchHistoryCard} onPress={handlePress}>
-      <View
-        style={[
-          styles.matchResultBadge,
-          isWinner ? styles.matchWin : styles.matchLoss,
-        ]}
-      >
-        <Ionicons
-          name={isWinner ? "trophy" : "close-circle"}
-          size={20}
-          color={isWinner ? "#FFD700" : "#F44336"}
-        />
-      </View>
-
-      <View style={styles.matchHistoryInfo}>
-        <Text style={styles.matchHistoryTitle}>
-          vs. Team {myPlayer?.team === "A" ? "B" : "A"}
-        </Text>
-        <Text style={styles.matchHistoryDate}>
-          {formatMatchDate(match.playedAt || match.createdAt)}
-        </Text>
-      </View>
-
-      {match.score?.sets && (
-        <Text
+    <Pressable 
+      style={[styles.matchHistoryCard, style]} 
+      onPress={handlePress}
+    >
+      <View style={styles.matchHistoryCardContent}>
+        <View
           style={[
-            styles.matchScore,
-            isWinner ? styles.matchScoreWin : styles.matchScoreLoss,
+            styles.matchResultBadge,
+            isWinner ? styles.matchWin : styles.matchLoss,
           ]}
         >
-          {match.score.sets
-            .map((s: any) => (myPlayer?.team === "A" ? s.teamA : s.teamB))
-            .join(" - ")}{" "}
-          -{" "}
-          {match.score.sets
-            .map((s: any) => (myPlayer?.team === "A" ? s.teamB : s.teamA))
-            .join(" - ")}
-        </Text>
-      )}
+          <Ionicons
+            name={isWinner ? "trophy" : "close-circle"}
+            size={20}
+            color={isWinner ? "#FFD700" : "#F44336"}
+          />
+        </View>
 
-      <Ionicons name="chevron-forward" size={20} color="#999" />
+        <View style={styles.matchHistoryInfo}>
+          <Text style={styles.matchHistoryTitle} numberOfLines={1}>
+            {myPlayer?.team === "A" ? "Team A" : "Team B"} vs {myPlayer?.team === "A" ? "Team B" : "Team A"}
+          </Text>
+          <Text style={styles.matchHistoryDate}>
+            {formatMatchDate(match.playedAt || match.createdAt)}
+          </Text>
+          
+          {match.score?.sets && (
+            <Text
+              style={[
+                styles.matchScore,
+                isWinner ? styles.matchScoreWin : styles.matchScoreLoss,
+              ]}
+            >
+              {match.score.sets
+                .map((s: any) => (myPlayer?.team === "A" ? s.teamA : s.teamB))
+                .join(" - ")}
+              {" "}vs{" "}
+              {match.score.sets
+                .map((s: any) => (myPlayer?.team === "A" ? s.teamB : s.teamA))
+                .join(" - ")}
+            </Text>
+          )}
+        </View>
+
+        <Ionicons name="chevron-forward" size={20} color="#999" />
+      </View>
     </Pressable>
   );
 };

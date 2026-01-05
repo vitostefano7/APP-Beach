@@ -208,11 +208,39 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
  */
 // In bookingController.ts - getMyBookings
 // bookingController.ts - getMyBookings (VERSIONE CORRETTA)
+/**
+ * 📌 PRENOTAZIONI DEL PLAYER (con hasMatch)
+ * GET /bookings/me
+ */
+/**
+ * 📌 PRENOTAZIONI DEL PLAYER (con hasMatch)
+ * GET /bookings/me
+ */
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
-    console.log("📋 Caricamento prenotazioni utente:", req.user!.id);
+    const userId = req.user!.id;
+    console.log("📋 Caricamento prenotazioni utente:", userId);
 
-    const bookings = await Booking.find({ user: req.user!.id })
+    // 1. Trova tutti i match dove l'utente è un player confermato
+    const myMatches = await Match.find({
+      'players.user': userId,
+      'players.status': 'confirmed'
+    }).select('booking');
+
+    // Estrai gli ID delle prenotazioni dai match e converti in ObjectId
+    const matchBookingIds = myMatches.map(m => new mongoose.Types.ObjectId(m.booking.toString()));
+    
+    console.log(`✅ Trovati ${matchBookingIds.length} match confermati`);
+
+    // 2. Trova tutte le prenotazioni:
+    //    - create dall'utente OPPURE
+    //    - associate a match dove l'utente è confermato
+    const bookings = await Booking.find({
+      $or: [
+        { user: new mongoose.Types.ObjectId(userId) }, // Prenotazioni create dall'utente
+        { _id: { $in: matchBookingIds } } // Prenotazioni dei match dove è player
+      ]
+    })
       .populate({
         path: "campo",
         populate: {
@@ -222,12 +250,12 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       })
       .sort({ date: -1, startTime: -1 });
 
-    // Prende tutti i match collegati
-    const matchIds = bookings.map(b => b._id);
-    const matches = await Match.find({ booking: { $in: matchIds } })
-      .select('booking status players maxPlayers isPublic winner score');
+    // 3. Prende tutti i match collegati
+    const bookingIds = bookings.map(b => b._id);
+    const matches = await Match.find({ booking: { $in: bookingIds } })
+      .select('booking status players maxPlayers isPublic winner score createdBy');
 
-    // Crea una mappa bookingId -> match
+    // 4. Crea una mappa bookingId -> match
     const matchMap = new Map();
     matches.forEach(match => {
       matchMap.set(match.booking.toString(), {
@@ -238,23 +266,34 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
         isPublic: match.isPublic,
         winner: match.winner,
         sets: match.score?.sets || [],
+        createdBy: match.createdBy,
       });
     });
 
+    // 5. Costruisci il risultato con info aggiuntive
     const result = bookings.map(booking => {
-      const bookingObj = booking.toObject();
+      const bookingObj = (booking as any).toObject();
       const matchData = matchMap.get(booking._id.toString());
+      
+      // Controlla se l'utente è il creatore della prenotazione originale
+      const isMyBooking = bookingObj.user.toString() === userId;
+      
+      // Controlla se l'utente è solo un player invitato
+      const isInvitedPlayer = !isMyBooking && matchData;
       
       return {
         ...bookingObj,
         hasMatch: !!matchData,
         matchId: matchData?._id,
         match: matchData || null,
+        isMyBooking, // true se hai creato tu la prenotazione
+        isInvitedPlayer, // true se sei stato invitato da qualcun altro
       };
     });
 
-    console.log(`✅ ${result.length} prenotazioni trovate`);
-    console.log(`✅ Prenotazioni con match: ${result.filter(b => b.hasMatch).length}`);
+    console.log(`✅ ${result.length} prenotazioni totali trovate`);
+    console.log(`   - ${result.filter((b: any) => b.isMyBooking).length} create da te`);
+    console.log(`   - ${result.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
     
     res.json(result);
   } catch (err) {
@@ -263,18 +302,31 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
 /**
  * 📌 SINGOLA PRENOTAZIONE
  * GET /bookings/:id
+ * Accesso consentito a:
+ * - creatore della prenotazione
+ * - player del match associato
  */
-// bookingController.ts - getBookingById (VERSIONE CORRETTA)
-// bookingController.ts - getBookingById (AGGIORNA)
+/**
+ * 📌 SINGOLA PRENOTAZIONE
+ * GET /bookings/:id
+ * Accesso consentito a:
+ * - creatore della prenotazione
+ * - player del match associato
+ */
 export const getBookingById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
 
-    console.log('📋 Caricamento prenotazione ID:', id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID prenotazione non valido" });
+    }
 
+    // 🔍 Recupera prenotazione
     const booking = await Booking.findById(id)
       .populate({
         path: "campo",
@@ -289,67 +341,91 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
-    if ((booking as any).user._id.toString() !== req.user!.id) {
+    // ✅ 1. Verifica se è il creatore della prenotazione
+    const isOwner = (booking as any).user._id.toString() === userId;
+
+    // 🔍 Recupera match associato (se esiste)
+    const match = await Match.findOne({ booking: booking._id })
+      .populate("players.user", "name username avatarUrl")
+      .populate("createdBy", "name username avatarUrl")
+      .populate({
+        path: "booking",
+        populate: {
+          path: "campo",
+          populate: {
+            path: "struttura",
+            select: "name location images",
+          },
+        },
+      });
+
+    // ✅ 2. Verifica se è player del match
+    const isPlayer =
+      match &&
+      match.players.some(
+        (p: any) => p.user._id.toString() === userId
+      );
+
+    // ❌ Non autorizzato se non è né owner né player
+    if (!isOwner && !isPlayer) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    // Cerca il match associato
-    const match = await Match.findOne({ booking: booking._id })
-      .populate("players.user", "name username avatarUrl")
-      .populate("createdBy", "name username avatarUrl");
-
-    // Converti tutto in oggetto semplice
+    // 🧱 Costruzione risposta
     const bookingObj = booking.toObject({ versionKey: false });
     
-    // Prepara l'oggetto di risposta
+    // Type assertion per campo e struttura
+    const campo = bookingObj.campo as any;
+    const struttura = campo?.struttura as any;
+
     const responseData: any = {
       ...bookingObj,
+      _id: bookingObj._id.toString(),
+      user: {
+        ...bookingObj.user,
+        _id: bookingObj.user._id.toString(),
+      },
+      campo: {
+        ...campo,
+        _id: campo._id.toString(),
+        struttura: {
+          ...struttura,
+          _id: struttura._id.toString(),
+        },
+      },
+      hasMatch: !!match,
+      match: null,
     };
 
-    // Se esiste il match, aggiungi i dettagli CONVERTITI IN STRINGHE
+    // ➕ Aggiungi match se presente
     if (match) {
       const matchObj = match.toObject({ versionKey: false });
-      
-      // Converti tutti gli ObjectId in stringhe
+
       responseData.matchId = matchObj._id.toString();
-      responseData.hasMatch = true;
       responseData.match = {
         _id: matchObj._id.toString(),
         status: matchObj.status,
-        players: matchObj.players.map((p: any) => ({
-          ...p,
-          user: {
-            ...p.user,
-            _id: p.user._id.toString()
-          },
-          _id: p._id ? p._id.toString() : undefined
-        })),
         maxPlayers: matchObj.maxPlayers,
         isPublic: matchObj.isPublic,
         winner: matchObj.winner,
         sets: matchObj.score?.sets || [],
+        booking: matchObj.booking?.toString(),
         createdBy: {
           ...matchObj.createdBy,
-          _id: matchObj.createdBy._id.toString()
+          _id: matchObj.createdBy._id.toString(),
         },
-        booking: matchObj.booking ? matchObj.booking.toString() : undefined,
+        players: matchObj.players.map((p: any) => ({
+          _id: p._id?.toString(),
+          status: p.status,
+          team: p.team,
+          joinedAt: p.joinedAt,
+          user: {
+            ...p.user,
+            _id: p.user._id.toString(),
+          },
+        })),
       };
-    } else {
-      responseData.hasMatch = false;
-      responseData.match = null;
     }
-
-    // Converti anche gli altri ObjectId in stringhe
-    responseData._id = responseData._id.toString();
-    responseData.user._id = responseData.user._id.toString();
-    responseData.campo._id = responseData.campo._id.toString();
-    responseData.campo.struttura._id = responseData.campo.struttura._id.toString();
-
-    console.log('✅ Prenotazione caricata con match:', {
-      hasMatch: !!match,
-      matchId: match?._id.toString(),
-      matchStatus: match?.status
-    });
 
     res.json(responseData);
   } catch (err) {
@@ -357,6 +433,7 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Errore server" });
   }
 };
+
 
 /**
  * 📌 CANCELLA PRENOTAZIONE

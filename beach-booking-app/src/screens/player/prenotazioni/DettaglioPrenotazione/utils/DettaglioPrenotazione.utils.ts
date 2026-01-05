@@ -154,3 +154,25 @@ export const joinMatch = async (matchId: string, team: "A" | "B", token: string)
 
   return true;
 };
+export const submitMatchScore = async (
+  matchId: string,
+  winner: "A" | "B",
+  sets: { teamA: number; teamB: number }[],
+  token: string
+) => {
+  const res = await fetch(`${API_URL}/matches/${matchId}/score`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ winner, sets }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Errore nel salvataggio del risultato");
+  }
+
+  return true;
+};
