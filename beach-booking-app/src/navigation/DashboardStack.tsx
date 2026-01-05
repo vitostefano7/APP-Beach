@@ -6,6 +6,7 @@ import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/Dettagli
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import HomeScreen from "../screens/player/dashboard/DashboardScreen"; // 🆕 Importa HomeScreen
 import DettaglioInvito from "../screens/player/dashboard/DettaglioInvitoScreen";
+import TuttiInvitiScreen from "../screens/player/dashboard/TuttiInviti";
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +51,11 @@ export default function DashboardStack() { // ✅ Nome corretto
         name="DettaglioInvito" 
         component={DettaglioInvito}
         options={{ title: "Dettaglio Invito" }}
+      />
+      <Stack.Screen 
+        name="TuttiInviti" 
+        component={TuttiInvitiScreen}
+        options={{ title: "Tutti gli Inviti Ricevuti" }}
       />
     </Stack.Navigator>
   );

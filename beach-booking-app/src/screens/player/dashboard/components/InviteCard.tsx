@@ -8,7 +8,7 @@ import { styles } from "../styles";
 interface InviteCardProps {
   invite: any;
   userId?: string;
-  onViewDetails: (invite: any) => void; // Nuova prop per vedere dettagli
+  onViewDetails: (invite: any) => void;
   onRespond: (matchId: string, response: "accept" | "decline") => void;
 }
 
@@ -31,10 +31,30 @@ const InviteCard: React.FC<InviteCardProps> = ({
 
   console.log(`Match ID: ${matchId}, My status: ${myStatus}`);
 
-  // Solo se è pending
-  if (myStatus !== "pending") {
-    console.log(`Skipping invite ${matchId}, status: ${myStatus}`);
-    return null;
+  // Constante per le ore di cut-off
+  const CUTOFF_HOURS_BEFORE = 2; // Inviti si chiudono 2 ore prima
+
+  // 1. PRIMA controlla se l'invito è scaduto (2 ore prima della partita)
+  const isExpired = () => {
+    if (!booking?.date || !booking?.startTime) return false;
+    
+    // Combina data e ora della partita
+    const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+    
+    // Sottrai 2 ore per ottenere il momento di scadenza
+    const cutoffTime = new Date(matchDateTime);
+    cutoffTime.setHours(cutoffTime.getHours() - CUTOFF_HOURS_BEFORE);
+    
+    const now = new Date();
+    return now > cutoffTime;
+  };
+
+  const expired = isExpired();
+
+  // 2. POI controlla lo stato: se NON è pending OPPURE è scaduto → non mostrare
+  if (myStatus !== "pending" || expired) {
+    console.log(`Skipping invite ${matchId}, status: ${myStatus}, expired: ${expired}`);
+    return null; // Non renderizzare niente, l'invito scompare
   }
 
   const handleCardPress = () => {
@@ -90,29 +110,41 @@ const InviteCard: React.FC<InviteCardProps> = ({
     );
   };
 
-  // Calcola se la partita è ancora valida (data nel futuro)
-  const isExpired = () => {
-    if (!booking?.date) return false;
-    const matchDate = new Date(booking.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return matchDate < today;
+  // Funzione per mostrare quanto tempo rimane (opzionale)
+  const getTimeRemaining = () => {
+    if (!booking?.date || !booking?.startTime) return "";
+    
+    const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+    const cutoffTime = new Date(matchDateTime);
+    cutoffTime.setHours(cutoffTime.getHours() - CUTOFF_HOURS_BEFORE);
+    
+    const now = new Date();
+    const minutesRemaining = Math.floor((cutoffTime - now) / (1000 * 60));
+    
+    if (minutesRemaining <= 0) return "";
+    
+    if (minutesRemaining < 60) {
+      return `Scade tra ${minutesRemaining} minuti`;
+    } else if (minutesRemaining < 120) {
+      return `Scade tra 1 ora`;
+    } else {
+      const hoursRemaining = Math.floor(minutesRemaining / 60);
+      return `Scade tra ${hoursRemaining} ore`;
+    }
   };
 
-  const expired = isExpired();
+  const timeRemaining = getTimeRemaining();
 
   return (
     <Pressable 
-      style={[
-        styles.inviteCard, 
-        expired && { opacity: 0.6, borderLeftColor: "#CCCCCC" }
-      ]} 
+      style={styles.inviteCard}
       onPress={handleCardPress}
-      disabled={expired}
     >
-      {expired && (
-        <View style={styles.expiredBadge}>
-          <Text style={styles.expiredBadgeText}>Scaduto</Text>
+      {/* Badge per il tempo rimanente (opzionale) */}
+      {timeRemaining && (
+        <View style={styles.timeRemainingBadge}>
+          <Ionicons name="time-outline" size={12} color="#FF9800" />
+          <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
         </View>
       )}
 
@@ -162,29 +194,21 @@ const InviteCard: React.FC<InviteCardProps> = ({
         </View>
       )}
 
-      {!expired ? (
-        <View style={styles.inviteActions}>
-          <Pressable
-            style={[styles.inviteActionButton, styles.inviteDecline]}
-            onPress={handleDecline}
-          >
-            <Text style={styles.inviteDeclineText}>Rifiuta</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.inviteActionButton, styles.inviteAccept]}
-            onPress={handleAccept}
-          >
-            <Ionicons name="checkmark" size={16} color="white" />
-            <Text style={styles.inviteAcceptText}>Accetta</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.inviteActions}>
-          <Text style={styles.expiredText}>
-            Questo invito è scaduto
-          </Text>
-        </View>
-      )}
+      <View style={styles.inviteActions}>
+        <Pressable
+          style={[styles.inviteActionButton, styles.inviteDecline]}
+          onPress={handleDecline}
+        >
+          <Text style={styles.inviteDeclineText}>Rifiuta</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.inviteActionButton, styles.inviteAccept]}
+          onPress={handleAccept}
+        >
+          <Ionicons name="checkmark" size={16} color="white" />
+          <Text style={styles.inviteAcceptText}>Accetta</Text>
+        </Pressable>
+      </View>
     </Pressable>
   );
 };

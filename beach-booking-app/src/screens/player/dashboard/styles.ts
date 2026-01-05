@@ -19,6 +19,21 @@ export const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  showMoreButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 12,
+  borderTopWidth: 1,
+  borderTopColor: '#f0f0f0',
+  marginTop: 8,
+  gap: 6,
+},
+showMoreText: {
+  fontSize: 14,
+  color: '#2196F3',
+  fontWeight: '500',
+},
 
   // Debug Section
   debugSection: {
