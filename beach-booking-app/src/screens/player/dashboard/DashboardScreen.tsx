@@ -334,6 +334,22 @@ export default function HomeScreen() {
         const allMatches = await matchesRes.json();
         console.log("Match completati ricevuti:", allMatches.length);
         
+        // DEBUG: Verifica struttura
+        console.log("=== DEBUG STRUTTURA NEI MATCH ===");
+        allMatches.slice(0, 3).forEach((match: any, index: number) => {
+          console.log(`Match ${index + 1}:`);
+          console.log("  - Match ID:", match._id);
+          console.log("  - Booking:", match.booking ? "presente" : "ASSENTE");
+          console.log("  - Booking ID:", match.booking?._id);
+          console.log("  - Campo:", match.booking?.campo ? "presente" : "ASSENTE");
+          console.log("  - Campo name:", match.booking?.campo?.name);
+          console.log("  - Struttura:", match.booking?.campo?.struttura ? "presente" : "ASSENTE");
+          console.log("  - Struttura name:", match.booking?.campo?.struttura?.name);
+          console.log("  - Score:", match.score ? "presente" : "ASSENTE");
+          console.log("  - Score sets:", match.score?.sets?.length || 0);
+          console.log("  - Winner:", match.winner || "non definito");
+        });
+        
         const matchesWithScores = allMatches.filter((m: any) => 
           m.score?.sets?.length > 0
         );

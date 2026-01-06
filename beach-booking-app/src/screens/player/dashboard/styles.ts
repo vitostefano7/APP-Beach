@@ -83,13 +83,13 @@ export const styles = StyleSheet.create({
 
   // Testi header
   greeting: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
     fontWeight: "600",
     letterSpacing: 1,
   },
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#333",
   },
@@ -270,7 +270,7 @@ export const styles = StyleSheet.create({
 
   // ==================== SECTIONS ====================
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -280,12 +280,12 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "800",
     color: "#333",
   },
   sectionLink: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#2196F3",
   },
@@ -329,13 +329,13 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   emptyMatchTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#333",
     marginTop: 8,
   },
   emptyMatchSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
     textAlign: "center",
     marginBottom: 16,
@@ -347,7 +347,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bookButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "white",
   },
@@ -379,12 +379,12 @@ export const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   matchDay: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     color: "white",
   },
   matchTime: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "white",
     marginTop: 4,
@@ -394,7 +394,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   matchTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "white",
     marginBottom: 8,
@@ -405,7 +405,7 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   matchLocationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "white",
     fontWeight: "600",
   },
@@ -469,13 +469,13 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   emptyInviteTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#666",
     marginTop: 8,
   },
   emptyInviteSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#999",
     textAlign: "center",
   },
@@ -508,7 +508,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   inviteTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "#333",
     marginBottom: 4,
@@ -519,7 +519,7 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   inviteDetailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
   },
   inviteDateTime: {
@@ -587,15 +587,37 @@ export const styles = StyleSheet.create({
 
   // ==================== MATCH HISTORY ====================
   matchHistoryCard: {
-    backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
-    height: 120,
+    overflow: 'hidden',
+    height: 140,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  matchGradientBorder: {
+    padding: 2,
+    borderRadius: 16,
+    height: '100%',
+  },
+  matchCardInner: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 12,
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  matchCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  matchResultContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   matchHistoryCardContent: {
     flexDirection: "row",
@@ -603,9 +625,9 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   matchResultBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -614,6 +636,106 @@ export const styles = StyleSheet.create({
   },
   matchLoss: {
     backgroundColor: "#FFEBEE",
+  },
+  matchResultText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  matchWinText: {
+    color: '#4CAF50',
+  },
+  matchLossText: {
+    color: '#F44336',
+  },
+  matchSportBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchTeamsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  matchTeamSection: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  matchTeamLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666',
+  },
+  matchTeamLabelMy: {
+    color: '#2196F3',
+    fontWeight: '700',
+  },
+  matchTeamAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  matchAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  matchAvatarA: {
+    backgroundColor: '#E3F2FD',
+  },
+  matchAvatarB: {
+    backgroundColor: '#FFEBEE',
+  },
+  matchAvatarText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#333',
+  },
+  matchScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 6,
+  },
+  matchScoreLarge: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#333',
+  },
+  matchScoreSeparator: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ccc',
+  },
+  matchCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  matchLocationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  matchLocationText: {
+    fontSize: 11,
+    color: '#666',
+    flex: 1,
   },
   matchHistoryInfo: {
     flex: 1,
@@ -626,8 +748,8 @@ export const styles = StyleSheet.create({
     marginBottom: 2,
   },
   matchHistoryDate: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 10,
+    color: '#999',
     textTransform: "capitalize",
   },
   matchScore: {
@@ -644,18 +766,18 @@ export const styles = StyleSheet.create({
 
   // ==================== CAROUSEL ====================
   carouselSection: {
-    marginBottom: 32,
-    paddingBottom: 16,
+    marginBottom: 16,
+    paddingBottom: 12,
   },
   carouselHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   carouselContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
   },
   carouselCard: {
     width: '100%',
@@ -663,29 +785,32 @@ export const styles = StyleSheet.create({
   },
   carouselCounter: {
     textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
-    marginTop: 12,
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
+    marginTop: 16,
+    letterSpacing: 0.5,
   },
   carouselControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   dotsContainer: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   activeDot: {
     backgroundColor: '#2196F3',
+    width: 24,
   },
   inactiveDot: {
-    backgroundColor: '#ddd',
+    backgroundColor: '#E0E0E0',
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -724,15 +849,19 @@ export const styles = StyleSheet.create({
   emptyCarouselContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
     backgroundColor: '#f8f9fa',
-    borderRadius: 16,
+    borderRadius: 20,
     marginHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
   },
   emptyCarouselText: {
     fontSize: 16,
     color: '#999',
-    marginTop: 12,
+    marginTop: 16,
+    fontWeight: '600',
   },
   emptyCarouselSubtext: {
     fontSize: 12,

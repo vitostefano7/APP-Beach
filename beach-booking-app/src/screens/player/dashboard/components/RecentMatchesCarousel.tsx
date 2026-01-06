@@ -11,8 +11,8 @@ import MatchHistoryCard from "./MatchHistoryCard";
 import { styles } from "../styles";
 
 const { width: screenWidth } = Dimensions.get('window');
-const CARD_WIDTH = screenWidth * 0.85;
-const CARD_MARGIN = 8;
+const CARD_WIDTH = screenWidth * 0.88;
+const CARD_MARGIN = 10;
 
 interface RecentMatchesCarouselProps {
   matches: any[];
@@ -61,27 +61,13 @@ const RecentMatchesCarousel: React.FC<RecentMatchesCarouselProps> = ({
       <View style={styles.carouselHeader}>
         <Text style={styles.sectionTitle}>Ultime Partite</Text>
         
-        <View style={styles.carouselControls}>
-          <View style={styles.dotsContainer}>
-            {matches.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentIndex ? styles.activeDot : styles.inactiveDot
-                ]}
-              />
-            ))}
-          </View>
-          
-          <Pressable 
-            style={styles.viewAllButton} 
-            onPress={onViewAll}
-          >
-            <Text style={styles.viewAllText}>Tutte</Text>
-            <Ionicons name="chevron-forward" size={16} color="#2196F3" />
-          </Pressable>
-        </View>
+        <Pressable 
+          style={styles.viewAllButton} 
+          onPress={onViewAll}
+        >
+          <Text style={styles.viewAllText}>Tutte</Text>
+          <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+        </Pressable>
       </View>
 
       <FlatList

@@ -409,7 +409,7 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
         maxPlayers: matchObj.maxPlayers,
         isPublic: matchObj.isPublic,
         winner: matchObj.winner,
-        sets: matchObj.score?.sets || [],
+        score: matchObj.score || { sets: [] },
         booking: matchObj.booking?.toString(),
         createdBy: {
           ...matchObj.createdBy,
