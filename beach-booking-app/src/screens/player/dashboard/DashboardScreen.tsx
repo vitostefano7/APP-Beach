@@ -1,4 +1,3 @@
-// DashboardScreen.tsx
 import React, { useState, useContext, useRef } from 'react';
 import {
   ScrollView,
@@ -18,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
+import { useSuggestedFriends } from './hooks/useSuggestedFriends';
 import Header from "./components/Header";
 import StatsRow from "./components/StatsRow";
 import NextMatchCard from "./components/NextMatchCard";
@@ -96,134 +96,20 @@ export default function HomeScreen() {
     winRate: 0,
   });
 
-  // Dati mock per il carosello di amici CON LOGICA DI PRIORITÀ
-  const getMockSuggestedFriends = () => {
-    const baseFriends = [
-      {
-        _id: "1",
-        name: "Marco Rossi",
-        avatarUrl: null,
-        totalMatches: 12,
-        winRate: 75,
-        gamesPlayedTogether: 8,
-        commonFriends: 3,
-        commonFacilities: 2,
-        priorityScore: 0
-      },
-      {
-        _id: "2",
-        name: "Laura Bianchi",
-        avatarUrl: null,
-        totalMatches: 8,
-        winRate: 62,
-        gamesPlayedTogether: 5,
-        commonFriends: 2,
-        commonFacilities: 1,
-        priorityScore: 0
-      },
-      {
-        _id: "3",
-        name: "Giuseppe Verdi",
-        avatarUrl: null,
-        totalMatches: 15,
-        winRate: 80,
-        gamesPlayedTogether: 12,
-        commonFriends: 4,
-        commonFacilities: 3,
-        priorityScore: 0
-      },
-      {
-        _id: "4",
-        name: "Anna Neri",
-        avatarUrl: null,
-        totalMatches: 6,
-        winRate: 50,
-        gamesPlayedTogether: 0,
-        commonFriends: 1,
-        commonFacilities: 0,
-        priorityScore: 0
-      },
-      {
-        _id: "5",
-        name: "Francesco Gialli",
-        avatarUrl: null,
-        totalMatches: 10,
-        winRate: 70,
-        gamesPlayedTogether: 3,
-        commonFriends: 5,
-        commonFacilities: 2,
-        priorityScore: 0
-      },
-      {
-        _id: "6",
-        name: "Sofia Blu",
-        avatarUrl: null,
-        totalMatches: 7,
-        winRate: 85,
-        gamesPlayedTogether: 0,
-        commonFriends: 3,
-        commonFacilities: 2,
-        priorityScore: 0
-      },
-      {
-        _id: "7",
-        name: "Luca Marrone",
-        avatarUrl: null,
-        totalMatches: 9,
-        winRate: 65,
-        gamesPlayedTogether: 2,
-        commonFriends: 0,
-        commonFacilities: 3,
-        priorityScore: 0
-      },
-      {
-        _id: "8",
-        name: "Paola Viola",
-        avatarUrl: null,
-        totalMatches: 11,
-        winRate: 72,
-        gamesPlayedTogether: 6,
-        commonFriends: 2,
-        commonFacilities: 1,
-        priorityScore: 0
-      }
-    ];
-
-    // Calcola il punteggio di priorità per ogni amico
-    return baseFriends.map(friend => {
-      let score = 0;
-      
-      // PRIORITÀ 1: Partite giocate insieme (peso più alto)
-      if (friend.gamesPlayedTogether > 0) {
-        score += friend.gamesPlayedTogether * 100;
-      }
-      
-      // PRIORITÀ 2: Amici in comune (peso medio)
-      score += friend.commonFriends * 50;
-      
-      // PRIORITÀ 3: Strutture preferite in comune (peso più basso)
-      score += friend.commonFacilities * 20;
-      
-      // Bonus per win rate alto (opzionale)
-      if (friend.winRate > 70) {
-        score += 10;
-      }
-      
-      return {
-        ...friend,
-        priorityScore: score
-      };
-    })
-    .sort((a, b) => b.priorityScore - a.priorityScore)
-    .slice(0, 6);
-  };
-
-  const mockSuggestedFriends = getMockSuggestedFriends();
+  // Custom Hook per amici suggeriti
+  const {
+    suggestions: suggestedFriends,
+    loading: suggestionsLoading,
+    error: suggestionsError,
+    refresh: refreshSuggestions,
+    sendFriendRequest,
+  } = useSuggestedFriends({ limit: 6 });
 
   useFocusEffect(
     React.useCallback(() => {
       console.log("HomeScreen focus - caricamento dati...");
       loadDashboardData();
+      refreshSuggestions();
     }, [])
   );
 
@@ -234,9 +120,11 @@ export default function HomeScreen() {
       console.log("User ID:", user?.id);
       console.log("User name:", user?.name);
 
-      await loadNextBooking();
-      await loadPendingInvites();
-      await loadRecentMatchesAndStats();
+      await Promise.all([
+        loadNextBooking(),
+        loadPendingInvites(),
+        loadRecentMatchesAndStats(),
+      ]);
 
     } catch (error) {
       console.error("Errore caricamento dashboard:", error);
@@ -485,6 +373,7 @@ export default function HomeScreen() {
     console.log("Refresh manuale...");
     setRefreshing(true);
     loadDashboardData();
+    refreshSuggestions();
   };
 
   const respondToInvite = async (matchId: string, response: "accept" | "decline") => {
@@ -553,9 +442,10 @@ export default function HomeScreen() {
   };
 
   const handlePressFriend = (friend: any) => {
-    console.log("Navigating to friend profile:", friend._id);
+    const friendId = friend.user?._id || friend._id;
+    console.log("Navigating to friend profile:", friendId);
     navigation.navigate("ProfiloUtente", {
-      userId: friend._id,
+      userId: friendId,
     });
   };
 
@@ -581,6 +471,32 @@ export default function HomeScreen() {
     );
   };
 
+  const handleAddFriend = async (friendId: string, friendName: string) => {
+    Alert.alert(
+      "Aggiungi amico",
+      `Vuoi inviare una richiesta di amicizia a ${friendName}?`,
+      [
+        {
+          text: "Annulla",
+          style: "cancel"
+        },
+        {
+          text: "Invia richiesta",
+          onPress: async () => {
+            try {
+              const success = await sendFriendRequest(friendId);
+              if (success) {
+                Alert.alert("Successo", "Richiesta di amicizia inviata!");
+              }
+            } catch (error) {
+              Alert.alert("Errore", "Impossibile inviare la richiesta");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleFriendsScroll = (event: any) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffset / (screenWidth * 0.85));
@@ -593,47 +509,100 @@ export default function HomeScreen() {
     match.status === "completed" && match.score?.sets?.length > 0
   );
 
-  const SuggestedFriendCard = ({ friend, onPress, onInvite }: any) => {
+  const SuggestedFriendCard = ({ friend }: { friend: any }) => {
+    const friendData = friend.user || friend;
+    const friendId = friendData._id;
+    const friendName = friendData.name || friend.name;
+    
     const getPriorityBadge = () => {
-      if (friend.gamesPlayedTogether > 0) {
-        return (
-          <View style={styles.priorityBadgeHigh}>
-            <Ionicons name="tennisball" size={12} color="white" />
-            <Text style={styles.priorityBadgeText}>
-              {friend.gamesPlayedTogether} partite insieme
-            </Text>
-          </View>
-        );
-      } else if (friend.commonFriends > 0) {
-        return (
-          <View style={styles.priorityBadgeMedium}>
-            <Ionicons name="people" size={12} color="white" />
-            <Text style={styles.priorityBadgeText}>
-              {friend.commonFriends} amici in comune
-            </Text>
-          </View>
-        );
-      } else if (friend.commonFacilities > 0) {
-        return (
-          <View style={styles.priorityBadgeLow}>
-            <Ionicons name="location" size={12} color="white" />
-            <Text style={styles.priorityBadgeText}>
-              {friend.commonFacilities} strutture in comune
-            </Text>
-          </View>
-        );
+      if (!friend.reason) {
+        if (friend.gamesPlayedTogether > 0) {
+          return {
+            style: styles.priorityBadgeHigh,
+            icon: "tennisball" as const,
+            text: `${friend.gamesPlayedTogether} partite insieme`,
+          };
+        } else if (friend.commonFriends > 0) {
+          return {
+            style: styles.priorityBadgeMedium,
+            icon: "people" as const,
+            text: `${friend.commonFriends} amici in comune`,
+          };
+        } else if (friend.commonFacilities > 0) {
+          return {
+            style: styles.priorityBadgeLow,
+            icon: "location" as const,
+            text: `${friend.commonFacilities} strutture in comune`,
+          };
+        }
+        return null;
       }
-      return null;
+
+      switch (friend.reason.type) {
+        case "match_together":
+          return {
+            style: styles.priorityBadgeHigh,
+            icon: "tennisball" as const,
+            text: `${friend.reason.details.matchCount} partita${friend.reason.details.matchCount !== 1 ? 'e' : ''} insieme`,
+          };
+        case "mutual_friends":
+          return {
+            style: styles.priorityBadgeMedium,
+            icon: "people" as const,
+            text: `${friend.reason.details.mutualFriendsCount} amic${friend.reason.details.mutualFriendsCount !== 1 ? 'i' : 'e'} in comune`,
+          };
+        case "same_venue":
+          return {
+            style: styles.priorityBadgeLow,
+            icon: "location" as const,
+            text: `Stesso centro: ${friend.reason.details.venueName}`,
+          };
+        default:
+          return null;
+      }
+    };
+
+    const getFriendshipStatusBadge = () => {
+      const status = friend.friendshipStatus || "none";
+      switch (status) {
+        case "pending":
+          return {
+            style: styles.friendshipStatusPending,
+            icon: "time-outline" as const,
+            text: "Richiesta inviata",
+          };
+        case "accepted":
+          return {
+            style: styles.friendshipStatusAccepted,
+            icon: "checkmark-circle-outline" as const,
+            text: "Già amici",
+          };
+        default:
+          return null;
+      }
+    };
+
+    const priorityBadge = getPriorityBadge();
+    const friendshipStatus = getFriendshipStatusBadge();
+
+    const handleActionPress = (e: any) => {
+      e.stopPropagation();
+      
+      if (friend.friendshipStatus === "none" || !friend.friendshipStatus) {
+        handleAddFriend(friendId, friendName);
+      } else if (friend.friendshipStatus === "accepted") {
+        handleInviteFriend(friendId);
+      }
     };
 
     return (
       <Pressable 
         style={styles.suggestedFriendCard}
-        onPress={() => onPress(friend)}
+        onPress={() => handlePressFriend(friend)}
       >
-        {friend.avatarUrl ? (
+        {friendData.avatarUrl ? (
           <Image
-            source={{ uri: `${API_URL}${friend.avatarUrl}` }}
+            source={{ uri: friendData.avatarUrl.startsWith('http') ? friendData.avatarUrl : `${API_URL}${friendData.avatarUrl}` }}
             style={styles.suggestedFriendAvatar}
           />
         ) : (
@@ -645,93 +614,155 @@ export default function HomeScreen() {
         <View style={styles.suggestedFriendInfo}>
           <View style={styles.suggestedFriendHeader}>
             <Text style={styles.suggestedFriendName} numberOfLines={1}>
-              {friend.name}
+              {friendName}
             </Text>
-            <Text style={styles.winRateBadge}>
-              {friend.winRate}% WR
-            </Text>
+            {friend.score && (
+              <Text style={styles.friendScoreBadge}>
+                {Math.round(friend.score)} pts
+              </Text>
+            )}
           </View>
           
-          <Text style={styles.suggestedFriendStats}>
-            {friend.totalMatches} partite totali
+          <Text style={styles.usernameText}>
+            @{friendData.username || friend.username || "user"}
           </Text>
           
           {/* Badge di priorità */}
-          {getPriorityBadge()}
+          {priorityBadge && (
+            <View style={[priorityBadge.style, { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 4 }]}>
+              <Ionicons name={priorityBadge.icon} size={12} color="white" />
+              <Text style={styles.priorityBadgeText}>
+                {priorityBadge.text}
+              </Text>
+            </View>
+          )}
           
-          {/* Mostra tutte le metriche di priorità */}
-          <View style={styles.priorityMetrics}>
-            {friend.gamesPlayedTogether > 0 && (
-              <View style={styles.priorityMetric}>
-                <Ionicons name="tennisball-outline" size={10} color="#666" />
-                <Text style={styles.priorityMetricText}>
-                  {friend.gamesPlayedTogether}
-                </Text>
-              </View>
-            )}
-            {friend.commonFriends > 0 && (
-              <View style={styles.priorityMetric}>
-                <Ionicons name="people-outline" size={10} color="#666" />
-                <Text style={styles.priorityMetricText}>
-                  {friend.commonFriends}
-                </Text>
-              </View>
-            )}
-            {friend.commonFacilities > 0 && (
-              <View style={styles.priorityMetric}>
-                <Ionicons name="location-outline" size={10} color="#666" />
-                <Text style={styles.priorityMetricText}>
-                  {friend.commonFacilities}
-                </Text>
-              </View>
-            )}
-          </View>
+          {/* Sport preferiti */}
+          {friendData.preferredSports && friendData.preferredSports.length > 0 && (
+            <View style={styles.sportsContainer}>
+              {friendData.preferredSports.map((sport: string, index: number) => (
+                <View key={index} style={styles.sportBadge}>
+                  <Text style={styles.sportBadgeText}>
+                    {sport === 'volleyball' ? '🎾 Pallavolo' : '🏖️ Beach'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          {/* Stato amicizia */}
+          {friendshipStatus && (
+            <View style={[friendshipStatus.style, { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 4 }]}>
+              <Ionicons name={friendshipStatus.icon} size={12} color="white" />
+              <Text style={[styles.priorityBadgeText, { fontSize: 10 }]}>
+                {friendshipStatus.text}
+              </Text>
+            </View>
+          )}
         </View>
         
         <Pressable
-          style={styles.inviteFriendButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onInvite(friend._id);
-          }}
+          style={[
+            styles.friendActionButton,
+            friend.friendshipStatus === "pending" && styles.friendActionButtonDisabled,
+            friend.friendshipStatus === "accepted" && styles.friendActionButtonSuccess
+          ]}
+          onPress={handleActionPress}
+          disabled={friend.friendshipStatus === "pending"}
         >
-          <Ionicons name="person-add-outline" size={16} color="#2196F3" />
-          <Text style={styles.inviteFriendText}>Invita</Text>
+          {friend.friendshipStatus === "pending" ? (
+            <>
+              <Ionicons name="time-outline" size={16} color="#999" />
+              <Text style={styles.friendActionTextDisabled}>
+                In attesa
+              </Text>
+            </>
+          ) : friend.friendshipStatus === "accepted" ? (
+            <>
+              <Ionicons name="person-outline" size={16} color="white" />
+              <Text style={styles.friendActionTextSuccess}>
+                Invita
+              </Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="person-add-outline" size={16} color="#2196F3" />
+              <Text style={styles.friendActionText}>
+                Aggiungi
+              </Text>
+            </>
+          )}
         </Pressable>
       </Pressable>
     );
   };
 
   const SuggestedFriendsSection = () => {
+    if (suggestionsLoading) {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Amici suggeriti</Text>
+          </View>
+          <View style={styles.loadingContainerSmall}>
+            <ActivityIndicator size="small" color="#2196F3" />
+            <Text style={styles.loadingTextSmall}>Caricamento suggerimenti...</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (suggestionsError) {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Amici suggeriti</Text>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="warning-outline" size={32} color="#f44336" />
+            <Text style={styles.errorText}>Errore nel caricamento</Text>
+            <Pressable 
+              style={styles.retryButton}
+              onPress={refreshSuggestions}
+            >
+              <Text style={styles.retryButtonText}>Riprova</Text>
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={styles.sectionTitle}>Amici suggeriti</Text>
-            <View style={styles.friendsCountBadge}>
-              <Text style={styles.friendsCountText}>{mockSuggestedFriends.length}</Text>
-            </View>
+            {suggestedFriends.length > 0 && (
+              <View style={styles.friendsCountBadge}>
+                <Text style={styles.friendsCountText}>{suggestedFriends.length}</Text>
+              </View>
+            )}
           </View>
-          <Pressable onPress={() => navigation.navigate("CercaAmici")}>
+          <Pressable 
+            onPress={() => navigation.navigate("CercaAmici")}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
             <Text style={styles.sectionLink}>Trova amici</Text>
+            <Ionicons name="chevron-forward" size={16} color="#2196F3" />
           </Pressable>
         </View>
         
-        {mockSuggestedFriends.length > 0 ? (
+        {suggestedFriends.length > 0 ? (
           <>
             <FlatList
               ref={friendsCarouselRef}
-              data={mockSuggestedFriends}
+              data={suggestedFriends}
               renderItem={({ item }) => (
                 <View style={{ width: screenWidth * 0.85, marginHorizontal: 8 }}>
-                  <SuggestedFriendCard
-                    friend={item}
-                    onPress={handlePressFriend}
-                    onInvite={handleInviteFriend}
-                  />
+                  <SuggestedFriendCard friend={item} />
                 </View>
               )}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => item.user?._id || item._id}
               horizontal
               showsHorizontalScrollIndicator={false}
               pagingEnabled
@@ -745,7 +776,7 @@ export default function HomeScreen() {
             
             {/* Indicatori del carosello */}
             <View style={styles.carouselIndicators}>
-              {mockSuggestedFriends.map((_, index) => (
+              {suggestedFriends.map((_, index) => (
                 <View
                   key={index}
                   style={[
@@ -757,7 +788,7 @@ export default function HomeScreen() {
             </View>
             
             <Text style={styles.carouselCounter}>
-              {currentFriendIndex + 1} di {mockSuggestedFriends.length}
+              {currentFriendIndex + 1} di {suggestedFriends.length}
             </Text>
             
             {/* Legenda priorità */}
@@ -772,7 +803,7 @@ export default function HomeScreen() {
               </View>
               <View style={styles.priorityLegendItem}>
                 <View style={[styles.priorityDot, styles.priorityDotLow]} />
-                <Text style={styles.priorityLegendText}>Strutture in comune</Text>
+                <Text style={styles.priorityLegendText}>Stesso centro</Text>
               </View>
             </View>
           </>
@@ -780,7 +811,10 @@ export default function HomeScreen() {
           <View style={styles.emptyCarouselContainer}>
             <Ionicons name="people-outline" size={48} color="#ccc" />
             <Text style={styles.emptyCarouselText}>
-              Invita amici per giocare insieme!
+              Aggiungi amici per iniziare!
+            </Text>
+            <Text style={styles.emptyCarouselSubtext}>
+              Troveremo suggerimenti basati su partite giocate insieme e interessi comuni
             </Text>
             <Pressable 
               style={[styles.bookButton, { marginTop: 16 }]}
@@ -934,7 +968,7 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* Carosello Amici Suggeriti */}
+        {/* Carosello Amici Suggeriti REALI */}
         <SuggestedFriendsSection />
 
       </ScrollView>

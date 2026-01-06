@@ -1,4 +1,3 @@
-// styles.ts
 import { StyleSheet, Dimensions } from "react-native";
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -316,17 +315,6 @@ export const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  inviteCountBadge: {
-    backgroundColor: "#FF9800",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  inviteCountText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "white",
-  },
   emptyInviteCard: {
     alignItems: "center",
     justifyContent: "center",
@@ -641,7 +629,7 @@ export const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Amici suggeriti
+  // Amici suggeriti - STILI NUOVI
   friendsCountBadge: {
     backgroundColor: "#4CAF50",
     paddingHorizontal: 8,
@@ -684,7 +672,7 @@ export const styles = StyleSheet.create({
   suggestedFriendInfo: {
     flex: 1,
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
   },
   suggestedFriendHeader: {
     flexDirection: 'row',
@@ -697,14 +685,19 @@ export const styles = StyleSheet.create({
     color: "#333",
     flex: 1,
   },
-  winRateBadge: {
+  friendScoreBadge: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#4CAF50",
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 8,
+    color: "#2196F3",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 8,
+  },
+  usernameText: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 2,
   },
   suggestedFriendStats: {
     fontSize: 13,
@@ -713,37 +706,86 @@ export const styles = StyleSheet.create({
 
   // Badge di priorità
   priorityBadgeHigh: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     backgroundColor: '#2196F3',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
   },
   priorityBadgeMedium: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     backgroundColor: '#FF9800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
   },
   priorityBadgeLow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     backgroundColor: '#9C27B0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
   },
   priorityBadgeText: {
     fontSize: 11,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  // Stato amicizia
+  friendshipStatusPending: {
+    backgroundColor: '#FF9800',
+  },
+  friendshipStatusAccepted: {
+    backgroundColor: '#4CAF50',
+  },
+  friendshipStatusText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  // Sport preferiti
+  sportsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 2,
+  },
+  sportBadge: {
+    backgroundColor: '#F3E5F5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  sportBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#7B1FA2',
+  },
+
+  // Pulsante azione amico
+  friendActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+    minWidth: 80,
+    justifyContent: 'center',
+  },
+  friendActionButtonDisabled: {
+    backgroundColor: "#f0f0f0",
+    borderColor: "#ddd",
+  },
+  friendActionButtonSuccess: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#388E3C",
+  },
+  friendActionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+  friendActionTextDisabled: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+  },
+  friendActionTextSuccess: {
+    fontSize: 13,
     fontWeight: "600",
     color: "white",
   },
@@ -800,21 +842,51 @@ export const styles = StyleSheet.create({
     color: "#666",
   },
 
-  inviteFriendButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#E3F2FD",
-    borderWidth: 1,
-    borderColor: "#BBDEFB",
+  // Stili per loading/error suggerimenti
+  loadingContainerSmall: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 20,
   },
-  inviteFriendText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#2196F3",
+  loadingTextSmall: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#f44336',
+    marginTop: 8,
+  },
+  retryButton: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  emptyCarouselSubtext: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 40,
   },
 
   // Additional styles for debug

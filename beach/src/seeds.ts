@@ -1,4 +1,5 @@
-import mongoose from "mongoose";
+// seeds.ts
+import mongoose, { Types } from "mongoose";
 import bcrypt from "bcrypt";
 
 import User from "./models/User";
@@ -9,6 +10,8 @@ import Campo from "./models/Campo";
 import CampoCalendarDay from "./models/campoCalendarDay";
 import Booking from "./models/Booking";
 import Match from "./models/Match";
+import Event from "./models/Event";
+import Friendship from "./models/Friendship";
 
 /* =========================
    CONFIG
@@ -88,6 +91,8 @@ async function seed() {
 
     /* -------- CLEAN -------- */
     await Promise.all([
+      Friendship.deleteMany({}),
+      Event.deleteMany({}),
       Match.deleteMany({}),
       Booking.deleteMany({}),
       CampoCalendarDay.deleteMany({}),
@@ -186,6 +191,38 @@ async function seed() {
     );
 
     console.log(`✅ Create ${players.length} user preferences`);
+
+    /* -------- FRIENDSHIPS -------- */
+    const friendships = [];
+    
+    // Creiamo amicizie tra i primi 10 player
+    const friendPlayers = players.slice(0, 10);
+    
+    for (let i = 0; i < friendPlayers.length; i++) {
+      for (let j = i + 1; j < friendPlayers.length; j++) {
+        // 70% probabilità di essere amici
+        if (Math.random() > 0.3) {
+          friendships.push({
+            requester: friendPlayers[i]._id,
+            recipient: friendPlayers[j]._id,
+            status: "accepted",
+            acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
+          });
+        }
+      }
+    }
+    
+    // Alcune richieste pending
+    for (let i = 10; i < 15; i++) {
+      friendships.push({
+        requester: friendPlayers[0]._id,
+        recipient: players[i]._id,
+        status: "pending",
+      });
+    }
+    
+    await Friendship.insertMany(friendships);
+    console.log(`✅ Create ${friendships.length} amicizie`);
 
     /* -------- STRUTTURE (8) -------- */
     const struttureData = [
@@ -366,6 +403,37 @@ async function seed() {
     const campi = await Campo.insertMany(campiData);
     console.log(`✅ Creati ${campi.length} campi`);
 
+    /* -------- EVENTS (10) -------- */
+    const eventsData = [];
+    const eventTypes: any[] = ["tournament", "league", "friendly"];
+    
+    for (let i = 0; i < 10; i++) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + randomInt(5, 30));
+      
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + (i < 3 ? 1 : randomInt(2, 7)));
+      
+      eventsData.push({
+        name: `Evento ${i + 1} ${randomElement(["Beach Volley", "Volley"])}`,
+        description: `Descrizione evento di prova ${i + 1}`,
+        type: eventTypes[i % 3],
+        organizer: randomElement(players)._id,
+        struttura: randomElement(strutture)._id,
+        startDate,
+        endDate,
+        sport: Math.random() > 0.5 ? "volleyball" : "beach_volleyball",
+        maxParticipants: randomInt(8, 32),
+        isPublic: Math.random() > 0.3,
+        participants: [players[0]._id, players[1]._id, players[2]._id],
+        status: randomElement(["draft", "open", "ongoing"]),
+        coverImage: `https://picsum.photos/seed/event${i}/800/400`,
+      });
+    }
+    
+    const savedEvents = await Event.insertMany(eventsData);
+    console.log(`✅ Creati ${savedEvents.length} eventi`);
+
     /* -------- CALENDARIO (Rolling 15 mesi) -------- */
     const dates = generateDatesForMonths(MONTHS_TO_GENERATE);
     const calendarDocs = [];
@@ -490,6 +558,7 @@ async function seed() {
           team: j < 2 ? "A" : "B",
           status: "confirmed",
           joinedAt: new Date(booking.date),
+          respondedAt: new Date(booking.date),
         });
       }
 
@@ -510,6 +579,9 @@ async function seed() {
         else winsB++;
       }
 
+      // Scegli un evento casuale per alcuni match
+      const event = Math.random() > 0.7 ? randomElement(savedEvents)._id : undefined;
+
       matches.push({
         booking: booking._id,
         createdBy: matchPlayers[0].user,
@@ -519,6 +591,7 @@ async function seed() {
         score: { sets },
         winner: winsA > winsB ? "A" : "B",
         playedAt: new Date(booking.date),
+        event,
         status: "completed",
       });
     }
@@ -531,6 +604,8 @@ async function seed() {
     console.log("🌱 SEED COMPLETATO CON SUCCESSO");
     console.log("=".repeat(50));
     console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
+    console.log(`🤝 Amicizie: ${friendships.length}`);
+    console.log(`🎪 Eventi: ${savedEvents.length}`);
     console.log(`🏢 Strutture: ${strutture.length}`);
     console.log(`⚽ Campi: ${campi.length}`);
     console.log(`📅 Giorni calendario: ${calendarDocs.length}`);

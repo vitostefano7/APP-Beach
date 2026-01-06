@@ -48,6 +48,8 @@ async function start() {
         app.use("/calendar", campoCalendarRoutes_1.default);
         app.use("/matches", matchRoutes_1.default);
         app.use("/api/conversations", conversazioneRoutes_1.default);
+        app.use("/api/friends", friendshipRoutes);
+
         app.listen(3000, () => {
             console.log("✅ Server started on port 3000");
         });
