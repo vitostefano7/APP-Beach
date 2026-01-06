@@ -174,12 +174,13 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         {
           user: new mongoose.Types.ObjectId(user.id),
           status: "confirmed",
+          team: "A", // Assegna automaticamente al Team A
           joinedAt: new Date(),
         },
       ],
       maxPlayers: 4, // Default per beach volley 2v2
       isPublic: false,
-      status: "draft",
+      status: "open", // Cambiato da "draft" a "open" per rendere visibile il match
     });
 
     console.log("✅ Match creato automaticamente:", match._id);
@@ -346,8 +347,8 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
 
     // 🔍 Recupera match associato (se esiste)
     const match = await Match.findOne({ booking: booking._id })
-      .populate("players.user", "name username avatarUrl")
-      .populate("createdBy", "name username avatarUrl")
+      .populate("players.user", "name surname username avatarUrl")
+      .populate("createdBy", "name surname username avatarUrl")
       .populate({
         path: "booking",
         populate: {

@@ -45,6 +45,14 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     letterSpacing: -0.5,
   },
+  headerCancelButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: "#FFEBEE",
+  },
 
   // ==================== LOADING & ERROR ====================
   loadingContainer: {
@@ -96,7 +104,73 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ==================== STATUS CARD ====================
+  // ==================== MODERN STATUS CARD ====================
+  modernStatusCard: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 12,
+    padding: 18,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  modernStatusIconContainer: {
+    flexShrink: 0,
+  },
+  modernStatusIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  modernStatusContent: {
+    flex: 1,
+    gap: 3,
+  },
+  modernStatusLabel: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  modernStatusText: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  modernStatusSubtext: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+
+  // ==================== STATUS CARD (OLD - KEEP FOR COMPATIBILITY) ====================
   statusCard: {
     backgroundColor: "white",
     margin: 16,
@@ -228,6 +302,139 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 3,
     lineHeight: 18,
+  },
+
+  // ==================== FIELD INFO CARD (VERSIONE COMPATTA) ====================
+  fieldInfoCard: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  fieldInfoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  fieldInfoTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    letterSpacing: -0.3,
+  },
+  fieldInfoList: {
+    gap: 0,
+  },
+  fieldInfoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 10,
+  },
+  fieldInfoDivider: {
+    height: 1,
+    backgroundColor: "#f5f5f5",
+    marginVertical: 4,
+  },
+  fieldIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  fieldInfoContent: {
+    flex: 1,
+    gap: 3,
+  },
+  fieldInfoLabel: {
+    fontSize: 9,
+    color: "#999",
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  fieldInfoValue: {
+    fontSize: 14,
+    color: "#1a1a1a",
+    fontWeight: "700",
+    lineHeight: 19,
+    letterSpacing: -0.2,
+  },
+  fieldInfoSubValue: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 1,
+    lineHeight: 17,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sportCampoGrid: {
+    flexDirection: "row",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  sportCampoColumn: {
+    flex: 1,
+  },
+  sportCampoBox: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    gap: 10,
+  },
+  sportCampoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  campoTag: {
+    backgroundColor: "#FFF3E0",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  campoTagText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FF9800",
+    letterSpacing: 0.2,
+  },
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: "#F3E5F5",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E1BEE7",
+  },
+  mapButtonText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9C27B0",
+    letterSpacing: 0.2,
   },
 
   // ==================== DETAILS GRID (OTTIMIZZATO) ====================
@@ -620,7 +827,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e8e8e8",
     borderRadius: 14,
-    overflow: "hidden",
     backgroundColor: "white",
     ...Platform.select({
       ios: {
@@ -762,6 +968,37 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
+  // ==================== CANCEL BOOKING BUTTON ====================
+  cancelBookingButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#F44336",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#F44336",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  cancelBookingButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+
   // ==================== NO MATCH ====================
   noMatchCard: {
     alignItems: "center",
@@ -793,6 +1030,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e8e8e8",
+    position: "relative",
+    zIndex: 1,
   },
   playerCardPending: {
     backgroundColor: "#FFF8E1",
@@ -849,6 +1088,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   playerAvatar: {
     width: 40,
@@ -860,18 +1100,45 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  avatarTeamA: {
+    backgroundColor: "#2196F3",
+  },
+  avatarTeamB: {
+    backgroundColor: "#F44336",
+  },
+  avatarNoTeam: {
+    backgroundColor: "#9E9E9E",
+  },
+  avatarInitials: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.5,
   },
   playerInfo: {
     flex: 1,
+    minWidth: 0,
   },
   playerName: {
     fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
     letterSpacing: -0.1,
+    flexShrink: 1,
   },
   currentUserIndicator: {
     color: "#4CAF50",
@@ -886,10 +1153,11 @@ const styles = StyleSheet.create({
   playerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
+    flexShrink: 0,
   },
 
-  // Team Badge (CON GRADIENT)
+  // Team Badge (CON GRADIENT) - Mantenuto per compatibilità
   teamBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -908,7 +1176,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
-  // Player Status Badge
+  // Player Status Icon - Versione compatta
+  playerStatusIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f5f5",
+  },
   playerStatusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -930,11 +1206,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // Team Control
-  teamControlContainer: {
-    position: "relative",
-  },
-  teamButton: {
+  // Drag Indicator (sostituisce il menu)
+  dragIndicator: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -943,76 +1216,6 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderWidth: 2,
     borderColor: "#e0e0e0",
-  },
-  teamButtonActiveA: {
-    borderColor: "#2196F3",
-    backgroundColor: "#E3F2FD",
-  },
-  teamButtonActiveB: {
-    borderColor: "#F44336",
-    backgroundColor: "#FFEBEE",
-  },
-
-  teamMenuOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-
-  teamMenu: {
-    position: "absolute",
-    top: 38,
-    right: 0,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 6,
-    minWidth: 160,
-    zIndex: 1000,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  teamMenuTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  teamMenuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderRadius: 6,
-  },
-  teamMenuItemA: {
-    backgroundColor: "#E3F2FD",
-  },
-  teamMenuItemB: {
-    backgroundColor: "#FFEBEE",
-  },
-  teamMenuItemRemove: {
-    backgroundColor: "#FFEBEE",
-  },
-  teamMenuText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1a1a1a",
   },
 
   // Remove Button
@@ -1096,7 +1299,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: "85%",
+    maxHeight: "75%",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1113,7 +1316,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -1333,35 +1536,68 @@ const styles = StyleSheet.create({
 
   // ==================== SCORE MODAL ====================
   scoreModalContent: {
-    maxHeight: "90%",
-    paddingHorizontal: 18,
-    paddingBottom: 20,
+    maxHeight: "75%",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   scoreModalHeaderContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   scoreModalHeaderText: {
     flex: 1,
   },
   scoreModalSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
-    marginTop: 3,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+
+  // Teams Players Section
+  teamsPlayersSection: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  teamPlayersColumn: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+  },
+  teamPlayersBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  teamPlayersTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.3,
+  },
+  teamPlayerName: {
+    fontSize: 13,
+    color: '#333',
     lineHeight: 18,
   },
 
   // Score Summary
   scoreSummaryCard: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 8,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1376,24 +1612,24 @@ const styles = StyleSheet.create({
   },
   scoreSummaryTeam: {
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   scoreSummaryBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   scoreSummaryTeamText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "800",
     color: "#FFF",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   scoreSummaryScore: {
-    fontSize: 48,
+    fontSize: 28,
     fontWeight: "900",
     color: "#666",
-    letterSpacing: -1.5,
+    letterSpacing: -1,
   },
   scoreSummaryWinner: {
     color: "#FFD700",
@@ -1402,22 +1638,49 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  scoreTeamAvatars: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: -4,
+  },
+  scoreAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    marginLeft: -4,
+  },
+  avatarTeamA: {
+    backgroundColor: "#2196F3",
+  },
+  avatarTeamB: {
+    backgroundColor: "#F44336",
+  },
+  scoreAvatarText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.2,
+  },
 
   // Winner Indicator
   winnerIndicator: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 12,
+    gap: 6,
+    padding: 8,
     backgroundColor: "#FFF8E1",
-    borderRadius: 12,
-    marginBottom: 16,
+    borderRadius: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#FFE082",
   },
   winnerIndicatorText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
     color: "#F57C00",
     letterSpacing: 0.2,
@@ -1425,20 +1688,20 @@ const styles = StyleSheet.create({
 
   // Sets
   setsScrollView: {
-    maxHeight: 300,
+    maxHeight: 350,
   },
   setsTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "800",
     color: "#1a1a1a",
-    marginBottom: 14,
-    letterSpacing: -0.2,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   setCard: {
     backgroundColor: "#f9f9f9",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#e8e8e8",
   },
@@ -1479,14 +1742,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   scoreInput: {
-    width: 68,
-    height: 64,
-    fontSize: 30,
+    width: 60,
+    height: 56,
+    fontSize: 26,
     fontWeight: "900",
     color: "#1a1a1a",
     textAlign: "center",
     backgroundColor: "#FFF",
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: "#e0e0e0",
   },
@@ -1554,7 +1817,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
   },
   scoreModalButtonCancel: {
@@ -1655,6 +1918,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
+  },
+  scoreTeamAvatars: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: -6,
+  },
+  scoreAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    marginLeft: -6,
+  },
+  scoreAvatarText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.2,
   },
   scoreTeamBadgeWinner: {
     backgroundColor: "#FFF8E1",

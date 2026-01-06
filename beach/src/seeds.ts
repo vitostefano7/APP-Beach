@@ -109,34 +109,34 @@ async function seed() {
 
     const usersData = [
       // PLAYERS (20)
-      { name: "Mario Rossi", email: "mario@test.it", username: "mario_rossi", role: "player" },
-      { name: "Giulia Verdi", email: "giulia@test.it", username: "giulia_verdi", role: "player" },
-      { name: "Luca Bianchi", email: "luca@test.it", username: "luca_b", role: "player" },
-      { name: "Anna Ferrari", email: "anna@test.it", username: "anna_ferrari", role: "player" },
-      { name: "Marco Esposito", email: "marco@test.it", username: "marco_esp", role: "player" },
-      { name: "Sofia Romano", email: "sofia@test.it", username: "sofia_romano", role: "player" },
-      { name: "Alessandro Gallo", email: "alex@test.it", username: "alex_gallo", role: "player" },
-      { name: "Chiara Conti", email: "chiara@test.it", username: "chiara_c", role: "player" },
-      { name: "Matteo Bruno", email: "matteo@test.it", username: "matteo_bruno", role: "player" },
-      { name: "Elena Ricci", email: "elena@test.it", username: "elena_ricci", role: "player" },
-      { name: "Davide Marino", email: "davide@test.it", username: "davide_m", role: "player" },
-      { name: "Francesca Greco", email: "francesca@test.it", username: "franci_greco", role: "player" },
-      { name: "Simone Lombardi", email: "simone@test.it", username: "simone_l", role: "player" },
-      { name: "Valentina Costa", email: "valentina@test.it", username: "vale_costa", role: "player" },
-      { name: "Andrea Fontana", email: "andrea@test.it", username: "andrea_f", role: "player" },
-      { name: "Martina Serra", email: "martina@test.it", username: "martina_serra", role: "player" },
-      { name: "Lorenzo Mancini", email: "lorenzo@test.it", username: "lorenzo_m", role: "player" },
-      { name: "Alessia Villa", email: "alessia@test.it", username: "alessia_v", role: "player" },
-      { name: "Gabriele Caruso", email: "gabriele@test.it", username: "gabri_caruso", role: "player" },
-      { name: "Beatrice De Luca", email: "beatrice@test.it", username: "bea_deluca", role: "player" },
+      { name: "Mario", surname: "Rossi", email: "mario@test.it", username: "mario_rossi", role: "player" },
+      { name: "Giulia", surname: "Verdi", email: "giulia@test.it", username: "giulia_verdi", role: "player" },
+      { name: "Luca", surname: "Bianchi", email: "luca@test.it", username: "luca_b", role: "player" },
+      { name: "Anna", surname: "Ferrari", email: "anna@test.it", username: "anna_ferrari", role: "player" },
+      { name: "Marco", surname: "Esposito", email: "marco@test.it", username: "marco_esp", role: "player" },
+      { name: "Sofia", surname: "Romano", email: "sofia@test.it", username: "sofia_romano", role: "player" },
+      { name: "Alessandro", surname: "Gallo", email: "alex@test.it", username: "alex_gallo", role: "player" },
+      { name: "Chiara", surname: "Conti", email: "chiara@test.it", username: "chiara_c", role: "player" },
+      { name: "Matteo", surname: "Bruno", email: "matteo@test.it", username: "matteo_bruno", role: "player" },
+      { name: "Elena", surname: "Ricci", email: "elena@test.it", username: "elena_ricci", role: "player" },
+      { name: "Davide", surname: "Marino", email: "davide@test.it", username: "davide_m", role: "player" },
+      { name: "Francesca", surname: "Greco", email: "francesca@test.it", username: "franci_greco", role: "player" },
+      { name: "Simone", surname: "Lombardi", email: "simone@test.it", username: "simone_l", role: "player" },
+      { name: "Valentina", surname: "Costa", email: "valentina@test.it", username: "vale_costa", role: "player" },
+      { name: "Andrea", surname: "Fontana", email: "andrea@test.it", username: "andrea_f", role: "player" },
+      { name: "Martina", surname: "Serra", email: "martina@test.it", username: "martina_serra", role: "player" },
+      { name: "Lorenzo", surname: "Mancini", email: "lorenzo@test.it", username: "lorenzo_m", role: "player" },
+      { name: "Alessia", surname: "Villa", email: "alessia@test.it", username: "alessia_v", role: "player" },
+      { name: "Gabriele", surname: "Caruso", email: "gabriele@test.it", username: "gabri_caruso", role: "player" },
+      { name: "Beatrice", surname: "De Luca", email: "beatrice@test.it", username: "bea_deluca", role: "player" },
       
       // OWNERS (6)
-      { name: "Paolo Proprietario", email: "paolo@test.it", username: "paolo_owner", role: "owner" },
-      { name: "Sara Gestore", email: "sara@test.it", username: "sara_owner", role: "owner" },
-      { name: "Roberto Beach", email: "roberto@test.it", username: "roberto_beach", role: "owner" },
-      { name: "Laura Sport", email: "laura@test.it", username: "laura_sport", role: "owner" },
-      { name: "Antonio Centro", email: "antonio@test.it", username: "antonio_centro", role: "owner" },
-      { name: "Federica Arena", email: "federica@test.it", username: "fede_arena", role: "owner" },
+      { name: "Paolo", surname: "Proprietario", email: "paolo@test.it", username: "paolo_owner", role: "owner" },
+      { name: "Sara", surname: "Gestore", email: "sara@test.it", username: "sara_owner", role: "owner" },
+      { name: "Roberto", surname: "Beach", email: "roberto@test.it", username: "roberto_beach", role: "owner" },
+      { name: "Laura", surname: "Sport", email: "laura@test.it", username: "laura_sport", role: "owner" },
+      { name: "Antonio", surname: "Centro", email: "antonio@test.it", username: "antonio_centro", role: "owner" },
+      { name: "Federica", surname: "Arena", email: "federica@test.it", username: "fede_arena", role: "owner" },
     ];
 
     const users = await User.insertMany(
@@ -403,37 +403,6 @@ async function seed() {
     const campi = await Campo.insertMany(campiData);
     console.log(`✅ Creati ${campi.length} campi`);
 
-    /* -------- EVENTS (10) -------- */
-    const eventsData = [];
-    const eventTypes: any[] = ["tournament", "league", "friendly"];
-    
-    for (let i = 0; i < 10; i++) {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + randomInt(5, 30));
-      
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + (i < 3 ? 1 : randomInt(2, 7)));
-      
-      eventsData.push({
-        name: `Evento ${i + 1} ${randomElement(["Beach Volley", "Volley"])}`,
-        description: `Descrizione evento di prova ${i + 1}`,
-        type: eventTypes[i % 3],
-        organizer: randomElement(players)._id,
-        struttura: randomElement(strutture)._id,
-        startDate,
-        endDate,
-        sport: Math.random() > 0.5 ? "volleyball" : "beach_volleyball",
-        maxParticipants: randomInt(8, 32),
-        isPublic: Math.random() > 0.3,
-        participants: [players[0]._id, players[1]._id, players[2]._id],
-        status: randomElement(["draft", "open", "ongoing"]),
-        coverImage: `https://picsum.photos/seed/event${i}/800/400`,
-      });
-    }
-    
-    const savedEvents = await Event.insertMany(eventsData);
-    console.log(`✅ Creati ${savedEvents.length} eventi`);
-
     /* -------- CALENDARIO (Rolling 15 mesi) -------- */
     const dates = generateDatesForMonths(MONTHS_TO_GENERATE);
     const calendarDocs = [];
@@ -531,22 +500,39 @@ async function seed() {
 
     console.log(`✅ Disabilitati ${savedBookings.length} slot nel calendario`);
 
-    /* -------- MATCH (20 con players) -------- */
+    /* -------- MATCH (vari tipi) -------- */
     const pastBookings = savedBookings.filter((b) => {
       const bookingDate = new Date(b.date);
       return bookingDate < today;
     });
 
+    const futureBookings = savedBookings.filter((b) => {
+      const bookingDate = new Date(b.date);
+      return bookingDate >= today;
+    });
+
     const matches = [];
+    let matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0 };
     
-    for (let i = 0; i < Math.min(20, pastBookings.length); i++) {
+    // 1. MATCH PASSATI COMPLETATI (con risultato) - 10 match
+    for (let i = 0; i < Math.min(10, pastBookings.length); i++) {
       const booking = pastBookings[i];
+      const creator = booking.user;
       
-      // Scegli 4 giocatori casuali
       const matchPlayers = [];
-      const selectedPlayers: string[] = [];
+      const selectedPlayers: string[] = [creator.toString()];
       
-      for (let j = 0; j < 4; j++) {
+      // Primo giocatore è il creatore del booking
+      matchPlayers.push({
+        user: creator,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(booking.date),
+        respondedAt: new Date(booking.date),
+      });
+      
+      // Altri 3 giocatori casuali
+      for (let j = 1; j < 4; j++) {
         let player;
         do {
           player = randomElement(players);
@@ -579,25 +565,218 @@ async function seed() {
         else winsB++;
       }
 
-      // Scegli un evento casuale per alcuni match
-      const event = Math.random() > 0.7 ? randomElement(savedEvents)._id : undefined;
-
       matches.push({
         booking: booking._id,
-        createdBy: matchPlayers[0].user,
+        createdBy: creator,
         players: matchPlayers,
         maxPlayers: 4,
-        isPublic: Math.random() > 0.5,
+        isPublic: true,
         score: { sets },
         winner: winsA > winsB ? "A" : "B",
         playedAt: new Date(booking.date),
-        event,
         status: "completed",
       });
+      matchCounters.completed++;
+    }
+
+    // 2. MATCH PASSATI SENZA RISULTATO - 5 match (per testare inserimento risultato)
+    for (let i = 10; i < Math.min(15, pastBookings.length); i++) {
+      const booking = pastBookings[i];
+      const creator = booking.user;
+      
+      const matchPlayers = [];
+      const selectedPlayers: string[] = [creator.toString()];
+      
+      matchPlayers.push({
+        user: creator,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(booking.date),
+        respondedAt: new Date(booking.date),
+      });
+      
+      for (let j = 1; j < 4; j++) {
+        let player;
+        do {
+          player = randomElement(players);
+        } while (selectedPlayers.includes(player._id.toString()));
+        
+        selectedPlayers.push(player._id.toString());
+        matchPlayers.push({
+          user: player._id,
+          team: j < 2 ? "A" : "B",
+          status: "confirmed",
+          joinedAt: new Date(booking.date),
+          respondedAt: new Date(booking.date),
+        });
+      }
+
+      matches.push({
+        booking: booking._id,
+        createdBy: creator,
+        players: matchPlayers,
+        maxPlayers: 4,
+        isPublic: true,
+        playedAt: new Date(booking.date),
+        status: "completed",
+      });
+      matchCounters.noResult++;
+    }
+
+    // 3. MATCH IN CORSO (in_progress) - 2 match
+    // Creo bookings per oggi con orario che li rende "in corso"
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    for (let i = 0; i < 2; i++) {
+      const campo = randomElement(campi);
+      const creator = randomElement(players);
+      
+      // Orario: iniziato 30 minuti fa, finisce tra 30 minuti
+      const startHour = currentHour - 1;
+      const startTime = `${String(startHour).padStart(2, "0")}:30`;
+      const endTime = `${String(currentHour + 1).padStart(2, "0")}:00`;
+      
+      const inProgressBooking = await Booking.create({
+        user: creator._id,
+        campo: campo._id,
+        date: formatDate(now),
+        startTime,
+        endTime,
+        price: 40,
+        status: "confirmed",
+      });
+      
+      const matchPlayers = [];
+      const selectedPlayers: string[] = [creator._id.toString()];
+      
+      matchPlayers.push({
+        user: creator._id,
+        team: "A",
+        status: "confirmed",
+        joinedAt: now,
+        respondedAt: now,
+      });
+      
+      for (let j = 1; j < 4; j++) {
+        let player;
+        do {
+          player = randomElement(players);
+        } while (selectedPlayers.includes(player._id.toString()));
+        
+        selectedPlayers.push(player._id.toString());
+        matchPlayers.push({
+          user: player._id,
+          team: j < 2 ? "A" : "B",
+          status: "confirmed",
+          joinedAt: now,
+          respondedAt: now,
+        });
+      }
+
+      matches.push({
+        booking: inProgressBooking._id,
+        createdBy: creator._id,
+        players: matchPlayers,
+        maxPlayers: 4,
+        isPublic: true,
+        status: "full",
+      });
+      matchCounters.inProgress++;
+    }
+
+    // 4. MATCH FUTURI APERTI (open) - 5 match (per testare inviti)
+    for (let i = 0; i < Math.min(5, futureBookings.length); i++) {
+      const booking = futureBookings[i];
+      const creator = booking.user;
+      
+      const matchPlayers = [];
+      const selectedPlayers: string[] = [creator.toString()];
+      
+      matchPlayers.push({
+        user: creator,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(),
+        respondedAt: new Date(),
+      });
+      
+      // Solo 2 giocatori (mancano 2 posti)
+      let player;
+      do {
+        player = randomElement(players);
+      } while (selectedPlayers.includes(player._id.toString()));
+      
+      selectedPlayers.push(player._id.toString());
+      matchPlayers.push({
+        user: player._id,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(),
+        respondedAt: new Date(),
+      });
+
+      matches.push({
+        booking: booking._id,
+        createdBy: creator,
+        players: matchPlayers,
+        maxPlayers: 4,
+        isPublic: true,
+        status: "open",
+      });
+      matchCounters.open++;
+    }
+
+    // 5. MATCH FUTURI COMPLETI (full) - 5 match
+    for (let i = 5; i < Math.min(10, futureBookings.length); i++) {
+      const booking = futureBookings[i];
+      const creator = booking.user;
+      
+      const matchPlayers = [];
+      const selectedPlayers: string[] = [creator.toString()];
+      
+      matchPlayers.push({
+        user: creator,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(),
+        respondedAt: new Date(),
+      });
+      
+      for (let j = 1; j < 4; j++) {
+        let player;
+        do {
+          player = randomElement(players);
+        } while (selectedPlayers.includes(player._id.toString()));
+        
+        selectedPlayers.push(player._id.toString());
+        matchPlayers.push({
+          user: player._id,
+          team: j < 2 ? "A" : "B",
+          status: "confirmed",
+          joinedAt: new Date(),
+          respondedAt: new Date(),
+        });
+      }
+
+      matches.push({
+        booking: booking._id,
+        createdBy: creator,
+        players: matchPlayers,
+        maxPlayers: 4,
+        isPublic: true,
+        status: "full",
+      });
+      matchCounters.full++;
     }
 
     await Match.insertMany(matches);
-    console.log(`✅ Creati ${matches.length} match completati con players`);
+    console.log(`✅ Creati ${matches.length} match:`);
+    console.log(`   - ${matchCounters.completed} completati con risultato`);
+    console.log(`   - ${matchCounters.noResult} completati senza risultato`);
+    console.log(`   - ${matchCounters.inProgress} in corso`);
+    console.log(`   - ${matchCounters.open} aperti (2/4 giocatori)`);
+    console.log(`   - ${matchCounters.full} completi (4/4 giocatori)`);
 
     /* -------- SUMMARY -------- */
     console.log("\n" + "=".repeat(50));
@@ -605,8 +784,7 @@ async function seed() {
     console.log("=".repeat(50));
     console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
     console.log(`🤝 Amicizie: ${friendships.length}`);
-    console.log(`🎪 Eventi: ${savedEvents.length}`);
-    console.log(`🏢 Strutture: ${strutture.length}`);
+    console.log(` Strutture: ${strutture.length}`);
     console.log(`⚽ Campi: ${campi.length}`);
     console.log(`📅 Giorni calendario: ${calendarDocs.length}`);
     console.log(`📝 Prenotazioni: ${savedBookings.length}`);

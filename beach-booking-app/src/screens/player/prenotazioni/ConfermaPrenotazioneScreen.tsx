@@ -27,15 +27,19 @@ export default function ConfermaPrenotazioneScreen() {
     sport,
     date,
     startTime,
+    duration: durationNumber = 1, // 1 o 1.5 (ore)
     price,
   } = route.params;
 
   const [loading, setLoading] = useState(false);
 
-  // Calcola endTime (1 ora dopo per default)
-  const calculateEndTime = (time: string, duration: string = "1h") => {
+  // Converte il numero in formato API ("1h" o "1.5h")
+  const duration = durationNumber === 1.5 ? "1.5h" : "1h";
+
+  // Calcola endTime in base alla durata
+  const calculateEndTime = (time: string, durationHours: number) => {
     const [h, m] = time.split(":").map(Number);
-    const durationMinutes = duration === "1h" ? 60 : 90;
+    const durationMinutes = durationHours * 60;
     
     let endH = h;
     let endM = m + durationMinutes;
@@ -48,8 +52,7 @@ export default function ConfermaPrenotazioneScreen() {
     return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
   };
 
-  const duration = "1h"; // Default 1 ora
-  const endTime = calculateEndTime(startTime, duration);
+  const endTime = calculateEndTime(startTime, durationNumber);
 
   // Formatta la data
   const formatDate = (dateStr: string) => {
@@ -77,7 +80,7 @@ export default function ConfermaPrenotazioneScreen() {
           campoId,
           date,
           startTime,
-          duration, // 🆕 Aggiungo duration obbligatorio
+          duration, // "1h" o "1.5h"
         }),
       });
 
@@ -175,7 +178,7 @@ export default function ConfermaPrenotazioneScreen() {
                 {startTime} - {endTime}
               </Text>
               <Text style={styles.detailHint}>
-                ({duration === "1h" ? "1 ora" : "1 ora e 30 minuti"})
+                ({durationNumber === 1 ? "1 ora" : "1 ora e 30 minuti"})
               </Text>
             </View>
           </View>

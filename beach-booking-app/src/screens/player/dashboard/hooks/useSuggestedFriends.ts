@@ -68,13 +68,7 @@ export const useSuggestedFriends = ({
       console.log("Suggerimenti ricevuti:", data.suggestions?.length || 0);
       setSuggestions(data.suggestions || []);
       // In fetchSuggestions, dopo const data = await response.json();
-console.log("📡 API RESPONSE FULL DEBUG:");
-console.log("URL chiamata:", `${API_URL}/friends/suggestions?limit=${limit}`);
-console.log("Status response:", response.status);
-console.log("Response headers:", response.headers);
-console.log("Data completa:", JSON.stringify(data, null, 2));
-console.log("Tipo suggestions:", typeof data.suggestions);
-console.log("Lunghezza array:", data.suggestions?.length || 0);
+
       
       return data.suggestions || [];
     } catch (err: any) {

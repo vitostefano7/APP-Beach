@@ -33,42 +33,79 @@ export default function TuttiInvitiScreen() {
     }, [])
   );
 
-  const loadAllMatches = async () => {
-    try {
-      setLoading(true);
-      console.log("📡 Caricamento TUTTI i match per utente:", user?.id);
+  // Nel file TuttiInviti.tsx, modifica loadAllMatches:
+const loadAllMatches = async () => {
+  try {
+    setLoading(true);
+    console.log("📡 Caricamento TUTTI i match per utente:", user?.id);
+    console.log("📡 Token presente:", token ? "Sì" : "No");
+    console.log("📡 API URL:", API_URL);
 
-      const res = await fetch(`${API_URL}/matches/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const res = await fetch(`${API_URL}/matches/me`, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        console.log(`✅ Ricevuti ${data.length} match totali`);
+    console.log("📡 Risposta status:", res.status);
+    console.log("📡 Risposta headers:", Object.fromEntries(res.headers.entries()));
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log(`✅ Ricevuti ${data.length} match totali`);
+      console.log("📊 Primo match (se presente):", data[0] ? JSON.stringify(data[0], null, 2).substring(0, 500) : "Nessun match");
+      
+      const userInvites = data.filter((match: any) => {
+        console.log("🔍 Analizzo match:", match._id);
+        console.log("   Creato da:", match.createdBy?._id);
+        console.log("   Players:", match.players?.length);
         
-        const userInvites = data.filter((match: any) => {
-          const myPlayer = match.players?.find((p: any) => 
-            p.user?._id === user?.id || p.user === user?.id
-          );
-          const isCreatedByMe = match.createdBy?._id === user?.id;
-          
-          return myPlayer && !isCreatedByMe;
+        const myPlayer = match.players?.find((p: any) => {
+          const playerId = p.user?._id || p.user;
+          const userId = user?.id;
+          console.log(`   Comparo: ${playerId} === ${userId}`, playerId === userId);
+          return playerId === userId;
         });
         
-        console.log(`📋 ${userInvites.length} inviti totali da altri`);
-        setInvites(userInvites);
-      } else {
-        console.error("Errore nel caricamento:", res.status);
-        Alert.alert("Errore", "Impossibile caricare gli inviti");
+        const isCreatedByMe = match.createdBy?._id === user?.id;
+        console.log(`   Sono creatore? ${isCreatedByMe}`);
+        console.log(`   Sono player? ${!!myPlayer}`);
+        console.log(`   È invito? ${!!myPlayer && !isCreatedByMe}`);
+        
+        return myPlayer && !isCreatedByMe;
+      });
+      
+      console.log(`📋 ${userInvites.length} inviti totali da altri`);
+      setInvites(userInvites);
+    } else {
+      const errorText = await res.text();
+      console.error("❌ Errore completo nel caricamento:");
+      console.error("   Status:", res.status);
+      console.error("   Body:", errorText);
+      
+      // Prova a parsare come JSON se possibile
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error("   Error JSON:", errorJson);
+      } catch {
+        // Non è JSON, lascia come testo
       }
-    } catch (error) {
-      console.error("Errore caricamento match:", error);
+      
       Alert.alert("Errore", "Impossibile caricare gli inviti");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  };
+  } catch (error) {
+    console.error("❌ Errore caricamento match:", error);
+    if (error instanceof Error) {
+      console.error("   Message:", error.message);
+      console.error("   Stack:", error.stack);
+    }
+    Alert.alert("Errore", "Impossibile caricare gli inviti");
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const onRefresh = () => {
     setRefreshing(true);

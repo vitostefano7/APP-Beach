@@ -258,6 +258,25 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
+  pageHeader: {
+  backgroundColor: "white",
+  paddingHorizontal: 16,
+  paddingTop: 16,
+  paddingBottom: 12,
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+pageTitle: {
+  fontSize: 28,
+  fontWeight: "800",
+  color: "#333",
+  marginBottom: 4,
+},
+pageSubtitle: {
+  fontSize: 14,
+  color: "#666",
+  fontWeight: "500",
+},
 
   // Players Preview
   playersPreview: {

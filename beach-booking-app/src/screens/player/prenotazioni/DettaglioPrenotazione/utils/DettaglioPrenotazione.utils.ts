@@ -1,4 +1,5 @@
 import API_URL from "../../../../../config/api";
+import { BookingDetails, Player } from "./DettaglioPrenotazione.types";
 
 export const assignPlayerToTeam = async (
   matchId: string,
@@ -56,8 +57,8 @@ export const calculateDuration = (startTime: string, endTime: string) => {
   return durationMinutes === 90 ? "1h 30m" : "1h";
 };
 
-export const searchUsers = async (query: string, booking: any, token: string) => {
-  if (query.length < 2 || !booking?.matchId) {
+export const searchUsers = async (query: string, booking: BookingDetails, token: string) => {
+  if (query.length < 2) {
     return [];
   }
 
@@ -68,7 +69,7 @@ export const searchUsers = async (query: string, booking: any, token: string) =>
 
     if (res.ok) {
       const users = await res.json();
-      const alreadyInMatch = booking.match?.players?.map((p: any) => p.user._id) || [];
+      const alreadyInMatch = booking.match.players.map((p: Player) => p.user._id);
       const filtered = users.filter((u: any) => !alreadyInMatch.includes(u._id));
       return filtered;
     }
@@ -154,6 +155,7 @@ export const joinMatch = async (matchId: string, team: "A" | "B", token: string)
 
   return true;
 };
+
 export const submitMatchScore = async (
   matchId: string,
   winner: "A" | "B",
@@ -175,4 +177,75 @@ export const submitMatchScore = async (
   }
 
   return true;
+};
+
+// Funzione per lasciare il match (aggiunta)
+export const leaveMatch = async (matchId: string, token: string) => {
+  const res = await fetch(`${API_URL}/matches/${matchId}/leave`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Errore nell'abbandonare il match");
+  }
+
+  return true;
+};
+
+// Funzione per creare automaticamente un match (se dovesse servire)
+export const createMatchForBooking = async (bookingId: string, token: string) => {
+  const res = await fetch(`${API_URL}/bookings/${bookingId}/create-match`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Errore nella creazione del match");
+  }
+
+  return await res.json();
+};
+
+// Funzione per ottenere il giocatore corrente
+export const getCurrentUserPlayer = (match: any, userId: string | undefined) => {
+  if (!userId) return null;
+  return match.players.find((p: Player) => p.user._id === userId);
+};
+
+// Funzione per verificare se l'utente è il creatore
+export const isUserCreator = (match: any, userId: string | undefined) => {
+  if (!userId) return false;
+  return match.createdBy._id === userId;
+};
+
+// Funzione per ottenere le statistiche del match
+export const getMatchStats = (match: any) => {
+  const confirmedPlayers = match.players.filter((p: Player) => p.status === "confirmed");
+  const pendingPlayers = match.players.filter((p: Player) => p.status === "pending");
+  const teamAPlayers = confirmedPlayers.filter((p: Player) => p.team === "A");
+  const teamBPlayers = confirmedPlayers.filter((p: Player) => p.team === "B");
+  const unassignedPlayers = confirmedPlayers.filter((p: Player) => !p.team);
+
+  return {
+    confirmed: confirmedPlayers.length,
+    pending: pendingPlayers.length,
+    teamA: teamAPlayers.length,
+    teamB: teamBPlayers.length,
+    unassigned: unassignedPlayers.length,
+    maxPlayersPerTeam: Math.floor(match.maxPlayers / 2),
+  };
+};
+
+// Funzione per formattare la data di prenotazione (corretta)
+export const formatBookingDateForDisplay = (booking: BookingDetails) => {
+  // Usa la data della prenotazione (quando si gioca), non quando è stata creata
+  const [day, month, year] = booking.date.split('/');
+  const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
 };

@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
@@ -51,7 +52,7 @@ export default function DettaglioPrenotazioneScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { bookingId } = route.params;
+  const { bookingId, openScoreModal } = route.params;
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<BookingDetails | null>(null);
@@ -67,6 +68,7 @@ export default function DettaglioPrenotazioneScreen() {
   const [inviteToSlot, setInviteToSlot] = useState<number | null>(null);
   const [leavingMatch, setLeavingMatch] = useState(false);
   const [acceptingInvite, setAcceptingInvite] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(false);
 
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
@@ -79,6 +81,13 @@ export default function DettaglioPrenotazioneScreen() {
     }
     loadBooking();
   }, [bookingId]);
+
+  // Apri il modal score se richiesto dai params
+  useEffect(() => {
+    if (openScoreModal && booking && !loading) {
+      setScoreModalVisible(true);
+    }
+  }, [openScoreModal, booking, loading]);
 
   const loadBooking = async () => {
     try {
@@ -107,6 +116,39 @@ export default function DettaglioPrenotazioneScreen() {
     }
   };
 
+  // Verifica se la partita è in corso o passata
+  const isMatchInProgress = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+    return now >= matchDateTime && now <= matchEndTime;
+  };
+
+  const isMatchPassed = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+    return now > matchEndTime;
+  };
+
+  const canCancelBooking = () => {
+    if (!booking || !user) return false;
+    // Solo il creatore della prenotazione può cancellarla
+    const bookingUserId = typeof booking.user === 'string' ? booking.user : booking.user?._id;
+    const isBookingCreator = bookingUserId === user.id;
+    // Solo se la partita non è ancora iniziata
+    console.log('canCancelBooking check:', {
+      isBookingCreator,
+      bookingUserId,
+      userId: user.id,
+      isMatchInProgress: isMatchInProgress(),
+      isMatchPassed: isMatchPassed(),
+      bookingStatus: booking.status
+    });
+    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && booking.status !== "cancelled";
+  };
+
   const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
     if (!booking?.matchId || !token) return;
 
@@ -118,6 +160,46 @@ export default function DettaglioPrenotazioneScreen() {
     } catch (error: any) {
       throw error;
     }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!booking) return;
+
+    Alert.alert(
+      "Annulla Prenotazione",
+      "Sei sicuro di voler annullare questa prenotazione? Questa azione non può essere annullata.",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Sì, Annulla",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setCancellingBooking(true);
+              const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Errore durante la cancellazione");
+              }
+
+              Alert.alert("Prenotazione Annullata", "La prenotazione è stata annullata con successo.", [
+                { text: "OK", onPress: () => navigation.goBack() }
+              ]);
+            } catch (error: any) {
+              Alert.alert("Errore", error.message || "Impossibile annullare la prenotazione");
+            } finally {
+              setCancellingBooking(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAssignTeam = async (playerId: string, team: "A" | "B" | null) => {
@@ -138,7 +220,22 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore assegnazione team");
       }
 
-      loadBooking();
+      // Aggiorna solo lo stato locale senza ricaricare tutto
+      setBooking(prevBooking => {
+        if (!prevBooking) return prevBooking;
+        
+        return {
+          ...prevBooking,
+          match: {
+            ...prevBooking.match,
+            players: prevBooking.match.players.map(p => 
+              p.user._id === playerId 
+                ? { ...p, team }
+                : p
+            )
+          }
+        };
+      });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile assegnare il giocatore");
     }
@@ -338,9 +435,29 @@ export default function DettaglioPrenotazioneScreen() {
   };
 
   const handleInviteToTeam = (team: "A" | "B", slotNumber: number) => {
+    if (isMatchInProgress()) {
+      Alert.alert(
+        "Match in corso",
+        "Non è possibile invitare giocatori durante il match. Attendi la fine della partita."
+      );
+      return;
+    }
     setInviteToTeam(team);
     setInviteToSlot(slotNumber);
     setInviteModalVisible(true);
+  };
+
+  const handleOpenMaps = () => {
+    if (!booking?.campo?.struttura?.location) return;
+
+    const { address, city } = booking.campo.struttura.location;
+    const query = address ? `${address}, ${city}` : city;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    
+    Linking.openURL(url).catch(err => {
+      Alert.alert("Errore", "Impossibile aprire Google Maps");
+      console.error("Errore apertura Maps:", err);
+    });
   };
 
   if (loading) {
@@ -368,23 +485,24 @@ export default function DettaglioPrenotazioneScreen() {
     );
   }
 
-  const isCreator = booking.match?.createdBy?._id === user?.userId;
-  const currentUserPlayer = booking.match?.players?.find(p => p.user._id === user?.userId);
-  const isPendingInvite = currentUserPlayer?.status === "pending";
-  const isDeclined = currentUserPlayer?.status === "declined";
-  const isConfirmed = currentUserPlayer?.status === "confirmed";
-  const isInMatch = !!currentUserPlayer;
-  
-  const maxPlayersPerTeam = booking.match ? Math.floor(booking.match.maxPlayers / 2) : 1;
-  const teamAPlayers = booking.match?.players?.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
-  const teamBPlayers = booking.match?.players?.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
+  // SOSTITUISCI QUESTE VARIABILI NELLA PARTE INIZIALE DEL COMPONENTE:
+const isCreator = booking.match.createdBy._id === user?.id;
+const currentUserPlayer = booking.match.players.find(p => p.user._id === user?.id);
+const isPendingInvite = currentUserPlayer?.status === "pending";
+const isDeclined = currentUserPlayer?.status === "declined";
+const isConfirmed = currentUserPlayer?.status === "confirmed";
+const isInMatch = !!currentUserPlayer;
 
-  const confirmedPlayers = booking.match?.players?.filter(p => p.status === "confirmed") || [];
-  const pendingPlayers = booking.match?.players?.filter(p => p.status === "pending") || [];
-  const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
+const maxPlayersPerTeam = Math.floor(booking.match.maxPlayers / 2);
+const teamAPlayers = booking.match.players.filter(p => p.team === "A" && p.status === "confirmed").length;
+const teamBPlayers = booking.match.players.filter(p => p.team === "B" && p.status === "confirmed").length;
 
-  const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
-  const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
+const confirmedPlayers = booking.match.players.filter(p => p.status === "confirmed");
+const pendingPlayers = booking.match.players.filter(p => p.status === "pending");
+const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
+
+const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
+const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
 
   const getMatchStatusInfo = () => {
     const match = booking.match;
@@ -392,6 +510,11 @@ export default function DettaglioPrenotazioneScreen() {
 
     const confirmedCount = match.players?.filter(p => p.status === "confirmed").length || 0;
     const pendingCount = match.players?.filter(p => p.status === "pending").length || 0;
+
+    // Verifica se il match è in corso
+    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+      return { color: "#FF9800", text: "In Corso", icon: "play-circle" as const };
+    }
 
     switch (match.status) {
       case "completed":
@@ -402,333 +525,322 @@ export default function DettaglioPrenotazioneScreen() {
         return { color: "#FF9800", text: "Completo", icon: "people" as const };
       case "open":
         return { color: "#2196F3", text: "Aperto", icon: "radio-button-on" as const };
-      case "draft":
-        return { color: "#9E9E9E", text: "Bozza", icon: "create" as const };
       default:
         return { color: "#999", text: match.status, icon: "help-circle" as const };
     }
   };
 
-  const renderMatchSection = () => {
-    if (!booking.hasMatch || !booking.match) {
-      return (
-        <AnimatedCard delay={200} style={styles.card}>
-          <View style={styles.noMatchCard}>
-            <Ionicons name="people-outline" size={64} color="#ccc" />
-            <Text style={styles.noMatchText}>Nessun match associato</Text>
-            <Text style={styles.noMatchSubtext}>
-              Non è stato creato un match per questa prenotazione
-            </Text>
-          </View>
-        </AnimatedCard>
-      );
-    }
-
+  const getMatchStatus = () => {
     const match = booking.match;
-    const statusInfo = getMatchStatusInfo();
-    const canInvite = isCreator && match.status !== "completed" && match.status !== "cancelled";
-    const canJoin = !isInMatch && match.status === "open";
-    const canSubmitScore = isCreator && match.status !== "completed" && match.status !== "cancelled";
+    if (!match) return "draft";
+    // Se il match è in corso, ritorna 'in_progress'
+    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+      return "in_progress";
+    }
+    return match.status;
+  };
 
-    return (
-      <AnimatedCard delay={200} style={styles.card}>
-        {/* Header */}
-        <View style={styles.cardHeader}>
-          <FadeInView delay={300}>
-            <Text style={styles.cardTitle}>Match Details</Text>
-          </FadeInView>
-          
-          <View style={styles.matchHeaderActions}>
-            {canInvite && (
-              <AnimatedButton
-                style={styles.inviteButton}
-                onPress={() => setInviteModalVisible(true)}
-              >
-                <Ionicons name="person-add" size={18} color="white" />
-                <Text style={styles.inviteButtonText}>Invita</Text>
-              </AnimatedButton>
-            )}
-            
-            {canJoin && (
-              <AnimatedButton
-                style={styles.joinButton}
-                onPress={() => handleJoinMatch()}
-              >
-                <Ionicons name="enter" size={18} color="white" />
-                <Text style={styles.joinButtonText}>Unisciti</Text>
-              </AnimatedButton>
-            )}
-          </View>
+  const renderMatchSection = () => {
+  // IL MATCH ESISTE SEMPRE - NON SERVE CONTROLLO
+  const match = booking.match;
+  const effectiveStatus = getMatchStatus();
+  
+  const statusInfo = getMatchStatusInfo();
+  const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "draft" && effectiveStatus !== "in_progress";
+  const canJoin = !isInMatch && match.status === "open";
+  // Tutti i giocatori confermati possono inserire il risultato dopo la fine del match
+  const canSubmitScore = isInMatch && isMatchPassed() && effectiveStatus !== "cancelled";
+
+  return (
+    <AnimatedCard delay={200} style={styles.card}>
+      {/* Header */}
+      <View style={styles.cardHeader}>
+        <FadeInView delay={300}>
+          <Text style={styles.cardTitle}>Match Details</Text>
+        </FadeInView>
+        
+        <View style={styles.matchHeaderActions}>
+          {canJoin && (
+            <AnimatedButton
+              style={styles.joinButton}
+              onPress={() => handleJoinMatch()}
+            >
+              <Ionicons name="enter" size={18} color="white" />
+              <Text style={styles.joinButtonText}>Unisciti</Text>
+            </AnimatedButton>
+          )}
         </View>
+      </View>
 
-        {/* Match Status */}
-        <FadeInView delay={400}>
-          <View style={styles.matchStatusCard}>
-            <View style={styles.matchStatusRow}>
-              <View style={[
-                styles.matchStatusBadge,
-                match.status === "completed" && styles.matchStatusCompleted,
-                match.status === "open" && styles.matchStatusOpen,
-                match.status === "full" && styles.matchStatusFull,
-                match.status === "draft" && styles.matchStatusDraft,
-                match.status === "cancelled" && styles.matchStatusCancelled,
-              ]}>
-                <Text style={styles.matchStatusText}>{statusInfo.text}</Text>
+      {/* Match Status */}
+      <FadeInView delay={400}>
+        <View style={styles.matchStatusCard}>
+          <View style={styles.matchStatusRow}>
+            <View style={[
+              styles.matchStatusBadge,
+              match.status === "completed" && styles.matchStatusCompleted,
+              match.status === "open" && styles.matchStatusOpen,
+              match.status === "full" && styles.matchStatusFull,
+              match.status === "cancelled" && styles.matchStatusCancelled,
+            ]}>
+              <Text style={styles.matchStatusText}>{statusInfo.text}</Text>
+            </View>
+
+            <View style={styles.matchInfoRow}>
+              <View style={styles.matchInfoItem}>
+                <Ionicons name="people" size={16} color={statusInfo.color} />
+                <Text style={styles.matchInfoText}>
+                  {confirmedPlayers.length}/{match.maxPlayers}
+                </Text>
               </View>
-
-              <View style={styles.matchInfoRow}>
-                <View style={styles.matchInfoItem}>
-                  <Ionicons name="people" size={16} color={statusInfo.color} />
-                  <Text style={styles.matchInfoText}>
-                    {confirmedPlayers.length}/{match.maxPlayers}
+              
+              {pendingPlayers.length > 0 && (
+                <View style={[styles.matchInfoItem, styles.pendingBadge]}>
+                  <Ionicons name="time" size={14} color="#FF9800" />
+                  <Text style={[styles.matchInfoText, { color: "#FF9800" }]}>
+                    {pendingPlayers.length} in attesa
                   </Text>
                 </View>
-                
-                {pendingPlayers.length > 0 && (
-                  <View style={[styles.matchInfoItem, styles.pendingBadge]}>
-                    <Ionicons name="time" size={14} color="#FF9800" />
-                    <Text style={[styles.matchInfoText, { color: "#FF9800" }]}>
-                      {pendingPlayers.length} in attesa
-                    </Text>
-                  </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </FadeInView>
+
+      {/* Pending Invite Card */}
+      {isPendingInvite && (
+        <ScaleInView delay={500}>
+          <View style={styles.pendingInviteCard}>
+            <View style={styles.pendingInviteHeader}>
+              <Ionicons name="mail" size={24} color="#F57F17" />
+              <Text style={styles.pendingInviteTitle}>Invito al Match</Text>
+            </View>
+            <Text style={styles.pendingInviteText}>
+              Sei stato invitato a partecipare a questo match. Scegli un team per confermare la tua presenza.
+            </Text>
+            <View style={styles.pendingInviteActions}>
+              <AnimatedButton
+                style={styles.pendingAcceptButton}
+                onPress={() => handleRespondToInvite("accept")}
+                disabled={acceptingInvite}
+              >
+                {acceptingInvite ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={20} color="white" />
+                    <Text style={styles.pendingAcceptButtonText}>Accetta</Text>
+                  </>
                 )}
+              </AnimatedButton>
+
+              <AnimatedButton
+                style={styles.pendingDeclineButton}
+                onPress={() => handleRespondToInvite("decline")}
+                disabled={acceptingInvite}
+              >
+                <Text style={styles.pendingDeclineButtonText}>Rifiuta</Text>
+              </AnimatedButton>
+            </View>
+          </View>
+        </ScaleInView>
+      )}
+
+      {/* Declined Card */}
+      {isDeclined && (
+        <ScaleInView delay={500}>
+          <View style={styles.declinedCard}>
+            <View style={styles.declinedHeader}>
+              <Ionicons name="close-circle" size={24} color="#D32F2F" />
+              <Text style={styles.declinedTitle}>Invito Rifiutato</Text>
+            </View>
+            <Text style={styles.declinedText}>
+              Hai rifiutato l'invito a questo match. Vuoi cambiare idea?
+            </Text>
+            <AnimatedButton
+              style={styles.changeResponseButton}
+              onPress={() => handleRespondToInvite("accept")}
+            >
+              <Ionicons name="refresh" size={20} color="white" />
+              <Text style={styles.changeResponseButtonText}>Accetta Invito</Text>
+            </AnimatedButton>
+          </View>
+        </ScaleInView>
+      )}
+
+      {/* Score Display */}
+      {match.score && match.score.sets.length > 0 && (
+        <FadeInView delay={600}>
+          <ScoreDisplay
+            score={match.score}
+            isInMatch={isInMatch}
+            onEdit={() => setScoreModalVisible(true)}
+            matchStatus={getMatchStatus()}
+            teamAPlayers={teamAConfirmed}
+            teamBPlayers={teamBConfirmed}
+          />
+        </FadeInView>
+      )}
+
+      {/* Score Actions */}
+      {canSubmitScore && (!match.score || match.score.sets.length === 0) && confirmedPlayers.length >= 2 && (
+        <FadeInView delay={700}>
+          <View style={styles.scoreActionsContainer}>
+            <AnimatedButton onPress={() => setScoreModalVisible(true)}>
+              <WinnerGradient style={styles.submitScoreButton}>
+                <Ionicons name="trophy" size={20} color="#FFF" />
+                <Text style={styles.submitScoreButtonText}>Inserisci Risultato</Text>
+              </WinnerGradient>
+            </AnimatedButton>
+          </View>
+        </FadeInView>
+      )}
+
+      {/* Teams Section */}
+      {confirmedPlayers.length > 0 && (
+        <SlideInView delay={800} from="bottom">
+          <View style={styles.teamsContainer}>
+            {/* Team A */}
+            <View style={styles.teamSection}>
+              <TeamAGradient style={styles.teamHeader}>
+                <Ionicons name="people-circle" size={20} color="white" />
+                <Text style={[styles.teamTitle, { color: "white" }]}>Team A</Text>
+                <View style={styles.teamHeaderRight}>
+                  <Text style={[styles.teamCount, { color: "white" }]}>
+                    {teamAConfirmed.length}/{maxPlayersPerTeam}
+                  </Text>
+                  {teamAConfirmed.length === maxPlayersPerTeam && (
+                    <ScaleInView delay={900}>
+                      <Ionicons name="checkmark-circle" size={16} color="white" />
+                    </ScaleInView>
+                  )}
+                </View>
+              </TeamAGradient>
+
+              <View style={styles.teamSlotsContainer}>
+                {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
+                  const player = teamAConfirmed[index];
+                  const slotNumber = index + 1;
+
+                  return (
+                    <FadeInView key={`teamA-slot-${slotNumber}`} delay={1000 + index * 50}>
+                      <PlayerCardWithTeam
+                        player={player}
+                        isCreator={isCreator}
+                        currentUserId={user?.id}
+                        onRemove={() => player && handleRemovePlayer(player.user._id)}
+                        onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
+                        onLeave={handleLeaveMatch}
+                        currentTeam="A"
+                        isEmptySlot={!player}
+                        onInviteToSlot={() => handleInviteToTeam("A", slotNumber)}
+                        slotNumber={slotNumber}
+                        matchStatus={getMatchStatus()}
+                      />
+                    </FadeInView>
+                  );
+                })}
               </View>
+            </View>
+
+            {/* Team B */}
+            <View style={styles.teamSection}>
+              <TeamBGradient style={styles.teamHeader}>
+                <Ionicons name="people" size={20} color="white" />
+                <Text style={[styles.teamTitle, { color: "white" }]}>Team B</Text>
+                <View style={styles.teamHeaderRight}>
+                  <Text style={[styles.teamCount, { color: "white" }]}>
+                    {teamBConfirmed.length}/{maxPlayersPerTeam}
+                  </Text>
+                  {teamBConfirmed.length === maxPlayersPerTeam && (
+                    <ScaleInView delay={900}>
+                      <Ionicons name="checkmark-circle" size={16} color="white" />
+                    </ScaleInView>
+                  )}
+                </View>
+              </TeamBGradient>
+
+              <View style={styles.teamSlotsContainer}>
+                {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
+                  const player = teamBConfirmed[index];
+                  const slotNumber = index + 1;
+
+                  return (
+                    <FadeInView key={`teamB-slot-${slotNumber}`} delay={1000 + index * 50}>
+                      <PlayerCardWithTeam
+                        player={player}
+                        isCreator={isCreator}
+                        currentUserId={user?.id}
+                        onRemove={() => player && handleRemovePlayer(player.user._id)}
+                        onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
+                        onLeave={handleLeaveMatch}
+                        currentTeam="B"
+                        isEmptySlot={!player}
+                        onInviteToSlot={() => handleInviteToTeam("B", slotNumber)}
+                        slotNumber={slotNumber}
+                        matchStatus={getMatchStatus()}
+                      />
+                    </FadeInView>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </SlideInView>
+      )}
+
+      {/* Unassigned Players */}
+      {unassignedPlayers.length > 0 && isCreator && (
+        <FadeInView delay={1100}>
+          <View style={styles.unassignedSection}>
+            <Text style={styles.unassignedTitle}>Giocatori Non Assegnati</Text>
+            <Text style={styles.unassignedSubtitle}>
+              Assegna questi giocatori ad un team
+            </Text>
+            <View style={styles.playersGrid}>
+              {unassignedPlayers.map((player, index) => (
+                <SlideInView key={player.user._id} delay={1200 + index * 50} from="left">
+                  <PlayerCardWithTeam
+                    player={player}
+                    isCreator={isCreator}
+                    currentUserId={user?.id}
+                    onRemove={() => handleRemovePlayer(player.user._id)}
+                    onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
+                    matchStatus={getMatchStatus()}
+                  />
+                </SlideInView>
+              ))}
             </View>
           </View>
         </FadeInView>
+      )}
 
-        {/* Pending Invite Card */}
-        {isPendingInvite && (
-          <ScaleInView delay={500}>
-            <View style={styles.pendingInviteCard}>
-              <View style={styles.pendingInviteHeader}>
-                <Ionicons name="mail" size={24} color="#F57F17" />
-                <Text style={styles.pendingInviteTitle}>Invito al Match</Text>
-              </View>
-              <Text style={styles.pendingInviteText}>
-                Sei stato invitato a partecipare a questo match. Scegli un team per confermare la tua presenza.
-              </Text>
-              <View style={styles.pendingInviteActions}>
-                <AnimatedButton
-                  style={styles.pendingAcceptButton}
-                  onPress={() => handleRespondToInvite("accept")}
-                  disabled={acceptingInvite}
-                >
-                  {acceptingInvite ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark" size={20} color="white" />
-                      <Text style={styles.pendingAcceptButtonText}>Accetta</Text>
-                    </>
-                  )}
-                </AnimatedButton>
-
-                <AnimatedButton
-                  style={styles.pendingDeclineButton}
-                  onPress={() => handleRespondToInvite("decline")}
-                  disabled={acceptingInvite}
-                >
-                  <Text style={styles.pendingDeclineButtonText}>Rifiuta</Text>
-                </AnimatedButton>
-              </View>
+      {/* Pending Players */}
+      {pendingPlayers.length > 0 && (
+        <FadeInView delay={1300}>
+          <View style={styles.pendingSection}>
+            <Text style={styles.pendingTitle}>In Attesa di Risposta ({pendingPlayers.length})</Text>
+            <View style={styles.playersGrid}>
+              {pendingPlayers.map((player, index) => (
+                <SlideInView key={player.user._id} delay={1400 + index * 50} from="left">
+                  <PlayerCardWithTeam
+                    player={player}
+                    isCreator={isCreator}
+                    currentUserId={user?.id}
+                    onRemove={() => handleRemovePlayer(player.user._id)}
+                    onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
+                    isPending={true}
+                    matchStatus={getMatchStatus()}
+                  />
+                </SlideInView>
+              ))}
             </View>
-          </ScaleInView>
-        )}
-
-        {/* Declined Card */}
-        {isDeclined && (
-          <ScaleInView delay={500}>
-            <View style={styles.declinedCard}>
-              <View style={styles.declinedHeader}>
-                <Ionicons name="close-circle" size={24} color="#D32F2F" />
-                <Text style={styles.declinedTitle}>Invito Rifiutato</Text>
-              </View>
-              <Text style={styles.declinedText}>
-                Hai rifiutato l'invito a questo match. Vuoi cambiare idea?
-              </Text>
-              <AnimatedButton
-                style={styles.changeResponseButton}
-                onPress={() => handleRespondToInvite("accept")}
-              >
-                <Ionicons name="refresh" size={20} color="white" />
-                <Text style={styles.changeResponseButtonText}>Accetta Invito</Text>
-              </AnimatedButton>
-            </View>
-          </ScaleInView>
-        )}
-
-        {/* Score Display */}
-        {match.score && match.score.sets.length > 0 && (
-          <FadeInView delay={600}>
-            <ScoreDisplay
-              score={match.score}
-              isCreator={isCreator}
-              onEdit={() => setScoreModalVisible(true)}
-              matchStatus={match.status}
-            />
-          </FadeInView>
-        )}
-
-        {/* Score Actions */}
-        {canSubmitScore && (!match.score || match.score.sets.length === 0) && confirmedPlayers.length >= 2 && (
-          <FadeInView delay={700}>
-            <View style={styles.scoreActionsContainer}>
-              <AnimatedButton onPress={() => setScoreModalVisible(true)}>
-                <WinnerGradient style={styles.submitScoreButton}>
-                  <Ionicons name="trophy" size={20} color="#FFF" />
-                  <Text style={styles.submitScoreButtonText}>Inserisci Risultato</Text>
-                </WinnerGradient>
-              </AnimatedButton>
-            </View>
-          </FadeInView>
-        )}
-
-        {/* Teams Section */}
-        {confirmedPlayers.length > 0 && (
-          <SlideInView delay={800} from="bottom">
-            <View style={styles.teamsContainer}>
-              {/* Team A */}
-              <View style={styles.teamSection}>
-                <TeamAGradient style={styles.teamHeader}>
-                  <Ionicons name="people-circle" size={20} color="white" />
-                  <Text style={[styles.teamTitle, { color: "white" }]}>Team A</Text>
-                  <View style={styles.teamHeaderRight}>
-                    <Text style={[styles.teamCount, { color: "white" }]}>
-                      {teamAConfirmed.length}/{maxPlayersPerTeam}
-                    </Text>
-                    {teamAConfirmed.length === maxPlayersPerTeam && (
-                      <ScaleInView delay={900}>
-                        <Ionicons name="checkmark-circle" size={16} color="white" />
-                      </ScaleInView>
-                    )}
-                  </View>
-                </TeamAGradient>
-
-                <View style={styles.teamSlotsContainer}>
-                  {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
-                    const player = teamAConfirmed[index];
-                    const slotNumber = index + 1;
-
-                    return (
-                      <FadeInView key={`teamA-slot-${slotNumber}`} delay={1000 + index * 50}>
-                        <PlayerCardWithTeam
-                          player={player}
-                          isCreator={isCreator}
-                          currentUserId={user?.userId}
-                          onRemove={() => player && handleRemovePlayer(player.user._id)}
-                          onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
-                          onLeave={handleLeaveMatch}
-                          currentTeam="A"
-                          isEmptySlot={!player}
-                          onInviteToSlot={() => handleInviteToTeam("A", slotNumber)}
-                          slotNumber={slotNumber}
-                          matchStatus={match.status}
-                        />
-                      </FadeInView>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Team B */}
-              <View style={styles.teamSection}>
-                <TeamBGradient style={styles.teamHeader}>
-                  <Ionicons name="people" size={20} color="white" />
-                  <Text style={[styles.teamTitle, { color: "white" }]}>Team B</Text>
-                  <View style={styles.teamHeaderRight}>
-                    <Text style={[styles.teamCount, { color: "white" }]}>
-                      {teamBConfirmed.length}/{maxPlayersPerTeam}
-                    </Text>
-                    {teamBConfirmed.length === maxPlayersPerTeam && (
-                      <ScaleInView delay={900}>
-                        <Ionicons name="checkmark-circle" size={16} color="white" />
-                      </ScaleInView>
-                    )}
-                  </View>
-                </TeamBGradient>
-
-                <View style={styles.teamSlotsContainer}>
-                  {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
-                    const player = teamBConfirmed[index];
-                    const slotNumber = index + 1;
-
-                    return (
-                      <FadeInView key={`teamB-slot-${slotNumber}`} delay={1000 + index * 50}>
-                        <PlayerCardWithTeam
-                          player={player}
-                          isCreator={isCreator}
-                          currentUserId={user?.userId}
-                          onRemove={() => player && handleRemovePlayer(player.user._id)}
-                          onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
-                          onLeave={handleLeaveMatch}
-                          currentTeam="B"
-                          isEmptySlot={!player}
-                          onInviteToSlot={() => handleInviteToTeam("B", slotNumber)}
-                          slotNumber={slotNumber}
-                          matchStatus={match.status}
-                        />
-                      </FadeInView>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
-          </SlideInView>
-        )}
-
-        {/* Unassigned Players */}
-        {unassignedPlayers.length > 0 && isCreator && (
-          <FadeInView delay={1100}>
-            <View style={styles.unassignedSection}>
-              <Text style={styles.unassignedTitle}>Giocatori Non Assegnati</Text>
-              <Text style={styles.unassignedSubtitle}>
-                Assegna questi giocatori ad un team
-              </Text>
-              <View style={styles.playersGrid}>
-                {unassignedPlayers.map((player, index) => (
-                  <SlideInView key={player.user._id} delay={1200 + index * 50} from="left">
-                    <PlayerCardWithTeam
-                      player={player}
-                      isCreator={isCreator}
-                      currentUserId={user?.userId}
-                      onRemove={() => handleRemovePlayer(player.user._id)}
-                      onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
-                      matchStatus={match.status}
-                    />
-                  </SlideInView>
-                ))}
-              </View>
-            </View>
-          </FadeInView>
-        )}
-
-        {/* Pending Players */}
-        {pendingPlayers.length > 0 && (
-          <FadeInView delay={1300}>
-            <View style={styles.pendingSection}>
-              <Text style={styles.pendingTitle}>In Attesa di Risposta ({pendingPlayers.length})</Text>
-              <View style={styles.playersGrid}>
-                {pendingPlayers.map((player, index) => (
-                  <SlideInView key={player.user._id} delay={1400 + index * 50} from="left">
-                    <PlayerCardWithTeam
-                      player={player}
-                      isCreator={isCreator}
-                      currentUserId={user?.userId}
-                      onRemove={() => handleRemovePlayer(player.user._id)}
-                      onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
-                      isPending={true}
-                      matchStatus={match.status}
-                    />
-                  </SlideInView>
-                ))}
-              </View>
-            </View>
-          </FadeInView>
-        )}
-      </AnimatedCard>
-    );
-  };
+          </View>
+        </FadeInView>
+      )}
+    </AnimatedCard>
+  );
+};
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -741,96 +853,144 @@ export default function DettaglioPrenotazioneScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </AnimatedButton>
         <Text style={styles.headerTitle}>Dettaglio Prenotazione</Text>
-        <View style={{ width: 40 }} />
+        {canCancelBooking() && (
+          <Pressable
+            onPress={handleCancelBooking}
+            disabled={cancellingBooking}
+            style={styles.headerCancelButton}
+            hitSlop={10}
+          >
+            <Ionicons name="trash-outline" size={22} color="#F44336" />
+          </Pressable>
+        )}
+        {!canCancelBooking() && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView style={styles.container}>
-        {/* Status Card */}
-        <AnimatedCard delay={0} style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <ScaleInView delay={100}>
-              <Ionicons 
-                name={booking.status === 'confirmed' ? 'checkmark-circle' : 'close-circle'} 
-                size={32} 
-                color={booking.status === 'confirmed' ? '#4CAF50' : '#F44336'} 
-              />
-            </ScaleInView>
-            {booking.status === 'confirmed' ? (
-              <SuccessGradient style={styles.statusBadge}>
-                <Text style={[styles.statusText, { color: "white" }]}>CONFERMATA</Text>
-              </SuccessGradient>
-            ) : (
-              <View style={[styles.statusBadge, styles.statusCancelled]}>
-                <Text style={styles.statusText}>CANCELLATA</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.statusInfo}>
-            <FadeInView delay={200}>
-              <View style={styles.statusInfoItem}>
-                <Ionicons name="calendar" size={20} color="#666" />
-                <Text style={styles.statusInfoText}>{formatDate(booking.date)}</Text>
-              </View>
-            </FadeInView>
-            <FadeInView delay={300}>
-              <View style={styles.statusInfoItem}>
-                <Ionicons name="time" size={20} color="#666" />
-                <Text style={styles.statusInfoText}>
-                  {booking.startTime} - {booking.endTime} ({calculateDuration(booking.startTime, booking.endTime)})
-                </Text>
-              </View>
-            </FadeInView>
+        {/* Status Card Moderna */}
+        <AnimatedCard delay={0}>
+          <View style={styles.modernStatusCard}>
+            <View style={styles.modernStatusIconContainer}>
+              <ScaleInView delay={100}>
+                {booking.status === 'confirmed' ? (
+                  <SuccessGradient style={styles.modernStatusIcon}>
+                    <Ionicons name="checkmark-circle" size={28} color="white" />
+                  </SuccessGradient>
+                ) : (
+                  <View style={[styles.modernStatusIcon, { backgroundColor: '#FFEBEE' }]}>
+                    <Ionicons name="close-circle" size={28} color="#F44336" />
+                  </View>
+                )}
+              </ScaleInView>
+            </View>
+            <View style={styles.modernStatusContent}>
+              <Text style={[
+                styles.modernStatusText,
+                { color: booking.status === 'confirmed' ? '#4CAF50' : '#F44336' }
+              ]}>
+                {booking.status === 'confirmed' ? 'Confermata' : 'Cancellata'}
+              </Text>
+              {booking.status === 'confirmed' && (
+                <Text style={styles.modernStatusSubtext}>La tua prenotazione è attiva</Text>
+              )}
+            </View>
           </View>
         </AnimatedCard>
 
-        {/* Campo Info Card */}
-        <AnimatedCard delay={100} style={styles.card}>
-          <Text style={styles.cardTitle}>Informazioni Campo</Text>
-          
-          <View style={styles.infoSection}>
-            <FadeInView delay={200}>
-              <View style={styles.infoRow}>
-                <Ionicons name="business" size={24} color="#2196F3" />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Struttura</Text>
-                  <Text style={styles.infoValue}>{booking.campo.struttura.name}</Text>
+        {/* Campo Info Card - Versione compatta */}
+        <AnimatedCard delay={100}>
+          <View style={styles.fieldInfoCard}>
+            <View style={styles.fieldInfoHeader}>
+              <Ionicons name="location-sharp" size={20} color="#FF9800" />
+              <Text style={styles.fieldInfoTitle}>Dove giochi</Text>
+            </View>
+            
+            <View style={styles.fieldInfoList}>
+              {/* Struttura */}
+              <FadeInView delay={200}>
+                <View style={styles.fieldInfoRow}>
+                  <View style={styles.fieldIconCircle}>
+                    <Ionicons name="business" size={18} color="#2196F3" />
+                  </View>
+                  <View style={styles.fieldInfoContent}>
+                    <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
+                    <Text style={styles.fieldInfoValue}>{booking.campo.struttura.name}</Text>
+                  </View>
                 </View>
-              </View>
-            </FadeInView>
+              </FadeInView>
 
-            <FadeInView delay={300}>
-              <View style={styles.infoRow}>
-                <Ionicons name="location" size={24} color="#2196F3" />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Località</Text>
-                  <Text style={styles.infoValue}>{booking.campo.struttura.location.city}</Text>
-                  {booking.campo.struttura.location.address && (
-                    <Text style={styles.infoSubValue}>{booking.campo.struttura.location.address}</Text>
-                  )}
-                </View>
-              </View>
-            </FadeInView>
+              <View style={styles.fieldInfoDivider} />
 
-            <FadeInView delay={400}>
-              <View style={styles.infoRow}>
-                <Ionicons 
-                  name={
-                    booking.campo.sport === 'calcio' ? 'football' :
-                    booking.campo.sport === 'tennis' ? 'tennisball' :
-                    booking.campo.sport === 'basket' ? 'basketball' : 'fitness'
-                  } 
-                  size={24} 
-                  color="#2196F3" 
-                />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Sport / Campo</Text>
-                  <Text style={styles.infoValue}>
-                    {booking.campo.sport.charAt(0).toUpperCase() + booking.campo.sport.slice(1)} - {booking.campo.name}
-                  </Text>
-                </View>
+              {/* Sport e Campo - Due colonne */}
+              <View style={styles.sportCampoGrid}>
+                <FadeInView delay={300} style={styles.sportCampoColumn}>
+                  <View style={styles.sportCampoBox}>
+                    <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                      <Ionicons 
+                        name={
+                          booking.campo.sport === 'calcio' ? 'football' :
+                          booking.campo.sport === 'tennis' ? 'tennisball' :
+                          booking.campo.sport === 'basket' ? 'basketball' :
+                          booking.campo.sport === 'beach_volley' ? 'trophy' : 'fitness'
+                        } 
+                        size={18} 
+                        color="#FF9800" 
+                      />
+                    </View>
+                    <View style={styles.fieldInfoContent}>
+                      <Text style={styles.fieldInfoLabel}>SPORT</Text>
+                      <Text style={styles.fieldInfoValue}>
+                        {booking.campo.sport === 'beach_volley' 
+                          ? 'Beach Volley' 
+                          : booking.campo.sport.charAt(0).toUpperCase() + booking.campo.sport.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </FadeInView>
+
+                <FadeInView delay={350} style={styles.sportCampoColumn}>
+                  <View style={styles.sportCampoBox}>
+                    <View style={[styles.fieldIconCircle, { backgroundColor: '#E8F5E9' }]}>
+                      <Ionicons name="grid-outline" size={18} color="#4CAF50" />
+                    </View>
+                    <View style={styles.fieldInfoContent}>
+                      <Text style={styles.fieldInfoLabel}>CAMPO</Text>
+                      <Text style={styles.fieldInfoValue}>{booking.campo.name}</Text>
+                    </View>
+                  </View>
+                </FadeInView>
               </View>
-            </FadeInView>
+
+              <View style={styles.fieldInfoDivider} />
+
+              {/* Località - Cliccabile */}
+              <FadeInView delay={400}>
+                <View style={styles.fieldInfoRow}>
+                  <View style={[styles.fieldIconCircle, { backgroundColor: '#F3E5F5' }]}>
+                    <Ionicons name="location" size={18} color="#9C27B0" />
+                  </View>
+                  <View style={styles.fieldInfoContent}>
+                    <Text style={styles.fieldInfoLabel}>LOCALITÀ</Text>
+                    <View style={styles.locationRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.fieldInfoValue}>{booking.campo.struttura.location.city}</Text>
+                        {booking.campo.struttura.location.address && (
+                          <Text style={styles.fieldInfoSubValue}>{booking.campo.struttura.location.address}</Text>
+                        )}
+                      </View>
+                      <Pressable 
+                        style={styles.mapButton}
+                        onPress={handleOpenMaps}
+                        android_ripple={{ color: 'rgba(156, 39, 176, 0.1)', radius: 40 }}
+                      >
+                        <Ionicons name="navigate" size={14} color="#9C27B0" />
+                        <Text style={styles.mapButtonText}>Indicazioni</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </FadeInView>
+            </View>
           </View>
         </AnimatedCard>
 
@@ -954,6 +1114,8 @@ export default function DettaglioPrenotazioneScreen() {
           onSave={handleSubmitScore}
           currentScore={booking.match.score}
           matchStatus={booking.match.status}
+          teamAPlayers={teamAConfirmed}
+          teamBPlayers={teamBConfirmed}
         />
       )}
     </SafeAreaView>

@@ -39,6 +39,7 @@ interface Booking {
     winner: "A" | "B";
     sets: { teamA: number; teamB: number }[];
   };
+  matchId?: string;
   isMyBooking?: boolean;
   isInvitedPlayer?: boolean;
 }
@@ -228,7 +229,8 @@ export default function LeMiePrenotazioniScreen() {
     const isOngoing = isOngoingBooking(item);
     const isUpcoming = isUpcomingBooking(item);
     const isCancelled = item.status === "cancelled";
-    const canInsertResult = isPast && item.status === "confirmed" && !item.hasMatch;
+    // Può inserire risultato se: è passata, confermata, ha un match ma non ha risultato
+    const canInsertResult = isPast && item.status === "confirmed" && item.hasMatch && !item.matchSummary;
     const timeStatus = getTimeStatus(item);
 
     return (
@@ -248,21 +250,10 @@ export default function LeMiePrenotazioniScreen() {
         {/* STATUS BADGE (top-left ora) */}
         <View style={styles.statusRow}>
           <View style={styles.leftBadges}>
-            {isCancelled ? (
+            {isCancelled && (
               <View style={styles.cancelledBadge}>
                 <Ionicons name="close-circle" size={14} color="#F44336" />
                 <Text style={styles.cancelledText}>Cancellata</Text>
-              </View>
-            ) : (
-              <View style={isPast ? styles.pastBadge : styles.confirmedBadge}>
-                <Ionicons 
-                  name={isPast ? "time-outline" : "checkmark-circle"} 
-                  size={14} 
-                  color={isPast ? "#FF9800" : "#4CAF50"} 
-                />
-                <Text style={isPast ? styles.pastText : styles.confirmedText}>
-                  {isPast ? "Passata" : "Confermata"}
-                </Text>
               </View>
             )}
 
@@ -299,6 +290,8 @@ export default function LeMiePrenotazioniScreen() {
                   item.campo.sport === "calcio" ? "football" :
                   item.campo.sport === "tennis" ? "tennisball" :
                   item.campo.sport === "basket" ? "basketball" :
+                  item.campo.sport === "beach_volleyball" ? "sunny" :
+                  item.campo.sport === "volleyball" || item.campo.sport === "volley" ? "basketball" :
                   "fitness"
                 } 
                 size={12} 
@@ -372,8 +365,9 @@ export default function LeMiePrenotazioniScreen() {
               style={styles.resultBtn}
               onPress={(e) => {
                 e.stopPropagation();
-                navigation.navigate("InserisciRisultato", {
+                navigation.navigate("DettaglioPrenotazione", {
                   bookingId: item._id,
+                  openScoreModal: true,
                 });
               }}
             >

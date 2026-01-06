@@ -56,8 +56,8 @@ export const createMatchFromBooking = async (
       status: "draft",
     });
 
-    await match.populate("players.user", "username name avatarUrl");
-    await match.populate("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
     res.status(201).json(match);
   } catch (err) {
@@ -94,11 +94,13 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
       status: "draft",
     });
 
-    await match.populate("players.user", "username name avatarUrl");
-    await match.populate("createdBy", "username name avatarUrl");
-    if (event) {
-      await match.populate("event");
-    }
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
+    
+    // Se hai bisogno di event, decommenta questa riga e importa il modello Event
+    // if (event) {
+    //   await match.populate("event");
+    // }
 
     res.status(201).json(match);
   } catch (err) {
@@ -156,6 +158,11 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Team deve essere 'A' o 'B'" });
     }
 
+    // Team obbligatorio se maxPlayers > 2 e match non è in draft
+    if (match.maxPlayers > 2 && match.status !== "draft" && !team) {
+      return res.status(400).json({ message: "Team obbligatorio per questo match" });
+    }
+
     // Aggiungi player con team opzionale
     match.players.push({
       user: userToInvite._id,
@@ -165,7 +172,7 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     });
 
     await match.save();
-    await match.populate("players.user", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
 
     res.json(match);
   } catch (err) {
@@ -231,7 +238,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
     }
 
     await match.save();
-    await match.populate("players.user", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
 
     res.json(match);
   } catch (err) {
@@ -299,11 +306,9 @@ export const respondToInvite = async (req: AuthRequest, res: Response) => {
 
     await match.save();
     
-    // Popola PRIMA di loggare
-    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
-    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
-    // Ora che user è popolato, possiamo accedere a name
     console.log(`📊 Match aggiornato:`, {
       matchId: match._id,
       players: (match.players as any[]).map(p => ({
@@ -358,7 +363,7 @@ export const removePlayer = async (req: AuthRequest, res: Response) => {
     }
 
     await match.save();
-    await match.populate("players.user", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
 
     res.json(match);
   } catch (err) {
@@ -421,8 +426,8 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     match.status = "completed";
 
     await match.save();
-    await match.populate("players.user", "username name avatarUrl");
-    await match.populate("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
     res.json(match);
   } catch (err) {
@@ -433,12 +438,14 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
 
 /**
  * GET /matches/me
- * Lista miei match (creati o joinati)
+ * Lista miei match (creati o joinati) - VERSIONE CORRETTA
  */
 export const getMyMatches = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { status, role } = req.query;
+
+    console.log('🔍 [getMyMatches] Richiesta per:', { userId, status, role });
 
     let query: any = {
       $or: [
@@ -457,17 +464,41 @@ export const getMyMatches = async (req: AuthRequest, res: Response) => {
       query = { "players.user": userId, createdBy: { $ne: userId } };
     }
 
+    console.log('📋 [getMyMatches] Query:', JSON.stringify(query));
+
+    // Trova i match SENZA popolare event
     const matches = await Match.find(query)
       .sort({ createdAt: -1 })
-      .populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl")
-      .populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl")
-      .populate("booking")
-      .populate("event");
+      .populate("players.user", "username name surname avatarUrl")
+      .populate("createdBy", "username name surname avatarUrl")
+      .populate({
+        path: "booking",
+        select: "date startTime endTime campo user price",
+        populate: [
+          {
+            path: "campo",
+            select: "name sport pricingRules",
+            populate: {
+              path: "struttura",
+              select: "name location images",
+            },
+          },
+          {
+            path: "user",
+            select: "name email",
+          },
+        ],
+      });
+
+    console.log(`✅ [getMyMatches] Trovati ${matches.length} match`);
 
     res.json(matches);
   } catch (err) {
     console.error("❌ getMyMatches error:", err);
-    res.status(500).json({ message: "Errore server" });
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
   }
 };
 
@@ -494,16 +525,10 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
       userAgent: req.headers['user-agent']
     });
 
-    console.log('🔍 [getMatchById] Richiesta per:', {
-      matchId,
-      userId,
-      userAgent: req.headers['user-agent']
-    });
-
     // Cerca il match con tutte le popolazioni necessarie
     const match = await Match.findById(matchId)
-      .populate<{ user: PopulatedUser }>("players.user", "name username avatarUrl")
-      .populate<{ createdBy: PopulatedUser }>("createdBy", "name username avatarUrl")
+      .populate("players.user", "name surname username avatarUrl")
+      .populate("createdBy", "name surname username avatarUrl")
       .populate({
         path: "booking",
         select: "date startTime endTime campo user",
@@ -528,29 +553,23 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Type assertion dopo popolazione
     const matchObj = match.toObject();
-    const populatedMatch = matchObj as any;
 
     console.log('📊 [getMatchById] Match trovato:', {
       matchId: match._id,
       status: match.status,
       isPublic: match.isPublic,
-      createdByName: populatedMatch.createdBy?.name,
-      playersCount: populatedMatch.players?.length,
-      players: populatedMatch.players?.map((p: any) => ({
-        name: p.user?.name,
-        status: p.status,
-      }))
+      createdByName: (matchObj as any).createdBy?.name,
+      playersCount: (matchObj as any).players?.length,
     });
 
     // Verifica se l'utente è un player
-    const isPlayer = populatedMatch.players?.some((p: any) => {
+    const isPlayer = (matchObj as any).players?.some((p: any) => {
       const playerUserId = p.user?._id?.toString();
       return playerUserId === userId;
     }) || false;
     
-    const isCreator = populatedMatch.createdBy?._id?.toString() === userId;
+    const isCreator = (matchObj as any).createdBy?._id?.toString() === userId;
 
     console.log('🔐 [getMatchById] Controllo autorizzazione:', {
       isPublic: match.isPublic,
@@ -564,8 +583,8 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
       console.log('🔒 [getMatchById] Accesso negato - Match privato');
       console.log('📋 [DEBUG] Dettagli utente richiedente:', {
         userId,
-        userMatchesPlayers: populatedMatch.players?.map((p: any) => p.user?._id),
-        createdById: populatedMatch.createdBy?._id
+        userMatchesPlayers: (matchObj as any).players?.map((p: any) => p.user?._id),
+        createdById: (matchObj as any).createdBy?._id
       });
       
       return res.status(403).json({ 
@@ -580,7 +599,7 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.json(populatedMatch);
+    res.json(matchObj);
   } catch (err) {
     console.error("❌ [getMatchById] error:", err);
     res.status(500).json({ 
@@ -604,8 +623,8 @@ export const getPendingInvites = async (req: AuthRequest, res: Response) => {
     const allMatches = await Match.find({
       'players.user': userId
     })
-    .populate<{ createdBy: PopulatedUser }>('createdBy', 'name username avatarUrl')
-    .populate<{ user: PopulatedUser }>('players.user', 'name username avatarUrl')
+    .populate('createdBy', 'name surname username avatarUrl')
+    .populate('players.user', 'name surname username avatarUrl')
     .populate({
       path: 'booking',
       populate: [
@@ -702,9 +721,12 @@ export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Solo il creatore può assegnare team
-    if (match.createdBy.toString() !== currentUserId) {
-      return res.status(403).json({ message: "Solo il creatore può assegnare i team" });
+    // Il creatore può assegnare qualsiasi giocatore, il giocatore può cambiare solo se stesso
+    const isCreator = match.createdBy.toString() === currentUserId;
+    const isSelf = playerId === currentUserId;
+
+    if (!isCreator && !isSelf) {
+      return res.status(403).json({ message: "Non puoi modificare il team di altri giocatori" });
     }
 
     // Match deve essere draft o open
@@ -728,21 +750,14 @@ export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
     await match.save();
 
     const populatedMatch = await Match.findById(matchId)
-      .populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl")
-      .populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+      .populate("players.user", "username name surname avatarUrl")
+      .populate("createdBy", "username name surname avatarUrl");
 
     res.json(populatedMatch);
   } catch (err) {
     console.error("❌ assignPlayerTeam error:", err);
     res.status(500).json({ message: "Errore server" });
   }
-
-  // In matchController.ts - aggiungi questa funzione
-/**
- * PATCH /matches/:matchId/update-response
- * Cambia risposta a un invito (da declined a accepted)
- */
-
 };
 
 export const updateInviteResponse = async (req: AuthRequest, res: Response) => {
@@ -822,8 +837,8 @@ export const updateInviteResponse = async (req: AuthRequest, res: Response) => {
     await match.save();
     
     // Popola per la risposta
-    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
-    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
     console.log(`✅ Risposta cambiata: userId=${userId}, da declined a confirmed`);
 
@@ -840,10 +855,6 @@ export const updateInviteResponse = async (req: AuthRequest, res: Response) => {
   }
 }
 
-/**
- * PATCH /matches/:matchId/leave
- * Abbandona un match (cambia status da "confirmed" a "declined")
- */
 /**
  * PATCH /matches/:matchId/leave
  * Abbandona un match (cambia status da "confirmed" a "declined")
@@ -909,8 +920,8 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
     await match.save();
     
     // Popola per la risposta
-    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
-    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
     console.log(`✅ [leaveMatch] Match aggiornato con successo`);
 
@@ -926,6 +937,7 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
 /**
  * PATCH /matches/:matchId/score
  * Inserisce o aggiorna il risultato del match (solo creatore)
@@ -985,8 +997,8 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
     await match.save();
 
     // Popola per la risposta
-    await match.populate<{ user: PopulatedUser }>("players.user", "username name avatarUrl");
-    await match.populate<{ createdBy: PopulatedUser }>("createdBy", "username name avatarUrl");
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
 
     console.log(`✅ [submitScore] Risultato salvato: Team ${winner} vince ${sets.length} set(s)`);
 

@@ -4,12 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { FadeInView } from './AnimatedComponents';
 
 interface BookingDetailsCardProps {
-  date: string;
-  startTime: string;
-  endTime: string;
-  duration: string;
+  date: string; // formato: "dd/MM/yyyy"
+  startTime: string; // formato: "HH:mm"
+  endTime: string; // formato: "HH:mm"
+  duration: string; // es: "1h 30min"
   price: number;
-  createdAt: string;
+  createdAt: string; // formato ISO o compatibile con Date
 }
 
 const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
@@ -21,18 +21,58 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
   createdAt,
 }) => {
   const formatDateTime = (dateStr: string, time: string) => {
-    const [day, month, year] = dateStr.split('/');
-    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    return `${parseInt(day)} ${months[parseInt(month) - 1]}, ${time}`;
+    try {
+      // Gestisce sia formato ISO (2026-01-15) sia formato IT (15/01/2026)
+      let date: Date;
+      if (dateStr.includes('-')) {
+        // Formato ISO: 2026-01-15
+        date = new Date(dateStr + 'T12:00:00');
+      } else if (dateStr.includes('/')) {
+        // Formato IT: 15/01/2026
+        const [day, month, year] = dateStr.split('/').map(Number);
+        date = new Date(year, month - 1, day);
+      } else {
+        return `${dateStr}, ${time}`;
+      }
+
+      if (isNaN(date.getTime())) {
+        return `${dateStr}, ${time}`;
+      }
+
+      const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+      const day = date.getDate();
+      const monthName = months[date.getMonth()];
+      const year = date.getFullYear();
+      
+      return `${day} ${monthName} ${year}, ${time}`;
+    } catch (error) {
+      return `${dateStr}, ${time}`;
+    }
   };
 
   const formatBookingDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return dateStr;
+      }
+      return date.toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return dateStr;
+    }
+  };
+
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat('it-IT', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   return (
@@ -77,7 +117,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
             <View style={styles.itemInfo}>
               <Text style={styles.itemLabel}>PREZZO</Text>
               <Text style={[styles.itemValue, styles.priceValue]}>
-                €{price.toFixed(2)}
+                {formatPrice(price)}
               </Text>
             </View>
           </View>
@@ -98,16 +138,6 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
           </View>
         </FadeInView>
       </View>
-
-      {/* Orario completo in basso */}
-      <FadeInView delay={500}>
-        <View style={styles.timeRangeContainer}>
-          <Ionicons name="time-outline" size={16} color="#666" />
-          <Text style={styles.timeRangeText}>
-            {startTime} - {endTime}
-          </Text>
-        </View>
-      </FadeInView>
     </View>
   );
 };
@@ -184,20 +214,6 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontSize: 18,
     fontWeight: '800',
-  },
-  timeRangeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 14,
-    paddingHorizontal: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  timeRangeText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
   },
 });
 

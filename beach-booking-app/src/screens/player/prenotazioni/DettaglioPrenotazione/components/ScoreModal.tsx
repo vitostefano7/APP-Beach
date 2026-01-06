@@ -17,6 +17,16 @@ interface Set {
   teamB: number;
 }
 
+interface Player {
+  user: {
+    _id: string;
+    name: string;
+    surname: string;
+  };
+  team?: 'A' | 'B';
+  status: string;
+}
+
 interface ScoreModalProps {
   visible: boolean;
   onClose: () => void;
@@ -26,6 +36,8 @@ interface ScoreModalProps {
     sets: Set[];
   };
   matchStatus: string;
+  teamAPlayers?: Player[];
+  teamBPlayers?: Player[];
 }
 
 const ScoreModal: React.FC<ScoreModalProps> = ({
@@ -34,9 +46,23 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
   onSave,
   currentScore,
   matchStatus,
+  teamAPlayers = [],
+  teamBPlayers = [],
 }) => {
   const [sets, setSets] = useState<Set[]>([{ teamA: 0, teamB: 0 }]);
   const [saving, setSaving] = useState(false);
+
+  // Debug log per verificare i players
+  useEffect(() => {
+    if (visible) {
+      console.log('ScoreModal players:', {
+        teamACount: teamAPlayers.length,
+        teamBCount: teamBPlayers.length,
+        teamAPlayers: teamAPlayers.map(p => ({ name: p.user?.name, surname: p.user?.surname })),
+        teamBPlayers: teamBPlayers.map(p => ({ name: p.user?.name, surname: p.user?.surname }))
+      });
+    }
+  }, [visible, teamAPlayers, teamBPlayers]);
 
   // Inizializza con il punteggio corrente se esiste
   useEffect(() => {
@@ -126,6 +152,11 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
     return { teamAWins, teamBWins };
   };
 
+  const getInitials = (name: string, surname: string) => {
+    if (!name || !surname) return '??';
+    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
+  };
+
   const { teamAWins, teamBWins } = getSetSummary();
   const calculatedWinner = calculateWinner();
 
@@ -156,12 +187,24 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
             </Pressable>
           </View>
 
-          {/* Score Summary */}
+          {/* Score Summary with Avatars */}
           <View style={styles.scoreSummaryCard}>
             <View style={styles.scoreSummaryTeam}>
               <View style={[styles.scoreSummaryBadge, styles.teamBadgeA]}>
                 <Text style={styles.scoreSummaryTeamText}>Team A</Text>
               </View>
+              
+              {/* Avatar Team A */}
+              <View style={styles.scoreTeamAvatars}>
+                {teamAPlayers.map((player, index) => (
+                  <View key={player.user._id} style={[styles.scoreAvatar, styles.avatarTeamA, { zIndex: teamAPlayers.length - index }]}>
+                    <Text style={styles.scoreAvatarText}>
+                      {getInitials(player.user?.name || '', player.user?.surname || '')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <Text style={[
                 styles.scoreSummaryScore,
                 calculatedWinner === 'A' && styles.scoreSummaryWinner
@@ -171,13 +214,25 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
             </View>
 
             <View style={styles.scoreSummaryDivider}>
-              <Ionicons name="remove" size={24} color="#999" />
+              <Ionicons name="remove" size={20} color="#999" />
             </View>
 
             <View style={styles.scoreSummaryTeam}>
               <View style={[styles.scoreSummaryBadge, styles.teamBadgeB]}>
                 <Text style={styles.scoreSummaryTeamText}>Team B</Text>
               </View>
+              
+              {/* Avatar Team B */}
+              <View style={styles.scoreTeamAvatars}>
+                {teamBPlayers.map((player, index) => (
+                  <View key={player.user._id} style={[styles.scoreAvatar, styles.avatarTeamB, { zIndex: teamBPlayers.length - index }]}>
+                    <Text style={styles.scoreAvatarText}>
+                      {getInitials(player.user?.name || '', player.user?.surname || '')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <Text style={[
                 styles.scoreSummaryScore,
                 calculatedWinner === 'B' && styles.scoreSummaryWinner
@@ -189,7 +244,7 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
 
           {calculatedWinner && (
             <View style={styles.winnerIndicator}>
-              <Ionicons name="trophy" size={16} color="#FFD700" />
+              <Ionicons name="trophy" size={14} color="#FFD700" />
               <Text style={styles.winnerIndicatorText}>
                 Vincitore: Team {calculatedWinner}
               </Text>

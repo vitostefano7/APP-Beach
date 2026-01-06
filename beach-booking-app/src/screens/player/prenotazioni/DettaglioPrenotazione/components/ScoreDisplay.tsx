@@ -21,21 +21,35 @@ interface Set {
   teamB: number;
 }
 
+interface Player {
+  user: {
+    _id: string;
+    name: string;
+    surname: string;
+  };
+  team?: 'A' | 'B';
+  status: string;
+}
+
 interface ScoreDisplayProps {
   score: {
     winner?: 'A' | 'B';
     sets: Set[];
   };
-  isCreator: boolean;
+  isInMatch: boolean;
   onEdit: () => void;
   matchStatus: string;
+  teamAPlayers?: Player[];
+  teamBPlayers?: Player[];
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   score,
-  isCreator,
+  isInMatch,
   onEdit,
   matchStatus,
+  teamAPlayers = [],
+  teamBPlayers = [],
 }) => {
   if (!score || score.sets.length === 0) {
     return null;
@@ -53,8 +67,12 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
     return { teamAWins, teamBWins };
   };
 
+  const getInitials = (name: string, surname: string) => {
+    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
+  };
+
   const { teamAWins, teamBWins } = getSetSummary();
-  const canEdit = isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
+  const canEdit = isInMatch && matchStatus !== "cancelled";
 
   return (
     <FadeInView delay={0}>
@@ -94,6 +112,18 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 )}
                 <Text style={styles.scoreTeamName}>Team A</Text>
               </TeamAGradient>
+              
+              {/* Avatar Team A */}
+              <View style={styles.scoreTeamAvatars}>
+                {teamAPlayers.map((player, index) => (
+                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamAPlayers.length - index }]}>
+                    <Text style={styles.scoreAvatarText}>
+                      {getInitials(player.user?.name || '', player.user?.surname || '')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <Text style={[
                 styles.scoreTeamScore,
                 score.winner === 'A' && styles.scoreTeamScoreWinner
@@ -123,6 +153,18 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 )}
                 <Text style={styles.scoreTeamName}>Team B</Text>
               </TeamBGradient>
+              
+              {/* Avatar Team B */}
+              <View style={styles.scoreTeamAvatars}>
+                {teamBPlayers.map((player, index) => (
+                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamBPlayers.length - index }]}>
+                    <Text style={styles.scoreAvatarText}>
+                      {getInitials(player.user?.name || '', player.user?.surname || '')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <Text style={[
                 styles.scoreTeamScore,
                 score.winner === 'B' && styles.scoreTeamScoreWinner

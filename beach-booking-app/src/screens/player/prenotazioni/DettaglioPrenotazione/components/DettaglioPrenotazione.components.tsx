@@ -5,6 +5,18 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../../../config/api";
 import { Player } from "../types/DettaglioPrenotazione.types";
 import styles from "../styles/DettaglioPrenotazione.styles";
+import TeamChangeModal from "./TeamChangeModal";
+
+const getInitials = (name?: string, surname?: string): string => {
+  if (!name) return "??";
+  if (surname) {
+    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
+  }
+  const parts = name.trim().split(" ");
+  return parts.length === 1
+    ? parts[0][0].toUpperCase()
+    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 interface PlayerCardWithTeamProps {
   player?: Player;
@@ -37,14 +49,34 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   maxSlotsPerTeam,
   matchStatus = "open", // Valore di default
 }) => {
-  const [showTeamMenu, setShowTeamMenu] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showTeamChangeModal, setShowTeamChangeModal] = useState(false);
 
   const isCurrentUser = player?.user?._id === currentUserId;
   const isConfirmed = player?.status === "confirmed";
   const isDeclined = player?.status === "declined";
-  const canChangeTeam = isCreator && isConfirmed && matchStatus !== "completed" && matchStatus !== "cancelled";
-  const canRemove = isCreator && player?.user?._id !== currentUserId && matchStatus !== "completed" && matchStatus !== "cancelled";
+  
+  // DEBUG: Log per capire perché non funziona
+  console.log('PlayerCard Debug:', {
+    playerUserId: player?.user?._id,
+    currentUserId,
+    isCurrentUser,
+    isCreator,
+    isConfirmed,
+    matchStatus,
+    playerStatus: player?.status
+  });
+  
+  // Il giocatore può cambiare il proprio team, o il creatore può cambiare qualsiasi team
+  // Ma NON se il match è in corso, completato o cancellato
+  const canChangeTeam = (isCurrentUser || isCreator) && isConfirmed && 
+    matchStatus !== "completed" && 
+    matchStatus !== "cancelled" && 
+    matchStatus !== "in_progress";
+  const canRemove = isCreator && player?.user?._id !== currentUserId && 
+    matchStatus !== "completed" && 
+    matchStatus !== "cancelled" && 
+    matchStatus !== "in_progress";
   
   // L'utente può annullare la propria presenza solo se:
   // 1. È l'utente corrente
@@ -61,7 +93,6 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
   const handleTeamChange = (team: "A" | "B" | null) => {
     onChangeTeam(team);
-    setShowTeamMenu(false);
   };
 
   const handleLeaveMatch = () => {
@@ -90,34 +121,6 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
     );
   };
 
-  const teamMenuItems = [
-    {
-      team: "A" as const,
-      label: "Team A",
-      color: "#2196F3",
-      style: styles.teamMenuItemA,
-      showCheck: currentTeam === "A",
-    },
-    {
-      team: "B" as const,
-      label: "Team B",
-      color: "#F44336",
-      style: styles.teamMenuItemB,
-      showCheck: currentTeam === "B",
-    },
-    ...(currentTeam
-      ? [
-          {
-            team: null,
-            label: "Rimuovi da team",
-            color: "#F44336",
-            style: styles.teamMenuItemRemove,
-            showCheck: false,
-          },
-        ]
-      : []),
-  ];
-
   // Se è uno slot vuoto
   if (isEmptySlot) {
     return (
@@ -133,7 +136,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
             <Text style={styles.emptySlotText}>Slot {slotNumber}</Text>
             <Text style={styles.emptySlotSubtext}>Disponibile</Text>
           </View>
-          {isCreator && matchStatus !== "completed" && matchStatus !== "cancelled" && (
+          {isCreator && matchStatus !== "completed" && matchStatus !== "cancelled" && matchStatus !== "in_progress" && (
             <Pressable 
               style={styles.inviteSlotButton}
               onPress={onInviteToSlot}
@@ -181,14 +184,23 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
             style={styles.playerAvatar}
           />
         ) : (
-          <View style={styles.playerAvatarPlaceholder}>
-            <Ionicons name="person" size={20} color="#999" />
+          <View style={[
+            styles.playerAvatarPlaceholder,
+            currentTeam === "A" ? styles.avatarTeamA : 
+            currentTeam === "B" ? styles.avatarTeamB : 
+            styles.avatarNoTeam
+          ]}>
+            <Text style={styles.avatarInitials}>
+              {getInitials(player.user?.name, player.user?.surname)}
+            </Text>
           </View>
         )}
 
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>
-            {player.user?.name || "Giocatore"}
+            {player.user?.name && player.user?.surname 
+              ? `${player.user.name} ${player.user.surname}`
+              : player.user?.name || "Giocatore"}
             {isCurrentUser && (
               <Text style={styles.currentUserIndicator}> (Tu)</Text>
             )}
@@ -201,24 +213,10 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
       {/* RIGHT */}
       <View style={styles.playerRight}>
-        {player.team && (
-          <View
-            style={[
-              styles.teamBadge,
-              player.team === "A"
-                ? styles.teamBadgeA
-                : styles.teamBadgeB,
-            ]}
-          >
-            <Text style={styles.teamBadgeText}>
-              Team {player.team}
-            </Text>
-          </View>
-        )}
-
+        {/* Status Icon - Compatto */}
         <View
           style={[
-            styles.playerStatusBadge,
+            styles.playerStatusIcon,
             isConfirmed
               ? styles.playerStatusConfirmed
               : isPending
@@ -226,67 +224,33 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
               : styles.playerStatusDeclined,
           ]}
         >
-          <Text style={styles.playerStatusText}>
-            {isConfirmed ? "Confermato" : 
-             isPending ? "In attesa" : 
-             "Rifiutato"}
-          </Text>
+          <Ionicons
+            name={
+              isConfirmed ? "checkmark-circle" : 
+              isPending ? "time" : 
+              "close-circle"
+            }
+            size={18}
+            color={
+              isConfirmed ? "#4CAF50" : 
+              isPending ? "#FF9800" : 
+              "#F44336"
+            }
+          />
         </View>
 
         {canChangeTeam && (
-          <View style={styles.teamControlContainer}>
-            <Pressable
-              style={[
-                styles.teamButton,
-                currentTeam === "A" && styles.teamButtonActiveA,
-                currentTeam === "B" && styles.teamButtonActiveB,
-              ]}
-              onPress={() => setShowTeamMenu(!showTeamMenu)}
-            >
-              <Ionicons
-                name="swap-horizontal"
-                size={18}
-                color={getButtonColor()}
-              />
-            </Pressable>
-
-            {showTeamMenu && (
-              <>
-                <Pressable
-                  style={styles.teamMenuOverlay}
-                  onPress={() => setShowTeamMenu(false)}
-                />
-
-                <View style={styles.teamMenu}>
-                  <Text style={styles.teamMenuTitle}>Assegna a:</Text>
-
-                  {teamMenuItems.map((item, index) => (
-                    <Pressable
-                      key={index}
-                      style={[styles.teamMenuItem, item.style]}
-                      onPress={() => handleTeamChange(item.team)}
-                    >
-                      <Ionicons
-                        name="shield"
-                        size={16}
-                        color={item.color}
-                      />
-                      <Text style={styles.teamMenuText}>
-                        {item.label}
-                      </Text>
-                      {item.showCheck && (
-                        <Ionicons
-                          name="checkmark"
-                          size={16}
-                          color={item.color}
-                        />
-                      )}
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            )}
-          </View>
+          <Pressable
+            style={styles.dragIndicator}
+            onPress={() => setShowTeamChangeModal(true)}
+            hitSlop={10}
+          >
+            <Ionicons
+              name="swap-horizontal"
+              size={20}
+              color={getButtonColor()}
+            />
+          </Pressable>
         )}
 
         {canRemove && (
@@ -303,6 +267,15 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           </Pressable>
         )}
       </View>
+
+      {/* Team Change Modal */}
+      <TeamChangeModal
+        visible={showTeamChangeModal}
+        onClose={() => setShowTeamChangeModal(false)}
+        onSelectTeam={handleTeamChange}
+        currentTeam={currentTeam}
+        isCreator={isCreator}
+      />
     </View>
   );
 };

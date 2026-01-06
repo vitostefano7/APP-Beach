@@ -5,6 +5,9 @@ import PlayerCardWithTeam from "./DettaglioPrenotazione.components";
 import styles from "../styles/DettaglioPrenotazione.styles";
 import { Player } from "../types/DettaglioPrenotazione.types";
 
+// Import componenti gradients
+import { TeamAGradient, TeamBGradient } from "./GradientComponents";
+
 interface TeamSectionProps {
   team: "A" | "B";
   players: Player[];
@@ -14,7 +17,7 @@ interface TeamSectionProps {
   onAssignTeam: (playerId: string, team: "A" | "B" | null) => void;
   maxPlayersPerTeam: number;
   onInviteToTeam: (team: "A" | "B", slotNumber: number) => void;
-  onInviteToSlot?: () => void;
+  matchStatus: string; // Aggiunto per passare lo stato del match
 }
 
 const TeamSection: React.FC<TeamSectionProps> = ({
@@ -26,6 +29,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   onAssignTeam,
   maxPlayersPerTeam,
   onInviteToTeam,
+  matchStatus,
 }) => {
   const teamColor = team === "A" ? "#2196F3" : "#F44336";
   const teamIcon = team === "A" ? "people-circle" : "people";
@@ -40,20 +44,39 @@ const TeamSection: React.FC<TeamSectionProps> = ({
     }
   });
 
+  // Determina se il match permette modifiche
+  const canModify = matchStatus !== "completed" && matchStatus !== "cancelled";
+
   return (
     <View style={styles.teamSection}>
-      <View style={[styles.teamHeader, team === "A" ? styles.teamAHeader : styles.teamBHeader]}>
-        <Ionicons name={teamIcon} size={20} color={teamColor} />
-        <Text style={styles.teamTitle}>Team {team}</Text>
-        <View style={styles.teamHeaderRight}>
-          <Text style={styles.teamCount}>
-            {players.length}/{maxPlayersPerTeam}
-          </Text>
-          {players.length === maxPlayersPerTeam && (
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-          )}
-        </View>
-      </View>
+      {/* Header con gradient */}
+      {team === "A" ? (
+        <TeamAGradient style={styles.teamHeader}>
+          <Ionicons name={teamIcon} size={20} color="white" />
+          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team}</Text>
+          <View style={styles.teamHeaderRight}>
+            <Text style={[styles.teamCount, { color: "white" }]}>
+              {players.length}/{maxPlayersPerTeam}
+            </Text>
+            {players.length === maxPlayersPerTeam && (
+              <Ionicons name="checkmark-circle" size={16} color="white" />
+            )}
+          </View>
+        </TeamAGradient>
+      ) : (
+        <TeamBGradient style={styles.teamHeader}>
+          <Ionicons name={teamIcon} size={20} color="white" />
+          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team}</Text>
+          <View style={styles.teamHeaderRight}>
+            <Text style={[styles.teamCount, { color: "white" }]}>
+              {players.length}/{maxPlayersPerTeam}
+            </Text>
+            {players.length === maxPlayersPerTeam && (
+              <Ionicons name="checkmark-circle" size={16} color="white" />
+            )}
+          </View>
+        </TeamBGradient>
+      )}
 
       <View style={styles.teamSlotsContainer}>
         {slots.map((slotPlayer, index) => {
@@ -69,21 +92,28 @@ const TeamSection: React.FC<TeamSectionProps> = ({
                 currentUserId={currentUserId}
                 onRemove={() => onRemovePlayer(slotPlayer.user._id)}
                 onChangeTeam={(newTeam) => onAssignTeam(slotPlayer.user._id, newTeam)}
+                onLeave={() => {
+                  // Lascia il match (gestito dal componente genitore)
+                  // Qui passeremo una funzione se serve
+                }}
                 currentTeam={team}
                 isPending={slotPlayer.status === "pending"}
                 slotNumber={slotNumber}
+                matchStatus={matchStatus}
               />
             );
           } else {
-            // Slot vuoto
+            // Slot vuoto - solo se si possono fare modifiche
             return (
               <PlayerCardWithTeam
                 key={`empty-slot-${team}-${slotNumber}`}
                 isEmptySlot={true}
                 isCreator={isCreator}
+                currentUserId={currentUserId}
                 onInviteToSlot={() => onInviteToTeam(team, slotNumber)}
                 slotNumber={slotNumber}
                 maxSlotsPerTeam={maxPlayersPerTeam}
+                matchStatus={matchStatus}
               />
             );
           }
@@ -99,9 +129,14 @@ const TeamSection: React.FC<TeamSectionProps> = ({
             style={styles.emptyTeamIcon}
           />
           <Text style={styles.emptyTeamText}>Nessun giocatore</Text>
-          {isCreator && (
+          {isCreator && canModify && (
             <Text style={styles.emptyTeamHint}>
               Premi "+ Invita" per aggiungere giocatori
+            </Text>
+          )}
+          {(!isCreator || !canModify) && (
+            <Text style={styles.emptyTeamHint}>
+              Il team è attualmente vuoto
             </Text>
           )}
         </View>

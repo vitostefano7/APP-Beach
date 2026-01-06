@@ -2,10 +2,11 @@ export interface Player {
   user: {
     _id: string;
     name: string;
+    surname: string;
     username: string;
     avatarUrl?: string;
   };
-  status: "pending" | "confirmed";
+  status: "pending" | "confirmed" | "declined";
   team?: "A" | "B";
   joinedAt: string;
 }
@@ -54,7 +55,7 @@ export interface BookingDetails {
   price: number;
   status: "confirmed" | "cancelled";
   createdAt: string;
-  hasMatch?: boolean;
-  matchId?: string;
-  match?: MatchDetails;
+  hasMatch: true; // OBBLIGATORIO - sempre true
+  matchId: string; // OBBLIGATORIO - sempre presente
+  match: MatchDetails; // OBBLIGATORIO - sempre presente
 }
