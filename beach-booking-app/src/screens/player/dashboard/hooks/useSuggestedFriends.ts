@@ -61,12 +61,20 @@ export const useSuggestedFriends = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Errore API suggerimenti:", response.status, errorText);
-        throw new Error(`Errore ${response.status}: ${response.statusText}`);
+        throw new Error(`Errore ${response.status}: ${response.statusText}`);     
       }
 
       const data = await response.json();
       console.log("Suggerimenti ricevuti:", data.suggestions?.length || 0);
       setSuggestions(data.suggestions || []);
+      // In fetchSuggestions, dopo const data = await response.json();
+console.log("📡 API RESPONSE FULL DEBUG:");
+console.log("URL chiamata:", `${API_URL}/friends/suggestions?limit=${limit}`);
+console.log("Status response:", response.status);
+console.log("Response headers:", response.headers);
+console.log("Data completa:", JSON.stringify(data, null, 2));
+console.log("Tipo suggestions:", typeof data.suggestions);
+console.log("Lunghezza array:", data.suggestions?.length || 0);
       
       return data.suggestions || [];
     } catch (err: any) {

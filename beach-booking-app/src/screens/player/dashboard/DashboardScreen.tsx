@@ -9,7 +9,6 @@ import {
   Alert,
   FlatList,
   Dimensions,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -24,6 +23,7 @@ import NextMatchCard from "./components/NextMatchCard";
 import InviteCard from "./components/InviteCard";
 import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
 import EmptyStateCard from "./components/EmptyStateCard";
+import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import { styles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -497,207 +497,17 @@ export default function HomeScreen() {
     );
   };
 
-  const handleFriendsScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / (screenWidth * 0.85));
-    setCurrentFriendIndex(index);
-  };
-
   const validPendingInvites = getValidPendingInvites(pendingInvites || [], user?.id || "");
   
   const completedMatches = recentMatches.filter((match: any) => 
     match.status === "completed" && match.score?.sets?.length > 0
   );
 
-  const SuggestedFriendCard = ({ friend }: { friend: any }) => {
-    const friendData = friend.user || friend;
-    const friendId = friendData._id;
-    const friendName = friendData.name || friend.name;
-    
-    const getPriorityBadge = () => {
-      if (!friend.reason) {
-        if (friend.gamesPlayedTogether > 0) {
-          return {
-            style: styles.priorityBadgeHigh,
-            icon: "tennisball" as const,
-            text: `${friend.gamesPlayedTogether} partite insieme`,
-          };
-        } else if (friend.commonFriends > 0) {
-          return {
-            style: styles.priorityBadgeMedium,
-            icon: "people" as const,
-            text: `${friend.commonFriends} amici in comune`,
-          };
-        } else if (friend.commonFacilities > 0) {
-          return {
-            style: styles.priorityBadgeLow,
-            icon: "location" as const,
-            text: `${friend.commonFacilities} strutture in comune`,
-          };
-        }
-        return null;
-      }
-
-      switch (friend.reason.type) {
-        case "match_together":
-          return {
-            style: styles.priorityBadgeHigh,
-            icon: "tennisball" as const,
-            text: `${friend.reason.details.matchCount} partita${friend.reason.details.matchCount !== 1 ? 'e' : ''} insieme`,
-          };
-        case "mutual_friends":
-          return {
-            style: styles.priorityBadgeMedium,
-            icon: "people" as const,
-            text: `${friend.reason.details.mutualFriendsCount} amic${friend.reason.details.mutualFriendsCount !== 1 ? 'i' : 'e'} in comune`,
-          };
-        case "same_venue":
-          return {
-            style: styles.priorityBadgeLow,
-            icon: "location" as const,
-            text: `Stesso centro: ${friend.reason.details.venueName}`,
-          };
-        default:
-          return null;
-      }
-    };
-
-    const getFriendshipStatusBadge = () => {
-      const status = friend.friendshipStatus || "none";
-      switch (status) {
-        case "pending":
-          return {
-            style: styles.friendshipStatusPending,
-            icon: "time-outline" as const,
-            text: "Richiesta inviata",
-          };
-        case "accepted":
-          return {
-            style: styles.friendshipStatusAccepted,
-            icon: "checkmark-circle-outline" as const,
-            text: "Già amici",
-          };
-        default:
-          return null;
-      }
-    };
-
-    const priorityBadge = getPriorityBadge();
-    const friendshipStatus = getFriendshipStatusBadge();
-
-    const handleActionPress = (e: any) => {
-      e.stopPropagation();
-      
-      if (friend.friendshipStatus === "none" || !friend.friendshipStatus) {
-        handleAddFriend(friendId, friendName);
-      } else if (friend.friendshipStatus === "accepted") {
-        handleInviteFriend(friendId);
-      }
-    };
-
-    return (
-      <Pressable 
-        style={styles.suggestedFriendCard}
-        onPress={() => handlePressFriend(friend)}
-      >
-        {friendData.avatarUrl ? (
-          <Image
-            source={{ uri: friendData.avatarUrl.startsWith('http') ? friendData.avatarUrl : `${API_URL}${friendData.avatarUrl}` }}
-            style={styles.suggestedFriendAvatar}
-          />
-        ) : (
-          <View style={styles.suggestedFriendAvatarPlaceholder}>
-            <Ionicons name="person" size={24} color="#999" />
-          </View>
-        )}
-        
-        <View style={styles.suggestedFriendInfo}>
-          <View style={styles.suggestedFriendHeader}>
-            <Text style={styles.suggestedFriendName} numberOfLines={1}>
-              {friendName}
-            </Text>
-            {friend.score && (
-              <Text style={styles.friendScoreBadge}>
-                {Math.round(friend.score)} pts
-              </Text>
-            )}
-          </View>
-          
-          <Text style={styles.usernameText}>
-            @{friendData.username || friend.username || "user"}
-          </Text>
-          
-          {/* Badge di priorità */}
-          {priorityBadge && (
-            <View style={[priorityBadge.style, { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 4 }]}>
-              <Ionicons name={priorityBadge.icon} size={12} color="white" />
-              <Text style={styles.priorityBadgeText}>
-                {priorityBadge.text}
-              </Text>
-            </View>
-          )}
-          
-          {/* Sport preferiti */}
-          {friendData.preferredSports && friendData.preferredSports.length > 0 && (
-            <View style={styles.sportsContainer}>
-              {friendData.preferredSports.map((sport: string, index: number) => (
-                <View key={index} style={styles.sportBadge}>
-                  <Text style={styles.sportBadgeText}>
-                    {sport === 'volleyball' ? '🎾 Pallavolo' : '🏖️ Beach'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-          
-          {/* Stato amicizia */}
-          {friendshipStatus && (
-            <View style={[friendshipStatus.style, { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 4 }]}>
-              <Ionicons name={friendshipStatus.icon} size={12} color="white" />
-              <Text style={[styles.priorityBadgeText, { fontSize: 10 }]}>
-                {friendshipStatus.text}
-              </Text>
-            </View>
-          )}
-        </View>
-        
-        <Pressable
-          style={[
-            styles.friendActionButton,
-            friend.friendshipStatus === "pending" && styles.friendActionButtonDisabled,
-            friend.friendshipStatus === "accepted" && styles.friendActionButtonSuccess
-          ]}
-          onPress={handleActionPress}
-          disabled={friend.friendshipStatus === "pending"}
-        >
-          {friend.friendshipStatus === "pending" ? (
-            <>
-              <Ionicons name="time-outline" size={16} color="#999" />
-              <Text style={styles.friendActionTextDisabled}>
-                In attesa
-              </Text>
-            </>
-          ) : friend.friendshipStatus === "accepted" ? (
-            <>
-              <Ionicons name="person-outline" size={16} color="white" />
-              <Text style={styles.friendActionTextSuccess}>
-                Invita
-              </Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="person-add-outline" size={16} color="#2196F3" />
-              <Text style={styles.friendActionText}>
-                Aggiungi
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </Pressable>
-    );
-  };
-
   const SuggestedFriendsSection = () => {
+    console.log("DEBUG: SuggestedFriendsSection render");
+    //console.log("Number of suggested friends:", suggestedFriends?.length);
+    //console.log("Current index:", currentFriendIndex);
+    
     if (suggestionsLoading) {
       return (
         <View style={styles.section}>
@@ -732,12 +542,23 @@ export default function HomeScreen() {
       );
     }
 
+    const handleFriendsScroll = (event: any) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const index = Math.round(offsetX / screenWidth);
+      
+      //console.log(`Scroll debug - Offset: ${offsetX}, ScreenWidth: ${screenWidth}, Index: ${index}`);
+      
+      if (index !== currentFriendIndex) {
+        setCurrentFriendIndex(index);
+      }
+    };
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={styles.sectionTitle}>Amici suggeriti</Text>
-            {suggestedFriends.length > 0 && (
+            {suggestedFriends && suggestedFriends.length > 0 && (
               <View style={styles.friendsCountBadge}>
                 <Text style={styles.friendsCountText}>{suggestedFriends.length}</Text>
               </View>
@@ -752,44 +573,85 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         
-        {suggestedFriends.length > 0 ? (
+        {suggestedFriends && suggestedFriends.length > 0 ? (
           <>
             <FlatList
               ref={friendsCarouselRef}
               data={suggestedFriends}
-              renderItem={({ item }) => (
-                <View style={{ width: screenWidth * 0.85, marginHorizontal: 8 }}>
-                  <SuggestedFriendCard friend={item} />
-                </View>
-              )}
-              keyExtractor={(item) => item.user?._id || item._id}
+              renderItem={({ item, index }) => {
+                console.log(`Rendering carousel item ${index}: ${item.user?.name}`);
+                return (
+                  <View
+                    style={{
+                      width: screenWidth, // LARGHEZZA PAGINA = SCREEN WIDTH
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 16,
+                    }}
+                  >
+                    <View style={{ width: screenWidth * 0.85 }}>
+                      <SuggestedFriendCard 
+                        friend={item}
+                        onPress={() => handlePressFriend(item)}
+                        onInvite={() => handleAddFriend(
+                          item.user?._id || item._id, 
+                          item.user?.name || item.name
+                        )}
+                      />
+                    </View>
+                  </View>
+                );
+              }}
+              keyExtractor={(item) => {
+                const key = item.user?._id || item._id;
+                //console.log(`Key for item: ${key}`);
+                return key;
+              }}
               horizontal
               showsHorizontalScrollIndicator={false}
-              pagingEnabled
-              decelerationRate="fast"
-              snapToInterval={screenWidth * 0.85 + 16}
-              snapToAlignment="start"
-              contentContainerStyle={{ paddingHorizontal: 12 }}
+              pagingEnabled={true}
               onScroll={handleFriendsScroll}
               scrollEventThrottle={16}
+              getItemLayout={(_, index) => ({
+                length: screenWidth,
+                offset: screenWidth * index,
+                index,
+              })}
+              style={{ height: 180 }}
+              initialScrollIndex={currentFriendIndex}
+              onScrollToIndexFailed={() => {
+                // Fallback se il scroll fallisce
+                if (friendsCarouselRef.current) {
+                  friendsCarouselRef.current.scrollToIndex({
+                    index: 0,
+                    animated: true,
+                  });
+                }
+              }}
             />
             
             {/* Indicatori del carosello */}
-            <View style={styles.carouselIndicators}>
-              {suggestedFriends.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.carouselIndicator,
-                    index === currentFriendIndex ? styles.carouselIndicatorActive : styles.carouselIndicatorInactive
-                  ]}
-                />
-              ))}
-            </View>
-            
-            <Text style={styles.carouselCounter}>
-              {currentFriendIndex + 1} di {suggestedFriends.length}
-            </Text>
+            {suggestedFriends.length > 1 && (
+              <>
+                <View style={styles.carouselIndicators}>
+                  {suggestedFriends.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.carouselIndicator,
+                        index === currentFriendIndex ? 
+                          styles.carouselIndicatorActive : 
+                          styles.carouselIndicatorInactive
+                      ]}
+                    />
+                  ))}
+                </View>
+                
+                <Text style={styles.carouselCounter}>
+                  {Math.min(currentFriendIndex + 1, suggestedFriends.length)} di {suggestedFriends.length}
+                </Text>
+              </>
+            )}
             
             {/* Legenda priorità */}
             <View style={styles.priorityLegend}>

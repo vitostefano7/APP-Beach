@@ -758,81 +758,188 @@ export const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
+// ==================== SUGGESTED FRIENDS ====================
+friendsCountBadge: {
+  backgroundColor: "#4CAF50",
+  paddingHorizontal: 8,
+  paddingVertical: 2,
+  borderRadius: 10,
+},
+friendsCountText: {
+  fontSize: 12,
+  fontWeight: "800",
+  color: "white",
+},
 
-  // ==================== SUGGESTED FRIENDS ====================
-  friendsCountBadge: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  friendsCountText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "white",
-  },
-  suggestedFriendCard: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    height: 140,
-    width: '100%',
-  },
-  suggestedFriendAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  suggestedFriendAvatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f0f0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  suggestedFriendInfo: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 4,
-  },
-  suggestedFriendHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  suggestedFriendName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#333",
-    flex: 1,
-  },
-  friendScoreBadge: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#2196F3",
-    backgroundColor: "#E3F2FD",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  usernameText: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 2,
-  },
-  suggestedFriendStats: {
-    fontSize: 13,
-    color: "#666",
-  },
+// Container carta amico suggerito
+suggestedFriendCard: {
+  backgroundColor: "white",
+  borderRadius: 16,
+  padding: 16,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 8,
+  elevation: 3,
+  height: 140,
+  width: '100%',
+},
+
+// Container avatar
+suggestedFriendAvatarContainer: {
+  position: "relative",
+},
+
+// Avatar
+suggestedFriendAvatar: {
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+},
+
+// Placeholder avatar con iniziali
+suggestedFriendAvatarPlaceholder: {
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  backgroundColor: "#E5E7EB",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+// Iniziali nel placeholder
+suggestedFriendAvatarInitials: {
+  color: "#374151",
+  fontWeight: "600",
+  fontSize: 18,
+},
+
+// Status dot piccolo (opzionale)
+statusDotSmall: {
+  position: "absolute",
+  bottom: 1,
+  right: 1,
+  width: 10,
+  height: 10,
+  borderRadius: 5,
+  backgroundColor: "#4CAF50",
+  borderWidth: 1.5,
+  borderColor: "white",
+},
+
+// Container info amico
+suggestedFriendInfo: {
+  flex: 1,
+  justifyContent: "center",
+  gap: 4,
+},
+
+// Nome e badge
+suggestedFriendHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 2,
+},
+
+suggestedFriendName: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#333",
+  flex: 1,
+},
+
+// Username
+suggestedFriendUsername: {
+  fontSize: 12,
+  color: "#666",
+  marginBottom: 2,
+},
+
+// Statistiche
+suggestedFriendStats: {
+  fontSize: 13,
+  color: "#666",
+  marginBottom: 4,
+},
+
+// Amici in comune
+commonFriendsBadge: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  marginBottom: 4,
+},
+
+commonFriendsText: {
+  fontSize: 11,
+  color: "#666",
+},
+
+// Sport preferiti
+sportsContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: 4,
+  marginTop: 4,
+},
+
+sportBadge: {
+  backgroundColor: '#F3E5F5',
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 6,
+},
+
+sportBadgeText: {
+  fontSize: 10,
+  fontWeight: '600',
+  color: '#7B1FA2',
+},
+
+moreSportsText: {
+  fontSize: 10,
+  color: '#999',
+  marginLeft: 2,
+},
+
+// Bottone invita
+inviteFriendButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 8,
+  backgroundColor: "#E3F2FD",
+  borderWidth: 1,
+  borderColor: "#BBDEFB",
+  minWidth: 80,
+  justifyContent: 'center',
+  alignSelf: 'flex-start',
+},
+
+inviteFriendText: {
+  fontSize: 13,
+  fontWeight: "600",
+  color: "#2196F3",
+},
+
+// Score badge (opzionale)
+friendScoreBadge: {
+  fontSize: 11,
+  fontWeight: "700",
+  color: "#2196F3",
+  backgroundColor: "#E3F2FD",
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 8,
+  marginLeft: 8,
+},
 
   // ==================== BADGES ====================
   // Badge di priorità
