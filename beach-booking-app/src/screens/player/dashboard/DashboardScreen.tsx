@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useCallback } from 'react';
 import {
   ScrollView,
   RefreshControl,
@@ -465,6 +465,16 @@ export default function HomeScreen() {
     });
   };
 
+  const handleFriendsScrollEnd = useCallback((event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / screenWidth);
+    
+    if (index !== currentFriendIndex && index >= 0 && index < (suggestedFriends?.length || 0)) {
+      console.log(`✅ Friends carousel - momentum end to index: ${index}`);
+      setCurrentFriendIndex(index);
+    }
+  }, [currentFriendIndex, suggestedFriends?.length]);
+
   const handleInviteFriend = (friendId: string) => {
     console.log("Inviting friend:", friendId);
     Alert.alert(
@@ -519,10 +529,8 @@ export default function HomeScreen() {
     match.status === "completed" && match.score?.sets?.length > 0
   );
 
-  const SuggestedFriendsSection = () => {
+  const renderSuggestedFriendsSection = () => {
     console.log("DEBUG: SuggestedFriendsSection render");
-    //console.log("Number of suggested friends:", suggestedFriends?.length);
-    //console.log("Current index:", currentFriendIndex);
     
     if (suggestionsLoading) {
       return (
@@ -558,17 +566,6 @@ export default function HomeScreen() {
       );
     }
 
-    const handleFriendsScroll = (event: any) => {
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(offsetX / screenWidth);
-      
-      //console.log(`Scroll debug - Offset: ${offsetX}, ScreenWidth: ${screenWidth}, Index: ${index}`);
-      
-      if (index !== currentFriendIndex) {
-        setCurrentFriendIndex(index);
-      }
-    };
-
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -595,17 +592,15 @@ export default function HomeScreen() {
               ref={friendsCarouselRef}
               data={suggestedFriends}
               renderItem={({ item, index }) => {
-                console.log(`Rendering carousel item ${index}: ${item.user?.name}`);
+                console.log(`Rendering friend ${index}:`, item.user?.name, item.user?._id);
                 return (
                   <View
                     style={{
-                      width: screenWidth, // LARGHEZZA PAGINA = SCREEN WIDTH
+                      width: screenWidth,
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingHorizontal: 16,
                     }}
                   >
-                    <View style={{ width: screenWidth * 0.85 }}>
+                    <View style={{ width: screenWidth * 0.92 }}>
                       <SuggestedFriendCard 
                         friend={item}
                         onPress={() => handlePressFriend(item)}
@@ -618,41 +613,29 @@ export default function HomeScreen() {
                   </View>
                 );
               }}
-              keyExtractor={(item) => {
-                const key = item.user?._id || item._id;
-                //console.log(`Key for item: ${key}`);
-                return key;
-              }}
+              keyExtractor={(item, index) => `friend-${item.user?._id || item._id || index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              pagingEnabled={true}
-              onScroll={handleFriendsScroll}
+              snapToInterval={screenWidth}
+              decelerationRate="fast"
+              snapToAlignment="start"
+              onMomentumScrollEnd={handleFriendsScrollEnd}
               scrollEventThrottle={16}
-              getItemLayout={(_, index) => ({
+              contentContainerStyle={{ paddingHorizontal: 0 }}
+              getItemLayout={(data, index) => ({
                 length: screenWidth,
                 offset: screenWidth * index,
                 index,
               })}
-              style={{ height: 180 }}
-              initialScrollIndex={currentFriendIndex}
-              onScrollToIndexFailed={() => {
-                // Fallback se il scroll fallisce
-                if (friendsCarouselRef.current) {
-                  friendsCarouselRef.current.scrollToIndex({
-                    index: 0,
-                    animated: true,
-                  });
-                }
-              }}
             />
             
-            {/* Indicatori del carosello */}
+            {/* Contatore compatto */}
             {suggestedFriends.length > 1 && (
-              <>
+              <View style={styles.friendsCarouselFooter}>
                 <View style={styles.carouselIndicators}>
                   {suggestedFriends.map((_, index) => (
                     <View
-                      key={index}
+                      key={`indicator-${index}`}
                       style={[
                         styles.carouselIndicator,
                         index === currentFriendIndex ? 
@@ -662,28 +645,8 @@ export default function HomeScreen() {
                     />
                   ))}
                 </View>
-                
-                <Text style={styles.carouselCounter}>
-                  {Math.min(currentFriendIndex + 1, suggestedFriends.length)} di {suggestedFriends.length}
-                </Text>
-              </>
+              </View>
             )}
-            
-            {/* Legenda priorità */}
-            <View style={styles.priorityLegend}>
-              <View style={styles.priorityLegendItem}>
-                <View style={[styles.priorityDot, styles.priorityDotHigh]} />
-                <Text style={styles.priorityLegendText}>Partite insieme</Text>
-              </View>
-              <View style={styles.priorityLegendItem}>
-                <View style={[styles.priorityDot, styles.priorityDotMedium]} />
-                <Text style={styles.priorityLegendText}>Amici in comune</Text>
-              </View>
-              <View style={styles.priorityLegendItem}>
-                <View style={[styles.priorityDot, styles.priorityDotLow]} />
-                <Text style={styles.priorityLegendText}>Stesso centro</Text>
-              </View>
-            </View>
           </>
         ) : (
           <View style={styles.emptyCarouselContainer}>
@@ -847,7 +810,7 @@ export default function HomeScreen() {
         ) : null}
 
         {/* Carosello Amici Suggeriti REALI */}
-        <SuggestedFriendsSection />
+        {renderSuggestedFriendsSection()}
 
       </ScrollView>
 

@@ -31,27 +31,16 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   onPress, 
   onInvite 
 }) => {
-  // DEBUG ESTESO
-  /*
-  console.log("🚨🚨🚨 SUGGESTED FRIEND CARD FULL DEBUG:");
-  console.log("1. Friend object:", friend);
-  console.log("2. Friend.user:", friend?.user);
-  console.log("3. Friend name:", friend?.user?.name);
-  console.log("4. Friend ID:", friend?.user?._id);
-  console.log("5. Avatar URL:", friend?.user?.avatarUrl);
-  console.log("6. Reason:", friend?.reason);
-  console.log("7. Score:", friend?.score);
+  // DEBUG COMPLETO
+  console.log("🚨 SUGGESTED FRIEND CARD DEBUG:");
+  console.log("Friend object:", JSON.stringify(friend, null, 2));
   
-  // Controlla se styles esiste
-  console.log("8. Styles available?", !!styles);
-  console.log("9. Styles.suggestedFriendCard?", styles?.suggestedFriendCard);
-*/
   // Estrai i dati in base alla struttura
   const friendData = friend.user || friend; // Supporta entrambe le strutture
   
   // Se friendData è undefined o null, mostra un fallback
   if (!friendData) {
-    console.log("❌❌❌ friendData è undefined/null!");
+    console.log("❌ friendData è undefined/null!");
     return (
       <View style={{
         backgroundColor: "white",
@@ -74,111 +63,126 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   const friendName = friendData.name || "Utente";
   const avatarUrl = friendData.avatarUrl;
   
-  // Estrai altre proprietà se presenti
-  const commonFriends = friendData.commonFriends || 0;
-  const totalMatches = friendData.totalMatches || 0;
-  const winRate = friendData.winRate || 0;
+  // Estrai metriche dalla struttura corretta del backend
+  const matchCount = friend.reason?.details?.matchCount || 0;
+  const commonFriends = friend.commonFriends || 0;
+  const sameVenues = friend.sameVenues || 0;
+  const score = friend.score || 0;
+  
+  console.log(`📊 Stats for ${friendName}:`, { matchCount, commonFriends, sameVenues, score, reason: friend.reason });
+  
   const username = friendData.username;
   const preferredSports = friendData.preferredSports || [];
   
   // Verifica se è già stato invitato
   const isAlreadyInvited = friend.friendshipStatus === 'pending';
-
-  //console.log("10. Extracted friendName:", friendName);
-  //console.log("11. Extracted initials:", getInitials(friendName));
-
-  // Prova anche con stili inline per debug
-  const debugStyles = {
-    card: {
-      backgroundColor: "white",
-      borderRadius: 16,
-      padding: 16,
-      flexDirection: "row" as const,
-      alignItems: "center" as const,
-      gap: 12,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
-      height: 140,
-      width: '100%',
-      borderWidth: 2,
-      borderColor: "green", // Bordo verde per debug
-    },
-    avatarPlaceholder: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      backgroundColor: "#E5E7EB",
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      borderWidth: 2,
-      borderColor: "blue", // Bordo blu per debug
-    },
-    avatarInitials: {
-      color: "#374151",
-      fontWeight: "600" as const,
-      fontSize: 18,
-    },
-    nameText: {
-      fontSize: 16,
-      fontWeight: "700" as const,
-      color: "#333",
+  
+  // Badge per motivo suggerimento
+  const getPriorityBadge = () => {
+    const reason = friend.reason;
+    if (!reason || typeof reason !== 'string') return null;
+    
+    let color, icon, text;
+    if (reason.includes('matches')) {
+      color = '#2196F3';
+      icon = 'trophy';
+      text = 'Compagno';
+    } else if (reason.includes('friends')) {
+      color = '#FF9800';
+      icon = 'people';
+      text = 'Amici comuni';
+    } else if (reason.includes('venue')) {
+      color = '#9C27B0';
+      icon = 'location';
+      text = 'Stesso centro';
     }
+    
+    return color ? { color, icon, text } : null;
   };
+  
+  const badge = getPriorityBadge();
 
   return (
     <Pressable 
-      style={debugStyles.card} // Usa stili debug
+      style={styles.suggestedFriendCard}
       onPress={() => onPress(friend)}
     >
-      {/* AVATAR con stili debug */}
-      <View style={debugStyles.avatarPlaceholder}>
-        <Text style={debugStyles.avatarInitials}>
-          {getInitials(friendName)}
-        </Text>
-      </View>
+      {/* AVATAR */}
+      {avatarUrl ? (
+        <Image
+          source={{ uri: `${API_URL}${avatarUrl}` }}
+          style={styles.friendCardAvatar}
+        />
+      ) : (
+        <View style={styles.friendCardAvatarPlaceholder}>
+          <Text style={styles.friendCardAvatarInitials}>
+            {getInitials(friendName)}
+          </Text>
+        </View>
+      )}
       
       {/* INFO */}
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={debugStyles.nameText} numberOfLines={1}>
-          {friendName}
-        </Text>
+      <View style={styles.friendCardInfo}>
+        <View style={styles.friendCardHeader}>
+          <Text style={styles.friendCardName} numberOfLines={1}>
+            {friendName}
+          </Text>
+          {badge && (
+            <View style={[styles.friendBadge, { backgroundColor: badge.color + '15' }]}>
+              <Ionicons name={badge.icon as any} size={12} color={badge.color} />
+            </View>
+          )}
+        </View>
         
-        {/* Username */}
         {username && (
-          <Text style={{ fontSize: 12, color: "#666", marginBottom: 2 }} numberOfLines={1}>
+          <Text style={styles.friendCardUsername} numberOfLines={1}>
             @{username}
           </Text>
         )}
         
-        {/* Statistiche di debug */}
-        <Text style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-          DEBUG: Componente funzionante
-        </Text>
-        
-        {/* Bottone debug */}
-        <Pressable
-          style={{
-            backgroundColor: "#2196F3",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 8,
-            marginTop: 8,
-            alignSelf: 'flex-start',
-          }}
-          onPress={(e) => {
-            e.stopPropagation();
-            console.log("Invita cliccato per:", friendName, "ID:", friendId);
-            onInvite(friendId);
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "600" }}>
-            Invita
-          </Text>
-        </Pressable>
+        {/* Stats dettagliate */}
+        <View style={styles.friendCardStats}>
+          {matchCount > 0 && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="trophy-outline" size={12} color="#2196F3" />
+              <Text style={styles.friendStatText}>{matchCount} {matchCount === 1 ? 'partita' : 'partite'}</Text>
+            </View>
+          )}
+          {commonFriends > 0 && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="people-outline" size={12} color="#FF9800" />
+              <Text style={styles.friendStatText}>{commonFriends} {commonFriends === 1 ? 'amico' : 'amici'}</Text>
+            </View>
+          )}
+          {sameVenues > 0 && matchCount === 0 && commonFriends === 0 && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="location-outline" size={12} color="#9C27B0" />
+              <Text style={styles.friendStatText}>{sameVenues} {sameVenues === 1 ? 'centro' : 'centri'}</Text>
+            </View>
+          )}
+        </View>
       </View>
+      
+      {/* AZIONE */}
+      <Pressable
+        style={[
+          styles.friendCardButton,
+          isAlreadyInvited && styles.friendCardButtonDisabled
+        ]}
+        onPress={(e) => {
+          e.stopPropagation();
+          if (!isAlreadyInvited) {
+            onInvite(friendId);
+          }
+        }}
+        disabled={isAlreadyInvited}
+      >
+        <Ionicons 
+          name={isAlreadyInvited ? "checkmark" : "person-add"} 
+          size={18} 
+          color={isAlreadyInvited ? "#999" : "white"} 
+        />
+      </Pressable>
     </Pressable>
   );
 };

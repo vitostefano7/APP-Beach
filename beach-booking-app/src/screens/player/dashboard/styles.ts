@@ -791,6 +791,10 @@ export const styles = StyleSheet.create({
     marginTop: 16,
     letterSpacing: 0.5,
   },
+  friendsCarouselFooter: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
   carouselControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1098,6 +1102,94 @@ friendScoreBadge: {
     fontSize: 10,
     fontWeight: "600",
     color: "white",
+  },
+
+  // ==================== SUGGESTED FRIEND CARD (COMPATTO) ====================
+  suggestedFriendCard: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  friendCardAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#f0f0f0',
+  },
+  friendCardAvatarPlaceholder: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#E5E7EB",
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendCardAvatarInitials: {
+    color: "#374151",
+    fontWeight: "600",
+    fontSize: 18,
+  },
+  friendCardInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  friendCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  friendCardName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+    flex: 1,
+  },
+  friendBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendCardUsername: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
+  friendCardStats: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+  },
+  friendStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  friendStatText: {
+    fontSize: 11,
+    color: '#666',
+  },
+  friendCardButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  friendCardButtonDisabled: {
+    backgroundColor: '#e0e0e0',
   },
 
   // Sport preferiti

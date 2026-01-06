@@ -120,7 +120,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               <View style={styles.matchTeamAvatars}>
                 {teamAPlayers.slice(0, 3).map((player: any, idx: number) => (
                   <View 
-                    key={player._id}
+                    key={player._id || player.user?._id || `teamA-${idx}`}
                     style={[
                       styles.matchAvatar,
                       styles.matchAvatarA,
@@ -157,7 +157,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               <View style={styles.matchTeamAvatars}>
                 {teamBPlayers.slice(0, 3).map((player: any, idx: number) => (
                   <View 
-                    key={player._id}
+                    key={player._id || player.user?._id || `teamB-${idx}`}
                     style={[
                       styles.matchAvatar,
                       styles.matchAvatarB,
