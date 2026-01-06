@@ -9,6 +9,25 @@ interface HeaderProps {
   pendingInvites: any[];
 }
 
+const getInitials = (name?: string): string => {
+  if (!name) return "";
+
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "";
+
+  const parts = cleaned.split(" ");
+
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+
+  const first = parts[0].charAt(0);
+  const last = parts[parts.length - 1].charAt(0);
+
+  return (first + last).toUpperCase();
+};
+
+
 const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
   return (
     <View style={styles.headerSection}>
@@ -21,13 +40,14 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
             />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={24} color="#999" />
+                <Text style={styles.avatarInitials}>
+                  {getInitials(user?.name)}
+                </Text>
             </View>
           )}
           <View style={styles.statusDot} />
         </View>
         <View>
-          <Text style={styles.greeting}>BENTORNATO</Text>
           <Text style={styles.userName}>Ciao, {user?.name?.split(" ")[0]}!</Text>
         </View>
       </View>

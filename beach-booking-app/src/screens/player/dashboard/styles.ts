@@ -59,17 +59,23 @@ export const styles = StyleSheet.create({
     borderRadius: 25,
   },
   avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#f0f0f0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  width: 50,
+  height: 50,
+  borderRadius: 30,
+  backgroundColor: "#E5E7EB", // grigio neutro
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+avatarInitials: {
+  color: "#374151", // grigio scuro
+  fontWeight: "600",
+  fontSize: 20,
+},
   statusDot: {
     position: "absolute",
-    bottom: 2,
-    right: 2,
+    bottom: 1,
+    right: 1,
     width: 12,
     height: 12,
     borderRadius: 6,
