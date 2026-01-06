@@ -3,9 +3,13 @@ import { StyleSheet, Dimensions } from "react-native";
 const { width: screenWidth } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
+  // ==================== LAYOUT ====================
   safe: {
     flex: 1,
     backgroundColor: "#f8f9fa",
+  },
+  container: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -18,26 +22,8 @@ export const styles = StyleSheet.create({
     color: "#666",
     marginTop: 16,
   },
-  container: {
-    flex: 1,
-  },
-  showMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginTop: 8,
-    gap: 6,
-  },
-  showMoreText: {
-    fontSize: 14,
-    color: '#2196F3',
-    fontWeight: '500',
-  },
 
-  // Header
+  // ==================== HEADER ====================
   headerSection: {
     flexDirection: "row",
     alignItems: "center",
@@ -50,6 +36,18 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerRightCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  // Avatar
   avatarContainer: {
     position: "relative",
   },
@@ -59,19 +57,18 @@ export const styles = StyleSheet.create({
     borderRadius: 25,
   },
   avatarPlaceholder: {
-  width: 50,
-  height: 50,
-  borderRadius: 30,
-  backgroundColor: "#E5E7EB", // grigio neutro
-  alignItems: "center",
-  justifyContent: "center",
-},
-
-avatarInitials: {
-  color: "#374151", // grigio scuro
-  fontWeight: "600",
-  fontSize: 20,
-},
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+    backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
+    color: "#374151",
+    fontWeight: "600",
+    fontSize: 20,
+  },
   statusDot: {
     position: "absolute",
     bottom: 1,
@@ -83,6 +80,8 @@ avatarInitials: {
     borderWidth: 2,
     borderColor: "white",
   },
+
+  // Testi header
   greeting: {
     fontSize: 11,
     color: "#666",
@@ -94,7 +93,30 @@ avatarInitials: {
     fontWeight: "800",
     color: "#333",
   },
-  notificationButton: {
+
+  // Bottoni header
+  chatButtonAnimatedContainer: {
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  chatToggleButtonCompact: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f0f7ff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#e1f0ff",
+  },
+  chatButtonPressed: {
+    backgroundColor: "#e1f0ff",
+    transform: [{ scale: 0.95 }],
+  },
+  notificationButtonCompact: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -102,25 +124,125 @@ avatarInitials: {
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
   },
   notificationBadge: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 18,
+    top: -2,
+    right: -2,
+    minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#2196F3",
+    backgroundColor: "#FF3B30",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: 'white',
   },
   notificationBadgeText: {
+    color: 'white',
     fontSize: 10,
-    fontWeight: "800",
-    color: "white",
+    fontWeight: '700',
+    paddingHorizontal: 4,
   },
 
-  // Stats
+  // ==================== MODAL CHAT ====================
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalContent: {
+    flex: 1,
+    marginTop: 60,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dragHandleContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#e0e0e0',
+  },
+  chatModalHeader: {
+    height: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    backgroundColor: "white",
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  chatModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    letterSpacing: -0.5,
+  },
+  chatContentContainer: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+  },
+    // Stile per bottone chat con messaggi non letti
+  chatButtonUnread: {
+    backgroundColor: "#FFEBEE", // Rosso chiaro
+    borderColor: "#FFCDD2",
+  },
+
+  // Badge per chat (messaggi non letti)
+  chatUnreadBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF5252',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'white',
+    zIndex: 10,
+  },
+  
+  chatUnreadBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 4,
+  },
+
+  // ==================== STATS ====================
   statsRow: {
     flexDirection: "row",
     gap: 12,
@@ -146,7 +268,7 @@ avatarInitials: {
     fontWeight: "600",
   },
 
-  // Section
+  // ==================== SECTIONS ====================
   section: {
     marginBottom: 24,
   },
@@ -167,19 +289,23 @@ avatarInitials: {
     fontWeight: "700",
     color: "#2196F3",
   },
-  inviteCountBadge: {
-    backgroundColor: "#FF9800",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    marginTop: 8,
+    gap: 6,
   },
-  inviteCountText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "white",
+  showMoreText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '500',
   },
 
-  // Next Match Card
+  // ==================== NEXT MATCH ====================
   nextMatchCard: {
     marginHorizontal: 20,
     borderRadius: 20,
@@ -306,7 +432,18 @@ avatarInitials: {
     color: "white",
   },
 
-  // Invite Card
+  // ==================== INVITES ====================
+  inviteCountBadge: {
+    backgroundColor: "#FF9800",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  inviteCountText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "white",
+  },
   inviteCard: {
     backgroundColor: "white",
     borderRadius: 16,
@@ -448,7 +585,7 @@ avatarInitials: {
     color: "white",
   },
 
-  // Match History (per carosello)
+  // ==================== MATCH HISTORY ====================
   matchHistoryCard: {
     backgroundColor: "white",
     borderRadius: 16,
@@ -505,7 +642,7 @@ avatarInitials: {
     color: "#F44336",
   },
 
-  // Carosello Stili
+  // ==================== CAROUSEL ====================
   carouselSection: {
     marginBottom: 32,
     paddingBottom: 16,
@@ -516,6 +653,19 @@ avatarInitials: {
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  carouselContent: {
+    paddingHorizontal: 12,
+  },
+  carouselCard: {
+    width: '100%',
+    marginBottom: 0,
+  },
+  carouselCounter: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#666',
+    marginTop: 12,
   },
   carouselControls: {
     flexDirection: 'row',
@@ -547,69 +697,6 @@ avatarInitials: {
     color: '#2196F3',
     fontWeight: '600',
   },
-  carouselContent: {
-    paddingHorizontal: 12,
-  },
-  carouselCard: {
-    width: '100%',
-    marginBottom: 0,
-  },
-  carouselCounter: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
-    marginTop: 12,
-  },
-  emptyCarouselContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    marginHorizontal: 20,
-  },
-  emptyCarouselText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 12,
-  },
-  noCompletedMatches: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderStyle: 'dashed',
-  },
-  noCompletedMatchesText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-
-  // FAB
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#2196F3",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-
-  // Carosello indicatori (per entrambi i caroselli)
   carouselIndicators: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -634,8 +721,45 @@ avatarInitials: {
     color: '#999',
     marginLeft: 4,
   },
+  emptyCarouselContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    marginHorizontal: 20,
+  },
+  emptyCarouselText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+  },
+  emptyCarouselSubtext: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 40,
+  },
+  noCompletedMatches: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderStyle: 'dashed',
+  },
+  noCompletedMatchesText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+    textAlign: 'center',
+  },
 
-  // Amici suggeriti - STILI NUOVI
+  // ==================== SUGGESTED FRIENDS ====================
   friendsCountBadge: {
     backgroundColor: "#4CAF50",
     paddingHorizontal: 8,
@@ -710,6 +834,7 @@ avatarInitials: {
     color: "#666",
   },
 
+  // ==================== BADGES ====================
   // Badge di priorità
   priorityBadgeHigh: {
     backgroundColor: '#2196F3',
@@ -758,7 +883,7 @@ avatarInitials: {
     color: '#7B1FA2',
   },
 
-  // Pulsante azione amico
+  // ==================== FRIEND ACTIONS ====================
   friendActionButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -796,7 +921,7 @@ avatarInitials: {
     color: "white",
   },
 
-  // Metriche di priorità
+  // ==================== PRIORITY METRICS ====================
   priorityMetrics: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -848,7 +973,7 @@ avatarInitials: {
     color: "#666",
   },
 
-  // Stili per loading/error suggerimenti
+  // ==================== LOADING & ERROR ====================
   loadingContainerSmall: {
     padding: 20,
     alignItems: 'center',
@@ -887,15 +1012,26 @@ avatarInitials: {
     fontWeight: '600',
     color: 'white',
   },
-  emptyCarouselSubtext: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 4,
-    paddingHorizontal: 40,
+
+  // ==================== FAB ====================
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
-  // Additional styles for debug
+  // ==================== DEBUG ====================
   debugContainer: {
     maxHeight: 200,
     marginTop: 8,
