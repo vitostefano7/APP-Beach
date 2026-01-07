@@ -43,6 +43,11 @@ export default function PreferencesScreen({ navigation }: any) {
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
 
+  // Geocoding
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{lat: number, lng: number} | null>(null);
+
   const sports = ["Beach Volley", "Volley"];
   const timeSlots = [
     { value: "morning", label: "Mattina (6:00 - 12:00)", icon: "sunny" },
@@ -84,6 +89,52 @@ export default function PreferencesScreen({ navigation }: any) {
     } else {
       setSelectedSports([...selectedSports, sport]);
     }
+  };
+
+  const searchCitySuggestions = async (searchText: string) => {
+    if (searchText.length < 2) {
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+      return;
+    }
+
+    try {
+      const geocodeUrl = 
+        `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(searchText)},Italia&` +
+        `format=json&limit=5`;
+      
+      const geocodeResponse = await fetch(geocodeUrl, {
+        headers: { 'User-Agent': 'SportBookingApp/1.0' },
+      });
+
+      const geocodeData = await geocodeResponse.json();
+      
+      if (geocodeData && geocodeData.length > 0) {
+        // Filtra solo risultati in Italia
+        const italianResults = geocodeData.filter((result: any) => {
+          const lat = parseFloat(result.lat);
+          const lng = parseFloat(result.lon);
+          return lat >= 35.5 && lat <= 47.1 && lng >= 6.6 && lng <= 18.5;
+        });
+        
+        setCitySuggestions(italianResults);
+        setShowCitySuggestions(italianResults.length > 0);
+      }
+    } catch (error) {
+      console.error("Errore ricerca città:", error);
+    }
+  };
+
+  const selectCity = (suggestion: any) => {
+    const cityName = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.name;
+    setCity(cityName);
+    setSelectedCoordinates({
+      lat: parseFloat(suggestion.lat),
+      lng: parseFloat(suggestion.lon)
+    });
+    setShowCitySuggestions(false);
+    setCitySuggestions([]);
   };
 
   const handleSave = async () => {
@@ -128,48 +179,84 @@ export default function PreferencesScreen({ navigation }: any) {
 
       // Salva location se presente CON GEOCODING
       if (city.trim()) {
-        console.log("🌍 [PREF] Inizio geocoding per città:", city.trim());
+        console.log("🌍 [PREF] Salvataggio location per città:", city.trim());
         
-        const geocodeUrl = 
-          `https://nominatim.openstreetmap.org/search?` +
-          `q=${encodeURIComponent(city.trim())},Italia&` +
-          `format=json&limit=1`;
-        
-        console.log("🔗 [PREF] URL geocoding:", geocodeUrl);
-
-        // Geocoding: converti città → coordinate
-        const geocodeResponse = await fetch(geocodeUrl, {
-          headers: {
-            'User-Agent': 'SportBookingApp/1.0',
-          },
-        });
-
-        console.log("📡 [PREF] Status geocoding:", geocodeResponse.status);
-
-        const geocodeData = await geocodeResponse.json();
-        console.log("📊 [PREF] Risposta geocoding:", JSON.stringify(geocodeData, null, 2));
-
         let locationData;
-        if (geocodeData && geocodeData.length > 0) {
-          // ✅ Trovate coordinate reali!
+        
+        // Se l'utente ha selezionato dalle coordinate suggerite, usa quelle
+        if (selectedCoordinates) {
+          console.log("✅ [PREF] Uso coordinate selezionate dall'utente");
           locationData = {
             city: city.trim(),
-            lat: parseFloat(geocodeData[0].lat),
-            lng: parseFloat(geocodeData[0].lon),
+            lat: selectedCoordinates.lat,
+            lng: selectedCoordinates.lng,
             radius: parseInt(radius) || 30,
           };
-          console.log("✅ [PREF] Geocoding riuscito!");
-          console.log("📍 [PREF] Coordinate trovate:", locationData);
         } else {
-          // ❌ Geocoding fallito, usa Milano di default
-          locationData = {
-            city: city.trim(),
-            lat: 45.4642,
-            lng: 9.19,
-            radius: parseInt(radius) || 30,
-          };
-          console.warn("⚠️ [PREF] Geocoding fallito per:", city.trim());
-          console.log("📍 [PREF] Uso coordinate Milano come fallback");
+          // Altrimenti fai geocoding automatico (backward compatibility)
+          console.log("🌍 [PREF] Inizio geocoding automatico per città:", city.trim());
+          
+          const geocodeUrl = 
+            `https://nominatim.openstreetmap.org/search?` +
+            `q=${encodeURIComponent(city.trim())},Italia&` +
+            `format=json&limit=1`;
+          
+          console.log("🔗 [PREF] URL geocoding:", geocodeUrl);
+
+          const geocodeResponse = await fetch(geocodeUrl, {
+            headers: {
+              'User-Agent': 'SportBookingApp/1.0',
+            },
+          });
+
+          console.log("📡 [PREF] Status geocoding:", geocodeResponse.status);
+
+          const geocodeData = await geocodeResponse.json();
+          console.log("📊 [PREF] Risposta geocoding:", JSON.stringify(geocodeData, null, 2));
+
+          let locationDataTemp;
+          if (geocodeData && geocodeData.length > 0) {
+            // ✅ Trovate coordinate reali!
+            const lat = parseFloat(geocodeData[0].lat);
+            const lng = parseFloat(geocodeData[0].lon);
+            
+            console.log("✅ [PREF] Geocoding riuscito!");
+            console.log("📍 [PREF] Coordinate trovate:", { lat, lng });
+            console.log("📊 [PREF] Display name:", geocodeData[0].display_name);
+            
+            // Verifica che le coordinate siano ragionevoli per l'Italia
+            // Italia: lat tra 35.5 e 47.1, lng tra 6.6 e 18.5
+            if (lat >= 35.5 && lat <= 47.1 && lng >= 6.6 && lng <= 18.5) {
+              locationDataTemp = {
+                city: city.trim(),
+                lat,
+                lng,
+                radius: parseInt(radius) || 30,
+              };
+              console.log("✅ [PREF] Coordinate valide per l'Italia");
+            } else {
+              console.warn("⚠️ [PREF] Coordinate fuori dall'Italia:", { lat, lng });
+              console.warn("⚠️ [PREF] Uso coordinate Milano come fallback");
+              locationDataTemp = {
+                city: city.trim(),
+                lat: 45.4642,
+                lng: 9.19,
+                radius: parseInt(radius) || 30,
+              };
+            }
+          } else {
+            // ❌ Geocoding fallito, usa Milano di default
+            locationDataTemp = {
+              city: city.trim(),
+              lat: 45.4642,
+              lng: 9.19,
+              radius: parseInt(radius) || 30,
+            };
+            console.warn("⚠️ [PREF] Geocoding fallito per:", city.trim());
+            console.log("📍 [PREF] Uso coordinate Milano come fallback");
+          }
+          
+          locationData = locationDataTemp;
         }
 
         console.log("📤 [PREF] Invio location preferita...");
@@ -299,10 +386,47 @@ export default function PreferencesScreen({ navigation }: any) {
                 style={styles.input}
                 placeholder="Es. Milano, Roma..."
                 value={city}
-                onChangeText={setCity}
+                onChangeText={(text) => {
+                  setCity(text);
+                  searchCitySuggestions(text);
+                }}
                 autoCapitalize="words"
               />
             </View>
+            
+            {/* Suggerimenti città */}
+            {showCitySuggestions && citySuggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {citySuggestions.map((suggestion, index) => {
+                  const cityName = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.name;
+                  const region = suggestion.address?.state || suggestion.address?.region || '';
+                  
+                  return (
+                    <Pressable
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => selectCity(suggestion)}
+                    >
+                      <Ionicons name="location" size={18} color="#2196F3" />
+                      <View style={styles.suggestionText}>
+                        <Text style={styles.suggestionCity}>{cityName}</Text>
+                        <Text style={styles.suggestionDetails}>{region}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#999" />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            
+            {selectedCoordinates && (
+              <View style={styles.coordinatesInfo}>
+                <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                <Text style={styles.coordinatesText}>
+                  Coordinate confermate: {selectedCoordinates.lat.toFixed(4)}, {selectedCoordinates.lng.toFixed(4)}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -754,5 +878,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "white",
+  },
+
+  // Suggerimenti città
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionText: {
+    flex: 1,
+  },
+  suggestionCity: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  suggestionDetails: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  coordinatesInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '500',
   },
 });

@@ -65,6 +65,20 @@ export default function CampoCalendarioGestioneScreen() {
 
         console.log("📅 Caricamento calendario per:", month);
 
+        // ✅ CARICA INFO CAMPO + STRUTTURA
+        const campoRes = await fetch(`${API_URL}/campi/${campoId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const campoData = await campoRes.json();
+        
+        console.log("=== DEBUG CAMPO ===");
+        console.log("📋 Campo:", campoData.name);
+        console.log("🏟️ Struttura:", campoData.struttura?.name);
+        console.log("📆 WeeklySchedule del campo:");
+        console.log(JSON.stringify(campoData.weeklySchedule, null, 2));
+        console.log("🕒 OpeningHours della struttura:");
+        console.log(JSON.stringify(campoData.struttura?.openingHours, null, 2));
+
         // ✅ ENDPOINT CORRETTO: GET /calendar/campo/:id
         const res = await fetch(
           `${API_URL}/calendar/campo/${campoId}?month=${month}`,
@@ -79,6 +93,19 @@ export default function CampoCalendarioGestioneScreen() {
         const data = await res.json();
 
         console.log(`✅ ${data.length} giorni caricati per ${month}`);
+        
+        // ✅ DEBUG PRIMI 3 GIORNI
+        console.log("=== DEBUG CALENDARIO ===");
+        data.slice(0, 3).forEach((day: CalendarDay) => {
+          const dateObj = new Date(day.date + "T12:00:00");
+          const dayName = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"][dateObj.getDay()];
+          
+          console.log(`📅 ${day.date} (${dayName})`);
+          console.log(`   Chiuso: ${day.isClosed}`);
+          console.log(`   Slots (${day.slots.length}):`, day.slots.map(s => s.time).join(", "));
+        });
+        console.log("==================");
+
         setCalendarDays(data);
       } catch (err) {
         console.error("❌ Errore calendario:", err);

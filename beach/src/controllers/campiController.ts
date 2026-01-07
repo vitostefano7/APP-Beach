@@ -54,12 +54,21 @@ const generateAnnualCalendarForCampo = async (
     const daySchedule = campo.weeklySchedule[weekday];
     const date = d.toISOString().split("T")[0];
 
+    let allSlots: { time: string; enabled: boolean }[] = [];
+
+    // ✅ SOLO NUOVO FORMATO: slots array
+    if (daySchedule?.enabled && daySchedule.slots && Array.isArray(daySchedule.slots)) {
+      daySchedule.slots.forEach((timeSlot: any) => {
+        const slotsForThisRange = generateHalfHourSlots(timeSlot.open, timeSlot.close);
+        allSlots.push(...slotsForThisRange);
+      });
+    }
+
     days.push({
       campo: campo._id,
       date,
-      slots: daySchedule.enabled
-        ? generateHalfHourSlots(daySchedule.open, daySchedule.close)
-        : [],
+      slots: allSlots,
+      isClosed: allSlots.length === 0,
     });
   }
 
@@ -69,13 +78,69 @@ const generateAnnualCalendarForCampo = async (
   const operations = days.map(day => ({
     updateOne: {
       filter: { campo: day.campo, date: day.date },
-      update: { $set: { slots: day.slots } },
+      update: { $set: { slots: day.slots, isClosed: day.isClosed } },
       upsert: true,
     },
   }));
 
   await CampoCalendarDay.bulkWrite(operations);
   console.log(`✅ Calendario salvato per ${campo.name}`);
+};
+
+/**
+ * Controlla se ci sono prenotazioni future che verrebbero impattate dalla modifica degli orari
+ */
+const checkBookingsImpact = async (
+  campo: any,
+  newWeeklySchedule: any
+): Promise<{ affected: number; bookings: any[] }> => {
+  const today = new Date().toISOString().split("T")[0];
+  
+  // Prendi tutte le prenotazioni future per questo campo
+  const futureBookings = await Booking.find({
+    campo: campo._id,
+    date: { $gte: today },
+    status: { $in: ["confirmed", "pending"] },
+  }).lean();
+
+  if (futureBookings.length === 0) {
+    return { affected: 0, bookings: [] };
+  }
+
+  const affectedBookings = [];
+
+  // Per ogni prenotazione, controlla se gli slot sono ancora disponibili nei nuovi orari
+  for (const booking of futureBookings) {
+    const bookingDate = new Date(booking.date + "T12:00:00");
+    const weekday = WEEK_MAP[bookingDate.getDay()];
+    const newDaySchedule = newWeeklySchedule[weekday];
+
+    // Se il giorno è disabilitato o non ha slot, la prenotazione è impattata
+    if (!newDaySchedule?.enabled || !newDaySchedule.slots || newDaySchedule.slots.length === 0) {
+      affectedBookings.push(booking);
+      continue;
+    }
+
+    // Controlla se lo slot della prenotazione rientra nei nuovi orari
+    const bookingStartTime = booking.startTime;
+    let slotAvailable = false;
+
+    for (const timeSlot of newDaySchedule.slots) {
+      if (bookingStartTime >= timeSlot.open && bookingStartTime < timeSlot.close) {
+        slotAvailable = true;
+        break;
+      }
+    }
+
+    if (!slotAvailable) {
+      affectedBookings.push(booking);
+    }
+  }
+
+  return {
+    affected: affectedBookings.length,
+    bookings: affectedBookings,
+  };
 };
 
 /* =====================================================
@@ -238,13 +303,14 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
 export const getCampoById = async (req: Request, res: Response) => {
   try {
     console.log("🏟️  GET /campi/:id");
-    const campo = await Campo.findById(req.params.id);
+    const campo = await Campo.findById(req.params.id).populate("struttura");
 
     if (!campo) {
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     console.log("📋 Campo caricato:", campo.name, "- isActive:", campo.isActive);
+    console.log("🏟️  Struttura popolata:", campo.struttura?.name || "N/A");
     res.json(campo);
   } catch (err) {
     console.error("❌ getCampoById error:", err);
@@ -296,7 +362,8 @@ export const updateCampo = async (req: AuthRequest, res: Response) => {
       indoor, 
       pricePerHour, 
       isActive,
-      weeklySchedule 
+      weeklySchedule,
+      forceUpdate // Flag per forzare l'aggiornamento ignorando i warning
     } = req.body;
 
     const campo = await Campo.findById(id).populate("struttura");
@@ -307,6 +374,27 @@ export const updateCampo = async (req: AuthRequest, res: Response) => {
     // Verifica ownership
     if ((campo.struttura as any).owner.toString() !== req.user!.id) {
       return res.status(403).json({ message: "Non autorizzato" });
+    }
+
+    // ✅ Se cambiano gli orari, controlla l'impatto sulle prenotazioni
+    if (weeklySchedule && !forceUpdate) {
+      const impact = await checkBookingsImpact(campo, weeklySchedule);
+      
+      if (impact.affected > 0) {
+        console.log(`⚠️ ${impact.affected} prenotazioni future verrebbero cancellate`);
+        return res.status(409).json({
+          message: "Attenzione: modificando gli orari alcune prenotazioni saranno cancellate",
+          warning: true,
+          affectedBookings: impact.affected,
+          bookings: impact.bookings.map((b: any) => ({
+            _id: b._id,
+            date: b.date,
+            startTime: b.startTime,
+            endTime: b.endTime,
+            user: b.user,
+          })),
+        });
+      }
     }
 
     // Aggiorna solo i campi forniti
@@ -322,6 +410,21 @@ export const updateCampo = async (req: AuthRequest, res: Response) => {
     if (weeklySchedule) {
       campo.weeklySchedule = weeklySchedule;
       console.log("📅 weeklySchedule modificato, rigenerazione calendario...");
+      
+      // Se forceUpdate è true, cancella le prenotazioni impattate
+      if (forceUpdate) {
+        const impact = await checkBookingsImpact(campo, weeklySchedule);
+        if (impact.affected > 0) {
+          console.log(`🗑️ Cancellazione di ${impact.affected} prenotazioni...`);
+          const bookingIds = impact.bookings.map((b: any) => b._id);
+          await Booking.updateMany(
+            { _id: { $in: bookingIds } },
+            { $set: { status: "cancelled", cancelledBy: "system", cancelledReason: "Orari campo modificati" } }
+          );
+          console.log(`✅ ${impact.affected} prenotazioni cancellate`);
+        }
+      }
+      
       await generateAnnualCalendarForCampo(campo);
     }
 

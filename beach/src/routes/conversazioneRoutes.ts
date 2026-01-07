@@ -5,6 +5,7 @@ import {
   getConversations,
   getOrCreateConversation,
   getOrCreateConversationWithUser,
+  getOrCreateGroupConversation,
   getMessages,
   sendMessage,
   getUnreadCount,
@@ -23,6 +24,9 @@ router.get('/struttura/:strutturaId', requireAuth, getOrCreateConversation);
 
 // Ottieni/crea conversazione con user (OWNER usa questo)
 router.get('/user/:userId', requireAuth, getOrCreateConversationWithUser);
+
+// Ottieni/crea conversazione di gruppo per un match
+router.get('/match/:matchId', requireAuth, getOrCreateGroupConversation);
 
 // Messaggi di una conversazione
 router.get('/:conversationId/messages', requireAuth, getMessages);

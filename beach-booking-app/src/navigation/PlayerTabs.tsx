@@ -5,6 +5,7 @@ import { useUnreadMessages } from "../context/UnreadMessagesContext";
 
 import StruttureStack from "./StruttureStack";
 import BookingsStack from "./BookingsStack";
+import DashboardStack from "./DashboardStack";
 import ProfilePlayerStack from "./ProfilePlayerStack";
 
 const Tab = createBottomTabNavigator();
@@ -37,7 +38,8 @@ export default function PlayerTabs() {
         },
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: any;
-
+          if (route.name === "Dashboard")
+            iconName = focused ? "home" : "home-outline";
           if (route.name === "StruttureTab")
             iconName = focused ? "business" : "business-outline";
           if (route.name === "Prenotazioni")
@@ -49,6 +51,11 @@ export default function PlayerTabs() {
         },
       })}
     >
+      <Tab.Screen 
+        name="Dashboard" 
+        component={DashboardStack} 
+        options={{ tabBarLabel: "Dashboard" }} 
+      />
       <Tab.Screen 
         name="StruttureTab" 
         component={StruttureStack} 

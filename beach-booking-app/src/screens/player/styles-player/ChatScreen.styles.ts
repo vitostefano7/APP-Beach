@@ -293,4 +293,49 @@ export const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "600",
   },
+
+  /* =========================
+     GROUP CHAT
+  ========================= */
+  infoButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+
+  senderName: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#FFE0B2",
+  },
+
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#E65100",
+    fontWeight: "600",
+  },
+
+  messagesContent: {
+    paddingBottom: 16,
+  },
 });

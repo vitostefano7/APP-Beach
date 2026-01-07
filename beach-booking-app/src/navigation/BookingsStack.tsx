@@ -3,6 +3,9 @@ import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenota
 import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
+import DettaglioMatchScreen from "../screens/player/prenotazioni/DettaglioMatchScreen";
+import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +31,14 @@ export default function BookingsStack() {
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
+      />
+      <Stack.Screen
+        name="DettaglioMatch"
+        component={DettaglioMatchScreen}
+      />
+      <Stack.Screen
+        name="GroupChat"
+        component={GroupChatScreen}
       />
     </Stack.Navigator>
   );

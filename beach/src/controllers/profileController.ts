@@ -4,9 +4,14 @@ import User from "../models/User";
 import PlayerProfile from "../models/PlayerProfile";
 import UserPreferences from "../models/UserPreferences";
 import Booking from "../models/Booking";
+import Match from "../models/Match";
+import Campo from "../models/Campo";
 import { AuthRequest } from "../middleware/authMiddleware";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
+
+const { Types } = mongoose;
 
 /**
  * GET /users/:userId
@@ -380,6 +385,337 @@ export const changePassword = async (
     console.error("❌ ========== PASSWORD CHANGE ERROR ==========");
     console.error("Error details:", error);
     console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/* ==========================================
+   🆕 NUOVE FUNZIONI SOCIAL
+========================================== */
+
+/**
+ * GET /users/search?q=mario
+ * Cerca utenti per username
+ */
+export const searchUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || typeof q !== "string" || q.length < 2) {
+      return res.status(400).json({ message: "Query minimo 2 caratteri" });
+    }
+
+    const users = await User.find({
+      username: { $regex: q.toLowerCase(), $options: "i" },
+      isActive: true,
+    })
+      .select("username name avatarUrl")
+      .limit(20);
+
+    res.json(users);
+  } catch (err) {
+    console.error("❌ searchUsers error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:username/profile
+ * Profilo pubblico utente
+ */
+export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const { username } = req.params;
+
+    const user = await User.findOne({
+      username: username.toLowerCase(),
+      isActive: true,
+    }).select("username name avatarUrl createdAt");
+
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Statistiche pubbliche
+    const matchesPlayed = await Match.countDocuments({
+      "players.user": user._id,
+      "players.status": "confirmed",
+      status: "completed",
+    });
+
+    res.json({
+      user,
+      stats: {
+        matchesPlayed,
+      },
+    });
+  } catch (err) {
+    console.error("❌ getUserPublicProfile error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:username/matches
+ * Match pubblici di un utente
+ */
+export const getUserMatches = async (req: AuthRequest, res: Response) => {
+  try {
+    const { username } = req.params;
+    const { limit = 20 } = req.query;
+
+    const user = await User.findOne({ username: username.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    const matches = await Match.find({
+      "players.user": user._id,
+      status: "completed",
+      isPublic: true,
+    })
+      .sort({ playedAt: -1 })
+      .limit(Number(limit))
+      .populate("players.user", "username name avatarUrl")
+      .populate("createdBy", "username name avatarUrl");
+
+    res.json(matches);
+  } catch (err) {
+    console.error("❌ getUserMatches error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/me/played-with
+ * Persone con cui ho giocato
+ */
+export const getPlayedWith = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    const playedWith = await Match.aggregate([
+      {
+        $match: {
+          "players.user": new Types.ObjectId(userId),
+          "players.status": "confirmed",
+          status: "completed",
+        },
+      },
+
+      { $unwind: "$players" },
+
+      {
+        $match: {
+          "players.status": "confirmed",
+          "players.user": { $ne: new Types.ObjectId(userId) },
+        },
+      },
+
+      {
+        $group: {
+          _id: "$players.user",
+          matchCount: { $sum: 1 },
+          lastPlayedAt: { $max: "$playedAt" },
+        },
+      },
+
+      { $sort: { matchCount: -1, lastPlayedAt: -1 } },
+
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+
+      { $unwind: "$user" },
+
+      {
+        $project: {
+          _id: 0,
+          userId: "$_id",
+          username: "$user.username",
+          name: "$user.name",
+          avatarUrl: "$user.avatarUrl",
+          matchCount: 1,
+          lastPlayedAt: 1,
+        },
+      },
+
+      { $limit: 50 },
+    ]);
+
+    res.json(playedWith);
+  } catch (err) {
+    console.error("❌ getPlayedWith error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/me/frequented-venues
+ * Strutture frequentate
+ */
+export const getFrequentedVenues = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    const venues = await Booking.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(userId),
+          status: "confirmed",
+        },
+      },
+
+      {
+        $lookup: {
+          from: "campos",
+          localField: "campo",
+          foreignField: "_id",
+          as: "campo",
+        },
+      },
+
+      { $unwind: "$campo" },
+
+      {
+        $lookup: {
+          from: "strutturas",
+          localField: "campo.struttura",
+          foreignField: "_id",
+          as: "struttura",
+        },
+      },
+
+      { $unwind: "$struttura" },
+
+      {
+        $group: {
+          _id: "$struttura._id",
+          name: { $first: "$struttura.name" },
+          city: { $first: "$struttura.location.city" },
+          images: { $first: "$struttura.images" },
+          visitCount: { $sum: 1 },
+          lastVisit: { $max: "$date" },
+          totalSpent: { $sum: "$price" },
+        },
+      },
+
+      { $sort: { visitCount: -1, lastVisit: -1 } },
+
+      { $limit: 20 },
+    ]);
+
+    res.json(venues);
+  } catch (err) {
+    console.error("❌ getFrequentedVenues error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/me/stats
+ * Statistiche derivate
+ */
+export const getUserStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    // Match giocati
+    const matchesPlayed = await Match.countDocuments({
+      "players.user": userId,
+      "players.status": "confirmed",
+      status: "completed",
+    });
+
+    // Vittorie
+    const wins = await Match.aggregate([
+      {
+        $match: {
+          "players.user": new Types.ObjectId(userId),
+          "players.status": "confirmed",
+          status: "completed",
+          winner: { $exists: true },
+        },
+      },
+      {
+        $addFields: {
+          myTeam: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: "$players",
+                      cond: {
+                        $eq: ["$$this.user", new Types.ObjectId(userId)],
+                      },
+                    },
+                  },
+                  in: "$$this.team",
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          $expr: { $eq: ["$myTeam", "$winner"] },
+        },
+      },
+      { $count: "wins" },
+    ]);
+
+    const winCount = wins[0]?.wins || 0;
+
+    // Strutture visitate
+    const campiIds = await Booking.distinct("campo", {
+      user: userId,
+      status: "confirmed",
+    });
+
+    const venuesCount = await Campo.distinct("struttura", {
+      _id: { $in: campiIds },
+    }).then((strutture) => strutture.length);
+
+    // Persone incontrate
+    const peopleCount = await Match.aggregate([
+      {
+        $match: {
+          "players.user": new Types.ObjectId(userId),
+          status: "completed",
+        },
+      },
+      { $unwind: "$players" },
+      {
+        $match: {
+          "players.user": { $ne: new Types.ObjectId(userId) },
+          "players.status": "confirmed",
+        },
+      },
+      {
+        $group: {
+          _id: "$players.user",
+        },
+      },
+      { $count: "people" },
+    ]);
+
+    res.json({
+      matchesPlayed,
+      wins: winCount,
+      winRate: matchesPlayed > 0 ? Math.round((winCount / matchesPlayed) * 100) : 0,
+      venuesVisited: venuesCount,
+      peopleMetCount: peopleCount[0]?.people || 0,
+    });
+  } catch (err) {
+    console.error("❌ getUserStats error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

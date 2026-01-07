@@ -39,6 +39,9 @@ interface Booking {
     winner: "A" | "B";
     sets: { teamA: number; teamB: number }[];
   };
+  matchId?: string;
+  isMyBooking?: boolean;
+  isInvitedPlayer?: boolean;
 }
 
 /* =========================
@@ -69,6 +72,10 @@ export default function LeMiePrenotazioniScreen() {
       if (!res.ok) throw new Error();
 
       const data = await res.json();
+      console.log(`📋 Caricate ${data.length} prenotazioni`);
+      console.log(`   - ${data.filter((b: any) => b.isMyBooking).length} create da te`);
+      console.log(`   - ${data.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
+      
       setBookings(data);
       setLoading(false);
     } catch {
@@ -92,11 +99,67 @@ export default function LeMiePrenotazioniScreen() {
   /* =========================
      HELPERS
   ========================= */
-  const isUpcoming = (date: string) => {
-    const d = new Date(date + "T00:00:00");
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return d >= today;
+  // Funzione che controlla se la prenotazione è passata
+  // Considera sia la data che l'orario di fine
+  const isPastBooking = (booking: Booking): boolean => {
+    // Se è cancellata, la consideriamo passata
+    if (booking.status === "cancelled") return true;
+    
+    try {
+      // Crea la data e ora di fine della prenotazione
+      const bookingEndDateTime = new Date(`${booking.date}T${booking.endTime}:00`);
+      const now = new Date();
+      
+      // Se l'orario di fine è passato rispetto ad ora, la prenotazione è passata
+      return bookingEndDateTime < now;
+    } catch (error) {
+      console.error('Errore nel calcolo data:', error);
+      // Fallback: controlla solo la data
+      const bookingDate = new Date(booking.date + "T00:00:00");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return bookingDate < today;
+    }
+  };
+
+  // Funzione che controlla se la prenotazione è futura
+  const isUpcomingBooking = (booking: Booking): boolean => {
+    // Se è cancellata, non è futura
+    if (booking.status === "cancelled") return false;
+    
+    try {
+      // Crea la data e ora di inizio della prenotazione
+      const bookingStartDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
+      const now = new Date();
+      
+      // Se l'orario di inizio è nel futuro, la prenotazione è futura
+      return bookingStartDateTime > now;
+    } catch (error) {
+      console.error('Errore nel calcolo data:', error);
+      // Fallback: controlla solo la data
+      const bookingDate = new Date(booking.date + "T00:00:00");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return bookingDate >= today;
+    }
+  };
+
+  // Funzione che controlla se la prenotazione è in corso
+  const isOngoingBooking = (booking: Booking): boolean => {
+    // Se è cancellata, non è in corso
+    if (booking.status === "cancelled") return false;
+    
+    try {
+      const now = new Date();
+      const bookingStartDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
+      const bookingEndDateTime = new Date(`${booking.date}T${booking.endTime}:00`);
+      
+      // La prenotazione è in corso se siamo tra l'inizio e la fine
+      return now >= bookingStartDateTime && now <= bookingEndDateTime;
+    } catch (error) {
+      console.error('Errore nel calcolo data:', error);
+      return false;
+    }
   };
 
   const formatDate = (dateStr: string) =>
@@ -106,28 +169,78 @@ export default function LeMiePrenotazioniScreen() {
       month: "long",
     });
 
+  // Funzione per formattare il tempo rimanente
+  const getTimeStatus = (booking: Booking): string => {
+    if (isPastBooking(booking)) return "Passata";
+    if (isOngoingBooking(booking)) return "In corso";
+    
+    try {
+      const bookingStartDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
+      const now = new Date();
+      const diffMs = bookingStartDateTime.getTime() - now.getTime();
+      
+      if (diffMs <= 0) return "Passata";
+      
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+      
+      if (diffDays > 0) {
+        return `Tra ${diffDays} ${diffDays === 1 ? 'giorno' : 'giorni'}`;
+      } else if (diffHours > 0) {
+        return `Tra ${diffHours} ${diffHours === 1 ? 'ora' : 'ore'}`;
+      } else {
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        return `Tra ${diffMinutes} minuti`;
+      }
+    } catch (error) {
+      return "Prossima";
+    }
+  };
+
   /* =========================
      FILTER
   ========================= */
   const filteredBookings = bookings.filter((b) => {
     if (filter === "all") return true;
-    if (filter === "upcoming") return isUpcoming(b.date) && b.status === "confirmed";
-    if (filter === "past") return !isUpcoming(b.date) || b.status === "cancelled";
+    if (filter === "upcoming") return isUpcomingBooking(b) || isOngoingBooking(b);
+    if (filter === "past") return isPastBooking(b);
     return true;
+  });
+
+  // Ordinamento: per le prossime, ordina per data/ora crescente
+  // Per le passate, ordina per data/ora decrescente
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    const aDate = new Date(`${a.date}T${a.startTime}:00`).getTime();
+    const bDate = new Date(`${b.date}T${b.startTime}:00`).getTime();
+    
+    if (filter === "upcoming") {
+      return aDate - bDate; // Più recenti prima
+    } else if (filter === "past") {
+      return bDate - aDate; // Più recenti ultime
+    }
+    return bDate - aDate; // Di default, più recenti prima
   });
 
   /* =========================
      RENDER CARD
   ========================= */
   const renderBookingCard = ({ item }: { item: Booking }) => {
-    const upcoming = isUpcoming(item.date);
+    const isPast = isPastBooking(item);
+    const isOngoing = isOngoingBooking(item);
+    const isUpcoming = isUpcomingBooking(item);
     const isCancelled = item.status === "cancelled";
-    const canInsertResult =
-      !upcoming && item.status === "confirmed" && !item.hasMatch;
+    // Può inserire risultato se: è passata, confermata, ha un match ma non ha risultato
+    const canInsertResult = isPast && item.status === "confirmed" && item.hasMatch && !item.matchSummary;
+    const timeStatus = getTimeStatus(item);
 
     return (
       <Pressable
-        style={styles.card}
+        style={[
+          styles.card,
+          isPast && !isCancelled && styles.pastCard,
+          isOngoing && styles.ongoingCard,
+          isCancelled && styles.cancelledCard,
+        ]}
         onPress={() =>
           navigation.navigate("DettaglioPrenotazione", {
             bookingId: item._id,
@@ -136,30 +249,56 @@ export default function LeMiePrenotazioniScreen() {
       >
         {/* STATUS BADGE (top-left ora) */}
         <View style={styles.statusRow}>
-          {isCancelled ? (
-            <View style={styles.cancelledBadge}>
-              <Ionicons name="close-circle" size={14} color="#F44336" />
-              <Text style={styles.cancelledText}>Cancellata</Text>
-            </View>
-          ) : (
-            <View style={styles.confirmedBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
-              <Text style={styles.confirmedText}>Confermata</Text>
-            </View>
-          )}
+          <View style={styles.leftBadges}>
+            {isCancelled && (
+              <View style={styles.cancelledBadge}>
+                <Ionicons name="close-circle" size={14} color="#F44336" />
+                <Text style={styles.cancelledText}>Cancellata</Text>
+              </View>
+            )}
 
-          <View style={styles.sportBadge}>
-            <Ionicons 
-              name={
-                item.campo.sport === "calcio" ? "football" :
-                item.campo.sport === "tennis" ? "tennisball" :
-                item.campo.sport === "basket" ? "basketball" :
-                "fitness"
-              } 
-              size={12} 
-              color="#2196F3" 
-            />
-            <Text style={styles.sportText}>{item.campo.sport}</Text>
+            {/* ✅ BADGE INVITATO */}
+            {item.isInvitedPlayer && (
+              <View style={styles.invitedBadge}>
+                <Ionicons name="people" size={14} color="#2196F3" />
+                <Text style={styles.invitedText}>Invitato</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.rightBadges}>
+            {/* Indicatore di tempo */}
+            {!isCancelled && (
+              <View style={[
+                styles.timeBadge,
+                isPast && styles.timeBadgePast,
+                isOngoing && styles.timeBadgeOngoing,
+                isUpcoming && styles.timeBadgeUpcoming,
+              ]}>
+                <Ionicons 
+                  name={isOngoing ? "play-circle" : "time-outline"} 
+                  size={12} 
+                  color={isOngoing ? "#FFF" : isPast ? "#FFF" : "#FFF"} 
+                />
+                <Text style={styles.timeBadgeText}>{timeStatus}</Text>
+              </View>
+            )}
+
+            <View style={styles.sportBadge}>
+              <Ionicons 
+                name={
+                  item.campo.sport === "calcio" ? "football" :
+                  item.campo.sport === "tennis" ? "tennisball" :
+                  item.campo.sport === "basket" ? "basketball" :
+                  item.campo.sport === "beach_volleyball" ? "sunny" :
+                  item.campo.sport === "volleyball" || item.campo.sport === "volley" ? "basketball" :
+                  "fitness"
+                } 
+                size={12} 
+                color="#2196F3" 
+              />
+              <Text style={styles.sportText}>{item.campo.sport}</Text>
+            </View>
           </View>
         </View>
 
@@ -199,6 +338,9 @@ export default function LeMiePrenotazioniScreen() {
               >
                 {item.matchSummary.winner === "A" ? "VITTORIA" : "SCONFITTA"}
               </Text>
+              <Text style={styles.finalScore}>
+                {item.matchSummary.sets.filter(s => s.teamA > s.teamB).length} - {item.matchSummary.sets.filter(s => s.teamB > s.teamA).length}
+              </Text>
             </View>
 
             <View style={styles.setsGrid}>
@@ -226,8 +368,9 @@ export default function LeMiePrenotazioniScreen() {
               style={styles.resultBtn}
               onPress={(e) => {
                 e.stopPropagation();
-                navigation.navigate("InserisciRisultato", {
+                navigation.navigate("DettaglioPrenotazione", {
                   bookingId: item._id,
+                  openScoreModal: true,
                 });
               }}
             >
@@ -236,6 +379,12 @@ export default function LeMiePrenotazioniScreen() {
             </Pressable>
           ) : (
             <View style={styles.tapHint}>
+              {isOngoing && (
+                <View style={styles.ongoingIndicator}>
+                  <Ionicons name="play-circle" size={14} color="#4CAF50" />
+                  <Text style={styles.ongoingText}>In corso</Text>
+                </View>
+              )}
               <Text style={styles.tapHintText}>Vedi dettagli</Text>
               <Ionicons name="chevron-forward" size={16} color="#999" />
             </View>
@@ -255,7 +404,9 @@ export default function LeMiePrenotazioniScreen() {
         <View>
           <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
           <Text style={styles.headerSubtitle}>
-            {filteredBookings.length} {filteredBookings.length === 1 ? "prenotazione" : "prenotazioni"}
+            {filter === "upcoming" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione futura" : "prenotazioni future"}`}
+            {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione passata" : "prenotazioni passate"}`}
+            {filter === "all" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione totale" : "prenotazioni totali"}`}
           </Text>
         </View>
         <Pressable onPress={loadBookings} style={styles.refreshBtn}>
@@ -266,7 +417,7 @@ export default function LeMiePrenotazioniScreen() {
       {/* FILTERS */}
       <View style={styles.filters}>
         {[
-          { key: "upcoming", label: "Prossime", icon: "arrow-forward-circle-outline" },
+          { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
           { key: "past", label: "Passate", icon: "time-outline" },
           { key: "all", label: "Tutte", icon: "list-outline" },
         ].map((f) => (
@@ -301,7 +452,7 @@ export default function LeMiePrenotazioniScreen() {
           <ActivityIndicator size="large" color="#2196F3" />
           <Text style={styles.loadingText}>Caricamento...</Text>
         </View>
-      ) : filteredBookings.length === 0 ? (
+      ) : sortedBookings.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
@@ -315,7 +466,7 @@ export default function LeMiePrenotazioniScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredBookings}
+          data={sortedBookings}
           keyExtractor={(item) => item._id}
           renderItem={renderBookingCard}
           contentContainerStyle={styles.listContent}
@@ -453,12 +604,32 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  pastCard: {
+    opacity: 0.9,
+  },
+  ongoingCard: {
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
+  cancelledCard: {
+    opacity: 0.7,
+  },
 
   statusRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+  },
+  leftBadges: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+  },
+  rightBadges: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
   },
   cancelledBadge: {
     flexDirection: "row",
@@ -488,7 +659,34 @@ const styles = StyleSheet.create({
     fontWeight: "700", 
     color: "#4CAF50",
   },
-
+  pastBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  pastText: { 
+    fontSize: 11, 
+    fontWeight: "700", 
+    color: "#FF9800",
+  },
+  invitedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  invitedText: { 
+    fontSize: 11, 
+    fontWeight: "700", 
+    color: "#2196F3",
+  },
   sportBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -503,6 +701,28 @@ const styles = StyleSheet.create({
     fontWeight: "700", 
     color: "#2196F3",
     textTransform: "capitalize",
+  },
+  timeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  timeBadgePast: {
+    backgroundColor: "#FF9800",
+  },
+  timeBadgeOngoing: {
+    backgroundColor: "#4CAF50",
+  },
+  timeBadgeUpcoming: {
+    backgroundColor: "#2196F3",
+  },
+  timeBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "white",
   },
 
   cardHeader: {
@@ -551,9 +771,19 @@ const styles = StyleSheet.create({
   winner: { 
     fontWeight: "800",
     fontSize: 13,
+    flex: 1,
   },
   win: { color: "#4CAF50" },
   lose: { color: "#F44336" },
+  finalScore: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#333",
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
   setsGrid: {
     flexDirection: "row",
     gap: 8,
@@ -617,12 +847,26 @@ const styles = StyleSheet.create({
 
   tapHint: { 
     flexDirection: "row", 
-    gap: 4, 
+    gap: 8, 
     alignItems: "center",
   },
   tapHintText: { 
     fontSize: 13, 
     color: "#999",
     fontWeight: "500",
+  },
+  ongoingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  ongoingText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4CAF50",
   },
 });

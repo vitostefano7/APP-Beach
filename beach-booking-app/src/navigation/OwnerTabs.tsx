@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 
 import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
-import OwnerBookingsScreen from "../screens/owner/OwnerBookingsScreen";
+import OwnerBookingsScreen from "../screens/owner/prenotazioni/OwnerBookingsScreen";
 import OwnerProfileScreen from "../screens/owner/OwnerProfileScreen";
 import ConversationScreen from "../screens/owner/Comunicazioni/ConversationScreen";
 

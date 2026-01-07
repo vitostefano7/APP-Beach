@@ -354,6 +354,14 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 4,
+  },
+
+  dayHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
   },
   
   dayLabel: { 
@@ -415,6 +423,65 @@ export const styles = StyleSheet.create({
     width: 12,
     height: 1,
     backgroundColor: "#e9ecef",
+  },
+
+  // SLOT CARDS
+  slotCard: {
+    backgroundColor: "#f0f0f0",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 12,
+  },
+
+  slotHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+
+  slotBadge: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  slotBadgeText: {
+    color: "white",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  deleteSlotBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FFE0E0",
+  },
+
+  addSlotBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+    backgroundColor: "#F3F9FF",
+  },
+
+  addSlotBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2196F3",
   },
 
   // AMENITIES

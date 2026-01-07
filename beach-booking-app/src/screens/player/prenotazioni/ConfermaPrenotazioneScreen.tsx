@@ -27,24 +27,32 @@ export default function ConfermaPrenotazioneScreen() {
     sport,
     date,
     startTime,
+    duration: durationNumber = 1, // 1 o 1.5 (ore)
     price,
   } = route.params;
 
   const [loading, setLoading] = useState(false);
 
-  // Calcola endTime (30 min dopo)
-  const calculateEndTime = (time: string) => {
+  // Converte il numero in formato API ("1h" o "1.5h")
+  const duration = durationNumber === 1.5 ? "1.5h" : "1h";
+
+  // Calcola endTime in base alla durata
+  const calculateEndTime = (time: string, durationHours: number) => {
     const [h, m] = time.split(":").map(Number);
+    const durationMinutes = durationHours * 60;
+    
     let endH = h;
-    let endM = m + 30;
+    let endM = m + durationMinutes;
+    
     if (endM >= 60) {
-      endH++;
-      endM = 0;
+      endH += Math.floor(endM / 60);
+      endM = endM % 60;
     }
+    
     return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
   };
 
-  const endTime = calculateEndTime(startTime);
+  const endTime = calculateEndTime(startTime, durationNumber);
 
   // Formatta la data
   const formatDate = (dateStr: string) => {
@@ -72,6 +80,7 @@ export default function ConfermaPrenotazioneScreen() {
           campoId,
           date,
           startTime,
+          duration, // "1h" o "1.5h"
         }),
       });
 
@@ -168,7 +177,9 @@ export default function ConfermaPrenotazioneScreen() {
               <Text style={styles.detailValue}>
                 {startTime} - {endTime}
               </Text>
-              <Text style={styles.detailHint}>(30 minuti)</Text>
+              <Text style={styles.detailHint}>
+                ({durationNumber === 1 ? "1 ora" : "1 ora e 30 minuti"})
+              </Text>
             </View>
           </View>
         </View>
@@ -177,7 +188,7 @@ export default function ConfermaPrenotazioneScreen() {
           <Text style={styles.cardTitle}>💰 Pagamento</Text>
           
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Prezzo orario</Text>
+            <Text style={styles.priceLabel}>Prezzo</Text>
             <Text style={styles.priceValue}>€{price}</Text>
           </View>
 

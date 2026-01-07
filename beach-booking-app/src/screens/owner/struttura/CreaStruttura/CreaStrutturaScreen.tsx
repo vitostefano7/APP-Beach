@@ -571,38 +571,61 @@ export default function CreaStrutturaScreen() {
 
   const renderStep1 = () => (
     <>
-      <Text style={styles.sectionTitle}>Info struttura</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#E3F2FD", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <Ionicons name="business" size={20} color="#2196F3" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>Info struttura</Text>
+          <Text style={{ fontSize: 13, color: "#666" }}>Dati principali della tua struttura</Text>
+        </View>
+      </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Nome *</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Ionicons name="create-outline" size={16} color="#2196F3" />
+          <Text style={[styles.label, { marginBottom: 0, marginLeft: 6 }]}>Nome *</Text>
+        </View>
         <TextInput
           style={styles.input}
           value={s.name}
           onChangeText={s.setName}
+          placeholder="Es. Beach Arena Milano"
+          placeholderTextColor="#999"
         />
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Descrizione</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Ionicons name="document-text-outline" size={16} color="#2196F3" />
+          <Text style={[styles.label, { marginBottom: 0, marginLeft: 6 }]}>Descrizione</Text>
+        </View>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={s.description}
           onChangeText={s.setDescription}
           multiline
+          placeholder="Descrivi la tua struttura, i servizi offerti..."
+          placeholderTextColor="#999"
         />
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Indirizzo *</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Ionicons name="location" size={16} color="#2196F3" />
+          <Text style={[styles.label, { marginBottom: 0, marginLeft: 6 }]}>Indirizzo *</Text>
+        </View>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
             value={s.addressInput}
             onChangeText={handleAddressChange}
+            placeholder="Cerca indirizzo..."
+            placeholderTextColor="#999"
           />
           {s.loadingSuggestions && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color="#2196F3" />
             </View>
           )}
         </View>
@@ -619,8 +642,9 @@ export default function CreaStrutturaScreen() {
                   style={styles.suggestionItem}
                   onPress={() => selectPlace(item)}
                 >
-                  <Text style={styles.suggestionText}>
-                    📍 {item.display_name}
+                  <Ionicons name="location" size={16} color="#2196F3" style={{ marginRight: 8 }} />
+                  <Text style={[styles.suggestionText, { flex: 1 }]}>
+                    {item.display_name}
                   </Text>
                 </Pressable>
               )}
@@ -630,12 +654,15 @@ export default function CreaStrutturaScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Città</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Ionicons name="business-outline" size={16} color="#666" />
+          <Text style={[styles.label, { marginBottom: 0, marginLeft: 6, color: "#666" }]}>Città</Text>
+        </View>
         <TextInput
           style={[styles.input, styles.inputDisabled]}
           value={s.city}
           editable={false}
-          placeholder="Auto"
+          placeholder="Rilevata automaticamente"
           placeholderTextColor="#999"
         />
       </View>
@@ -741,33 +768,123 @@ export default function CreaStrutturaScreen() {
 
   const renderStep3 = () => (
     <>
-      <Text style={styles.sectionTitle}>Orari di apertura</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <Ionicons name="time" size={20} color="#FF9800" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>Orari di apertura</Text>
+          <Text style={{ fontSize: 13, color: "#666" }}>Imposta le fasce orarie per ogni giorno</Text>
+        </View>
+      </View>
       {DAYS.map(({ key, label }) => (
         <View key={key} style={styles.dayRow}>
           <View style={styles.dayHeader}>
-            <Text style={styles.dayLabel}>{label}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              <View style={{ width: 6, height: 32, borderRadius: 3, backgroundColor: !s.openingHours[key].closed ? "#4CAF50" : "#E0E0E0", marginRight: 12 }} />
+              <Text style={styles.dayLabel}>{label}</Text>
+            </View>
             <Switch
               value={!s.openingHours[key].closed}
               onValueChange={() => s.toggleDayClosed(key)}
             />
           </View>
           {!s.openingHours[key].closed && (
-            <View style={styles.timeRow}>
-              <TextInput
-                style={styles.timeInput}
-                value={s.openingHours[key].open}
-                onChangeText={v => s.updateOpeningHour(key, "open", v)}
-                placeholder="09:00"
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.timeSeparator}>-</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={s.openingHours[key].close}
-                onChangeText={v => s.updateOpeningHour(key, "close", v)}
-                placeholder="22:00"
-                placeholderTextColor="#999"
-              />
+            <View style={{ paddingLeft: 18, paddingTop: 12 }}>
+              {s.openingHours[key].slots.map((slot, index) => (
+                <View 
+                  key={index} 
+                  style={{
+                    backgroundColor: "#F8F9FA",
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 8,
+                    borderWidth: 1,
+                    borderColor: "#E0E0E0",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                    <View style={{ 
+                      backgroundColor: "#2196F3", 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 3, 
+                      borderRadius: 6 
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "white" }}>
+                        Fascia {index + 1}
+                      </Text>
+                    </View>
+                    {s.openingHours[key].slots.length > 1 && (
+                      <Pressable 
+                        onPress={() => s.removeTimeSlot(key, index)}
+                        style={{ 
+                          marginLeft: "auto",
+                          padding: 4,
+                          backgroundColor: "#FFEBEE",
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#F44336" />
+                      </Pressable>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, color: "#666", marginBottom: 6, fontWeight: "600" }}>
+                        Apertura
+                      </Text>
+                      <TextInput
+                        style={[styles.timeInput, { backgroundColor: "white" }]}
+                        value={slot.open}
+                        onChangeText={v => s.updateTimeSlot(key, index, "open", v)}
+                        placeholder="09:00"
+                        placeholderTextColor="#999"
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                    <Ionicons 
+                      name="arrow-forward" 
+                      size={18} 
+                      color="#2196F3" 
+                      style={{ marginHorizontal: 12 }} 
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, color: "#666", marginBottom: 6, fontWeight: "600" }}>
+                        Chiusura
+                      </Text>
+                      <TextInput
+                        style={[styles.timeInput, { backgroundColor: "white" }]}
+                        value={slot.close}
+                        onChangeText={v => s.updateTimeSlot(key, index, "close", v)}
+                        placeholder="22:00"
+                        placeholderTextColor="#999"
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+              <Pressable
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 14,
+                  marginTop: 4,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: "#2196F3",
+                  borderStyle: "dashed",
+                  backgroundColor: "#F0F8FF",
+                }}
+                onPress={() => s.addTimeSlot(key)}
+              >
+                <Ionicons name="add-circle" size={22} color="#2196F3" />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#2196F3" }}>
+                  Aggiungi fascia oraria
+                </Text>
+              </Pressable>
             </View>
           )}
         </View>
@@ -777,7 +894,15 @@ export default function CreaStrutturaScreen() {
 
   const renderStep4 = () => (
     <>
-      <Text style={styles.sectionTitle}>Servizi disponibili ({s.amenities.length})</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F3E5F5", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <Ionicons name="star" size={20} color="#9C27B0" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>Servizi disponibili</Text>
+          <Text style={{ fontSize: 13, color: "#666" }}>{s.amenities.length} servizi selezionati</Text>
+        </View>
+      </View>
 
       {AVAILABLE_AMENITIES.map(({ key, label, icon }) => (
         <View key={key} style={styles.amenityRow}>
@@ -826,7 +951,15 @@ export default function CreaStrutturaScreen() {
 
   const renderStep5 = () => (
     <>
-      <Text style={styles.sectionTitle}>Campi</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#E8F5E9", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <Ionicons name="basketball" size={20} color="#4CAF50" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>Campi</Text>
+          <Text style={{ fontSize: 13, color: "#666" }}>{s.campi.length} {s.campi.length === 1 ? "campo" : "campi"} configurati</Text>
+        </View>
+      </View>
 
       {s.campi.map((campo: Campo, index) => (
         <View key={campo.id} style={styles.campoCard}>
