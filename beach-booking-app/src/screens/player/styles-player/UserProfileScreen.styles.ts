@@ -1,0 +1,160 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  profileCard: {
+    backgroundColor: "white",
+    padding: 24,
+    margin: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#E3F2FD",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginTop: 8,
+  },
+  username: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 4,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    gap: 32,
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  currentUserBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 8,
+  },
+  currentUserText: {
+    fontSize: 14,
+    color: "#2196F3",
+    fontWeight: "600",
+  },
+  friendBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+  },
+  friendBadgeText: {
+    fontSize: 14,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  pendingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 14,
+    color: "#FF9800",
+    fontWeight: "600",
+  },
+  addFriendButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+  },
+  addFriendButtonDisabled: {
+    opacity: 0.6,
+  },
+  addFriendButtonText: {
+    fontSize: 16,
+    color: "#fff",
+    fontWeight: "600",
+  },
+});

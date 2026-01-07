@@ -9,6 +9,8 @@ export interface IUser extends Document {
   role: "player" | "owner";
   isActive: boolean;
   avatarUrl?: string;
+  expoPushToken?: string;
+  pushTokenUpdatedAt?: Date;
   preferredSports?: ("volleyball" | "beach_volleyball")[]; // 🆕 NUOVO
   location?: {
     type: "Point";
@@ -61,6 +63,16 @@ const UserSchema = new Schema<IUser>(
       default: null,
     },
 
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+
+    pushTokenUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+
     // 🆕 PREFERENZE SPORT
     preferredSports: {
       type: [String],
@@ -98,3 +110,4 @@ UserSchema.methods.toPublicJSON = function () {
 };
 
 export default mongoose.model<IUser>("User", UserSchema);
+

@@ -503,23 +503,23 @@ export default function HomeScreen() {
 
   const handleAddFriend = async (friendId: string, friendName: string) => {
     Alert.alert(
-      "Aggiungi amico",
-      `Vuoi inviare una richiesta di amicizia a ${friendName}?`,
+      "Segui utente",
+      `Vuoi seguire ${friendName}?`,
       [
         {
           text: "Annulla",
           style: "cancel"
         },
         {
-          text: "Invia richiesta",
+          text: "Segui",
           onPress: async () => {
             try {
               const success = await sendFriendRequest(friendId);
               if (success) {
-                Alert.alert("Successo", "Richiesta di amicizia inviata!");
+                Alert.alert("Successo", `Ora segui ${friendName}!`);
               }
             } catch (error) {
-              Alert.alert("Errore", "Impossibile inviare la richiesta");
+              Alert.alert("Errore", "Impossibile seguire questo utente");
             }
           }
         }

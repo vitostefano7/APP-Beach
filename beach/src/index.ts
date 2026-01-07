@@ -13,6 +13,7 @@ import userPreferencesRoutes from "./routes/userPreferencesRoutes";
 import conversazioneRoute from "./routes/conversazioneRoutes";
 import struttureImagesRoutes from "./routes/struttureImagesRoutes";
 import friendshipRoutes from "./routes/friendshipRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 import { requireAuth, AuthRequest } from "./middleware/authMiddleware";
 
 const app = express();
@@ -44,6 +45,7 @@ async function start() {
         endpoints: {
           friends: "/friends",
           friendsSuggestions: "/friends/suggestions",
+          notifications: "/notifications",
           users: "/api/users",
           bookings: "/api/bookings",
           matches: "/api/matches",
@@ -81,6 +83,11 @@ async function start() {
     console.log("📦 Loading friendship routes...");
     app.use("/friends", friendshipRoutes);
     console.log("✅ Friendship routes mounted at /friends");
+
+    // ✅ Notifications routes
+    console.log("📦 Loading notification routes...");
+    app.use("/notifications", notificationRoutes);
+    console.log("✅ Notification routes mounted at /notifications");
 
     // ✅ Endpoint di test autenticazione
     app.get("/api/auth/test", requireAuth, (req: AuthRequest, res) => {

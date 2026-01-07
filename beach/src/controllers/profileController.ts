@@ -400,6 +400,7 @@ export const changePassword = async (
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
     const { q } = req.query;
+    const currentUserId = req.user!.id;
 
     if (!q || typeof q !== "string" || q.length < 2) {
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
@@ -409,10 +410,58 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       username: { $regex: q.toLowerCase(), $options: "i" },
       isActive: true,
     })
-      .select("username name avatarUrl")
+      .select("username name surname avatarUrl preferredSports")
       .limit(20);
 
-    res.json(users);
+    // Calculate common matches and mutual friends for each user
+    const Friendship = (await import("../models/Friendship")).default;
+    
+    // Get current user's friends once
+    const currentUserFriends = await Friendship.find({
+      $or: [
+        { requester: currentUserId, status: 'accepted' },
+        { recipient: currentUserId, status: 'accepted' }
+      ]
+    });
+
+    const currentUserFriendIds = currentUserFriends.map(f => 
+      f.requester.toString() === currentUserId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const usersWithCommonMatches = await Promise.all(
+      users.map(async (user) => {
+        // Count matches where both users played together
+        const commonMatchesCount = await Match.countDocuments({
+          status: "completed",
+          "players.user": { $all: [currentUserId, user._id] },
+          "players.status": "confirmed"
+        });
+
+        // Count mutual friends
+        const targetUserFriends = await Friendship.find({
+          $or: [
+            { requester: user._id, status: 'accepted' },
+            { recipient: user._id, status: 'accepted' }
+          ]
+        });
+
+        const targetUserFriendIds = targetUserFriends.map(f => 
+          f.requester.toString() === user._id.toString() ? f.recipient.toString() : f.requester.toString()
+        );
+
+        const mutualFriendsCount = currentUserFriendIds.filter(id => 
+          targetUserFriendIds.includes(id)
+        ).length;
+
+        return {
+          ...user.toObject(),
+          commonMatchesCount,
+          mutualFriendsCount
+        };
+      })
+    );
+
+    res.json(usersWithCommonMatches);
   } catch (err) {
     console.error("❌ searchUsers error:", err);
     res.status(500).json({ message: "Errore server" });
@@ -451,6 +500,99 @@ export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("❌ getUserPublicProfile error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:userId/public-profile
+ * Profilo pubblico utente tramite ID
+ */
+export const getUserPublicProfileById = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user!.id;
+
+    // Validate userId format
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "ID utente non valido" });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      isActive: true,
+    }).select("_id username name surname avatarUrl preferredSports createdAt");
+
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Statistiche pubbliche
+    const matchesPlayed = await Match.countDocuments({
+      "players.user": user._id,
+      "players.status": "confirmed",
+      status: "completed",
+    });
+
+    // Count common matches
+    const commonMatchesCount = await Match.countDocuments({
+      status: "completed",
+      "players.user": { $all: [currentUserId, user._id] },
+      "players.status": "confirmed"
+    });
+
+    // Check friendship status and count mutual friends
+    const Friendship = (await import("../models/Friendship")).default;
+    const friendship = await Friendship.findOne({
+      $or: [
+        { requester: currentUserId, recipient: userId },
+        { requester: userId, recipient: currentUserId }
+      ]
+    });
+
+    let friendshipStatus: 'none' | 'pending' | 'accepted' = 'none';
+    if (friendship) {
+      friendshipStatus = friendship.status === 'accepted' ? 'accepted' : 'pending';
+    }
+
+    // Count mutual friends
+    const currentUserFriends = await Friendship.find({
+      $or: [
+        { requester: currentUserId, status: 'accepted' },
+        { recipient: currentUserId, status: 'accepted' }
+      ]
+    });
+
+    const currentUserFriendIds = currentUserFriends.map(f => 
+      f.requester.toString() === currentUserId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const targetUserFriends = await Friendship.find({
+      $or: [
+        { requester: userId, status: 'accepted' },
+        { recipient: userId, status: 'accepted' }
+      ]
+    });
+
+    const targetUserFriendIds = targetUserFriends.map(f => 
+      f.requester.toString() === userId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const mutualFriendsCount = currentUserFriendIds.filter(id => 
+      targetUserFriendIds.includes(id)
+    ).length;
+
+    res.json({
+      user,
+      stats: {
+        matchesPlayed,
+        commonMatchesCount,
+        mutualFriendsCount,
+      },
+      friendshipStatus,
+    });
+  } catch (err) {
+    console.error("❌ getUserPublicProfileById error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

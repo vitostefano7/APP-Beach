@@ -6,6 +6,7 @@ import Match from "../models/Match";
 import Booking from "../models/Booking";
 import Struttura from "../models/Strutture";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { createNotification } from "../utils/notificationHelper";
 
 // Interfaccia per i suggerimenti
 interface SuggestedUser {
@@ -96,11 +97,12 @@ export const friendshipController = {
         return res.status(400).json({ error: message });
       }
 
-      // Crea nuova richiesta
+      // Crea nuovo follow (automatico, non pending)
       const friendship = new Friendship({
         requester: requesterId,
         recipient: recipientObjectId,
-        status: "pending",
+        status: "accepted", // Follow automatico
+        acceptedAt: new Date(),
       });
 
       await friendship.save();
@@ -111,9 +113,49 @@ export const friendshipController = {
         { path: "recipient", select: "name username avatarUrl" },
       ]);
 
+      // Verifica se è reciproco (se il recipient già segue il requester)
+      const reciprocalFriendship = await Friendship.findOne({
+        requester: recipientObjectId,
+        recipient: requesterId,
+        status: "accepted",
+      });
+
+      const isReciprocal = !!reciprocalFriendship;
+
+      // Crea notifica per il recipient
+      try {
+        const requester = friendship.requester as any;
+        await createNotification(
+          recipientObjectId,
+          requesterId,
+          "new_follower",
+          `${requester.name} ha iniziato a seguirti`,
+          `${requester.name} (@${requester.username}) ti sta seguendo`,
+          requesterId,
+          "User"
+        );
+
+        // Se è reciproco, notifica anche il requester
+        if (isReciprocal) {
+          const recipientUser = friendship.recipient as any;
+          await createNotification(
+            requesterId,
+            recipientObjectId,
+            "follow_back",
+            `${recipientUser.name} ti segue ora`,
+            `Ora tu e ${recipientUser.name} vi seguite a vicenda`,
+            recipientObjectId,
+            "User"
+          );
+        }
+      } catch (notifError) {
+        console.error("⚠️ Errore creazione notifiche (non bloccante):", notifError);
+      }
+
       res.status(201).json({
-        message: "Richiesta di amicizia inviata",
+        message: isReciprocal ? "Ora vi seguite a vicenda" : "Ora segui questo utente",
         friendship,
+        isReciprocal,
       });
     } catch (error) {
       console.log("❌ [sendRequest] Errore:", error);

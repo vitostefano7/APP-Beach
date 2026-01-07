@@ -1,10 +1,183 @@
 import { Response } from "express";
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
-import User from "../models/User";
+import User, { IUser } from "../models/User";
+import Notification from "../models/Notification";
 import { AuthRequest } from "../middleware/authMiddleware";
 
 // Crea un client Expo SDK
 const expo = new Expo();
+
+/**
+ * GET /notifications/me
+ * Get user's notifications with optional filters
+ */
+export const getMyNotifications = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const { isRead, type, limit = 50, skip = 0 } = req.query;
+
+    const query: any = { recipient: userId };
+    
+    if (isRead !== undefined) {
+      query.isRead = isRead === 'true';
+    }
+    
+    if (type) {
+      query.type = type;
+    }
+
+    const notifications = await Notification.find(query)
+      .populate('sender', 'name username avatar')
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .skip(Number(skip));
+
+    const total = await Notification.countDocuments(query);
+
+    res.json({
+      notifications,
+      total,
+      hasMore: Number(skip) + notifications.length < total
+    });
+  } catch (error) {
+    console.error("getMyNotifications error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * PATCH /notifications/:id/read
+ * Mark a notification as read
+ */
+export const markAsRead = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+
+    const notification = await Notification.findOne({
+      _id: id,
+      recipient: userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notifica non trovata" });
+    }
+
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    res.json({ message: "Notifica segnata come letta", notification });
+  } catch (error) {
+    console.error("markAsRead error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * PATCH /notifications/read-all
+ * Mark all notifications as read
+ */
+export const markAllAsRead = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const { type } = req.query;
+
+    const query: any = {
+      recipient: userId,
+      isRead: false
+    };
+
+    if (type) {
+      query.type = type;
+    }
+
+    const result = await Notification.updateMany(
+      query,
+      {
+        $set: {
+          isRead: true,
+          readAt: new Date()
+        }
+      }
+    );
+
+    res.json({
+      message: "Notifiche segnate come lette",
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error("markAllAsRead error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /notifications/unread-count
+ * Get count of unread notifications
+ */
+export const getUnreadCount = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const { type } = req.query;
+
+    const query: any = {
+      recipient: userId,
+      isRead: false
+    };
+
+    if (type) {
+      query.type = type;
+    }
+
+    const count = await Notification.countDocuments(query);
+
+    res.json({ count });
+  } catch (error) {
+    console.error("getUnreadCount error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * DELETE /notifications/:id
+ * Delete a notification
+ */
+export const deleteNotification = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+
+    const notification = await Notification.findOneAndDelete({
+      _id: id,
+      recipient: userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notifica non trovata" });
+    }
+
+    res.json({ message: "Notifica eliminata con successo" });
+  } catch (error) {
+    console.error("deleteNotification error", error);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
 
 /**
  * POST /users/me/push-token
@@ -51,7 +224,7 @@ export async function sendPushNotification(
   data?: any
 ) {
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(userId) as IUser | null;
     
     if (!user || !user.expoPushToken) {
       console.log('⚠️ No push token for user:', userId);
@@ -103,7 +276,7 @@ export async function sendPushNotificationToMultiple(
     const users = await User.find({ 
       _id: { $in: userIds },
       expoPushToken: { $exists: true, $ne: null }
-    });
+    }) as IUser[];
 
     const messages: ExpoPushMessage[] = users
       .filter(user => Expo.isExpoPushToken(user.expoPushToken!))

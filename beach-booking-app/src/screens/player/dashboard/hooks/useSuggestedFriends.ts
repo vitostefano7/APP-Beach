@@ -1,5 +1,5 @@
 // src/hooks/useSuggestedFriends.ts
-import { useState, useContext, useCallback } from 'react';
+import { useState, useContext, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { AuthContext } from '../../../../context/AuthContext';
 import API_URL from '../../../../config/api';
@@ -122,6 +122,14 @@ export const useSuggestedFriends = ({
   const refresh = useCallback(() => {
     return fetchSuggestions();
   }, [fetchSuggestions]);
+
+  // Auto-load al mount se richiesto
+  useEffect(() => {
+    if (autoLoad) {
+      console.log('🔄 useSuggestedFriends: Auto-loading suggestions...');
+      fetchSuggestions();
+    }
+  }, [autoLoad, fetchSuggestions]);
 
   return {
     suggestions,

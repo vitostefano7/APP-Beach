@@ -8,7 +8,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback, ElementType } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -27,6 +27,7 @@ type ProfileResponse = {
     matchesPlayed: number;
     ratingAverage?: number;
     favoriteCampo?: { name: string } | null;
+    friendsCount?: number;
   };
   preferences: {
     pushNotifications: boolean;
@@ -79,11 +80,23 @@ export default function ProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch(`${API_URL}/users/me/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const [profileRes, friendsRes] = await Promise.all([
+        fetch(`${API_URL}/users/me/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/friends/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
 
-      const json = await res.json();
+      const json = await profileRes.json();
+      let friendsCount = 0;
+      if (friendsRes.ok) {
+        const friendsJson = await friendsRes.json();
+        friendsCount = friendsJson.friendCount ?? 0;
+      } else {
+        console.log("Errore caricamento friends stats:", friendsRes.status);
+      }
       console.log("📥 Dati profilo ricevuti:", json);
       console.log("🖼️ avatarUrl dal backend:", json.user?.avatarUrl);
 
@@ -92,6 +105,7 @@ export default function ProfileScreen() {
           matchesPlayed: json.profile?.matchesPlayed ?? 0,
           ratingAverage: json.profile?.ratingAverage ?? 0,
           favoriteCampo: json.profile?.favoriteCampo ?? null,
+          friendsCount,
         },
         preferences: {
           pushNotifications: json.preferences?.pushNotifications ?? false,
@@ -358,10 +372,11 @@ export default function ProfileScreen() {
 
         <View style={styles.stats}>
           <StatCard 
-            icon="trophy" 
-            color="#FFC107" 
-            value={profile.matchesPlayed} 
-            label="Partite" 
+            icon="people" 
+            color="#4CAF50" 
+            value={profile.friendsCount ?? 0} 
+            label="Amici" 
+            onPress={() => navigation.navigate("FriendsList")}
           />
           
           <Pressable 
@@ -430,21 +445,28 @@ function StatCard({
   icon, 
   value, 
   label, 
-  color 
+  color,
+  onPress,
 }: { 
   icon: any; 
   value: number | string; 
   label: string; 
-  color: string 
+  color: string;
+  onPress?: () => void;
 }) {
+  const Container: ElementType = onPress ? Pressable : View;
+  const containerProps = onPress
+    ? { onPress, accessibilityRole: "button" as const }
+    : {};
+
   return (
-    <View style={styles.statCard}>
+    <Container style={styles.statCard} {...containerProps}>
       <View style={[styles.statIconBox, { backgroundColor: `${color}20` }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </Container>
   );
 }
 
