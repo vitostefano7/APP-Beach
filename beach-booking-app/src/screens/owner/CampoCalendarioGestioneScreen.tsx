@@ -20,6 +20,20 @@ interface Slot {
   _id?: string;
 }
 
+interface Booking {
+  id: string;
+  userName: string;
+  userSurname: string;
+  userEmail?: string;
+  userPhone?: string;
+  startTime: string;
+  endTime: string;
+  date: string;
+  duration: number;
+  totalPrice: number;
+  status: string;
+}
+
 interface CalendarDay {
   _id: string;
   campo: string;
@@ -53,6 +67,8 @@ export default function CampoCalendarioGestioneScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [editMode, setEditMode] = useState(false);
+  const [dayBookings, setDayBookings] = useState<Booking[]>([]);
+  const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
 
   /* =====================================================
      LOAD CALENDAR
@@ -117,6 +133,39 @@ export default function CampoCalendarioGestioneScreen() {
 
     loadCalendar();
   }, [currentMonth, campoId, token]);
+
+  /* =====================================================
+     LOAD BOOKINGS FOR SELECTED DAY
+  ===================================================== */
+  useEffect(() => {
+    const loadDayBookings = async () => {
+      if (!selectedDate) {
+        setDayBookings([]);
+        return;
+      }
+
+      try {
+        console.log("📅 Caricamento prenotazioni per:", selectedDate);
+        const res = await fetch(
+          `${API_URL}/owner/bookings?campoId=${campoId}&date=${selectedDate}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.ok) {
+          const bookings = await res.json();
+          console.log("✅ Prenotazioni caricate:", bookings.length);
+          console.log("📋 Dettaglio prenotazioni:", JSON.stringify(bookings, null, 2));
+          setDayBookings(bookings);
+        } else {
+          console.error("❌ Errore HTTP:", res.status);
+        }
+      } catch (err) {
+        console.error("❌ Errore caricamento prenotazioni:", err);
+      }
+    };
+
+    loadDayBookings();
+  }, [selectedDate, campoId, token]);
 
   /* =====================================================
      LOGICA CALENDARIO
@@ -245,9 +294,32 @@ export default function CampoCalendarioGestioneScreen() {
 
   const handleSlotClick = (date: string, time: string, slotEnabled: boolean) => {
     if (editMode) {
-      toggleSlot(date, time, slotEnabled);
+      // In modalità modifica, seleziona/deseleziona lo slot
+      // Ma NON permettere la selezione di slot con prenotazione
+      const booking = dayBookings.find(b => b.startTime === time);
+      if (booking) {
+        Alert.alert("Non selezionabile", "Non puoi chiudere uno slot con una prenotazione attiva. Devi prima cancellare la prenotazione.");
+        return;
+      }
+      
+      const slotKey = `${date}|${time}`;
+      setSelectedSlots(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(slotKey)) {
+          newSet.delete(slotKey);
+        } else {
+          newSet.add(slotKey);
+        }
+        return newSet;
+      });
     } else {
-      if (!slotEnabled) {
+      // Trova la prenotazione per questo slot
+      const booking = dayBookings.find(b => b.startTime === time);
+      if (booking) {
+        // Naviga al dettaglio prenotazione
+        navigation.navigate("OwnerDettaglioPrenotazione", { bookingId: booking.id });
+      } else if (!slotEnabled) {
+        // Se è inattivo ma non c'è prenotazione, mostra info
         navigation.navigate("OwnerBookings", {
           filterDate: date,
           filterCampoId: campoId,
@@ -255,6 +327,92 @@ export default function CampoCalendarioGestioneScreen() {
         });
       }
     }
+  };
+
+  // Determina se gli slot selezionati sono chiusi o aperti
+  const getSelectedSlotsState = () => {
+    if (!selectedDate || selectedSlots.size === 0) return null;
+    
+    const currentDay = calendarDays.find((d) => d.date === selectedDate);
+    if (!currentDay) return null;
+    
+    let allClosed = true;
+    let allOpen = true;
+    
+    for (const slotKey of Array.from(selectedSlots)) {
+      const [, time] = slotKey.split("|");
+      const slot = currentDay.slots.find((s) => s.time === time);
+      if (slot) {
+        if (slot.enabled) allClosed = false;
+        if (!slot.enabled) allOpen = false;
+      }
+    }
+    
+    if (allClosed) return "closed";
+    if (allOpen) return "open";
+    return "mixed";
+  };
+
+  const toggleSelectedSlots = async () => {
+    if (selectedSlots.size === 0) {
+      Alert.alert("Attenzione", "Seleziona almeno uno slot");
+      return;
+    }
+
+    const slotsState = getSelectedSlotsState();
+    const willClose = slotsState === "open" || slotsState === "mixed";
+    const newEnabledState = !willClose;
+    
+    const action = willClose ? "chiudere" : "aprire";
+    const actionPast = willClose ? "chiusi" : "aperti";
+    const actionIcon = willClose ? "🔒" : "🔓";
+
+    Alert.alert(
+      willClose ? "Conferma Chiusura" : "Conferma Apertura",
+      willClose
+        ? `Vuoi chiudere ${selectedSlots.size} slot selezionati?\n\nLe eventuali prenotazioni esistenti verranno cancellate.`
+        : `Vuoi aprire ${selectedSlots.size} slot selezionati?`,
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: willClose ? "Chiudi" : "Apri",
+          style: willClose ? "destructive" : "default",
+          onPress: async () => {
+            try {
+              console.log(`${actionIcon} ${action.charAt(0).toUpperCase() + action.slice(1)}`, selectedSlots.size, "slot selezionati");
+              
+              let success = 0;
+              let failed = 0;
+              
+              for (const slotKey of Array.from(selectedSlots)) {
+                try {
+                  const [date, time] = slotKey.split("|");
+                  console.log(`  - ${action} slot:`, date, time);
+                  await executeToggleSlot(date, time, newEnabledState);
+                  success++;
+                } catch (error) {
+                  console.error("  ❌ Errore slot:", slotKey, error);
+                  failed++;
+                }
+              }
+              
+              console.log(`✅ Risultato: ${success} ${actionPast}, ${failed} falliti`);
+              
+              setSelectedSlots(new Set());
+              
+              if (failed > 0) {
+                Alert.alert("Completato con errori", `${success} slot ${actionPast}, ${failed} falliti`);
+              } else {
+                Alert.alert("✅ Successo", `${success} slot ${actionPast} con successo`);
+              }
+            } catch (err) {
+              console.error("❌ Errore generale:", err);
+              Alert.alert("Errore", `Impossibile ${action} alcuni slot`);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const closeDay = async (date: string) => {
@@ -371,32 +529,46 @@ export default function CampoCalendarioGestioneScreen() {
           <Text style={styles.headerTitle}>{campoName}</Text>
           <Text style={styles.headerSubtitle}>Calendario Annuale</Text>
         </View>
-        <Pressable onPress={() => setEditMode(!editMode)}>
-          <Text style={[styles.editBtn, editMode && styles.editBtnActive]}>
-            {editMode ? "Fine" : "Modifica"}
-          </Text>
-        </Pressable>
+        {editMode && selectedSlots.size > 0 ? (
+          <Pressable
+            onPress={toggleSelectedSlots}
+            style={styles.closeSlotButton}
+          >
+            <Text style={styles.closeSlotsText}>
+              {getSelectedSlotsState() === "closed" ? "🔓 Apri" : "🔒 Chiudi"} ({selectedSlots.size})
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={() => {
+            setEditMode(!editMode);
+            setSelectedSlots(new Set());
+          }}>
+            <Text style={[styles.editBtn, editMode && styles.editBtnActive]}>
+              {editMode ? "Fine" : "Modifica"}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       <ScrollView style={styles.container}>
         {/* SELETTORE MESE */}
         <View style={styles.monthSelector}>
           <Pressable onPress={goToPrevMonth} style={styles.monthBtn} hitSlop={10}>
-            <Text style={styles.monthBtnText}>‹</Text>
+            <Text style={styles.monthBtnText}>◀</Text>
           </Pressable>
           <View style={{ alignItems: "center" }}>
             <Text style={styles.monthText}>
               {MONTHS_FULL[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </Text>
             {!loading && calendarDays.length > 0 && (
-              <Text style={styles.monthSubtext}>{calendarDays.length} giorni disponibili</Text>
+              <Text style={styles.monthSubtext}>✓ {calendarDays.length} giorni configurati</Text>
             )}
             {!loading && calendarDays.length === 0 && (
-              <Text style={styles.monthSubtextWarning}>Nessun dato</Text>
+              <Text style={styles.monthSubtextWarning}>⚠️ Nessun dato</Text>
             )}
           </View>
           <Pressable onPress={goToNextMonth} style={styles.monthBtn} hitSlop={10}>
-            <Text style={styles.monthBtnText}>›</Text>
+            <Text style={styles.monthBtnText}>▶</Text>
           </Pressable>
         </View>
 
@@ -557,29 +729,79 @@ export default function CampoCalendarioGestioneScreen() {
                 ) : (
                   <>
                     <View style={styles.slotsGrid}>
-                      {selectedDayData.slots.map((slot, i) => (
-                        <Pressable
-                          key={i}
-                          style={[
-                            styles.slotItem,
-                            slot.enabled ? styles.slotEnabled : styles.slotDisabled,
-                            editMode && styles.slotItemEditable,
-                          ]}
-                          onPress={() => handleSlotClick(selectedDate, slot.time, slot.enabled)}
-                        >
-                          <Text
+                      {selectedDayData.slots.map((slot, i) => {
+                        // Trova se c'è una prenotazione per questo slot
+                        const booking = dayBookings.find(b => b.startTime === slot.time);
+                        
+                        // DEBUG
+                        if (i === 0) {
+                          console.log("🔍 DEBUG Slot Matching:");
+                          console.log("  Total bookings:", dayBookings.length);
+                          console.log("  Slot time:", slot.time);
+                          console.log("  Booking found:", !!booking);
+                          console.log("  Slot enabled:", slot.enabled);
+                          if (dayBookings.length > 0) {
+                            console.log("  Booking times:", dayBookings.map(b => b.startTime).join(", "));
+                          }
+                        }
+                        
+                        const isBooked = !!booking; // Se c'è booking, è prenotato
+                        const isInactive = !slot.enabled && !booking; // Se disabled ma NO booking, è inattivo
+                        const isAvailable = slot.enabled; // Se enabled, è disponibile
+                        const slotKey = `${selectedDate}|${slot.time}`;
+                        const isSelected = selectedSlots.has(slotKey);
+
+                        return (
+                          <Pressable
+                            key={i}
                             style={[
-                              styles.slotTime,
-                              !slot.enabled && styles.slotTimeDisabled,
+                              styles.slotItem,
+                              isAvailable && styles.slotEnabled,
+                              (isBooked || isInactive) && styles.slotDisabled,
+                              editMode && styles.slotItemEditable,
+                              isSelected && styles.slotSelected,
                             ]}
+                            onPress={() => handleSlotClick(selectedDate, slot.time, slot.enabled)}
                           >
-                            {slot.time}
-                          </Text>
-                          {!slot.enabled && !editMode && (
-                            <Text style={styles.slotLabel}>👆 Dettagli</Text>
-                          )}
-                        </Pressable>
-                      ))}
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Text
+                                  style={[
+                                    styles.slotTime,
+                                    (isBooked || isInactive) && styles.slotTimeDisabled,
+                                  ]}
+                                >
+                                  ⏰ {slot.time}
+                                </Text>
+                                {isBooked && (
+                                  <Text style={[styles.slotLabel, { color: "#F44336" }]}>• Prenotato</Text>
+                                )}
+                                {isInactive && !isBooked && (
+                                  <Text style={styles.slotLabel}>• Inattivo</Text>
+                                )}
+                                {isAvailable && !isBooked && (
+                                  <Text style={[styles.slotLabel, { color: "#4CAF50" }]}>• Disponibile</Text>
+                                )}
+                                {editMode && isSelected && (
+                                  <Text style={[styles.slotLabel, { color: "#FF5722" }]}>• Selezionato</Text>
+                                )}
+                              </View>
+                              {isBooked && booking && (
+                                <Text style={styles.slotBookingUser}>
+                                  👤 {booking.userName} {booking.userSurname}
+                                </Text>
+                              )}
+                            </View>
+                            {editMode ? (
+                              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                {isSelected && <Text style={{ color: "white", fontWeight: "800" }}>✓</Text>}
+                              </View>
+                            ) : (
+                              isBooked && <Text style={{ fontSize: 16 }}>▶</Text>
+                            )}
+                          </Pressable>
+                        );
+                      })}
                     </View>
 
                     {editMode && (
@@ -599,7 +821,7 @@ export default function CampoCalendarioGestioneScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  safe: { flex: 1, backgroundColor: "#f0f2f5" },
   header: {
     flexDirection: "row",
     padding: 16,
@@ -607,20 +829,40 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  back: { fontSize: 20, fontWeight: "800", width: 50 },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  back: { fontSize: 20, fontWeight: "800" },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: "#1a1a1a" },
   headerSubtitle: { fontSize: 12, color: "#666", marginTop: 2 },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+  },
+  editButtonActive: {
+    backgroundColor: "#FF5722",
+  },
   editBtn: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#007AFF",
-    width: 70,
-    textAlign: "right",
   },
-  editBtnActive: { color: "#FF5722" },
+  editBtnActive: { color: "white" },
 
   container: { flex: 1 },
 
@@ -628,36 +870,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: 18,
     backgroundColor: "white",
-    marginTop: 8,
+    marginTop: 12,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   monthBtn: {
-    padding: 8,
-    width: 40,
+    padding: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f0f2f5",
     alignItems: "center",
+    justifyContent: "center",
   },
   monthBtnText: {
-    fontSize: 28,
-    fontWeight: "300",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#007AFF",
   },
   monthText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a1a1a",
   },
   monthSubtext: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#4CAF50",
-    marginTop: 2,
+    marginTop: 4,
     fontWeight: "600",
   },
   monthSubtextWarning: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#FF5722",
-    marginTop: 2,
+    marginTop: 4,
     fontWeight: "600",
   },
 
@@ -686,26 +938,31 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 14,
     padding: 16,
     marginHorizontal: 16,
     backgroundColor: "white",
-    borderRadius: 12,
+    borderRadius: 16,
     marginTop: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
-    fontSize: 12,
-    color: "#666",
+    fontSize: 13,
+    color: "#555",
     fontWeight: "600",
   },
 
@@ -764,7 +1021,7 @@ const styles = StyleSheet.create({
   },
   dayIndicator: {
     position: "absolute",
-    bottom: 4,
+    bottom: 1,
     width: 6,
     height: 6,
     borderRadius: 3,
@@ -778,27 +1035,31 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   dayDetailHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
   dayDetailTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     textTransform: "capitalize",
     flex: 1,
+    color: "#1a1a1a",
   },
-  closeBtn: { fontSize: 20, color: "#999", fontWeight: "700" },
+  closeBtn: { fontSize: 24, color: "#999", fontWeight: "700" },
 
   closedBox: {
     padding: 16,
@@ -808,24 +1069,65 @@ const styles = StyleSheet.create({
   },
   closedText: { fontSize: 14, fontWeight: "600", color: "#C62828" },
 
-  // ✅ SLOT PIÙ PICCOLI
-  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  // ✅ SLOT IN LISTA VERTICALE
+  slotsGrid: { flexDirection: "column", gap: 8 },
   slotItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    minWidth: 65,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   slotItemEditable: {
-    borderWidth: 2,
+    borderWidth: 2.5,
   },
   slotEnabled: { backgroundColor: "#E8F5E9", borderColor: "#4CAF50" },
   slotDisabled: { backgroundColor: "#FFEBEE", borderColor: "#F44336" },
-  slotTime: { fontSize: 12, fontWeight: "700", color: "#2E7D32" },
+  slotSelected: {
+    backgroundColor: "#FFE0B2",
+    borderColor: "#FF5722",
+    borderWidth: 3,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#FF9800",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxSelected: {
+    backgroundColor: "#FF5722",
+    borderColor: "#FF5722",
+  },
+  closeSlotButton: {
+    backgroundColor: "#FF5722",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  closeSlotsText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  slotTime: { fontSize: 15, fontWeight: "800", color: "#2E7D32" },
   slotTimeDisabled: { color: "#C62828" },
-  slotLabel: { fontSize: 8, color: "#999", marginTop: 1, textAlign: "center" },
+  slotLabel: { fontSize: 11, color: "#999", fontWeight: "600" },
+  slotBookingUser: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+    marginLeft: 28,
+  },
 
   closeDayBtn: {
     backgroundColor: "#FFEBEE",

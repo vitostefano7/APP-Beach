@@ -14,9 +14,16 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
+    struttura: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Strutture",
+      required: true,
+    },
+
     date: { type: String, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
+    duration: { type: Number, required: true }, // in ore
 
     price: { type: Number, required: true },
 

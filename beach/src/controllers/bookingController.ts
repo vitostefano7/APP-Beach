@@ -150,9 +150,11 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     const booking = await Booking.create({
       user: user.id,
       campo: campoId,
+      struttura: (campo as any).struttura._id || (campo as any).struttura,
       date,
       startTime,
       endTime,
+      duration: duration === "1h" ? 1 : 1.5,
       price,
       status: "confirmed",
     });
@@ -584,7 +586,7 @@ export const getBookingsByCampo = async (req: AuthRequest, res: Response) => {
     }
 
     const bookings = await Booking.find(query)
-      .populate("user", "name email")
+      .populate("user", "name surname email")
       .sort({ startTime: 1 });
 
     res.json(bookings);
@@ -617,7 +619,7 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
           select: "name location images owner",
         },
       })
-      .populate("user", "name email");
+      .populate("user", "name surname email");
 
     if (!booking) {
       return res.status(404).json({ message: "Prenotazione non trovata" });
