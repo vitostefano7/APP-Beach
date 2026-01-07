@@ -282,11 +282,20 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       // Controlla se l'utente è solo un player invitato
       const isInvitedPlayer = !isMyBooking && matchData;
       
+      // Crea matchSummary se il match ha un risultato
+      let matchSummary = null;
+      if (matchData?.winner && matchData?.sets && matchData.sets.length > 0) {
+        matchSummary = {
+          winner: matchData.winner,
+          sets: matchData.sets,
+        };
+      }
+      
       return {
         ...bookingObj,
         hasMatch: !!matchData,
         matchId: matchData?._id,
-        match: matchData || null,
+        matchSummary,
         isMyBooking, // true se hai creato tu la prenotazione
         isInvitedPlayer, // true se sei stato invitato da qualcun altro
       };

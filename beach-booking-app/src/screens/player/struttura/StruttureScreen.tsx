@@ -75,20 +75,36 @@ export default function StruttureScreen() {
 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [userClearedCity, setUserClearedCity] = useState(false);
+  const [userManuallyChangedCity, setUserManuallyChangedCity] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [lastPreferredCity, setLastPreferredCity] = useState<string | null>(null);
   
   // ✅ State per carousel immagini
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (isFirstLoad && preferences?.preferredLocation?.city) {
+    const preferredCity = preferences?.preferredLocation?.city;
+    
+    // Primo caricamento: imposta il filtro dalla città preferita
+    if (isFirstLoad && preferredCity) {
       setFilters(prev => ({
         ...prev,
-        city: preferences.preferredLocation!.city,
+        city: preferredCity,
       }));
+      setLastPreferredCity(preferredCity);
       setIsFirstLoad(false);
     }
-  }, [preferences, isFirstLoad]);
+    // Auto-aggiornamento: se la città preferita è cambiata E l'utente non ha modificato manualmente
+    else if (!isFirstLoad && preferredCity && preferredCity !== lastPreferredCity && !userManuallyChangedCity) {
+      console.log('🔄 Auto-aggiornamento filtro città:', lastPreferredCity, '->', preferredCity);
+      setFilters(prev => ({
+        ...prev,
+        city: preferredCity,
+      }));
+      setLastPreferredCity(preferredCity);
+      setUserClearedCity(false);
+    }
+  }, [preferences, isFirstLoad, lastPreferredCity, userManuallyChangedCity]);
 
   // ✅ Carousel automatico per le immagini (3 secondi)
   useEffect(() => {
@@ -111,11 +127,10 @@ export default function StruttureScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!preferencesLoaded) {
-        loadPreferences();
-      }
+      // Ricarica sempre le preferenze quando si torna alla schermata
+      loadPreferences();
       return () => {};
-    }, [preferencesLoaded])
+    }, [])
   );
 
   const loadPreferences = async () => {
@@ -160,15 +175,25 @@ export default function StruttureScreen() {
       const filterCity = filters.city;
       const prefCity = preferences?.preferredLocation?.city;
       
+      console.log("=== DEBUG STRUTTURE ===");
+      console.log("📍 Totale strutture caricate:", data.length);
+      console.log("🏙️ Filtro città attivo:", filterCity);
+      console.log("⭐ Città preferita:", prefCity);
+      console.log("🚫 User cleared city:", userClearedCity);
+      console.log("📍 Preferenze location:", preferences?.preferredLocation);
+      
       if (userClearedCity) {
+        console.log("🎯 CASO: Utente ha rimosso il filtro città");
         setActiveCity(null);
         setActiveRadius(null);
       }
       else if (!filterCity && !prefCity) {
+        console.log("🎯 CASO: Nessun filtro città e nessuna preferenza");
         setActiveCity(null);
         setActiveRadius(null);
       } 
       else if (filterCity && filterCity !== prefCity) {
+        console.log("🎯 CASO: Filtro città diverso da preferenza - geocoding", filterCity);
         try {
           const geocodeUrl = 
             `https://nominatim.openstreetmap.org/search?` +
@@ -180,46 +205,67 @@ export default function StruttureScreen() {
           });
           
           const geocodeData = await geocodeRes.json();
+          console.log("   Geocode risposta:", geocodeData);
           
           if (geocodeData && geocodeData.length > 0) {
             const filterLat = parseFloat(geocodeData[0].lat);
             const filterLng = parseFloat(geocodeData[0].lon);
             const radius = preferences?.preferredLocation?.radius || 30;
             
-            data = data.map((s) => ({
-              ...s,
-              distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng),
-            }));
+            console.log("   Centro geocodato:", { lat: filterLat, lng: filterLng, radius });
             
+            data = data.map((s) => {
+              const distance = calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng);
+              console.log(`   📍 ${s.name}: ${distance.toFixed(2)} km ${distance <= radius ? "✅" : "❌"}`);
+              return {
+                ...s,
+                distance
+              };
+            });
+            
+            const beforeFilter = data.length;
             data = data.filter((s) => (s.distance || 0) <= radius);
+            console.log(`   Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
             data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
             
             setActiveCity(filterCity);
             setActiveRadius(radius);
           } else {
+            console.log("   ⚠️ Geocoding fallito");
             setActiveCity(null);
             setActiveRadius(null);
           }
         } catch (geoError) {
+          console.error("   ❌ Errore geocoding:", geoError);
           setActiveCity(null);
           setActiveRadius(null);
         }
       }
       else if (preferences?.preferredLocation && filterCity) {
+        console.log("🎯 CASO: Filtro per città preferita con coordinate");
         const city = filterCity;
         const radius = preferences.preferredLocation.radius || 30;
+        const prefLat = preferences.preferredLocation.lat;
+        const prefLng = preferences.preferredLocation.lng;
         
-        data = data.map((s) => ({
-          ...s,
-          distance: calculateDistance(
-            preferences.preferredLocation!.lat,
-            preferences.preferredLocation!.lng,
-            s.location.lat,
-            s.location.lng
-          ),
-        }));
+        console.log("   Centro preferenze:", { lat: prefLat, lng: prefLng, radius });
         
+        data = data.map((s) => {
+          const distance = calculateDistance(prefLat, prefLng, s.location.lat, s.location.lng);
+          console.log(`   📍 ${s.name} (${s.location.city}):`, {
+            coords: `${s.location.lat}, ${s.location.lng}`,
+            distanza: `${distance.toFixed(2)} km`,
+            dentroRaggio: distance <= radius ? "✅ SÌ" : "❌ NO"
+          });
+          return {
+            ...s,
+            distance
+          };
+        });
+        
+        const beforeFilter = data.length;
         data = data.filter((s) => (s.distance || 0) <= radius);
+        console.log(`   Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
         data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
         
         setActiveCity(city);
@@ -759,10 +805,17 @@ export default function StruttureScreen() {
         setQuery={setQuery}
         onClose={() => setShowFilters(false)}
         onApply={(newFilters) => {
-          if (newFilters.city === null && filters.city !== null) {
-            setUserClearedCity(true);
-          } else if (newFilters.city !== null) {
-            setUserClearedCity(false);
+          // Traccia se l'utente ha modificato manualmente la città
+          if (newFilters.city !== filters.city) {
+            if (newFilters.city === null) {
+              // Utente ha rimosso il filtro città
+              setUserClearedCity(true);
+              setUserManuallyChangedCity(true);
+            } else {
+              // Utente ha impostato una città diversa
+              setUserClearedCity(false);
+              setUserManuallyChangedCity(true);
+            }
           }
           
           setFilters(newFilters);

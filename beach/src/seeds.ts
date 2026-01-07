@@ -182,7 +182,7 @@ async function seed() {
           city: randomElement(cities),
           lat: 45.4642 + Math.random() * 2,
           lng: 9.19 + Math.random() * 2,
-          radius: randomInt(10, 50),
+          radius: 30,
         },
         favoriteStrutture: [],
         favoriteSports: [randomElement(["Beach Volley", "Volley"])],
@@ -512,7 +512,7 @@ async function seed() {
     });
 
     const matches = [];
-    let matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0 };
+    let matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
     
     // 1. MATCH PASSATI COMPLETATI (con risultato) - 10 match
     for (let i = 0; i < Math.min(10, pastBookings.length); i++) {
@@ -770,6 +770,32 @@ async function seed() {
       matchCounters.full++;
     }
 
+    // 6. MATCH PER TUTTI I BOOKING RIMANENTI (draft/privati)
+    // Crea un match per ogni booking che non ne ha ancora uno
+    const bookingsWithMatch = matches.map(m => m.booking.toString());
+    const bookingsWithoutMatch = savedBookings.filter(
+      b => !bookingsWithMatch.includes(b._id.toString())
+    );
+    
+    console.log(`\n📝 Creazione match per i ${bookingsWithoutMatch.length} booking rimanenti...`);
+    
+    for (const booking of bookingsWithoutMatch) {
+      matches.push({
+        booking: booking._id,
+        createdBy: booking.user,
+        players: [{
+          user: booking.user,
+          status: "confirmed",
+          joinedAt: new Date(),
+          respondedAt: new Date(),
+        }],
+        maxPlayers: 4,
+        isPublic: false,
+        status: "draft", // Match privati non ancora organizzati
+      });
+      matchCounters.draft++;
+    }
+
     await Match.insertMany(matches);
     console.log(`✅ Creati ${matches.length} match:`);
     console.log(`   - ${matchCounters.completed} completati con risultato`);
@@ -777,6 +803,7 @@ async function seed() {
     console.log(`   - ${matchCounters.inProgress} in corso`);
     console.log(`   - ${matchCounters.open} aperti (2/4 giocatori)`);
     console.log(`   - ${matchCounters.full} completi (4/4 giocatori)`);
+    console.log(`   - ${matchCounters.draft} in bozza/privati`);
 
     /* -------- SUMMARY -------- */
     console.log("\n" + "=".repeat(50));

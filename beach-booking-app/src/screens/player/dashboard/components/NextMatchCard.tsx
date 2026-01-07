@@ -14,6 +14,20 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
   const displayDate = formatDate(booking.date);
   const daysUntil = calculateDaysUntil(booking.date);
 
+  // Verifica se la partita è in corso
+  const isMatchInProgress = () => {
+    try {
+      const now = new Date();
+      const bookingStartTime = new Date(`${booking.date}T${booking.startTime}:00`);
+      const bookingEndTime = new Date(`${booking.date}T${booking.endTime}:00`);
+      return now >= bookingStartTime && now <= bookingEndTime;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const matchInProgress = isMatchInProgress();
+
   return (
     <Pressable style={styles.nextMatchCard} onPress={onPress}>
       {booking.campo?.struttura?.images?.[0] && (
@@ -24,12 +38,22 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
       )}
       <View style={styles.matchOverlay} />
 
-      <View style={styles.matchTimeBadge}>
-        <Text style={styles.matchTimeText}>
-          {displayDate === "Oggi" || displayDate === "Domani"
-            ? displayDate
-            : `Tra ${daysUntil} giorni`}
-        </Text>
+      <View style={[
+        styles.matchTimeBadge,
+        matchInProgress && { backgroundColor: 'rgba(76, 175, 80, 0.95)' }
+      ]}>
+        {matchInProgress ? (
+          <>
+            <Ionicons name="play-circle" size={14} color="white" style={{ marginRight: 4 }} />
+            <Text style={styles.matchTimeText}>IN CORSO</Text>
+          </>
+        ) : (
+          <Text style={styles.matchTimeText}>
+            {displayDate === "Oggi" || displayDate === "Domani"
+              ? displayDate
+              : `Tra ${daysUntil} giorni`}
+          </Text>
+        )}
       </View>
 
       <View style={styles.matchInfo}>

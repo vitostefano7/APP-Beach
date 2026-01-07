@@ -9,6 +9,7 @@ import DettaglioInvito from "../screens/player/dashboard/DettaglioInvitoScreen";
 import TuttiInvitiScreen from "../screens/player/dashboard/TuttiInviti";
 import InvitoScadutoScreen from "../screens/player/dashboard/InvitoScadutoScreen";
 import DettaglioInvitoRifiutato from "../screens/player/dashboard/DettaglioInvitoRifiutatoScreen";
+import StruttureScreen from "../screens/player/struttura/StruttureScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +69,12 @@ export default function DashboardStack() { // ✅ Nome corretto
         name="DettaglioInvitoRifiutato" 
         component={DettaglioInvitoRifiutato}
         options={{ title: 'Invito Rifiutato' }}
+      />
+      <Stack.Screen 
+        name="Strutture" 
+        component={StruttureScreen}
+        options={{ headerShown: false }}
+
       />
     </Stack.Navigator>
   );

@@ -19,7 +19,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
     "multer": "^2.0.2",
-    "react-native-calendars": "^1.1313.0"
+    "react-native-calendars": "^1.1313.0",
+    "react-native-gesture-handler": "^2.30.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

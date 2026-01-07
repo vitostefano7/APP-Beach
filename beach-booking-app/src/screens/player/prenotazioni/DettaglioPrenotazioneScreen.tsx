@@ -226,14 +226,14 @@ export default function DettaglioPrenotazioneScreen() {
         
         return {
           ...prevBooking,
-          match: {
+          match: prevBooking.match ? {
             ...prevBooking.match,
             players: prevBooking.match.players.map(p => 
               p.user._id === playerId 
                 ? { ...p, team }
                 : p
             )
-          }
+          } : null
         };
       });
     } catch (error: any) {
@@ -304,7 +304,7 @@ export default function DettaglioPrenotazioneScreen() {
   const handleRespondToInvite = async (response: "accept" | "decline", team?: "A" | "B") => {
     if (!booking?.matchId) return;
 
-    if (response === "accept" && booking.match?.maxPlayers && booking.match.maxPlayers > 2 && !team) {
+    if (response === "accept" && booking.match?.maxPlayers && booking.match?.maxPlayers > 2 && !team) {
       setTeamSelectionModalVisible(true);
       return;
     }
@@ -383,7 +383,7 @@ export default function DettaglioPrenotazioneScreen() {
   const handleJoinMatch = async (team?: "A" | "B") => {
     if (!booking?.matchId) return;
 
-    if (!team && booking.match?.maxPlayers && booking.match.maxPlayers > 2) {
+    if (!team && booking.match?.maxPlayers && booking.match?.maxPlayers > 2) {
       setTeamSelectionModalVisible(true);
       return;
     }
@@ -486,19 +486,19 @@ export default function DettaglioPrenotazioneScreen() {
   }
 
   // SOSTITUISCI QUESTE VARIABILI NELLA PARTE INIZIALE DEL COMPONENTE:
-const isCreator = booking.match.createdBy._id === user?.id;
-const currentUserPlayer = booking.match.players.find(p => p.user._id === user?.id);
+const isCreator = booking.match?.createdBy?._id === user?.id;
+const currentUserPlayer = booking.match?.players?.find(p => p.user._id === user?.id);
 const isPendingInvite = currentUserPlayer?.status === "pending";
 const isDeclined = currentUserPlayer?.status === "declined";
 const isConfirmed = currentUserPlayer?.status === "confirmed";
 const isInMatch = !!currentUserPlayer;
 
-const maxPlayersPerTeam = Math.floor(booking.match.maxPlayers / 2);
-const teamAPlayers = booking.match.players.filter(p => p.team === "A" && p.status === "confirmed").length;
-const teamBPlayers = booking.match.players.filter(p => p.team === "B" && p.status === "confirmed").length;
+const maxPlayersPerTeam = booking.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
+const teamAPlayers = booking.match?.players.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
+const teamBPlayers = booking.match?.players.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
 
-const confirmedPlayers = booking.match.players.filter(p => p.status === "confirmed");
-const pendingPlayers = booking.match.players.filter(p => p.status === "pending");
+const confirmedPlayers = booking.match?.players.filter(p => p.status === "confirmed") || [];
+const pendingPlayers = booking.match?.players.filter(p => p.status === "pending") || [];
 const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
 
 const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
@@ -888,10 +888,16 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                 styles.modernStatusText,
                 { color: booking.status === 'confirmed' ? '#4CAF50' : '#F44336' }
               ]}>
-                {booking.status === 'confirmed' ? 'Confermata' : 'Cancellata'}
+                {booking.status === 'confirmed' ? (
+                  booking.hasMatch && booking.match?.status === 'completed' ? 'Terminata' : 'Confermata'
+                ) : 'Cancellata'}
               </Text>
               {booking.status === 'confirmed' && (
-                <Text style={styles.modernStatusSubtext}>La tua prenotazione è attiva</Text>
+                <Text style={styles.modernStatusSubtext}>
+                  {booking.hasMatch && booking.match?.status === 'completed' 
+                    ? 'Partita conclusa' 
+                    : 'La tua prenotazione è attiva'}
+                </Text>
               )}
             </View>
           </View>
@@ -1112,8 +1118,8 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           visible={scoreModalVisible}
           onClose={() => setScoreModalVisible(false)}
           onSave={handleSubmitScore}
-          currentScore={booking.match.score}
-          matchStatus={booking.match.status}
+          currentScore={booking.match?.score}
+          matchStatus={booking.match?.status}
           teamAPlayers={teamAConfirmed}
           teamBPlayers={teamBConfirmed}
         />

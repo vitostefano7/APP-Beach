@@ -154,17 +154,20 @@ export default function HomeScreen() {
             return false;
           }
           
-          let isFuture = false;
+          // Controlla se la partita è futura o in corso
+          let isRelevantTime = false;
           try {
-            const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
-            isFuture = bookingDateTime > now;
+            const bookingStartTime = new Date(`${b.date}T${b.startTime}:00`);
+            const bookingEndTime = new Date(`${b.date}T${b.endTime}:00`);
+            // Include sia partite future che in corso
+            isRelevantTime = bookingEndTime > now;
           } catch (error) {
             console.error("Errore parsing data:", error);
             return false;
           }
           
-          if (!isFuture) {
-            console.log(`Booking ${b._id}: non è futura`);
+          if (!isRelevantTime) {
+            console.log(`Booking ${b._id}: già terminata`);
             return false;
           }
           
@@ -467,7 +470,8 @@ export default function HomeScreen() {
 
   const handleFriendsScrollEnd = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / screenWidth);
+    const cardWidth = screenWidth * 0.8;
+    const index = Math.round(offsetX / cardWidth);
     
     if (index !== currentFriendIndex && index >= 0 && index < (suggestedFriends?.length || 0)) {
       console.log(`✅ Friends carousel - momentum end to index: ${index}`);
@@ -596,35 +600,33 @@ export default function HomeScreen() {
                 return (
                   <View
                     style={{
-                      width: screenWidth,
-                      alignItems: 'center',
+                      width: screenWidth * 0.75,
+                      marginHorizontal: screenWidth * 0.025,
                     }}
                   >
-                    <View style={{ width: screenWidth * 0.92 }}>
-                      <SuggestedFriendCard 
-                        friend={item}
-                        onPress={() => handlePressFriend(item)}
-                        onInvite={() => handleAddFriend(
-                          item.user?._id || item._id, 
-                          item.user?.name || item.name
-                        )}
-                      />
-                    </View>
+                    <SuggestedFriendCard 
+                      friend={item}
+                      onPress={() => handlePressFriend(item)}
+                      onInvite={() => handleAddFriend(
+                        item.user?._id || item._id, 
+                        item.user?.name || item.name
+                      )}
+                    />
                   </View>
                 );
               }}
               keyExtractor={(item, index) => `friend-${item.user?._id || item._id || index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              snapToInterval={screenWidth}
+              snapToInterval={screenWidth * 0.8}
               decelerationRate="fast"
               snapToAlignment="start"
               onMomentumScrollEnd={handleFriendsScrollEnd}
               scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: 0 }}
+              contentContainerStyle={{ paddingHorizontal: screenWidth * 0.025 }}
               getItemLayout={(data, index) => ({
-                length: screenWidth,
-                offset: screenWidth * index,
+                length: screenWidth * 0.8,
+                offset: screenWidth * 0.8 * index,
                 index,
               })}
             />
@@ -701,9 +703,39 @@ export default function HomeScreen() {
 
         <StatsRow stats={stats} />
 
+        {/* Quick Action Buttons */}
+        <View style={styles.quickActionsContainer}>
+          <Pressable 
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate("Strutture")}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#2196F3" />
+            <Text style={styles.quickActionText}>Prenota un campo</Text>
+          </Pressable>
+          
+          <Pressable 
+            style={[styles.quickActionButton, styles.quickActionButtonDisabled]}
+            onPress={() => {}}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
+          </Pressable>
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>La tua prossima partita</Text>
+            <Text style={styles.sectionTitle}>
+              {nextBooking && (() => {
+                try {
+                  const now = new Date();
+                  const bookingStartTime = new Date(`${nextBooking.date}T${nextBooking.startTime}:00`);
+                  const bookingEndTime = new Date(`${nextBooking.date}T${nextBooking.endTime}:00`);
+                  if (now >= bookingStartTime && now <= bookingEndTime) {
+                    return "Partita in corso";
+                  }
+                } catch (error) {}
+                return "La tua prossima partita";
+              })()}
+            </Text>
             <Pressable onPress={() => navigation.navigate("LeMiePrenotazioni")}>
               <Text style={styles.sectionLink}>Calendario</Text>
             </Pressable>
@@ -813,13 +845,6 @@ export default function HomeScreen() {
         {renderSuggestedFriendsSection()}
 
       </ScrollView>
-
-      <Pressable
-        style={styles.fab}
-        onPress={() => navigation.navigate("Strutture")}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
     </SafeAreaView>
   );
 }

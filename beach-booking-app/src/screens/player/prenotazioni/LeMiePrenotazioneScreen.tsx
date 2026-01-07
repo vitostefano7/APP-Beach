@@ -338,6 +338,9 @@ export default function LeMiePrenotazioniScreen() {
               >
                 {item.matchSummary.winner === "A" ? "VITTORIA" : "SCONFITTA"}
               </Text>
+              <Text style={styles.finalScore}>
+                {item.matchSummary.sets.filter(s => s.teamA > s.teamB).length} - {item.matchSummary.sets.filter(s => s.teamB > s.teamA).length}
+              </Text>
             </View>
 
             <View style={styles.setsGrid}>
@@ -768,9 +771,19 @@ const styles = StyleSheet.create({
   winner: { 
     fontWeight: "800",
     fontSize: 13,
+    flex: 1,
   },
   win: { color: "#4CAF50" },
   lose: { color: "#F44336" },
+  finalScore: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#333",
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
   setsGrid: {
     flexDirection: "row",
     gap: 8,
