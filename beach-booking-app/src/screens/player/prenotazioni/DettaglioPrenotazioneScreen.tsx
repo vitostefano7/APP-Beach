@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
@@ -69,6 +70,7 @@ export default function DettaglioPrenotazioneScreen() {
   const [leavingMatch, setLeavingMatch] = useState(false);
   const [acceptingInvite, setAcceptingInvite] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState(false);
+  const [loadingGroupChat, setLoadingGroupChat] = useState(false);
 
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
@@ -200,6 +202,32 @@ export default function DettaglioPrenotazioneScreen() {
         },
       ]
     );
+  };
+
+  const handleOpenGroupChat = async () => {
+    if (!booking?.matchId) {
+      Alert.alert("Errore", "Match non disponibile");
+      return;
+    }
+
+    try {
+      setLoadingGroupChat(true);
+      const res = await fetch(`${API_URL}/api/conversations/match/${booking.matchId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore caricamento chat");
+      }
+
+      const conversation = await res.json();
+      navigation.navigate("GroupChat", { conversationId: conversation._id });
+    } catch (error: any) {
+      Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
+    } finally {
+      setLoadingGroupChat(false);
+    }
   };
 
   const handleAssignTeam = async (playerId: string, team: "A" | "B" | null) => {
@@ -560,6 +588,22 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
         </FadeInView>
         
         <View style={styles.matchHeaderActions}>
+          {booking.hasMatch && (
+            <AnimatedButton
+              style={styles.groupChatButton}
+              onPress={handleOpenGroupChat}
+              disabled={loadingGroupChat}
+            >
+              {loadingGroupChat ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="chatbubbles" size={18} color="white" />
+                  <Text style={styles.groupChatButtonText}>Chat Gruppo</Text>
+                </>
+              )}
+            </AnimatedButton>
+          )}
           {canJoin && (
             <AnimatedButton
               style={styles.joinButton}

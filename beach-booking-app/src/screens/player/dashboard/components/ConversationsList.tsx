@@ -19,25 +19,42 @@ import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
 
 type Conversation = {
   _id: string;
-  user: {
+  type: 'direct' | 'group';
+  
+  // Campi per chat diretta
+  user?: {
     _id: string;
     name: string;
     email: string;
   };
-  struttura: {
+  struttura?: {
     _id: string;
     name: string;
     images: string[];
   };
-  owner: {
+  owner?: {
     _id: string;
     name: string;
     email: string;
   };
+  
+  // Campi per chat di gruppo
+  participants?: Array<{
+    _id: string;
+    name: string;
+    email: string;
+  }>;
+  match?: {
+    _id: string;
+  };
+  groupName?: string;
+  
+  // Campi comuni
   lastMessage: string;
   lastMessageAt: string;
   unreadByUser: number;
   unreadByOwner: number;
+  unreadCount?: Record<string, number>;
 };
 
 interface ConversationsListProps {
@@ -112,27 +129,52 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
   };
 
   const handleOpenChat = (item: Conversation) => {
-    const otherPerson = isOwner ? item.user : item.owner;
-    
     // Chiudi il modal prima di navigare
     if (onCloseModal) {
       onCloseModal();
     }
     
-    // Naviga alla chat
-    navigation.navigate("Chat", {
-      conversationId: item._id,
-      strutturaName: item.struttura.name,
-      otherPersonName: otherPerson.name,
-    });
+    // Naviga alla chat appropriata
+    if (item.type === 'group') {
+      navigation.navigate("GroupChat", {
+        conversationId: item._id,
+        groupName: item.groupName,
+        matchId: item.match?._id,
+      });
+    } else {
+      const otherPerson = isOwner ? item.user : item.owner;
+      navigation.navigate("Chat", {
+        conversationId: item._id,
+        strutturaName: item.struttura?.name,
+        otherPersonName: otherPerson?.name,
+      });
+    }
     
     // Aggiorna badge dopo un secondo
     setTimeout(() => refreshUnreadCount(), 1000);
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => {
-    const unreadCount = isOwner ? item.unreadByOwner : item.unreadByUser;
-    const otherPerson = isOwner ? item.user : item.owner;
+    let unreadCount = 0;
+    let displayName = '';
+    let subtitle = '';
+    let imageUri = '';
+    let iconName: any = 'chatbubble-outline';
+    
+    if (item.type === 'group') {
+      // Chat di gruppo
+      unreadCount = item.unreadCount?.[user?.id || ''] || 0;
+      displayName = item.groupName || 'Chat di Gruppo';
+      subtitle = `👥 ${item.participants?.length || 0} partecipanti`;
+      iconName = 'people';
+    } else {
+      // Chat diretta
+      unreadCount = isOwner ? item.unreadByOwner : item.unreadByUser;
+      displayName = item.struttura?.name || 'Struttura';
+      const otherPerson = isOwner ? item.user : item.owner;
+      subtitle = isOwner ? `👤 ${otherPerson?.name}` : `🏢 Chat con la struttura`;
+      imageUri = item.struttura?.images?.[0] || '';
+    }
 
     return (
       <Pressable
@@ -140,9 +182,13 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
         onPress={() => handleOpenChat(item)}
       >
         <View style={styles.conversationLeft}>
-          {item.struttura.images?.length > 0 ? (
+          {item.type === 'group' ? (
+            <View style={[styles.conversationImage, styles.groupImagePlaceholder]}>
+              <Ionicons name="people" size={24} color="#2196F3" />
+            </View>
+          ) : imageUri ? (
             <Image
-              source={{ uri: item.struttura.images[0] }}
+              source={{ uri: imageUri }}
               style={styles.conversationImage}
             />
           ) : (
@@ -153,16 +199,21 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
 
           <View style={styles.conversationInfo}>
             <View style={styles.conversationHeader}>
-              <Text style={styles.conversationTitle} numberOfLines={1}>
-                {item.struttura.name}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {item.type === 'group' && (
+                  <Ionicons name="chatbubbles" size={14} color="#2196F3" />
+                )}
+                <Text style={styles.conversationTitle} numberOfLines={1}>
+                  {displayName}
+                </Text>
+              </View>
               <Text style={styles.conversationTime}>
                 {formatTime(item.lastMessageAt)}
               </Text>
             </View>
 
             <Text style={styles.conversationSubtitle} numberOfLines={1}>
-              {isOwner ? `👤 ${otherPerson.name}` : `🏢 Chat con la struttura`}
+              {subtitle}
             </Text>
 
             {item.lastMessage && (
@@ -276,6 +327,11 @@ const styles = StyleSheet.create({
   },
   conversationImagePlaceholder: {
     backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  groupImagePlaceholder: {
+    backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
   },

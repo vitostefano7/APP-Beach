@@ -529,6 +529,33 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.2,
   },
+  groupChatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginRight: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#2196F3",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  groupChatButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
 
   // ==================== MATCH STATUS ====================
   matchStatusCard: {

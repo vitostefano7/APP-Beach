@@ -4,6 +4,7 @@ import ConfermaPrenotazioneScreen from "../screens/player/prenotazioni/ConfermaP
 import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenotazioneScreen";
 import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
+import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
 import HomeScreen from "../screens/player/dashboard/DashboardScreen"; // 🆕 Importa HomeScreen
 import DettaglioInvito from "../screens/player/dashboard/DettaglioInvitoScreen";
 import TuttiInvitiScreen from "../screens/player/dashboard/TuttiInviti";
@@ -34,6 +35,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen 
         name="Chat" 
         component={ChatScreen} 
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="GroupChat" 
+        component={GroupChatScreen} 
         options={{ headerShown: false }}
       />
       <Stack.Screen

@@ -4,10 +4,11 @@ import Conversation from '../models/Conversazione';
 import Message from '../models/Message';
 import Struttura from '../models/Strutture';
 import User from '../models/User';
+import Match from '../models/Match';
 
 /**
  * GET /api/conversations
- * Lista conversazioni dell'utente loggato
+ * Lista conversazioni dell'utente loggato (direct + group)
  */
 export const getConversations = async (req: AuthRequest, res: Response) => {
   try {
@@ -20,20 +21,33 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(userId);
     const isOwner = user?.role === 'owner';
 
-    const query = isOwner ? { owner: userId } : { user: userId };
+    // Query per chat dirette (vecchia logica)
+    const directQuery = isOwner ? { type: 'direct', owner: userId } : { type: 'direct', user: userId };
+    
+    // Query per chat di gruppo (nuovo)
+    const groupQuery = { type: 'group', participants: userId };
 
-    const conversations = await Conversation.find(query)
-      .populate('user', 'name email')
-      .populate('struttura', 'name images')
-      .populate('owner', 'name email')
-      .sort({ lastMessageAt: -1 });
+    const [directConversations, groupConversations] = await Promise.all([
+      Conversation.find(directQuery)
+        .populate('user', 'name email')
+        .populate('struttura', 'name images')
+        .populate('owner', 'name email')
+        .sort({ lastMessageAt: -1 }),
+      
+      Conversation.find(groupQuery)
+        .populate('participants', 'name email')
+        .populate('match')
+        .sort({ lastMessageAt: -1 })
+    ]);
+
+    const allConversations = [...directConversations, ...groupConversations];
 
     // ✅ FILTRA SOLO CONVERSAZIONI CON MESSAGGI REALI
-    const activeConversations = conversations.filter(
+    const activeConversations = allConversations.filter(
       conv => conv.lastMessage && conv.lastMessage.trim().length > 0
     );
 
-    console.log(`📬 Conversazioni - Totali: ${conversations.length}, Attive: ${activeConversations.length}`);
+    console.log(`📬 Conversazioni - Direct: ${directConversations.length}, Group: ${groupConversations.length}, Attive: ${activeConversations.length}`);
 
     res.json(activeConversations);
   } catch (error) {
@@ -162,7 +176,7 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
 
 /**
  * GET /api/conversations/:conversationId/messages
- * Messaggi di una conversazione
+ * Messaggi di una conversazione (direct o group)
  */
 export const getMessages = async (req: AuthRequest, res: Response) => {
   try {
@@ -179,14 +193,25 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Conversazione non trovata' });
     }
 
-    // Verifica che l'utente sia parte della conversazione
+    // Verifica autorizzazione
     const user = await User.findById(userId);
     const isOwner = user?.role === 'owner';
+    
+    let isAuthorized = false;
+    
+    if (conversation.type === 'direct') {
+      // Chat diretta - vecchia logica
+      isAuthorized = 
+        (!isOwner && conversation.user?.toString() === userId) ||
+        (isOwner && conversation.owner?.toString() === userId);
+    } else if (conversation.type === 'group') {
+      // Chat di gruppo - verifica sia nei participants
+      isAuthorized = conversation.participants.some(
+        (p: any) => p.toString() === userId
+      );
+    }
 
-    if (
-      (!isOwner && conversation.user.toString() !== userId) ||
-      (isOwner && conversation.owner.toString() !== userId)
-    ) {
+    if (!isAuthorized) {
       return res.status(403).json({ message: 'Non autorizzato' });
     }
 
@@ -201,12 +226,24 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       .populate('sender', 'name email');
 
     // Segna messaggi come letti
-    const updateField = isOwner ? 'unreadByOwner' : 'unreadByUser';
-    console.log(`✅ Marcando messaggi come letti per ${updateField}`);
-    
-    await Conversation.findByIdAndUpdate(conversationId, {
-      [updateField]: 0,
-    });
+    if (conversation.type === 'direct') {
+      const updateField = isOwner ? 'unreadByOwner' : 'unreadByUser';
+      console.log(`✅ Marcando messaggi come letti per ${updateField}`);
+      
+      await Conversation.findByIdAndUpdate(conversationId, {
+        [updateField]: 0,
+      });
+    } else if (conversation.type === 'group') {
+      // Per gruppi: azzera unreadCount per questo user
+      const unreadCountMap = conversation.unreadCount || new Map();
+      unreadCountMap.set(userId, 0);
+      
+      await Conversation.findByIdAndUpdate(conversationId, {
+        unreadCount: unreadCountMap,
+      });
+      
+      console.log(`✅ Marcando messaggi gruppo come letti per user ${userId}`);
+    }
 
     await Message.updateMany(
       {
@@ -226,7 +263,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
 
 /**
  * POST /api/conversations/:conversationId/messages
- * Invia un messaggio
+ * Invia un messaggio (direct o group)
  */
 export const sendMessage = async (req: AuthRequest, res: Response) => {
   try {
@@ -242,7 +279,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Messaggio vuoto' });
     }
 
-    const conversation = await Conversation.findById(conversationId);
+    const conversation = await Conversation.findById(conversationId).populate('match');
     if (!conversation) {
       return res.status(404).json({ message: 'Conversazione non trovata' });
     }
@@ -251,10 +288,36 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     const isOwner = user?.role === 'owner';
 
     // Verifica autorizzazione
-    if (
-      (!isOwner && conversation.user.toString() !== userId) ||
-      (isOwner && conversation.owner.toString() !== userId)
-    ) {
+    let isAuthorized = false;
+    let canSend = true;
+    
+    if (conversation.type === 'direct') {
+      isAuthorized = 
+        (!isOwner && conversation.user?.toString() === userId) ||
+        (isOwner && conversation.owner?.toString() === userId);
+    } else if (conversation.type === 'group') {
+      isAuthorized = conversation.participants.some(
+        (p: any) => p.toString() === userId
+      );
+      
+      // Opzione B: Verifica se può inviare (solo players con status 'confirmed')
+      if (isAuthorized && conversation.match) {
+        const match = conversation.match as any;
+        const playerInMatch = match.players?.find(
+          (p: any) => p.user?.toString() === userId || p.user?._id?.toString() === userId
+        );
+        
+        if (playerInMatch && playerInMatch.status !== 'confirmed') {
+          canSend = false;
+          return res.status(403).json({ 
+            message: 'Devi confermare la partecipazione per inviare messaggi',
+            reason: 'not_confirmed'
+          });
+        }
+      }
+    }
+
+    if (!isAuthorized) {
       return res.status(403).json({ message: 'Non autorizzato' });
     }
 
@@ -272,12 +335,29 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       lastMessageAt: new Date(),
     };
 
-    if (isOwner) {
-      updateData.$inc = { unreadByUser: 1 };
-      console.log('📨 Owner invia → incrementa unreadByUser');
-    } else {
-      updateData.$inc = { unreadByOwner: 1 };
-      console.log('📨 User invia → incrementa unreadByOwner');
+    if (conversation.type === 'direct') {
+      // Chat diretta - vecchia logica
+      if (isOwner) {
+        updateData.$inc = { unreadByUser: 1 };
+        console.log('📨 Owner invia → incrementa unreadByUser');
+      } else {
+        updateData.$inc = { unreadByOwner: 1 };
+        console.log('📨 User invia → incrementa unreadByOwner');
+      }
+    } else if (conversation.type === 'group') {
+      // Chat di gruppo - incrementa per tutti gli altri partecipanti
+      const unreadCountMap = conversation.unreadCount || new Map();
+      
+      conversation.participants.forEach((participantId: any) => {
+        const pId = participantId.toString();
+        if (pId !== userId) {
+          const current = unreadCountMap.get(pId) || 0;
+          unreadCountMap.set(pId, current + 1);
+        }
+      });
+      
+      updateData.unreadCount = unreadCountMap;
+      console.log(`📨 Messaggio gruppo da ${user?.name} → incrementa unread per ${conversation.participants.length - 1} utenti`);
     }
 
     await Conversation.findByIdAndUpdate(conversationId, updateData);
@@ -327,6 +407,78 @@ export const getUnreadCount = async (req: AuthRequest, res: Response) => {
     res.json({ unreadCount });
   } catch (error) {
     console.error('Errore conteggio non letti:', error);
+    res.status(500).json({ message: 'Errore server' });
+  }
+};
+
+/**
+ * GET /api/conversations/match/:matchId
+ * Ottieni o crea conversazione di gruppo per un match
+ */
+export const getOrCreateGroupConversation = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { matchId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Non autorizzato' });
+    }
+
+    // Carica il match con i players
+    const match = await Match.findById(matchId)
+      .populate('booking')
+      .populate('players.user', 'name email');
+
+    if (!match) {
+      return res.status(404).json({ message: 'Match non trovato' });
+    }
+
+    // Verifica che l'utente sia parte del match
+    const userInMatch = match.players.find(
+      (p: any) => p.user._id.toString() === userId
+    );
+
+    if (!userInMatch) {
+      return res.status(403).json({ message: 'Non fai parte di questo match' });
+    }
+
+    // Cerca conversazione esistente
+    let conversation = await Conversation.findOne({
+      type: 'group',
+      match: matchId,
+    }).populate('participants', 'name email');
+
+    if (!conversation) {
+      // Crea nuova conversazione di gruppo
+      // Include tutti i players, anche quelli con status 'declined' (Opzione B - possono leggere)
+      const participants = match.players.map((p: any) => p.user._id);
+      
+      // Genera nome gruppo dal booking
+      const booking = match.booking as any;
+      const groupName = booking ? 
+        `Partita ${new Date(booking.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })} - ${booking.startTime}` :
+        'Chat di Gruppo';
+
+      conversation = await Conversation.create({
+        type: 'group',
+        match: matchId,
+        participants,
+        groupName,
+        lastMessage: '',
+        lastMessageAt: new Date(),
+        unreadCount: new Map(),
+      });
+
+      conversation = await Conversation.findById(conversation._id)
+        .populate('participants', 'name email')
+        .populate('match');
+
+      console.log(`✅ Creata chat di gruppo: ${groupName} con ${participants.length} partecipanti`);
+    }
+
+    res.json(conversation);
+  } catch (error) {
+    console.error('Errore get/create conversazione gruppo:', error);
     res.status(500).json({ message: 'Errore server' });
   }
 };
