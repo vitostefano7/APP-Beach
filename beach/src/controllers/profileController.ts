@@ -189,14 +189,26 @@ export const updateMe = async (
   try {
     const userId = req.user!.id;
 
+    // Costruisci l'oggetto di aggiornamento solo con i campi presenti
+    const updateFields: any = {};
+    if (req.body.name !== undefined) updateFields.name = req.body.name;
+    if (req.body.surname !== undefined) updateFields.surname = req.body.surname;
+    if (req.body.phone !== undefined) updateFields.phone = req.body.phone;
+    if (req.body.avatarUrl !== undefined) updateFields.avatarUrl = req.body.avatarUrl;
+    
+    // Aggiungi profilePrivacy se presente e valido
+    if (req.body.profilePrivacy !== undefined) {
+      if (!["public", "private"].includes(req.body.profilePrivacy)) {
+        return res.status(400).json({ 
+          message: "profilePrivacy deve essere 'public' o 'private'" 
+        });
+      }
+      updateFields.profilePrivacy = req.body.profilePrivacy;
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        name: req.body.name,
-        surname: req.body.surname,
-        phone: req.body.phone,
-        avatarUrl: req.body.avatarUrl,
-      },
+      updateFields,
       { new: true }
     ).select("-password");
 
@@ -521,13 +533,98 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
     const user = await User.findOne({
       _id: userId,
       isActive: true,
-    }).select("_id username name surname avatarUrl preferredSports createdAt");
+    }).select("_id username name surname avatarUrl preferredSports profilePrivacy createdAt");
 
     if (!user) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    // Statistiche pubbliche
+    // Controlla la privacy del profilo
+    const isPrivate = user.profilePrivacy === "private";
+    const isOwner = req.user!.role === "owner";
+
+    // Check friendship status - controlla entrambe le direzioni
+    const Friendship = (await import("../models/Friendship")).default;
+    
+    console.log(`🔍 [getUserPublicProfileById] Checking friendship: currentUserId=${currentUserId}, userId=${userId}`);
+    
+    // Check if I sent a request to them (my outgoing request)
+    const myOutgoingRequest = await Friendship.findOne({
+      requester: currentUserId,
+      recipient: userId
+    });
+
+    // Check if they sent a request to me (their outgoing request = my incoming request)
+    const theirOutgoingRequest = await Friendship.findOne({
+      requester: userId,
+      recipient: currentUserId
+    });
+
+    console.log(`🔍 [getUserPublicProfileById] My outgoing request (me→them):`, myOutgoingRequest ? {
+      _id: myOutgoingRequest._id,
+      status: myOutgoingRequest.status
+    } : 'NONE');
+
+    console.log(`🔍 [getUserPublicProfileById] Their outgoing request (them→me):`, theirOutgoingRequest ? {
+      _id: theirOutgoingRequest._id,
+      status: theirOutgoingRequest.status
+    } : 'NONE');
+
+    let friendshipStatus: 'none' | 'pending' | 'accepted' = 'none';
+    let isFollowing = false;
+    let theyFollowMe = false;
+    let hasIncomingRequest = false;
+    
+    // Check MY request to THEM (my outgoing)
+    if (myOutgoingRequest) {
+      if (myOutgoingRequest.status === 'accepted') {
+        friendshipStatus = 'accepted';
+        isFollowing = true;
+        console.log(`✅ [getUserPublicProfileById] I follow them - friendshipStatus=accepted`);
+      } else if (myOutgoingRequest.status === 'pending') {
+        friendshipStatus = 'pending';
+        isFollowing = false;
+        console.log(`⏳ [getUserPublicProfileById] My request pending - friendshipStatus=pending`);
+      }
+    }
+    
+    // Check if THEY follow ME
+    if (theirOutgoingRequest) {
+      if (theirOutgoingRequest.status === 'accepted') {
+        theyFollowMe = true;
+        console.log(`✅ [getUserPublicProfileById] They follow me (accepted)`);
+      } else if (theirOutgoingRequest.status === 'pending') {
+        hasIncomingRequest = true;
+        console.log(`📥 [getUserPublicProfileById] They have pending request to follow me`);
+      }
+    }
+
+    if (!myOutgoingRequest && !theirOutgoingRequest) {
+      console.log(`❌ [getUserPublicProfileById] No friendship in either direction`);
+    }
+
+    // Se il profilo è privato e non sei follower accettato (e non sei owner), limita le info
+    if (isPrivate && !isFollowing && !isOwner && currentUserId !== userId) {
+      return res.json({
+        user: {
+          _id: user._id,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          profilePrivacy: user.profilePrivacy,
+        },
+        stats: {
+          matchesPlayed: 0,
+          commonMatchesCount: 0,
+          mutualFriendsCount: 0,
+        },
+        friendshipStatus,
+        isPrivate: true,
+        message: "Questo profilo è privato",
+      });
+    }
+
+    // Statistiche pubbliche (visibili solo se pubblico o sei follower)
     const matchesPlayed = await Match.countDocuments({
       "players.user": user._id,
       "players.status": "confirmed",
@@ -540,20 +637,6 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
       "players.user": { $all: [currentUserId, user._id] },
       "players.status": "confirmed"
     });
-
-    // Check friendship status and count mutual friends
-    const Friendship = (await import("../models/Friendship")).default;
-    const friendship = await Friendship.findOne({
-      $or: [
-        { requester: currentUserId, recipient: userId },
-        { requester: userId, recipient: currentUserId }
-      ]
-    });
-
-    let friendshipStatus: 'none' | 'pending' | 'accepted' = 'none';
-    if (friendship) {
-      friendshipStatus = friendship.status === 'accepted' ? 'accepted' : 'pending';
-    }
 
     // Count mutual friends
     const currentUserFriends = await Friendship.find({
@@ -589,7 +672,10 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
         commonMatchesCount,
         mutualFriendsCount,
       },
-      friendshipStatus,
+      friendshipStatus, // Il tuo status verso di loro (none/pending/accepted)
+      isPrivate: false,
+      hasIncomingRequest, // Hanno una richiesta pending verso di te
+      theyFollowMe, // Ti seguono già (accepted)
     });
   } catch (err) {
     console.error("❌ getUserPublicProfileById error:", err);

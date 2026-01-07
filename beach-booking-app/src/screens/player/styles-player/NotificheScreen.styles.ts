@@ -151,6 +151,36 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50',
+  },
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rejectButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  rejectButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   unreadDot: {
     width: 10,
     height: 10,

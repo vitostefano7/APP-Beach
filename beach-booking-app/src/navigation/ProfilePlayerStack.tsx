@@ -9,7 +9,7 @@ import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
-  FriendsList: undefined;
+  FriendsList: { filter?: "followers" | "following" } | undefined;
   PrivacySecurity: undefined;
   Preferences: undefined;
 };

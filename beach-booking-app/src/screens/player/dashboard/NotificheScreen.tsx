@@ -29,6 +29,8 @@ const NotificheScreen = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    acceptFollowRequest,
+    rejectFollowRequest,
   } = useNotifications();
 
   const [filter, setFilter] = useState<FilterType>('all');
@@ -55,6 +57,12 @@ const NotificheScreen = () => {
   };
 
   const handleNotificationPress = async (notification: Notification) => {
+    // Non navigare se la notifica ha pulsanti di azione (richiesta pending)
+    if (notification.type === 'new_follower' && notification.relatedModel === 'Friendship') {
+      // Questa è una richiesta di follow in sospeso, non navigare
+      return;
+    }
+
     // Marca come letta se non lo è già
     if (!notification.isRead) {
       await markAsRead(notification._id);
@@ -76,6 +84,42 @@ const NotificheScreen = () => {
         bookingId: notification.relatedId,
       });
     }
+  };
+
+  const handleAcceptRequest = async (notification: Notification) => {
+    if (!notification.relatedId) return;
+    
+    const success = await acceptFollowRequest(notification.relatedId, notification._id);
+    if (success) {
+      Alert.alert('Successo', 'Richiesta di follow accettata');
+      await fetchUnreadCount();
+    } else {
+      Alert.alert('Errore', 'Non è stato possibile accettare la richiesta');
+    }
+  };
+
+  const handleRejectRequest = async (notification: Notification) => {
+    if (!notification.relatedId) return;
+    
+    Alert.alert(
+      'Rifiuta richiesta',
+      'Vuoi rifiutare questa richiesta di follow?',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Rifiuta',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await rejectFollowRequest(notification.relatedId!, notification._id);
+            if (success) {
+              await fetchUnreadCount();
+            } else {
+              Alert.alert('Errore', 'Non è stato possibile rifiutare la richiesta');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDelete = (notificationId: string) => {
@@ -173,45 +217,68 @@ const NotificheScreen = () => {
     </Pressable>
   );
 
-  const renderNotification = ({ item }: { item: Notification }) => (
-    <Swipeable
-      renderRightActions={() => renderRightActions(item._id)}
-      overshootRight={false}
-    >
-      <Pressable
-        style={[
-          styles.notificationCard,
-          !item.isRead && styles.notificationCardUnread,
-        ]}
-        onPress={() => handleNotificationPress(item)}
+  const renderNotification = ({ item }: { item: Notification }) => {
+    // Mostra i pulsanti solo per richieste pending (relatedModel = Friendship)
+    const isPendingFollowRequest = item.type === 'new_follower' && item.relatedModel === 'Friendship' && item.relatedId;
+
+    return (
+      <Swipeable
+        renderRightActions={() => renderRightActions(item._id)}
+        overshootRight={false}
       >
-        <View style={styles.notificationContent}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: getNotificationColor(item.type) + '20' },
-            ]}
-          >
-            <Ionicons
-              name={getNotificationIcon(item.type)}
-              size={24}
-              color={getNotificationColor(item.type)}
-            />
-          </View>
+        <Pressable
+          style={[
+            styles.notificationCard,
+            !item.isRead && styles.notificationCardUnread,
+          ]}
+          onPress={() => handleNotificationPress(item)}
+        >
+          <View style={styles.notificationContent}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: getNotificationColor(item.type) + '20' },
+              ]}
+            >
+              <Ionicons
+                name={getNotificationIcon(item.type)}
+                size={24}
+                color={getNotificationColor(item.type)}
+              />
+            </View>
 
-          <View style={styles.textContainer}>
-            <Text style={styles.notificationTitle}>{item.title}</Text>
-            <Text style={styles.notificationMessage}>{item.message}</Text>
-            <Text style={styles.notificationTime}>
-              {formatTimeAgo(item.createdAt)}
-            </Text>
-          </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+              <Text style={styles.notificationMessage}>{item.message}</Text>
+              <Text style={styles.notificationTime}>
+                {formatTimeAgo(item.createdAt)}
+              </Text>
 
-          {!item.isRead && <View style={styles.unreadDot} />}
-        </View>
-      </Pressable>
-    </Swipeable>
-  );
+              {/* Pulsanti per accettare/rifiutare richieste di follow */}
+              {isPendingFollowRequest && (
+                <View style={styles.actionButtons}>
+                  <Pressable
+                    style={[styles.actionButton, styles.acceptButton]}
+                    onPress={() => handleAcceptRequest(item)}
+                  >
+                    <Text style={styles.acceptButtonText}>Accetta</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.actionButton, styles.rejectButton]}
+                    onPress={() => handleRejectRequest(item)}
+                  >
+                    <Text style={styles.rejectButtonText}>Rifiuta</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+
+            {!item.isRead && <View style={styles.unreadDot} />}
+          </View>
+        </Pressable>
+      </Swipeable>
+    );
+  };
 
   const filteredNotifications = notifications;
 

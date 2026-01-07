@@ -108,7 +108,8 @@ export const register = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatarUrl: user.avatarUrl, // ✅ NUOVO
+      avatarUrl: user.avatarUrl,
+      profilePrivacy: user.profilePrivacy || "public", // ✅ NUOVO: privacy del profilo
       token,
     });
   } catch (err) {
@@ -153,6 +154,7 @@ export const login = async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl,
+      profilePrivacy: user.profilePrivacy,
       token: `${token.substring(0, 20)}...`,
     });
 
@@ -165,7 +167,8 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        avatarUrl: user.avatarUrl, // ✅ NUOVO
+        avatarUrl: user.avatarUrl,
+        profilePrivacy: user.profilePrivacy || "public", // ✅ NUOVO: privacy del profilo
       },
     });
   } catch (err) {

@@ -7,7 +7,8 @@ type User = {
   name?: string;
   email?: string;
   createdAt?: string;
-  avatarUrl?: string; // ✅ NUOVO: per l'immagine profilo
+  avatarUrl?: string;
+  profilePrivacy?: "public" | "private"; // ✅ NUOVO: per la privacy del profilo
 };
 
 type AuthContextType = {

@@ -66,11 +66,15 @@ export const useSuggestedFriends = ({
 
       const data = await response.json();
       console.log("Suggerimenti ricevuti:", data.suggestions?.length || 0);
-      setSuggestions(data.suggestions || []);
-      // In fetchSuggestions, dopo const data = await response.json();
-
       
-      return data.suggestions || [];
+      // Filtra gli utenti già seguiti (accepted)
+      const filteredSuggestions = (data.suggestions || []).filter(
+        (friend: SuggestedFriend) => friend.friendshipStatus !== 'accepted'
+      );
+      console.log("Suggerimenti dopo filtro (esclusi già seguiti):", filteredSuggestions.length);
+      
+      setSuggestions(filteredSuggestions);
+      return filteredSuggestions;
     } catch (err: any) {
       console.error('Errore nel recupero dei suggerimenti:', err);
       setError(err.message || 'Impossibile caricare i suggerimenti');
@@ -102,14 +106,28 @@ export const useSuggestedFriends = ({
         throw new Error(errorData.error || 'Errore nell\'invio della richiesta');
       }
 
-      // Aggiorna lo stato nel local state
-      setSuggestions(prev => 
-        prev.map(friend => 
-          friend.user._id === userId 
-            ? { ...friend, friendshipStatus: 'pending' as const }
-            : friend
-        )
-      );
+      const result = await response.json();
+      console.log('✅ Follow request result:', result);
+
+      // Aggiorna lo stato in base alla risposta del backend
+      // isPending = true → profilo privato, richiesta in attesa
+      // isPending = false → profilo pubblico, accettato automaticamente
+      const newStatus = result.isPending ? 'pending' : 'accepted';
+      
+      // Se è accettato automaticamente (profilo pubblico), rimuovi dalla lista
+      if (newStatus === 'accepted') {
+        console.log('Profilo pubblico seguito - rimozione dai suggerimenti');
+        setSuggestions(prev => prev.filter(friend => friend.user._id !== userId));
+      } else {
+        // Se è pending, aggiorna solo lo stato
+        setSuggestions(prev => 
+          prev.map(friend => 
+            friend.user._id === userId 
+              ? { ...friend, friendshipStatus: newStatus as const }
+              : friend
+          )
+        );
+      }
 
       return true;
     } catch (err: any) {

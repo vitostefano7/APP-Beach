@@ -204,16 +204,14 @@ export default function CercaAmiciScreen() {
 
   const handleAddFriend = async (friendId: string, friendName: string) => {
     try {
+      // sendFriendRequest ora aggiorna automaticamente lo stato in base a isPending
       const success = await sendFriendRequest(friendId);
+      
       if (success) {
-        // Aggiorna lo stato locale - ora è "accepted" perché è follow automatico
-        setSearchResults((prev) =>
-          prev.map((result) =>
-            result._id === friendId
-              ? { ...result, friendshipStatus: 'accepted' }
-              : result
-          )
-        );
+        // Ricarica i risultati di ricerca per ottenere lo stato aggiornato
+        if (searchQuery.trim()) {
+          performSearch(searchQuery);
+        }
       }
     } catch (error) {
       console.error('Errore follow utente:', error);
@@ -271,6 +269,11 @@ export default function CercaAmiciScreen() {
             <View style={styles.friendBadge}>
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
               <Text style={styles.friendBadgeText}>Segui già</Text>
+            </View>
+          ) : item.friendshipStatus === 'pending' ? (
+            <View style={[styles.friendBadge, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="time-outline" size={20} color="#FF9800" />
+              <Text style={[styles.friendBadgeText, { color: '#FF9800' }]}>Richiesta inviata</Text>
             </View>
           ) : canSendRequest ? (
             <Pressable

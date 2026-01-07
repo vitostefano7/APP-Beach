@@ -28,6 +28,8 @@ type ProfileResponse = {
     ratingAverage?: number;
     favoriteCampo?: { name: string } | null;
     friendsCount?: number;
+    followersCount?: number;
+    followingCount?: number;
   };
   preferences: {
     pushNotifications: boolean;
@@ -91,9 +93,13 @@ export default function ProfileScreen() {
 
       const json = await profileRes.json();
       let friendsCount = 0;
+      let followersCount = 0;
+      let followingCount = 0;
       if (friendsRes.ok) {
         const friendsJson = await friendsRes.json();
         friendsCount = friendsJson.friendCount ?? 0;
+        followersCount = friendsJson.followersCount ?? 0;
+        followingCount = friendsJson.followingCount ?? 0;
       } else {
         console.log("Errore caricamento friends stats:", friendsRes.status);
       }
@@ -106,6 +112,8 @@ export default function ProfileScreen() {
           ratingAverage: json.profile?.ratingAverage ?? 0,
           favoriteCampo: json.profile?.favoriteCampo ?? null,
           friendsCount,
+          followersCount,
+          followingCount,
         },
         preferences: {
           pushNotifications: json.preferences?.pushNotifications ?? false,
@@ -354,6 +362,13 @@ export default function ProfileScreen() {
               )}
             </Pressable>
             
+            {/* ✅ Badge lucchetto se profilo privato */}
+            {user?.profilePrivacy === 'private' && (
+              <View style={styles.privateBadge}>
+                <Ionicons name="lock-closed" size={16} color="#666" />
+              </View>
+            )}
+            
             {/* ✅ Bottone camera per cambiare foto */}
             <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
               <Ionicons name="camera" size={16} color="white" />
@@ -371,15 +386,30 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.stats}>
-          <StatCard 
-            icon="people" 
-            color="#4CAF50" 
-            value={profile.friendsCount ?? 0} 
-            label="Amici" 
-            onPress={() => navigation.navigate("FriendsList")}
-          />
-          
-          <Pressable 
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: "#4CAF5020" }]}>
+              <Ionicons name="people" size={24} color="#4CAF50" />
+            </View>
+            <View style={styles.dualStatRow}>
+              <Pressable
+                style={styles.dualStatCell}
+                onPress={() => navigation.navigate("FriendsList", { filter: "followers" })}
+              >
+                <Text style={styles.statValue}>{profile.followersCount ?? 0}</Text>
+                <Text style={styles.statLabel}>Follower</Text>
+              </Pressable>
+              <View style={styles.dualStatDivider} />
+              <Pressable
+                style={styles.dualStatCell}
+                onPress={() => navigation.navigate("FriendsList", { filter: "following" })}
+              >
+                <Text style={styles.statValue}>{profile.followingCount ?? 0}</Text>
+                <Text style={styles.statLabel}>Following</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable
             style={styles.statCard}
             onPress={() => navigation.navigate("Conversazione")}
           >

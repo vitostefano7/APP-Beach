@@ -188,6 +188,54 @@ export const useNotifications = () => {
     }
   }, [token]);
 
+  // Accetta richiesta di follow
+  const acceptFollowRequest = useCallback(async (friendshipId: string, notificationId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/friends/request/${friendshipId}/accept`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nell\'accettazione della richiesta');
+      }
+
+      // Elimina la notifica dopo l'accettazione
+      await deleteNotification(notificationId);
+      return true;
+    } catch (err) {
+      console.error('acceptFollowRequest error:', err);
+      return false;
+    }
+  }, [token, deleteNotification]);
+
+  // Rifiuta richiesta di follow
+  const rejectFollowRequest = useCallback(async (friendshipId: string, notificationId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/friends/request/${friendshipId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nel rifiuto della richiesta');
+      }
+
+      // Elimina la notifica dopo il rifiuto
+      await deleteNotification(notificationId);
+      return true;
+    } catch (err) {
+      console.error('rejectFollowRequest error:', err);
+      return false;
+    }
+  }, [token, deleteNotification]);
+
   return {
     notifications,
     unreadCount,
@@ -198,5 +246,7 @@ export const useNotifications = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    acceptFollowRequest,
+    rejectFollowRequest,
   };
 };

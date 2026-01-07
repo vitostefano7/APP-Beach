@@ -5,13 +5,14 @@ export interface IUser extends Document {
   surname?: string;
   email: string;
   password: string;
-  username: string; // 🆕 NUOVO
+  username: string;
   role: "player" | "owner";
   isActive: boolean;
   avatarUrl?: string;
   expoPushToken?: string;
   pushTokenUpdatedAt?: Date;
-  preferredSports?: ("volleyball" | "beach_volleyball")[]; // 🆕 NUOVO
+  preferredSports?: ("volleyball" | "beach_volleyball")[]; 
+  profilePrivacy?: "public" | "private"; // 🆕 Privacy del profilo
   location?: {
     type: "Point";
     coordinates: [number, number];
@@ -78,6 +79,13 @@ const UserSchema = new Schema<IUser>(
       type: [String],
       enum: ["volleyball", "beach_volleyball"],
       default: [],
+    },
+
+    // 🆕 PRIVACY PROFILO
+    profilePrivacy: {
+      type: String,
+      enum: ["public", "private"],
+      default: "public",
     },
 
     // 🆕 LOCATION

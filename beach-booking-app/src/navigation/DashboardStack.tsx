@@ -29,7 +29,14 @@ export type DashboardStackParamList = {
   Strutture: undefined;
   FieldDetails: { fieldId: string };
   CercaAmici: undefined;
-  ProfiloUtente: { userId: string };
+  ProfiloUtente: {
+    userId: string;
+    backTo?: {
+      tab: "Profilo";
+      screen: "FriendsList";
+      params?: { filter?: "followers" | "following" };
+    };
+  };
   Notifiche: undefined;
 };
 

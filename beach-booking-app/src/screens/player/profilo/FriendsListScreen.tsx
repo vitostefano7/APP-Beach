@@ -10,10 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { RouteProp } from "@react-navigation/native";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
+import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 
 type FriendItem = {
   user: {
@@ -33,11 +35,21 @@ type FriendsResponse = {
 
 export default function FriendsListScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<ProfileStackParamList, "FriendsList">>();
   const { token } = useContext(AuthContext);
 
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<"followers" | "following">(
+    route.params?.filter ?? "followers"
+  );
+
+  useEffect(() => {
+    if (route.params?.filter) {
+      setFilter(route.params.filter);
+    }
+  }, [route.params?.filter]);
 
   const loadFriends = useCallback(async () => {
     if (!token) return;
@@ -46,7 +58,8 @@ export default function FriendsListScreen() {
       if (!refreshing) {
         setLoading(true);
       }
-      const res = await fetch(`${API_URL}/friends?limit=100&skip=0`, {
+      const query = `limit=100&skip=0&type=${filter}`;
+      const res = await fetch(`${API_URL}/friends?${query}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -65,7 +78,7 @@ export default function FriendsListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, refreshing]);
+  }, [token, refreshing, filter]);
 
   useEffect(() => {
     loadFriends();
@@ -89,7 +102,14 @@ export default function FriendsListScreen() {
         onPress={() =>
           navigation.navigate("Dashboard", {
             screen: "ProfiloUtente",
-            params: { userId: item.user._id },
+            params: {
+              userId: item.user._id,
+              backTo: {
+                tab: "Profilo",
+                screen: "FriendsList",
+                params: { filter },
+              },
+            },
           })
         }
         style={({ pressed }) => [styles.friendRow, pressed && styles.friendRowPressed]}
@@ -121,10 +141,39 @@ export default function FriendsListScreen() {
         <View style={{ width: 40 }} />
       </View>
 
+      <View style={styles.filterRow}>
+        <Pressable
+          style={[styles.filterButton, filter === "followers" && styles.filterButtonActive]}
+          onPress={() => setFilter("followers")}
+        >
+          <Text
+            style={[
+              styles.filterText,
+              filter === "followers" && styles.filterTextActive,
+            ]}
+          >
+            Follower
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.filterButton, filter === "following" && styles.filterButtonActive]}
+          onPress={() => setFilter("following")}
+        >
+          <Text
+            style={[
+              styles.filterText,
+              filter === "following" && styles.filterTextActive,
+            ]}
+          >
+            Following
+          </Text>
+        </Pressable>
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Caricamento amici...</Text>
+          <Text style={styles.loadingText}>Caricamento lista...</Text>
         </View>
       ) : (
         <FlatList
@@ -137,9 +186,13 @@ export default function FriendsListScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="people-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyTitle}>Nessun amico</Text>
+              <Text style={styles.emptyTitle}>
+                {filter === "followers" ? "Nessun follower" : "Nessun following"}
+              </Text>
               <Text style={styles.emptyText}>
-                Aggiungi amici dalla ricerca o dai suggerimenti.
+                {filter === "followers"
+                  ? "Ancora nessuno ti segue."
+                  : "Non stai seguendo nessuno."}
               </Text>
             </View>
           }
@@ -173,6 +226,34 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#1a1a1a",
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#f8f9fa",
+  },
+  filterButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ececec",
+  },
+  filterButtonActive: {
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+  filterTextActive: {
+    color: "white",
   },
   loadingContainer: {
     flex: 1,
