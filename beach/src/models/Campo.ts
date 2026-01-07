@@ -9,10 +9,16 @@ export interface Slot {
   enabled: boolean;
 }
 
-export interface DaySchedule {
-  enabled: boolean;
+export interface TimeSlot {
   open: string;
   close: string;
+}
+
+export interface DaySchedule {
+  enabled: boolean;
+  open?: string;  // Deprecato - per retrocompatibilità
+  close?: string; // Deprecato - per retrocompatibilità
+  slots?: TimeSlot[]; // Nuovo formato: array di fasce orarie
 }
 
 export interface DurationPrice {
@@ -123,11 +129,20 @@ export interface ICampo extends Document {
    SUB SCHEMAS
 ======================= */
 
+const TimeSlotSchema = new Schema(
+  {
+    open: { type: String, required: true },
+    close: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const DayScheduleSchema = new Schema<DaySchedule>(
   {
     enabled: { type: Boolean, default: true },
-    open: { type: String, default: "09:00" },
-    close: { type: String, default: "22:00" },
+    open: { type: String }, // Deprecato - per retrocompatibilità
+    close: { type: String }, // Deprecato - per retrocompatibilità
+    slots: { type: [TimeSlotSchema], default: undefined }, // Nuovo formato
   },
   { _id: false }
 );

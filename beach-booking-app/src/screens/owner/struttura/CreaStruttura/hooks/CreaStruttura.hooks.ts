@@ -43,13 +43,13 @@ export function useCreaStruttura() {
      STEP 3 – ORARI
   ===================== */
   const [openingHours, setOpeningHours] = useState<OpeningHours>({
-    monday: { open: "09:00", close: "22:00", closed: false },
-    tuesday: { open: "09:00", close: "22:00", closed: false },
-    wednesday: { open: "09:00", close: "22:00", closed: false },
-    thursday: { open: "09:00", close: "22:00", closed: false },
-    friday: { open: "09:00", close: "22:00", closed: false },
-    saturday: { open: "09:00", close: "22:00", closed: false },
-    sunday: { open: "09:00", close: "22:00", closed: false },
+    monday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    tuesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    friday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    saturday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+    sunday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
   });
 
   /* =====================
@@ -90,11 +90,42 @@ export function useCreaStruttura() {
     }));
   };
 
-  const updateOpeningHour = (day: string, type: "open" | "close", value: string) => {
+  const updateTimeSlot = (day: string, index: number, field: "open" | "close", value: string) => {
     setOpeningHours(prev => ({
       ...prev,
-      [day]: { ...prev[day], [type]: value },
+      [day]: {
+        ...prev[day],
+        slots: prev[day].slots.map((slot, i) => 
+          i === index ? { ...slot, [field]: value } : slot
+        )
+      }
     }));
+  };
+
+  const addTimeSlot = (day: string) => {
+    setOpeningHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: [...prev[day].slots, { open: "09:00", close: "22:00" }]
+      }
+    }));
+  };
+
+  const removeTimeSlot = (day: string, index: number) => {
+    if (openingHours[day].slots.length <= 1) return;
+    setOpeningHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: prev[day].slots.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const updateOpeningHour = (day: string, type: "open" | "close", value: string) => {
+    // Legacy function - now updates first slot
+    updateTimeSlot(day, 0, type, value);
   };
 
   /* =====================
@@ -268,6 +299,9 @@ export function useCreaStruttura() {
     /* handlers orari */
     toggleDayClosed,
     updateOpeningHour,
+    updateTimeSlot,
+    addTimeSlot,
+    removeTimeSlot,
 
     /* handlers campi */
     addCampo,

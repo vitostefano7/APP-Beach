@@ -11,11 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-import API_URL from "../../config/api";
+import API_URL from "../../../config/api";
 
 /* =========================
    UTILITY: Controlla se una prenotazione è conclusa
@@ -704,12 +704,17 @@ export default function OwnerBookingsScreen() {
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Prenotazioni</Text>
-            <Text style={styles.subtitle}>
-              {filteredBookings.length}{" "}
-              {filteredBookings.length === 1 ? "prenotazione" : "prenotazioni"}
-            </Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerIconContainer}>
+              <Ionicons name="calendar" size={26} color="#2196F3" />
+            </View>
+            <View>
+              <Text style={styles.title}>Prenotazioni</Text>
+              <Text style={styles.subtitle}>
+                {filteredBookings.length}{" "}
+                {filteredBookings.length === 1 ? "prenotazione" : "prenotazioni"}
+              </Text>
+            </View>
           </View>
           <Pressable
             onPress={async () => {
@@ -941,30 +946,56 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     color: "#1a1a1a",
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
     marginTop: 2,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   refreshButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   // ✅ BARRA RICERCA
@@ -973,19 +1004,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "white",
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#e9ecef",
-    gap: 8,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: "#1a1a1a",
+    fontWeight: "500",
   },
 
   loadingContainer: {
@@ -1019,23 +1057,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "white",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: "#e9ecef",
-    gap: 6,
+    gap: 8,
     height: 44,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   filterChipActive: {
     backgroundColor: "#2196F3",
     borderColor: "#2196F3",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   filterChipText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#666",
     lineHeight: 16,
   },
@@ -1048,18 +1096,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFEBEE",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: "#E53935",
-    gap: 6,
+    gap: 8,
     height: 44,
+    shadowColor: "#E53935",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   filterChipResetText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#E53935",
     lineHeight: 16,
   },
@@ -1072,13 +1125,13 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
-    gap: 12,
+    paddingVertical: 100,
+    gap: 16,
   },
 
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     color: "#333",
   },
 
@@ -1086,56 +1139,70 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#888",
     textAlign: "center",
+    fontWeight: "500",
+    lineHeight: 22,
   },
 
   card: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#f5f5f5",
   },
 
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   cardHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     flex: 1,
   },
 
   sportIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
   badgeText: {
     fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontWeight: "900",
+    letterSpacing: 0.6,
   },
 
   cardBody: {
@@ -1150,35 +1217,35 @@ const styles = StyleSheet.create({
   },
 
   struttura: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#1a1a1a",
   },
 
   campo: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#666",
-    fontWeight: "500",
+    fontWeight: "600",
     marginTop: 2,
   },
 
   date: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#333",
-    fontWeight: "500",
+    fontWeight: "600",
     textTransform: "capitalize",
   },
 
   time: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#333",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   player: {
     fontSize: 14,
     color: "#666",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   resultBox: {
@@ -1249,7 +1316,7 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -1257,22 +1324,28 @@ const styles = StyleSheet.create({
 
   modalContent: {
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 380,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
   },
 
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
 
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#1a1a1a",
   },
 
   monthSelector: {
@@ -1281,36 +1354,45 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
     backgroundColor: "#f8f9fa",
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
   },
 
   monthBtn: {
-    padding: 6,
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
   monthText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#1a1a1a",
   },
 
   calendar: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 16,
+    padding: 12,
   },
 
   weekHeader: {
     flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
   weekDay: {
     flex: 1,
     textAlign: "center",
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "800",
     color: "#999",
+    letterSpacing: 0.5,
   },
 
   daysGrid: {
@@ -1328,47 +1410,57 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: "white",
   },
 
   dayCellSelected: {
     backgroundColor: "#2196F3",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   dayCellToday: {
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: "#2196F3",
   },
 
   dayNumber: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: "#333",
   },
 
   dayNumberSelected: {
     color: "white",
-    fontWeight: "700",
+    fontWeight: "900",
   },
 
   dayNumberToday: {
     color: "#2196F3",
-    fontWeight: "700",
+    fontWeight: "900",
   },
 
   todayButton: {
     backgroundColor: "#2196F3",
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 18,
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   todayButtonText: {
     color: "white",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   optionsList: {
@@ -1379,15 +1471,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 18,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    backgroundColor: "white",
   },
 
   optionItemLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
 
   optionItemSelected: {
@@ -1397,11 +1490,11 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: "#333",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   optionTextSelected: {
     color: "#2196F3",
-    fontWeight: "700",
+    fontWeight: "800",
   },
 });

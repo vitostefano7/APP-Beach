@@ -13,8 +13,16 @@ export interface PlaceSuggestion {
   };
 }
 
+export interface TimeSlot {
+  open: string;
+  close: string;
+}
+
 export interface OpeningHours {
-  [key: string]: { open: string; close: string; closed: boolean };
+  [key: string]: { 
+    closed: boolean;
+    slots: TimeSlot[];
+  };
 }
 
 export interface DurationPrice {

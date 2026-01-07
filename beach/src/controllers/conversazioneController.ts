@@ -24,7 +24,7 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
     // Query per chat dirette (vecchia logica)
     const directQuery = isOwner ? { type: 'direct', owner: userId } : { type: 'direct', user: userId };
     
-    // Query per chat di gruppo (nuovo)
+    // Query per chat di gruppo
     const groupQuery = { type: 'group', participants: userId };
 
     const [directConversations, groupConversations] = await Promise.all([
@@ -40,7 +40,69 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
         .sort({ lastMessageAt: -1 })
     ]);
 
-    const allConversations = [...directConversations, ...groupConversations];
+    let allConversations = [...directConversations, ...groupConversations];
+
+    // Se è owner, aggiungi anche le conversazioni di gruppo dei suoi match
+    if (isOwner) {
+      console.log(`🔍 Owner ${userId} - Cercando conversazioni di gruppo dei suoi match...`);
+      
+      // Trova tutte le conversazioni di gruppo con match
+      const allGroupConversations = await Conversation.find({ type: 'group', match: { $exists: true } })
+        .populate('participants', 'name email')
+        .populate({
+          path: 'match',
+          populate: {
+            path: 'booking',
+            populate: {
+              path: 'campo',
+              populate: {
+                path: 'struttura',
+                select: 'owner',
+              },
+            },
+          },
+        })
+        .sort({ lastMessageAt: -1 });
+
+      console.log(`🔍 Totale conversazioni di gruppo con match: ${allGroupConversations.length}`);
+
+      // Filtra solo quelle dei suoi match
+      const ownerGroupConversations = allGroupConversations.filter((conv: any) => {
+        const match = conv.match;
+        if (!match) {
+          console.log(`⚠️ Conversazione ${conv._id} - match non popolato`);
+          return false;
+        }
+        if (!match.booking) {
+          console.log(`⚠️ Match ${match._id} - booking non popolato`);
+          return false;
+        }
+        const booking = match.booking;
+        if (!booking.campo) {
+          console.log(`⚠️ Booking ${booking._id} - campo non popolato`);
+          return false;
+        }
+        if (!booking.campo.struttura) {
+          console.log(`⚠️ Campo ${booking.campo._id} - struttura non popolata`);
+          return false;
+        }
+        const strutturaOwnerId = booking.campo.struttura.owner?.toString();
+        const isOwnerMatch = strutturaOwnerId === userId;
+        console.log(`🔍 Conversazione ${conv._id} - Struttura owner: ${strutturaOwnerId}, Current user: ${userId}, Match: ${isOwnerMatch}`);
+        return isOwnerMatch;
+      });
+
+      console.log(`📬 Owner group conversations trovate: ${ownerGroupConversations.length}`);
+
+      // Aggiungi senza duplicati
+      const existingIds = new Set(allConversations.map(c => c._id.toString()));
+      const newConversations = ownerGroupConversations.filter(
+        (conv: any) => !existingIds.has(conv._id.toString())
+      );
+      
+      console.log(`📬 Nuove conversazioni da aggiungere: ${newConversations.length}`);
+      allConversations = [...allConversations, ...newConversations];
+    }
 
     // ✅ FILTRA SOLO CONVERSAZIONI CON MESSAGGI REALI
     const activeConversations = allConversations.filter(
@@ -209,6 +271,28 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       isAuthorized = conversation.participants.some(
         (p: any) => p.toString() === userId
       );
+      
+      // Se è una chat di gruppo di un match, verifica se è l'owner della struttura
+      if (!isAuthorized && isOwner && conversation.match) {
+        const match = await Match.findById(conversation.match).populate({
+          path: 'booking',
+          populate: {
+            path: 'campo',
+            populate: {
+              path: 'struttura',
+              select: 'owner',
+            },
+          },
+        });
+        
+        if (match) {
+          const booking = match.booking as any;
+          const isMatchOwner = booking?.campo?.struttura?.owner?.toString() === userId;
+          if (isMatchOwner) {
+            isAuthorized = true;
+          }
+        }
+      }
     }
 
     if (!isAuthorized) {
@@ -290,18 +374,43 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     // Verifica autorizzazione
     let isAuthorized = false;
     let canSend = true;
+    let isMatchOwner = false;
     
     if (conversation.type === 'direct') {
       isAuthorized = 
         (!isOwner && conversation.user?.toString() === userId) ||
         (isOwner && conversation.owner?.toString() === userId);
     } else if (conversation.type === 'group') {
+      // Verifica se è un partecipante
       isAuthorized = conversation.participants.some(
         (p: any) => p.toString() === userId
       );
       
+      // Se è una chat di gruppo di un match, verifica se è l'owner della struttura
+      if (!isAuthorized && isOwner && conversation.match) {
+        const match = await Match.findById(conversation.match).populate({
+          path: 'booking',
+          populate: {
+            path: 'campo',
+            populate: {
+              path: 'struttura',
+              select: 'owner',
+            },
+          },
+        });
+        
+        if (match) {
+          const booking = match.booking as any;
+          isMatchOwner = booking?.campo?.struttura?.owner?.toString() === userId;
+          if (isMatchOwner) {
+            isAuthorized = true;
+          }
+        }
+      }
+      
       // Opzione B: Verifica se può inviare (solo players con status 'confirmed')
-      if (isAuthorized && conversation.match) {
+      // L'owner della struttura può sempre inviare messaggi
+      if (isAuthorized && !isMatchOwner && conversation.match) {
         const match = conversation.match as any;
         const playerInMatch = match.players?.find(
           (p: any) => p.user?.toString() === userId || p.user?._id?.toString() === userId
@@ -426,19 +535,31 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
 
     // Carica il match con i players
     const match = await Match.findById(matchId)
-      .populate('booking')
+      .populate({
+        path: 'booking',
+        populate: {
+          path: 'campo',
+          populate: {
+            path: 'struttura',
+            select: 'owner',
+          },
+        },
+      })
       .populate('players.user', 'name email');
 
     if (!match) {
       return res.status(404).json({ message: 'Match non trovato' });
     }
 
-    // Verifica che l'utente sia parte del match
+    // Verifica che l'utente sia parte del match O sia l'owner della struttura
     const userInMatch = match.players.find(
       (p: any) => p.user._id.toString() === userId
     );
 
-    if (!userInMatch) {
+    const booking = match.booking as any;
+    const isOwner = booking?.campo?.struttura?.owner?.toString() === userId;
+
+    if (!userInMatch && !isOwner) {
       return res.status(403).json({ message: 'Non fai parte di questo match' });
     }
 
@@ -454,7 +575,6 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
       const participants = match.players.map((p: any) => p.user._id);
       
       // Genera nome gruppo dal booking
-      const booking = match.booking as any;
       const groupName = booking ? 
         `Partita ${new Date(booking.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })} - ${booking.startTime}` :
         'Chat di Gruppo';

@@ -629,13 +629,24 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    // Cerca il match associato
-    const match = await Match.findOne({ booking: booking._id });
+    // Cerca il match associato con populate completo
+    const match = await Match.findOne({ booking: booking._id })
+      .populate("createdBy", "name surname username")
+      .populate({
+        path: "players.user",
+        select: "name surname username avatarUrl",
+      });
 
     res.json({
       ...booking.toObject(),
       match: match
         ? {
+            _id: match._id,
+            maxPlayers: match.maxPlayers,
+            status: match.status,
+            createdBy: match.createdBy,
+            players: match.players,
+            score: match.score,
             winner: match.winner,
             sets: match.score?.sets ?? [],
           }

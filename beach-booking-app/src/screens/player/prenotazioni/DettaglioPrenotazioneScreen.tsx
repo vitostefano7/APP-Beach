@@ -888,65 +888,48 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <AnimatedButton 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </AnimatedButton>
-        <Text style={styles.headerTitle}>Dettaglio Prenotazione</Text>
-        {canCancelBooking() && (
-          <Pressable
-            onPress={handleCancelBooking}
-            disabled={cancellingBooking}
-            style={styles.headerCancelButton}
-            hitSlop={10}
+      {/* Header fisso con back button e status */}
+      <View style={{ backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+        <View style={{ 
+          paddingHorizontal: 16, 
+          paddingVertical: 16, 
+          flexDirection: 'row', 
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <AnimatedButton 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
           >
-            <Ionicons name="trash-outline" size={22} color="#F44336" />
-          </Pressable>
-        )}
-        {!canCancelBooking() && <View style={{ width: 40 }} />}
+            <Ionicons name="arrow-back" size={24} color="#2196F3" />
+          </AnimatedButton>
+          
+          <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
+            {booking.status === 'confirmed' 
+              ? (isMatchPassed() ? 'Conclusa' : 'In corso')
+              : 'Cancellata'}
+          </Text>
+
+          {canCancelBooking() ? (
+            <Pressable
+              onPress={handleCancelBooking}
+              disabled={cancellingBooking}
+              style={styles.headerCancelButton}
+              hitSlop={10}
+            >
+              <Ionicons name="trash-outline" size={22} color="#F44336" />
+            </Pressable>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
+        </View>
       </View>
 
-      <ScrollView style={styles.container}>
-        {/* Status Card Moderna */}
-        <AnimatedCard delay={0}>
-          <View style={styles.modernStatusCard}>
-            <View style={styles.modernStatusIconContainer}>
-              <ScaleInView delay={100}>
-                {booking.status === 'confirmed' ? (
-                  <SuccessGradient style={styles.modernStatusIcon}>
-                    <Ionicons name="checkmark-circle" size={28} color="white" />
-                  </SuccessGradient>
-                ) : (
-                  <View style={[styles.modernStatusIcon, { backgroundColor: '#FFEBEE' }]}>
-                    <Ionicons name="close-circle" size={28} color="#F44336" />
-                  </View>
-                )}
-              </ScaleInView>
-            </View>
-            <View style={styles.modernStatusContent}>
-              <Text style={[
-                styles.modernStatusText,
-                { color: booking.status === 'confirmed' ? '#4CAF50' : '#F44336' }
-              ]}>
-                {booking.status === 'confirmed' ? (
-                  booking.hasMatch && booking.match?.status === 'completed' ? 'Terminata' : 'Confermata'
-                ) : 'Cancellata'}
-              </Text>
-              {booking.status === 'confirmed' && (
-                <Text style={styles.modernStatusSubtext}>
-                  {booking.hasMatch && booking.match?.status === 'completed' 
-                    ? 'Partita conclusa' 
-                    : 'La tua prenotazione è attiva'}
-                </Text>
-              )}
-            </View>
-          </View>
-        </AnimatedCard>
-
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 0 }}
+      >
         {/* Campo Info Card - Versione compatta */}
         <AnimatedCard delay={100}>
           <View style={styles.fieldInfoCard}>

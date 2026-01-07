@@ -9,10 +9,14 @@ export const styles = StyleSheet.create({
   header: {
     backgroundColor: "white",
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
 
   headerTop: {
@@ -51,18 +55,21 @@ export const styles = StyleSheet.create({
 
   filterButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
+    backgroundColor: "#f5f5f5",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    borderWidth: 0,
   },
 
   filterButtonActive: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#2196F3",
+    backgroundColor: "#2196F3",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
   filterButtonContent: {
@@ -73,13 +80,13 @@ export const styles = StyleSheet.create({
 
   filterButtonText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#666",
   },
 
   filterButtonTextActive: {
-    color: "#2196F3",
-    fontWeight: "700",
+    color: "white",
+    fontWeight: "800",
   },
 
   filterBadge: {
@@ -120,21 +127,24 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: "transparent",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 0,
+    borderLeftWidth: 4,
+    borderLeftColor: "transparent",
   },
 
   conversationCardUnread: {
-    borderColor: "#E3F2FD",
+    borderLeftColor: "#2196F3",
     backgroundColor: "#FAFFFE",
+    shadowColor: "#2196F3",
+    shadowOpacity: 0.12,
   },
 
   conversationLeft: {
@@ -149,12 +159,17 @@ export const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "#E3F2FD",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
 
   unreadDot: {
@@ -227,19 +242,25 @@ export const styles = StyleSheet.create({
 
   unreadBadge: {
     backgroundColor: "#FF5252",
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     marginLeft: 8,
+    shadowColor: "#FF5252",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
   },
 
   unreadBadgeText: {
     color: "white",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
 
   emptyState: {

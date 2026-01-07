@@ -337,7 +337,15 @@ async function seed() {
           coordinates: [s.lng, s.lat],
         },
         amenities: s.amenities,
-        openingHours: {},
+        openingHours: {
+          monday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+          tuesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+          wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+          thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+          friday: { closed: false, slots: [{ open: "09:00", close: "23:00" }] },
+          saturday: { closed: false, slots: [{ open: "08:00", close: "23:00" }] },
+          sunday: { closed: false, slots: [{ open: "08:00", close: "22:00" }] },
+        },
         images: [],
         rating: { average: s.rating, count: s.count },
         isActive: true,
@@ -388,13 +396,13 @@ async function seed() {
             playerCountPricing: { enabled: false, prices: [] },
           },
           weeklySchedule: {
-            monday: { enabled: true, open: "09:00", close: "22:00" },
-            tuesday: { enabled: true, open: "09:00", close: "22:00" },
-            wednesday: { enabled: true, open: "09:00", close: "22:00" },
-            thursday: { enabled: true, open: "09:00", close: "22:00" },
-            friday: { enabled: true, open: "09:00", close: "23:00" },
-            saturday: { enabled: true, open: "08:00", close: "23:00" },
-            sunday: { enabled: true, open: "08:00", close: "22:00" },
+            monday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
+            tuesday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
+            wednesday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
+            thursday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
+            friday: { enabled: true, slots: [{ open: "09:00", close: "23:00" }] },
+            saturday: { enabled: true, slots: [{ open: "08:00", close: "23:00" }] },
+            sunday: { enabled: true, slots: [{ open: "08:00", close: "22:00" }] },
           },
         });
       }
@@ -415,11 +423,19 @@ async function seed() {
         const weekday = WEEK_MAP[date.getDay()] as keyof typeof campo.weeklySchedule;
         const schedule = campo.weeklySchedule[weekday];
 
+        let allSlots: any[] = [];
+        if (schedule.enabled && schedule.slots && schedule.slots.length > 0) {
+          schedule.slots.forEach((timeSlot: any) => {
+            const slotsForRange = generateHalfHourSlots(timeSlot.open, timeSlot.close);
+            allSlots.push(...slotsForRange);
+          });
+        }
+
         calendarDocs.push({
           campo: campo._id,
           date: dateStr,
-          slots: schedule.enabled ? generateHalfHourSlots(schedule.open, schedule.close) : [],
-          isClosed: !schedule.enabled,
+          slots: allSlots,
+          isClosed: !schedule.enabled || allSlots.length === 0,
         });
       }
     }

@@ -8,12 +8,13 @@ import DettaglioCampoScreen from "../screens/owner/DettaglioCampoScreen";
 import ModificaCampoScreen from "../screens/owner/ModificaCampoScreen";
 import CampoDisponibilitaScreen from "../screens/owner/CampoDisponibilitaScreen";
 import CampoCalendarioGestioneScreen from "../screens/owner/CampoCalendarioGestioneScreen";
-import OwnerBookingsScreen from "../screens/owner/OwnerBookingsScreen";
+import OwnerBookingsScreen from "../screens/owner/prenotazioni/OwnerBookingsScreen";
 import DettaglioPrenotazioneOwnerScreen from "../screens/owner/prenotazioni/DettaglioPrenotazioneOwnerScreen";
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCampiScreen";
 import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
 import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
+import GroupChatScreen from "../screens/owner/Comunicazioni/GroupChatScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -88,6 +89,10 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="GestisciImmaginiStruttura" 
         component={GestisciImmaginiStruttura} 
+      />
+      <Stack.Screen 
+        name="GroupChat" 
+        component={GroupChatScreen} 
       />
     </Stack.Navigator>
   );

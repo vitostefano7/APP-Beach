@@ -142,7 +142,7 @@ function StrutturaCard({ item }: { item: any }) {
 
           <View style={styles.viewDetailsButton}>
             <Text style={styles.viewDetailsText}>Gestisci</Text>
-            <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+            <Ionicons name="chevron-forward" size={16} color="white" />
           </View>
         </View>
       </View>
@@ -275,29 +275,57 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 16,
+    paddingVertical: 16,
     alignItems: "center",
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
 
-  title: { fontSize: 26, fontWeight: "800" },
-  subtitle: { fontSize: 14, color: "#666" },
+  title: { 
+    fontSize: 24, 
+    fontWeight: "800",
+    color: "#1a1a1a",
+    letterSpacing: -0.5,
+  },
+  subtitle: { 
+    fontSize: 13, 
+    color: "#666",
+    fontWeight: "600",
+    marginTop: 2,
+  },
 
   addButton: {
     backgroundColor: "#2196F3",
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 20 },
 
   card: {
     backgroundColor: "white",
-    borderRadius: 20,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 14,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
   },
 
   cardImage: {
@@ -344,8 +372,14 @@ const styles = StyleSheet.create({
     color: "white",
   },
 
-  cardContent: { padding: 16 },
-  cardName: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
+  cardContent: { padding: 14 },
+  cardName: { 
+    fontSize: 17, 
+    fontWeight: "800", 
+    marginBottom: 8,
+    color: "#1a1a1a",
+    letterSpacing: -0.3,
+  },
 
   cardInfo: { gap: 6, marginBottom: 12 },
 
@@ -362,33 +396,55 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: "#f0f0f0",
     paddingTop: 12,
+    marginTop: 2,
   },
 
-  statValue: { fontSize: 18, fontWeight: "800" },
-  statLabel: { fontSize: 11, color: "#999" },
+  statValue: { 
+    fontSize: 18, 
+    fontWeight: "800",
+    color: "#2196F3",
+  },
+  statLabel: { 
+    fontSize: 11, 
+    color: "#999",
+    fontWeight: "600",
+    marginTop: 1,
+  },
 
   viewDetailsButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   viewDetailsText: {
-    color: "#2196F3",
+    color: "white",
     fontWeight: "700",
+    fontSize: 12,
   },
 
   emptyContainer: {
     alignItems: "center",
     paddingVertical: 80,
+    paddingHorizontal: 32,
   },
 
   emptyTitle: {
     fontSize: 20,
     fontWeight: "800",
-    marginTop: 12,
+    marginTop: 14,
+    color: "#1a1a1a",
   },
 
   emptyText: {
@@ -396,6 +452,7 @@ const styles = StyleSheet.create({
     color: "#666",
     marginVertical: 8,
     textAlign: "center",
+    lineHeight: 20,
   },
 
   emptyButton: {
@@ -407,6 +464,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     alignItems: "center",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   emptyButtonText: {

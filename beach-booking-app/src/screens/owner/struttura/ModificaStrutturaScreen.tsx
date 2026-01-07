@@ -46,6 +46,7 @@ export default function ModificaStrutturaScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const [openingHours, setOpeningHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
+  const [expandedDays, setExpandedDays] = useState<{ [key: string]: boolean }>({});
   
   const [amenities, setAmenities] = useState<string[]>([]);
   const [customAmenities, setCustomAmenities] = useState<string[]>([]);
@@ -150,6 +151,13 @@ export default function ModificaStrutturaScreen() {
     ]);
   };
 
+  const toggleDayExpanded = (day: string) => {
+    setExpandedDays((prev) => ({
+      ...prev,
+      [day]: !prev[day],
+    }));
+  };
+
   const toggleDayClosed = (day: string) => {
     setOpeningHours((prev) => ({
       ...prev,
@@ -157,11 +165,41 @@ export default function ModificaStrutturaScreen() {
     }));
   };
 
-  const updateOpeningHour = (day: string, type: "open" | "close", value: string) => {
-    setOpeningHours((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], [type]: value },
-    }));
+  const updateTimeSlot = (day: string, slotIndex: number, type: "open" | "close", value: string) => {
+    setOpeningHours((prev) => {
+      const dayHours = prev[day];
+      const updatedSlots = [...dayHours.slots];
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], [type]: value };
+      return {
+        ...prev,
+        [day]: { ...dayHours, slots: updatedSlots },
+      };
+    });
+  };
+
+  const addTimeSlot = (day: string) => {
+    setOpeningHours((prev) => {
+      const dayHours = prev[day];
+      return {
+        ...prev,
+        [day]: {
+          ...dayHours,
+          slots: [...dayHours.slots, { open: "09:00", close: "22:00" }],
+        },
+      };
+    });
+  };
+
+  const removeTimeSlot = (day: string, slotIndex: number) => {
+    setOpeningHours((prev) => {
+      const dayHours = prev[day];
+      if (dayHours.slots.length <= 1) return prev;
+      const updatedSlots = dayHours.slots.filter((_, i) => i !== slotIndex);
+      return {
+        ...prev,
+        [day]: { ...dayHours, slots: updatedSlots },
+      };
+    });
   };
 
   const handleToggleActive = () => {
@@ -179,40 +217,82 @@ export default function ModificaStrutturaScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (forceUpdate = false) => {
     if (!name.trim()) {
       Alert.alert("Errore", "Il nome è obbligatorio");
       return;
     }
 
+    console.log("💾 === SAVING STRUTTURA ===");
+    console.log("📋 Name:", name);
+    console.log("📝 Description:", description);
+    console.log("🎯 Amenities:", amenities);
+    console.log("🕒 OpeningHours:");
+    console.log(JSON.stringify(openingHours, null, 2));
+    console.log("✅ IsActive:", isActive);
+    console.log("🔄 ForceUpdate:", forceUpdate);
+
     setSaving(true);
 
     try {
+      const body = {
+        name,
+        description,
+        amenities,
+        openingHours,
+        isActive,
+        forceUpdate,
+      };
+
+      console.log("📤 Sending request to:", `${API_URL}/strutture/${strutturaId}`);
+      console.log("📦 Body:", JSON.stringify(body, null, 2));
+
       const response = await fetch(`${API_URL}/strutture/${strutturaId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name,
-          description,
-          amenities,
-          openingHours,
-          isActive,
-        }),
+        body: JSON.stringify(body),
       });
 
+      console.log("📥 Response status:", response.status);
+
+      if (response.status === 409) {
+        // Conflitto: ci sono prenotazioni che verranno cancellate
+        const data = await response.json();
+        console.log("⚠️ Conflict detected:", data);
+        
+        Alert.alert(
+          "⚠️ Attenzione",
+          `Modificando gli orari ${data.affectedBookings} prenotazione${data.affectedBookings > 1 ? 'i' : ''} future ${data.affectedBookings > 1 ? 'verranno cancellate' : 'verrà cancellata'}.\n\nVuoi continuare comunque?`,
+          [
+            { text: "Annulla", style: "cancel" },
+            { 
+              text: "Continua", 
+              style: "destructive",
+              onPress: () => handleSave(true) // Richiama con forceUpdate=true
+            },
+          ]
+        );
+        setSaving(false);
+        return;
+      }
+
       if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Success:", data);
         Alert.alert("Successo", "Struttura aggiornata!", [
           { text: "OK", onPress: () => navigation.goBack() },
         ]);
       } else {
         const error = await response.json();
+        console.error("❌ Error response:", error);
         Alert.alert("Errore", error.message || "Impossibile aggiornare la struttura");
       }
     } catch (error) {
-      Alert.alert("Errore", "Errore di connessione");
+      console.error("❌ Fetch error:", error);
+      Alert.alert("Errore", "Errore di connessione: " + (error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -238,7 +318,7 @@ export default function ModificaStrutturaScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Modifica Struttura</Text>
         <Pressable 
-          onPress={handleSave}
+          onPress={() => handleSave(false)}
           disabled={saving}
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
         >
@@ -404,8 +484,15 @@ export default function ModificaStrutturaScreen() {
 
           {DAYS.map(({ key, label }) => (
             <View key={key} style={styles.dayCard}>
-              <View style={styles.dayHeader}>
-                <Text style={styles.dayLabel}>{label}</Text>
+              <Pressable onPress={() => toggleDayExpanded(key)} style={styles.dayHeader}>
+                <View style={styles.dayHeaderLeft}>
+                  <Ionicons 
+                    name={expandedDays[key] ? "chevron-down" : "chevron-forward"} 
+                    size={20} 
+                    color="#666" 
+                  />
+                  <Text style={styles.dayLabel}>{label}</Text>
+                </View>
                 <View style={styles.dayStatusContainer}>
                   <Text style={[styles.dayStatus, openingHours[key]?.closed && styles.dayStatusClosed]}>
                     {openingHours[key]?.closed ? "Chiuso" : "Aperto"}
@@ -417,38 +504,62 @@ export default function ModificaStrutturaScreen() {
                     thumbColor="white"
                   />
                 </View>
-              </View>
+              </Pressable>
               
-              {!openingHours[key]?.closed && (
-                <View style={styles.timeContainer}>
-                  <View style={styles.timeBox}>
-                    <Ionicons name="sunny" size={14} color="#FF9800" />
-                    <TextInput 
-                      style={styles.timeInput} 
-                      value={openingHours[key]?.open || "09:00"} 
-                      onChangeText={(v) => updateOpeningHour(key, "open", v)} 
-                      placeholder="09:00" 
-                      placeholderTextColor="#999" 
-                    />
-                  </View>
+              {expandedDays[key] && !openingHours[key]?.closed && (
+                <>
+                  {openingHours[key]?.slots.map((slot, slotIndex) => (
+                    <View key={slotIndex} style={styles.slotCard}>
+                      <View style={styles.slotHeader}>
+                        <View style={styles.slotBadge}>
+                          <Text style={styles.slotBadgeText}>Fascia {slotIndex + 1}</Text>
+                        </View>
+                        {openingHours[key].slots.length > 1 && (
+                          <Pressable onPress={() => removeTimeSlot(key, slotIndex)} style={styles.deleteSlotBtn}>
+                            <Ionicons name="trash-outline" size={18} color="#FF5252" />
+                          </Pressable>
+                        )}
+                      </View>
+                      
+                      <View style={styles.timeContainer}>
+                        <View style={styles.timeBox}>
+                          <Ionicons name="sunny" size={14} color="#FF9800" />
+                          <TextInput 
+                            style={styles.timeInput} 
+                            value={slot.open} 
+                            onChangeText={(v) => updateTimeSlot(key, slotIndex, "open", v)} 
+                            placeholder="09:00" 
+                            placeholderTextColor="#999"
+                            keyboardType="numbers-and-punctuation"
+                          />
+                        </View>
+                        
+                        <View style={styles.timeDivider}>
+                          <View style={styles.timeDividerLine} />
+                          <Ionicons name="arrow-forward" size={12} color="#2196F3" />
+                          <View style={styles.timeDividerLine} />
+                        </View>
+                        
+                        <View style={styles.timeBox}>
+                          <Ionicons name="moon" size={14} color="#9C27B0" />
+                          <TextInput 
+                            style={styles.timeInput} 
+                            value={slot.close} 
+                            onChangeText={(v) => updateTimeSlot(key, slotIndex, "close", v)} 
+                            placeholder="22:00" 
+                            placeholderTextColor="#999"
+                            keyboardType="numbers-and-punctuation"
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  ))}
                   
-                  <View style={styles.timeDivider}>
-                    <View style={styles.timeDividerLine} />
-                    <Ionicons name="arrow-forward" size={12} color="#2196F3" />
-                    <View style={styles.timeDividerLine} />
-                  </View>
-                  
-                  <View style={styles.timeBox}>
-                    <Ionicons name="moon" size={14} color="#9C27B0" />
-                    <TextInput 
-                      style={styles.timeInput} 
-                      value={openingHours[key]?.close || "22:00"} 
-                      onChangeText={(v) => updateOpeningHour(key, "close", v)} 
-                      placeholder="22:00" 
-                      placeholderTextColor="#999" 
-                    />
-                  </View>
-                </View>
+                  <Pressable onPress={() => addTimeSlot(key)} style={styles.addSlotBtn}>
+                    <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+                    <Text style={styles.addSlotBtnText}>Aggiungi fascia oraria</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           ))}

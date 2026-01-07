@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import Struttura from "../models/Strutture";
 import Campo from "../models/Campo";
+import Booking from "../models/Booking";
+import CampoCalendarDay from "../models/campoCalendarDay";
 import { AuthRequest } from "../middleware/authMiddleware";
 import axios from "axios";
 
@@ -182,6 +184,12 @@ export const updateStruttura = async (
   res: Response
 ) => {
   try {
+    console.log("\n💾 === UPDATE STRUTTURA ===");
+    console.log("🆔 Struttura ID:", req.params.id);
+    console.log("👤 User ID:", req.user?.id);
+    console.log("📦 Body:");
+    console.log(JSON.stringify(req.body, null, 2));
+
     const struttura = await Struttura.findOne({
       _id: req.params.id,
       owner: req.user!.id,
@@ -189,12 +197,113 @@ export const updateStruttura = async (
     });
 
     if (!struttura) {
+      console.log("❌ Struttura non trovata o non autorizzato");
       return res.status(404).json({ 
         message: "Struttura non trovata o non autorizzato" 
       });
     }
 
-    const { name, description, location, amenities, openingHours, isActive } = req.body;
+    console.log("✅ Struttura trovata:", struttura.name);
+
+    const { name, description, location, amenities, openingHours, isActive, forceUpdate } = req.body;
+
+    // ✅ Se cambiano gli orari di apertura, controlla l'impatto sui campi e prenotazioni
+    if (openingHours && !forceUpdate) {
+      console.log("🔍 Controllo impatto sui campi e prenotazioni...");
+      
+      const campi = await Campo.find({ struttura: struttura._id });
+      console.log(`📋 Trovati ${campi.length} campi`);
+      
+      let totalAffectedBookings = 0;
+      const affectedBookingsDetails = [];
+
+      for (const campo of campi) {
+        console.log(`\n🔍 Analizzando campo: ${campo.name}`);
+        
+        // Controlla se il campo ha orari personalizzati o usa quelli della struttura
+        const usesStrutturaHours = !campo.weeklySchedule || 
+          Object.keys(campo.weeklySchedule).length === 0;
+
+        console.log(`   📅 Usa orari struttura: ${usesStrutturaHours}`);
+
+        if (usesStrutturaHours) {
+          // Simula il nuovo weeklySchedule basato sui nuovi openingHours
+          const newWeeklySchedule: any = {};
+          const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+          
+          for (const day of DAYS) {
+            const dayHours = openingHours[day];
+            newWeeklySchedule[day] = {
+              enabled: dayHours && !dayHours.closed,
+              slots: dayHours?.slots || [],
+            };
+          }
+
+          console.log(`   📆 Nuovo schedule generato`);
+
+          // Usa la funzione checkBookingsImpact (devi importarla o copiarla)
+          const today = new Date().toISOString().split("T")[0];
+          const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+          
+          const futureBookings = await Booking.find({
+            campo: campo._id,
+            date: { $gte: today },
+            status: { $in: ["confirmed", "pending"] },
+          }).lean();
+
+          console.log(`   📅 Prenotazioni future trovate: ${futureBookings.length}`);
+
+          for (const booking of futureBookings) {
+            const bookingDate = new Date(booking.date + "T12:00:00");
+            const weekday = WEEK_MAP[bookingDate.getDay()];
+            const newDaySchedule = newWeeklySchedule[weekday];
+
+            if (!newDaySchedule?.enabled || !newDaySchedule.slots || newDaySchedule.slots.length === 0) {
+              console.log(`   ❌ Prenotazione ${booking._id} (${booking.date} ${booking.startTime}) - Giorno chiuso`);
+              totalAffectedBookings++;
+              affectedBookingsDetails.push({
+                ...booking,
+                campoName: campo.name,
+              });
+              continue;
+            }
+
+            const bookingStartTime = booking.startTime;
+            let slotAvailable = false;
+
+            for (const timeSlot of newDaySchedule.slots) {
+              if (bookingStartTime >= timeSlot.open && bookingStartTime < timeSlot.close) {
+                slotAvailable = true;
+                break;
+              }
+            }
+
+            if (!slotAvailable) {
+              console.log(`   ❌ Prenotazione ${booking._id} (${booking.date} ${booking.startTime}) - Slot non disponibile`);
+              totalAffectedBookings++;
+              affectedBookingsDetails.push({
+                ...booking,
+                campoName: campo.name,
+              });
+            } else {
+              console.log(`   ✅ Prenotazione ${booking._id} (${booking.date} ${booking.startTime}) - OK`);
+            }
+          }
+        }
+      }
+
+      if (totalAffectedBookings > 0) {
+        console.log(`\n⚠️ TOTALE: ${totalAffectedBookings} prenotazioni future verrebbero cancellate`);
+        return res.status(409).json({
+          message: "Attenzione: modificando gli orari alcune prenotazioni saranno cancellate",
+          warning: true,
+          affectedBookings: totalAffectedBookings,
+          bookings: affectedBookingsDetails.slice(0, 10), // Limita a 10 per non appesantire
+        });
+      }
+      
+      console.log("✅ Nessuna prenotazione impattata, procedo con l'aggiornamento");
+    }
 
     if (name) struttura.name = name;
     if (description !== undefined) struttura.description = description;
@@ -210,11 +319,9 @@ export const updateStruttura = async (
     // ✅ AMENITIES - Supporta array e oggetto legacy
     if (amenities !== undefined) {
       if (Array.isArray(amenities)) {
-        // Array → Salva direttamente
         console.log("✅ Amenities array:", amenities);
         struttura.amenities = amenities;
       } else if (typeof amenities === 'object' && amenities !== null) {
-        // Oggetto legacy → Converti
         console.log("⚠️ Amenities oggetto (legacy), converto");
         
         const italianToEnglish: Record<string, string> = {
@@ -234,7 +341,92 @@ export const updateStruttura = async (
       }
     }
     
-    if (openingHours !== undefined) struttura.openingHours = openingHours;
+    if (openingHours !== undefined) {
+      // ✅ SEMPRE rigenera quando arrivano openingHours (l'utente ha modificato qualcosa)
+      const openingHoursChanged = true; // Forza rigenerazione
+      console.log("🔍 OpeningHours ricevuti, forzo rigenerazione");
+      console.log("📊 Vecchi:", JSON.stringify(struttura.openingHours));
+      console.log("📊 Nuovi:", JSON.stringify(openingHours));
+      
+      struttura.openingHours = openingHours;
+      
+      // ✅ SEMPRE rigenera i calendari se gli orari cambiano
+      if (openingHoursChanged) {
+        console.log("🔄 Orari modificati, rigenerazione calendari...");
+        const campi = await Campo.find({ struttura: struttura._id });
+        console.log(`📋 Trovati ${campi.length} campi da rigenerare`);
+        
+        const today = new Date().toISOString().split("T")[0];
+        const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+        const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+        
+        for (const campo of campi) {
+          // Sincronizza weeklySchedule del campo con openingHours della struttura
+          const newWeeklySchedule: any = {};
+          
+          for (const day of DAYS) {
+            const dayHours = openingHours[day];
+            newWeeklySchedule[day] = {
+              enabled: dayHours && !dayHours.closed,
+              slots: dayHours?.slots || [],
+            };
+          }
+          
+          campo.weeklySchedule = newWeeklySchedule;
+          await campo.save();
+          console.log(`✅ Campo "${campo.name}" sincronizzato`);
+          
+          // ✅ Se forceUpdate, cancella anche le prenotazioni incompatibili
+          if (forceUpdate) {
+            const futureBookings = await Booking.find({
+              campo: campo._id,
+              date: { $gte: today },
+              status: { $in: ["confirmed", "pending"] },
+            });
+
+            for (const booking of futureBookings) {
+              const bookingDate = new Date(booking.date + "T12:00:00");
+              const weekday = WEEK_MAP[bookingDate.getDay()];
+              const newDaySchedule = newWeeklySchedule[weekday];
+
+              let shouldCancel = false;
+
+              if (!newDaySchedule?.enabled || !newDaySchedule.slots || newDaySchedule.slots.length === 0) {
+                shouldCancel = true;
+              } else {
+                const bookingStartTime = booking.startTime;
+                let slotAvailable = false;
+
+                for (const timeSlot of newDaySchedule.slots) {
+                  if (bookingStartTime >= timeSlot.open && bookingStartTime < timeSlot.close) {
+                    slotAvailable = true;
+                    break;
+                  }
+                }
+
+                if (!slotAvailable) {
+                  shouldCancel = true;
+                }
+              }
+
+              if (shouldCancel) {
+                booking.status = "cancelled";
+                booking.cancelledBy = "system";
+                booking.cancelledReason = "Orari struttura modificati";
+                await booking.save();
+                console.log(`🗑️ Prenotazione ${booking._id} cancellata`);
+              }
+            }
+          }
+          
+          // Rigenera calendario
+          await regenerateCalendarForCampo(campo);
+        }
+        
+        console.log(`✅ ${campi.length} campi rigenerati`);
+      }
+    }
+    
     if (isActive !== undefined) struttura.isActive = isActive;
 
     await struttura.save();
@@ -348,4 +540,71 @@ export const searchAddress = async (req: Request, res: Response) => {
     
     res.status(500).json({ message: "Errore ricerca indirizzo" });
   }
+};
+
+/* =====================================================
+   HELPER FUNCTIONS
+===================================================== */
+
+const generateHalfHourSlots = (open: string, close: string) => {
+  const slots = [];
+  let [h, m] = open.split(":").map(Number);
+
+  while (true) {
+    const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    if (time >= close) break;
+
+    slots.push({ time, enabled: true });
+
+    m += 30;
+    if (m >= 60) {
+      h++;
+      m = 0;
+    }
+  }
+
+  return slots;
+};
+
+const regenerateCalendarForCampo = async (campo: any) => {
+  const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentYear = new Date().getFullYear();
+  
+  for (const year of [currentYear, currentYear + 1]) {
+    const operations = [];
+
+    // ✅ Itera per ogni giorno dell'anno usando solo le date (senza ore)
+    for (let dayOfYear = 0; dayOfYear < 365 + (year % 4 === 0 ? 1 : 0); dayOfYear++) {
+      const d = new Date(year, 0, 1 + dayOfYear);
+      const weekday = WEEK_MAP[d.getDay()];
+      const campoSchedule = campo.weeklySchedule[weekday];
+      const date = `${year}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      let allSlots: { time: string; enabled: boolean }[] = [];
+
+      if (campoSchedule?.enabled && campoSchedule.slots && Array.isArray(campoSchedule.slots)) {
+        campoSchedule.slots.forEach((timeSlot: any) => {
+          const slotsForThisRange = generateHalfHourSlots(timeSlot.open, timeSlot.close);
+          allSlots.push(...slotsForThisRange);
+        });
+      }
+
+      operations.push({
+        updateOne: {
+          filter: { campo: campo._id, date },
+          update: { 
+            $set: { 
+              slots: allSlots,
+              isClosed: allSlots.length === 0 
+            } 
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    await CampoCalendarDay.bulkWrite(operations);
+  }
+  
+  console.log(`✅ Calendario rigenerato per ${campo.name}`);
 };

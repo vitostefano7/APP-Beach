@@ -18,8 +18,11 @@ interface HeaderProps {
   pendingInvites: any[];
 }
 
-const getInitials = (name?: string): string => {
-  if (!name) return "";
+const getInitials = (name?: string, surname?: string): string => {
+  if (!name) return "??";
+  if (surname) {
+    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
+  }
   const parts = name.trim().split(" ");
   return parts.length === 1
     ? parts[0][0].toUpperCase()

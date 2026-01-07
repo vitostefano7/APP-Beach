@@ -24,18 +24,26 @@ export const DAYS = [
   { key: "sunday", label: "Domenica" },
 ];
 
+export interface TimeSlot {
+  open: string;
+  close: string;
+}
+
 export interface OpeningHours {
-  [key: string]: { open: string; close: string; closed: boolean };
+  [key: string]: { 
+    closed: boolean;
+    slots: TimeSlot[];
+  };
 }
 
 export const DEFAULT_OPENING_HOURS: OpeningHours = {
-  monday: { open: "09:00", close: "22:00", closed: false },
-  tuesday: { open: "09:00", close: "22:00", closed: false },
-  wednesday: { open: "09:00", close: "22:00", closed: false },
-  thursday: { open: "09:00", close: "22:00", closed: false },
-  friday: { open: "09:00", close: "22:00", closed: false },
-  saturday: { open: "09:00", close: "22:00", closed: false },
-  sunday: { open: "09:00", close: "22:00", closed: false },
+  monday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  tuesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  friday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  saturday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+  sunday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
 };
 
 // ✅ Helper: determina se un'amenity è custom
