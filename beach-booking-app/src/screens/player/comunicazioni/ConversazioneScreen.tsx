@@ -18,21 +18,40 @@ import { styles } from "../styles-player/ConversazioneScreen.styles";
 
 type Conversation = {
   _id: string;
-  user: {
+  type?: 'direct' | 'group';
+  user?: {
     _id: string;
     name: string;
     email: string;
   };
-  struttura: {
+  struttura?: {
     _id: string;
     name: string;
     images: string[];
   };
-  owner: {
+  owner?: {
     _id: string;
     name: string;
     email: string;
   };
+  match?: {
+    _id: string;
+    booking?: {
+      date: string;
+      startTime: string;
+      campo?: {
+        name: string;
+        struttura?: {
+          name: string;
+        };
+      };
+    };
+  };
+  participants?: Array<{
+    _id: string;
+    name: string;
+    email: string;
+  }>;
   lastMessage: string;
   lastMessageAt: string;
   unreadByUser: number;
@@ -114,23 +133,132 @@ export default function ConversationsScreen() {
     const unreadCount = isOwner ? item.unreadByOwner : item.unreadByUser;
     const otherPerson = isOwner ? item.user : item.owner;
 
+    // Debug: verifica struttura
+    console.log('Rendering conversation:', {
+      id: item._id,
+      type: item.type,
+      hasStruttura: !!item.struttura,
+      struttura: item.struttura ? {
+        name: (item.struttura as any).name,
+        hasImages: !!(item.struttura as any).images
+      } : null
+    });
+
+    // Gestisci conversazioni di gruppo
+    if (item.type === 'group') {
+      const matchInfo = item.match?.booking;
+      const campo = matchInfo?.campo;
+      const struttura = campo?.struttura;
+      
+      // Crea titolo descrittivo
+      let groupTitle = "Chat di gruppo";
+      if (struttura?.name && campo?.name) {
+        groupTitle = `${struttura.name} - ${campo.name}`;
+      } else if (struttura?.name) {
+        groupTitle = struttura.name;
+      }
+      
+      // Formatta data e ora
+      let matchDateTime = "";
+      if (matchInfo?.date && matchInfo?.startTime) {
+        const date = new Date(matchInfo.date);
+        const dateStr = date.toLocaleDateString('it-IT', { 
+          weekday: 'short',
+          day: 'numeric', 
+          month: 'short' 
+        });
+        matchDateTime = `${dateStr} alle ${matchInfo.startTime}`;
+      }
+      
+      // Conta partecipanti
+      const participantsCount = item.participants?.length || 0;
+
+      return (
+        <Pressable
+          style={styles.conversationCard}
+          onPress={() => {
+            navigation.navigate("GroupChat", {
+              conversationId: item._id,
+            });
+            setTimeout(() => refreshUnreadCount(), 1000);
+          }}
+        >
+          <View style={styles.conversationLeft}>
+            <View style={[styles.conversationImage, styles.conversationImagePlaceholder, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="people" size={24} color="#2196F3" />
+            </View>
+
+            <View style={styles.conversationInfo}>
+              <View style={styles.conversationHeader}>
+                <Text style={styles.conversationTitle} numberOfLines={1}>
+                  {groupTitle}
+                </Text>
+                <Text style={styles.conversationTime}>
+                  {formatTime(item.lastMessageAt)}
+                </Text>
+              </View>
+
+              <View style={styles.conversationFooter}>
+                {matchDateTime && (
+                  <View style={styles.matchInfoRow}>
+                    <Ionicons name="calendar-outline" size={13} color="#2196F3" />
+                    <Text style={styles.matchInfoText} numberOfLines={1}>
+                      {matchDateTime}
+                    </Text>
+                  </View>
+                )}
+                {participantsCount > 0 && (
+                  <View style={styles.participantsBadge}>
+                    <Ionicons name="people-outline" size={11} color="#666" />
+                    <Text style={styles.participantsText}>{participantsCount}</Text>
+                  </View>
+                )}
+              </View>
+              
+              {item.lastMessage && (
+                <Text style={styles.conversationMessage} numberOfLines={1}>
+                  {item.lastMessage}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
+      );
+    }
+
+    // Per conversazioni direct, se non c'è struttura popolata, usa valori di fallback
+    const strutturaName = item.struttura && typeof item.struttura === 'object' 
+      ? (item.struttura as any).name || "Struttura" 
+      : "Struttura";
+    
+    const strutturaImages = item.struttura && typeof item.struttura === 'object'
+      ? (item.struttura as any).images || []
+      : [];
+
+
     return (
       <Pressable
         style={styles.conversationCard}
         onPress={() => {
           navigation.navigate("Chat", {
             conversationId: item._id,
-            strutturaName: item.struttura.name,
-            otherPersonName: otherPerson.name,
+            strutturaName: strutturaName,
+            otherPersonName: otherPerson?.name || "Utente",
           });
           // Aggiorna badge dopo aver aperto la chat
           setTimeout(() => refreshUnreadCount(), 1000);
         }}
       >
         <View style={styles.conversationLeft}>
-          {item.struttura.images?.length > 0 ? (
+          {strutturaImages.length > 0 ? (
             <Image
-              source={{ uri: item.struttura.images[0] }}
+              source={{ uri: strutturaImages[0] }}
               style={styles.conversationImage}
             />
           ) : (
@@ -142,7 +270,7 @@ export default function ConversationsScreen() {
           <View style={styles.conversationInfo}>
             <View style={styles.conversationHeader}>
               <Text style={styles.conversationTitle} numberOfLines={1}>
-                {item.struttura.name}
+                {strutturaName}
               </Text>
               <Text style={styles.conversationTime}>
                 {formatTime(item.lastMessageAt)}

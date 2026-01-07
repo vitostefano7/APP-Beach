@@ -171,7 +171,7 @@ export default function LeMiePrenotazioniScreen() {
 
   // Funzione per formattare il tempo rimanente
   const getTimeStatus = (booking: Booking): string => {
-    if (isPastBooking(booking)) return "Passata";
+    if (isPastBooking(booking)) return "Conclusa";
     if (isOngoingBooking(booking)) return "In corso";
     
     try {
@@ -179,7 +179,7 @@ export default function LeMiePrenotazioniScreen() {
       const now = new Date();
       const diffMs = bookingStartDateTime.getTime() - now.getTime();
       
-      if (diffMs <= 0) return "Passata";
+      if (diffMs <= 0) return "Conclusa";
       
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffHours / 24);
@@ -405,7 +405,7 @@ export default function LeMiePrenotazioniScreen() {
           <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
           <Text style={styles.headerSubtitle}>
             {filter === "upcoming" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione futura" : "prenotazioni future"}`}
-            {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione passata" : "prenotazioni passate"}`}
+            {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione conclusa" : "prenotazioni passate"}`}
             {filter === "all" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione totale" : "prenotazioni totali"}`}
           </Text>
         </View>
@@ -418,7 +418,7 @@ export default function LeMiePrenotazioniScreen() {
       <View style={styles.filters}>
         {[
           { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
-          { key: "past", label: "Passate", icon: "time-outline" },
+          { key: "past", label: "Concluse", icon: "time-outline" },
           { key: "all", label: "Tutte", icon: "list-outline" },
         ].map((f) => (
           <Pressable

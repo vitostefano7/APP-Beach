@@ -87,6 +87,9 @@ export default function FieldDetailsScreen() {
   
   // ✅ Carousel immagini
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // ✅ Dropdown orari apertura
+  const [openingHoursExpanded, setOpeningHoursExpanded] = useState(false);
 
   /* =======================
      INIT
@@ -94,6 +97,13 @@ export default function FieldDetailsScreen() {
 
   useEffect(() => {
     if (!struttura?._id) return;
+
+    // Debug: verifica presenza openingHours
+    console.log('=== DEBUG STRUTTURA ===');
+    console.log('Struttura ID:', struttura._id);
+    console.log('Struttura name:', struttura.name);
+    console.log('OpeningHours presente:', !!struttura.openingHours);
+    console.log('OpeningHours:', JSON.stringify(struttura.openingHours, null, 2));
 
     fetchCampiByStruttura(struttura._id)
       .then((data) => {
@@ -355,33 +365,53 @@ export default function FieldDetailsScreen() {
         )}
 
         {/* OPENING HOURS */}
-        {struttura.openingHours && (
+        {struttura.openingHours && Object.keys(struttura.openingHours).length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="time" size={20} color="#FF9800" />
-              <Text style={styles.sectionTitle}>Orari di apertura</Text>
-            </View>
+            <Pressable 
+              style={styles.dropdownHeader}
+              onPress={() => setOpeningHoursExpanded(!openingHoursExpanded)}
+            >
+              <View style={styles.sectionHeader}>
+                <Ionicons name="time" size={20} color="#FF9800" />
+                <Text style={styles.sectionTitle}>Orari di apertura</Text>
+              </View>
+              <Ionicons 
+                name={openingHoursExpanded ? "chevron-up" : "chevron-down"} 
+                size={24} 
+                color="#666" 
+              />
+            </Pressable>
 
-            <View style={styles.openingHoursContainer}>
-              {DAYS_OF_WEEK.map(({ key, label }) => {
-                const dayHours = struttura.openingHours[key];
-                if (!dayHours) return null;
-                const isClosed = dayHours.closed === true;
+            {openingHoursExpanded && (
+              <View style={styles.openingHoursContainer}>
+                {DAYS_OF_WEEK.map(({ key, label }) => {
+                  const dayHours = struttura.openingHours[key];
+                  if (!dayHours) return null;
+                  const isClosed = dayHours.closed === true;
 
-                return (
-                  <View key={key} style={styles.openingHourRow}>
-                    <Text style={styles.dayName}>{label}</Text>
-                    {isClosed ? (
-                      <Text style={styles.closedLabel}>Chiuso</Text>
-                    ) : (
-                      <Text style={styles.hoursLabel}>
-                        {dayHours.open} - {dayHours.close}
-                      </Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
+                  // Gli orari sono dentro un array "slots"
+                  const slots = dayHours.slots || [];
+                  const hasSlots = slots.length > 0;
+
+                  return (
+                    <View key={key} style={styles.openingHourRow}>
+                      <Text style={styles.dayName}>{label}</Text>
+                      {isClosed || !hasSlots ? (
+                        <Text style={styles.closedLabel}>Chiuso</Text>
+                      ) : (
+                        <View style={styles.slotsContainer}>
+                          {slots.map((slot: any, index: number) => (
+                            <Text key={index} style={styles.hoursLabel}>
+                              {slot.open} - {slot.close}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
@@ -720,7 +750,7 @@ export default function FieldDetailsScreen() {
                                   color="#F44336"
                                 />
                                 <Text style={styles.closedText}>
-                                  Giorno chiuso
+                                  Non disponibile per prenotazioni
                                 </Text>
                               </View>
                             ) : (

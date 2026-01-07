@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
+import { openStrutturaChat } from "../struttura/FieldDetailsScreen/api/fieldDetails.api";
 import { BookingDetails, Player } from "./DettaglioPrenotazione/types/DettaglioPrenotazione.types";
 import { 
   formatDate, 
@@ -124,7 +125,19 @@ export default function DettaglioPrenotazioneScreen() {
     const now = new Date();
     const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
     const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
-    return now >= matchDateTime && now <= matchEndTime;
+    const inProgress = now >= matchDateTime && now <= matchEndTime;
+    
+    console.log('🕐 Match Status Check:', {
+      now: now.toISOString(),
+      matchStart: matchDateTime.toISOString(),
+      matchEnd: matchEndTime.toISOString(),
+      inProgress,
+      bookingDate: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime
+    });
+    
+    return inProgress;
   };
 
   const isMatchPassed = () => {
@@ -227,6 +240,28 @@ export default function DettaglioPrenotazioneScreen() {
       Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
     } finally {
       setLoadingGroupChat(false);
+    }
+  };
+
+  const handleOpenStrutturaChat = async () => {
+    if (!booking?.campo?.struttura?._id) {
+      Alert.alert("Errore", "Struttura non disponibile");
+      return;
+    }
+
+    if (!token) {
+      Alert.alert("Errore", "Effettua il login per chattare con la struttura");
+      return;
+    }
+
+    try {
+      const conversation = await openStrutturaChat(booking.campo.struttura._id, token);
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: booking.campo.struttura.name,
+      });
+    } catch (error: any) {
+      Alert.alert("Errore", error.message || "Impossibile aprire la chat. Riprova più tardi.");
     }
   };
 
@@ -897,16 +932,18 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          <AnimatedButton 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2196F3" />
-          </AnimatedButton>
+          <View style={{ width: 40 }}>
+            <AnimatedButton 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#2196F3" />
+            </AnimatedButton>
+          </View>
           
           <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
             {booking.status === 'confirmed' 
-              ? (isMatchPassed() ? 'Conclusa' : 'In corso')
+              ? (isMatchPassed() ? 'Dettaglio Partita Conclusa' : (isMatchInProgress() ? 'Dettaglio Partita In corso' : 'Dettaglio Prossima Partita'))
               : 'Cancellata'}
           </Text>
 
@@ -949,6 +986,13 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
                     <Text style={styles.fieldInfoValue}>{booking.campo.struttura.name}</Text>
                   </View>
+                  <Pressable 
+                    style={styles.chatIconButton}
+                    onPress={handleOpenStrutturaChat}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+                  </Pressable>
                 </View>
               </FadeInView>
 

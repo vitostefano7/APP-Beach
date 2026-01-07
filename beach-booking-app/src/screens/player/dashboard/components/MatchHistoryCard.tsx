@@ -63,6 +63,32 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     ).length;
   };
 
+  // Format player names for display
+  const getPlayerName = (player: any) => {
+    const firstName = player.user?.name || 'Giocatore';
+    const surname = player.user?.surname;
+    if (surname) {
+      return `${firstName} ${surname.charAt(0)}.`;
+    }
+    return firstName;
+  };
+
+  // Format sport name
+  const formatSportName = (sport: string) => {
+    switch (sport) {
+      case 'beach_volleyball':
+        return 'Beach Volley';
+      case 'volleyball':
+        return 'Pallavolo';
+      case 'padel':
+        return 'Padel';
+      case 'tennis':
+        return 'Tennis';
+      default:
+        return sport;
+    }
+  };
+
   return (
     <Pressable 
       style={[styles.matchHistoryCard, style]} 
@@ -86,24 +112,32 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               >
                 <Ionicons
                   name={isWinner ? "trophy" : "close-circle"}
-                  size={18}
+                  size={22}
                   color={isWinner ? "#FFD700" : "#F44336"}
                 />
               </View>
-              <Text style={[
-                styles.matchResultText,
-                isWinner ? styles.matchWinText : styles.matchLossText
-              ]}>
-                {isWinner ? 'Vittoria' : 'Sconfitta'}
-              </Text>
+              <View>
+                <Text style={[
+                  styles.matchResultText,
+                  isWinner ? styles.matchWinText : styles.matchLossText
+                ]}>
+                  {isWinner ? 'VITTORIA' : 'SCONFITTA'}
+                </Text>
+                <Text style={styles.matchDateSubtext}>
+                  {formatMatchDate(match.playedAt || match.createdAt)}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.matchSportBadge}>
               <Ionicons 
                 name={getSportIcon(match.booking?.sport || 'beach_volleyball')} 
-                size={14} 
-                color="#666" 
+                size={16} 
+                color="#2196F3" 
               />
+              <Text style={styles.matchSportText}>
+                {formatSportName(match.booking?.sport || 'beach_volleyball')}
+              </Text>
             </View>
           </View>
 
@@ -111,20 +145,25 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
           <View style={styles.matchTeamsContainer}>
             {/* Team A */}
             <View style={styles.matchTeamSection}>
-              <Text style={[
-                styles.matchTeamLabel,
-                myPlayer?.team === 'A' && styles.matchTeamLabelMy
+              <View style={[
+                styles.matchTeamLabelContainer,
+                myPlayer?.team === 'A' && styles.matchTeamLabelContainerMy
               ]}>
-                Team A
-              </Text>
+                <Text style={[
+                  styles.matchTeamLabel,
+                  myPlayer?.team === 'A' && styles.matchTeamLabelMy
+                ]}>
+                  TEAM A
+                </Text>
+              </View>
               <View style={styles.matchTeamAvatars}>
-                {teamAPlayers.slice(0, 3).map((player: any, idx: number) => (
+                {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
                   <View 
                     key={player._id || player.user?._id || `teamA-${idx}`}
                     style={[
                       styles.matchAvatar,
                       styles.matchAvatarA,
-                      idx > 0 && { marginLeft: -6 }
+                      idx > 0 && { marginLeft: -8 }
                     ]}
                   >
                     <Text style={styles.matchAvatarText}>
@@ -133,35 +172,67 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                   </View>
                 ))}
               </View>
+              {teamAPlayers.length > 0 && (
+                <View style={styles.matchPlayerNames}>
+                  {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
+                    <Text 
+                      key={`nameA-${idx}`}
+                      style={[
+                        styles.matchPlayerName,
+                        player.user?._id === userId && styles.matchPlayerNameMy
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {getPlayerName(player)}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Score */}
-            <View style={styles.matchScoreContainer}>
-              <Text style={styles.matchScoreLarge}>
-                {getTeamScore(myPlayer?.team === 'A' ? 'A' : 'B')}
-              </Text>
-              <Text style={styles.matchScoreSeparator}>-</Text>
-              <Text style={styles.matchScoreLarge}>
-                {getTeamScore(myPlayer?.team === 'A' ? 'B' : 'A')}
-              </Text>
+            <View style={styles.matchScoreMainContainer}>
+              <View style={styles.matchScoreContainer}>
+                <Text style={styles.matchScoreLarge}>
+                  {getTeamScore(myPlayer?.team === 'A' ? 'A' : 'B')}
+                </Text>
+                <Text style={styles.matchScoreSeparator}>-</Text>
+                <Text style={styles.matchScoreLarge}>
+                  {getTeamScore(myPlayer?.team === 'A' ? 'B' : 'A')}
+                </Text>
+              </View>
+              {match.score?.sets && match.score.sets.length > 0 && (
+                <View style={styles.matchSetsContainer}>
+                  {match.score.sets.map((set: any, idx: number) => (
+                    <Text key={idx} style={styles.matchSetScore}>
+                      {myPlayer?.team === 'A' ? `${set.teamA}-${set.teamB}` : `${set.teamB}-${set.teamA}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Team B */}
             <View style={styles.matchTeamSection}>
-              <Text style={[
-                styles.matchTeamLabel,
-                myPlayer?.team === 'B' && styles.matchTeamLabelMy
+              <View style={[
+                styles.matchTeamLabelContainer,
+                myPlayer?.team === 'B' && styles.matchTeamLabelContainerMy
               ]}>
-                Team B
-              </Text>
+                <Text style={[
+                  styles.matchTeamLabel,
+                  myPlayer?.team === 'B' && styles.matchTeamLabelMy
+                ]}>
+                  TEAM B
+                </Text>
+              </View>
               <View style={styles.matchTeamAvatars}>
-                {teamBPlayers.slice(0, 3).map((player: any, idx: number) => (
+                {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
                   <View 
                     key={player._id || player.user?._id || `teamB-${idx}`}
                     style={[
                       styles.matchAvatar,
                       styles.matchAvatarB,
-                      idx > 0 && { marginLeft: -6 }
+                      idx > 0 && { marginLeft: -8 }
                     ]}
                   >
                     <Text style={styles.matchAvatarText}>
@@ -170,20 +241,39 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                   </View>
                 ))}
               </View>
+              {teamBPlayers.length > 0 && (
+                <View style={styles.matchPlayerNames}>
+                  {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
+                    <Text 
+                      key={`nameB-${idx}`}
+                      style={[
+                        styles.matchPlayerName,
+                        player.user?._id === userId && styles.matchPlayerNameMy
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {getPlayerName(player)}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
 
-          {/* Footer with location and date */}
+          {/* Footer with location and time */}
           <View style={styles.matchCardFooter}>
             <View style={styles.matchLocationContainer}>
-              <Ionicons name="location" size={10} color="#666" />
+              <Ionicons name="location" size={14} color="#2196F3" />
               <Text style={styles.matchLocationText} numberOfLines={1}>
                 {match.booking?.campo?.struttura?.name || 'Struttura'}
               </Text>
             </View>
-            <Text style={styles.matchHistoryDate}>
-              {formatMatchDate(match.playedAt || match.createdAt)}
-            </Text>
+            <View style={styles.matchTimeContainer}>
+              <Ionicons name="time-outline" size={12} color="#999" />
+              <Text style={styles.matchTimeText}>
+                {match.booking?.startTime || '--:--'}
+              </Text>
+            </View>
           </View>
         </View>
       </LinearGradient>

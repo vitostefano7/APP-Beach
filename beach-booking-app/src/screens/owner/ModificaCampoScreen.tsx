@@ -18,20 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../config/api";
 
 /* =======================
-   COSTANTI
-======================= */
-
-const DAYS = [
-  { key: "monday", label: "Lunedì" },
-  { key: "tuesday", label: "Martedì" },
-  { key: "wednesday", label: "Mercoledì" },
-  { key: "thursday", label: "Giovedì" },
-  { key: "friday", label: "Venerdì" },
-  { key: "saturday", label: "Sabato" },
-  { key: "sunday", label: "Domenica" },
-];
-
-/* =======================
    SCREEN
 ======================= */
 
@@ -51,16 +37,6 @@ export default function ModificaCampoScreen() {
   const [indoor, setIndoor] = useState(false);
   const [pricePerHour, setPricePerHour] = useState("");
   const [isActive, setIsActive] = useState(true);
-
-  const [weeklySchedule, setWeeklySchedule] = useState({
-    monday: { enabled: true, open: "09:00", close: "22:00" },
-    tuesday: { enabled: true, open: "09:00", close: "22:00" },
-    wednesday: { enabled: true, open: "09:00", close: "22:00" },
-    thursday: { enabled: true, open: "09:00", close: "22:00" },
-    friday: { enabled: true, open: "09:00", close: "22:00" },
-    saturday: { enabled: true, open: "09:00", close: "22:00" },
-    sunday: { enabled: true, open: "09:00", close: "22:00" },
-  });
 
   /* =======================
      LOAD CAMPO
@@ -95,7 +71,6 @@ export default function ModificaCampoScreen() {
       setIndoor(data.indoor || false);
       setPricePerHour(data.pricePerHour?.toString() || "");
       setIsActive(data.isActive ?? true);
-      if (data.weeklySchedule) setWeeklySchedule(data.weeklySchedule);
     } catch {
       Alert.alert("Errore", "Impossibile caricare il campo", [
         { text: "OK", onPress: () => navigation.goBack() },
@@ -103,31 +78,6 @@ export default function ModificaCampoScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  /* =======================
-     WEEKLY
-  ======================= */
-
-  const toggleDayEnabled = (day: string) => {
-    setWeeklySchedule((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day as keyof typeof prev],
-        enabled: !prev[day as keyof typeof prev].enabled,
-      },
-    }));
-  };
-
-  const updateDayTime = (
-    day: string,
-    type: "open" | "close",
-    value: string
-  ) => {
-    setWeeklySchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day as keyof typeof prev], [type]: value },
-    }));
   };
 
   /* =======================
@@ -157,7 +107,6 @@ export default function ModificaCampoScreen() {
           indoor,
           pricePerHour: parseFloat(pricePerHour),
           isActive,
-          weeklySchedule,
         }),
       });
 
@@ -312,49 +261,25 @@ export default function ModificaCampoScreen() {
 
         {/* ATTIVO */}
         <View style={styles.switchRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Campo attivo</Text>
-            <Text style={styles.switchDescription}>
-              {isActive
-                ? "Il campo è visibile e prenotabile"
-                : "Il campo non sarà prenotabile"}
-            </Text>
+          <View style={styles.switchRowLeft}>
+            <Ionicons
+              name={isActive ? "checkmark-circle" : "close-circle"}
+              size={24}
+              color={isActive ? "#4CAF50" : "#F44336"}
+            />
+            <View>
+              <Text style={styles.label}>Campo attivo</Text>
+              <Text style={styles.switchDescription}>
+                {isActive
+                  ? "Visibile e prenotabile"
+                  : "Non prenotabile"}
+              </Text>
+            </View>
           </View>
           <Switch value={isActive} onValueChange={setIsActive} />
         </View>
 
-        {/* ORARI */}
-        <Text style={styles.sectionTitle}>⏰ Orari settimanali</Text>
-
-        {DAYS.map(({ key, label }) => (
-          <View key={key} style={styles.dayRow}>
-            <View style={styles.dayHeader}>
-              <Text style={styles.dayLabel}>{label}</Text>
-              <Switch
-                value={weeklySchedule[key as keyof typeof weeklySchedule].enabled}
-                onValueChange={() => toggleDayEnabled(key)}
-              />
-            </View>
-
-            {weeklySchedule[key as keyof typeof weeklySchedule].enabled && (
-              <View style={styles.timeRow}>
-                <TextInput
-                  style={styles.timeInput}
-                  value={weeklySchedule[key as keyof typeof weeklySchedule].open}
-                  onChangeText={(v) => updateDayTime(key, "open", v)}
-                />
-                <Text style={styles.timeSeparator}>-</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={weeklySchedule[key as keyof typeof weeklySchedule].close}
-                  onChangeText={(v) => updateDayTime(key, "close", v)}
-                />
-              </View>
-            )}
-          </View>
-        ))}
-
-        <View style={{ height: 40 }} />
+        <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -365,37 +290,47 @@ export default function ModificaCampoScreen() {
 ======================= */
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  safe: { flex: 1, backgroundColor: "#f5f7fa" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e9ecef",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f8f9fa",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f5f7fa",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: { 
-    fontSize: 18, 
+    fontSize: 20, 
     fontWeight: "800",
     flex: 1,
     textAlign: "center",
+    color: "#1a1a1a",
   },
   saveHeaderButton: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 70,
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    minWidth: 80,
     alignItems: "center",
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   saveHeaderButtonDisabled: {
     opacity: 0.5,
@@ -406,88 +341,121 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   container: { padding: 16 },
-  section: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
+  section: { marginBottom: 24 },
+  label: { 
+    fontSize: 15, 
+    fontWeight: "700", 
+    marginBottom: 10,
+    color: "#1a1a1a",
+  },
   input: {
     backgroundColor: "white",
-    borderWidth: 2,
-    borderColor: "#e9ecef",
+    borderWidth: 1,
+    borderColor: "#e0e4e8",
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     fontSize: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   row: { flexDirection: "row" },
-  chipContainer: { flexDirection: "row", gap: 10 },
+  chipContainer: { flexDirection: "row", gap: 12 },
   chip: {
+    flex: 1,
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: "white",
     borderWidth: 2,
-    borderColor: "#e9ecef",
+    borderColor: "#e0e4e8",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   chipActive: {
-    backgroundColor: "#2196F3",
-    borderColor: "#2196F3",
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  chipText: { fontSize: 15, fontWeight: "600", color: "#666" },
+  chipText: { fontSize: 15, fontWeight: "700", color: "#666" },
   chipTextActive: { color: "white" },
   switchCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#e9ecef",
+    padding: 18,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  switchCardLeft: { flexDirection: "row", gap: 12, alignItems: "center" },
-  switchCardTitle: { fontWeight: "700", fontSize: 15 },
-  switchCardSubtitle: { fontSize: 13, color: "#666" },
+  switchCardLeft: { 
+    flexDirection: "row", 
+    gap: 14, 
+    alignItems: "center",
+    flex: 1,
+  },
+  switchCardTitle: { fontWeight: "700", fontSize: 16, color: "#1a1a1a" },
+  switchCardSubtitle: { fontSize: 13, color: "#666", marginTop: 2 },
   surfaceDisplay: {
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
     alignItems: "center",
     backgroundColor: "#E8F5E9",
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  surfaceDisplayText: { fontSize: 16, fontWeight: "700", color: "#2E7D32" },
+  surfaceDisplayText: { 
+    fontSize: 16, 
+    fontWeight: "700", 
+    color: "#2E7D32",
+  },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#e9ecef",
-    marginBottom: 20,
+    padding: 18,
+    borderRadius: 14,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  switchDescription: { fontSize: 13, color: "#666" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
-  dayRow: {
-    backgroundColor: "white",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  dayHeader: { flexDirection: "row", justifyContent: "space-between" },
-  dayLabel: { fontSize: 16, fontWeight: "600" },
-  timeRow: { flexDirection: "row", marginTop: 10 },
-  timeInput: {
+  switchRowLeft: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    padding: 10,
-    textAlign: "center",
   },
-  timeSeparator: { marginHorizontal: 10, fontSize: 18 },
+  switchDescription: { 
+    fontSize: 13, 
+    color: "#666",
+    marginTop: 2,
+  },
 });

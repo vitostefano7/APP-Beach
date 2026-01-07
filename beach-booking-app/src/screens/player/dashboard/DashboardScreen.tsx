@@ -149,8 +149,13 @@ export default function HomeScreen() {
         const now = new Date();
         
         const relevantBookings = bookings.filter((b: any) => {
+          console.log(`\n📋 Analizzo booking ${b._id}:`);
+          console.log(`   Data: ${b.date} ${b.startTime}-${b.endTime}`);
+          console.log(`   Status: ${b.status}`);
+          console.log(`   Campo: ${b.campo?.name}`);
+          
           if (b.status !== "confirmed") {
-            console.log(`Booking ${b._id}: status non confermato (${b.status})`);
+            console.log(`   ❌ ESCLUSA: status non confermato (${b.status})`);
             return false;
           }
           
@@ -161,33 +166,26 @@ export default function HomeScreen() {
             const bookingEndTime = new Date(`${b.date}T${b.endTime}:00`);
             // Include sia partite future che in corso
             isRelevantTime = bookingEndTime > now;
+            console.log(`   Ora: ${now.toLocaleString('it-IT')}`);
+            console.log(`   Fine match: ${bookingEndTime.toLocaleString('it-IT')}`);
+            console.log(`   È futura/in corso: ${isRelevantTime}`);
           } catch (error) {
-            console.error("Errore parsing data:", error);
+            console.error("   ❌ Errore parsing data:", error);
             return false;
           }
           
           if (!isRelevantTime) {
-            console.log(`Booking ${b._id}: già terminata`);
+            console.log(`   ❌ ESCLUSA: già terminata`);
             return false;
           }
           
           const isMyBooking = b.isMyBooking;
+          console.log(`   isMyBooking: ${isMyBooking}`);
+          console.log(`   isInvitedPlayer: ${b.isInvitedPlayer}`);
           
-          let isConfirmedPlayer = false;
-          if (b.hasMatch && b.match && b.match.players) {
-            const myPlayer = b.match.players.find((p: any) => {
-              const playerUserId = p.user?._id || p.user || p.userId;
-              return playerUserId === user?.id;
-            });
-            
-            if (myPlayer) {
-              isConfirmedPlayer = myPlayer.status === "confirmed";
-              console.log(`  - isConfirmedPlayer: ${isConfirmedPlayer} (status: ${myPlayer.status})`);
-            }
-          }
-          
-          const shouldShow = isMyBooking || isConfirmedPlayer;
-          console.log(`  - Should show: ${shouldShow} (myBooking: ${isMyBooking}, confirmed: ${isConfirmedPlayer})`);
+          // Se è una prenotazione creata da me O sono un player invitato, mostrarla
+          const shouldShow = isMyBooking || b.isInvitedPlayer;
+          console.log(`   Risultato finale: ${shouldShow ? '✅ INCLUSA' : '❌ ESCLUSA'} (myBooking: ${isMyBooking}, invited: ${b.isInvitedPlayer})`);
           
           return shouldShow;
         });
@@ -218,12 +216,14 @@ export default function HomeScreen() {
           });
         }
         
+        // ✅ ORDINA PER DATA/ORA CRESCENTE - La prima sarà la prossima partita disponibile
         relevantBookings.sort((a: any, b: any) => {
           const dateA = new Date(`${a.date}T${a.startTime}:00`).getTime();
           const dateB = new Date(`${b.date}T${b.startTime}:00`).getTime();
           return dateA - dateB;
         });
         
+        // Prende solo la prima prenotazione (la più vicina nel tempo)
         setNextBooking(relevantBookings[0] || null);
         
         if (relevantBookings.length > 0) {
@@ -736,6 +736,7 @@ export default function HomeScreen() {
                 return "La tua prossima partita";
               })()}
             </Text>
+            
             <Pressable onPress={() => navigation.navigate("LeMiePrenotazioni")}>
               <Text style={styles.sectionLink}>Calendario</Text>
             </Pressable>

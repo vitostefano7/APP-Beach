@@ -133,6 +133,23 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1a1a1a",
   },
+  
+  // DROPDOWN HEADER
+  dropdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
 
   // OPENING HOURS
   openingHoursContainer: {
@@ -140,6 +157,11 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   openingHourRow: {
     flexDirection: "row",
@@ -154,6 +176,10 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
     flex: 1,
+  },
+  slotsContainer: {
+    alignItems: "flex-end",
+    gap: 4,
   },
   hoursLabel: {
     fontSize: 14,

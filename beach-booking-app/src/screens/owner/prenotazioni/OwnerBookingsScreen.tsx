@@ -73,6 +73,29 @@ const getSportIcon = (sport: string) => {
   }
 };
 
+const formatSportName = (sport: string) => {
+  switch (sport) {
+    case "beach_volleyball":
+    case "beach_volley":
+      return "Beach Volley";
+    case "volleyball":
+    case "volley":
+      return "Volley";
+    case "calcio":
+      return "Calcio";
+    case "football":
+      return "Football";
+    case "tennis":
+      return "Tennis";
+    case "basket":
+      return "Basket";
+    case "basketball":
+      return "Basketball";
+    default:
+      return sport.charAt(0).toUpperCase() + sport.slice(1);
+  }
+};
+
 const isPastBooking = (booking: Booking): boolean => {
   if (booking.status === "cancelled") return true;
   
@@ -210,7 +233,7 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
         <View style={styles.infoRowMain}>
              <Ionicons name="person" size={18} color="#444" />
              <Text style={styles.userNameText}>
-                {item.user.name} {item.user.surname}
+                {item.user?.name || "N/A"} {item.user?.surname || ""}
              </Text>
         </View>
 
@@ -223,7 +246,7 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
 
         <View style={styles.infoRowSub}>
              <Ionicons name={getSportIcon(item.campo.sport) as any} size={16} color="#888" />
-             <Text style={styles.locationText}>{item.campo.sport}</Text>
+             <Text style={styles.locationText}>{formatSportName(item.campo.sport)}</Text>
         </View>
       </View>
 

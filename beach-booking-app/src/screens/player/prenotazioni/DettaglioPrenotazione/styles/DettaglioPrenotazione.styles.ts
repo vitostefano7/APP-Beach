@@ -308,6 +308,7 @@ const styles = StyleSheet.create({
   fieldInfoCard: {
     backgroundColor: "white",
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 12,
     padding: 16,
     borderRadius: 16,
@@ -358,6 +359,15 @@ const styles = StyleSheet.create({
   fieldInfoContent: {
     flex: 1,
     gap: 3,
+  },
+  chatIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   fieldInfoLabel: {
     fontSize: 9,

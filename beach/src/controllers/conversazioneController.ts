@@ -36,9 +36,31 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
       
       Conversation.find(groupQuery)
         .populate('participants', 'name email')
-        .populate('match')
+        .populate({
+          path: 'match',
+          populate: {
+            path: 'booking',
+            populate: {
+              path: 'campo',
+              populate: {
+                path: 'struttura',
+                select: 'name'
+              }
+            }
+          }
+        })
         .sort({ lastMessageAt: -1 })
     ]);
+
+    // Assicurati che tutte le strutture abbiano images anche se undefined
+    directConversations.forEach(conv => {
+      if (conv.struttura && typeof conv.struttura === 'object' && '_id' in conv.struttura) {
+        const struttura = conv.struttura as any;
+        if (!struttura.images) {
+          struttura.images = [];
+        }
+      }
+    });
 
     let allConversations = [...directConversations, ...groupConversations];
 
@@ -161,6 +183,14 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
         .populate('owner', 'name email');
     }
 
+    // Assicurati che struttura abbia images anche se undefined
+    if (conversation && conversation.struttura && typeof conversation.struttura === 'object') {
+      const struttura = conversation.struttura as any;
+      if (!struttura.images) {
+        struttura.images = [];
+      }
+    }
+
     res.json(conversation);
   } catch (error) {
     console.error('Errore get/create conversazione:', error);
@@ -225,6 +255,14 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
         .populate('user', 'name email')
         .populate('struttura', 'name images')
         .populate('owner', 'name email');
+    }
+
+    // Assicurati che struttura abbia images anche se undefined
+    if (conversation && conversation.struttura && typeof conversation.struttura === 'object') {
+      const struttura = conversation.struttura as any;
+      if (!struttura.images) {
+        struttura.images = [];
+      }
     }
 
     console.log(`💬 Conversazione owner-user: ${owner.name} ↔ ${targetUser.name}`);

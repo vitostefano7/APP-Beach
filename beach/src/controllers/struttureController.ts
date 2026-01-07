@@ -54,6 +54,15 @@ export const getStrutture = async (_req: Request, res: Response) => {
       })
     );
 
+    // Debug: verifica se openingHours è presente
+    if (struttureWithSports.length > 0) {
+      console.log('=== DEBUG STRUTTURE CON SPORTS ===');
+      console.log('Prima struttura ID:', struttureWithSports[0]._id);
+      console.log('Nome:', struttureWithSports[0].name);
+      console.log('OpeningHours presente:', !!struttureWithSports[0].openingHours);
+      console.log('OpeningHours:', JSON.stringify(struttureWithSports[0].openingHours, null, 2));
+    }
+
     res.json(struttureWithSports);
   } catch (err) {
     console.error("Errore getStrutture:", err);

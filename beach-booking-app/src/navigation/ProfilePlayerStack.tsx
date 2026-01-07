@@ -4,6 +4,7 @@ import PrivacySecurityScreen from "../screens/player/profilo/PrivacySecurityScre
 import PreferencesScreen from "../screens/PreferencesScreen";
 import ConversazioneScreen from "../screens/player/comunicazioni/ConversazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
+import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -26,6 +27,7 @@ export default function ProfilePlayerStack() {
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="Conversazione" component={ConversazioneScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="GroupChat" component={GroupChatScreen} />
     </Stack.Navigator>
   );
 }
