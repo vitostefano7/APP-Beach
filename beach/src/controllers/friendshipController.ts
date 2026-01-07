@@ -66,26 +66,20 @@ export const friendshipController = {
         return res.status(400).json({ error: "Non puoi inviare una richiesta a te stesso" });
       }
 
-      // Controlla se esiste già una richiesta
+      // Controlla se esiste già un follow nella stessa direzione (requester → recipient)
       const existingFriendship = await Friendship.findOne({
-        $or: [
-          { requester: requesterId, recipient: recipientObjectId },
-          { requester: recipientObjectId, recipient: requesterId },
-        ],
+        requester: requesterId,
+        recipient: recipientObjectId,
       });
 
       if (existingFriendship) {
         let message = "";
         switch (existingFriendship.status) {
           case "pending":
-            if (existingFriendship.requester.equals(requesterId)) {
-              message = "Hai già inviato una richiesta a questo utente";
-            } else {
-              message = "Questo utente ti ha già inviato una richiesta";
-            }
+            message = "Hai già inviato una richiesta a questo utente";
             break;
           case "accepted":
-            message = "Siete già amici";
+            message = "Stai già seguendo questo utente";
             break;
           case "rejected":
             message = "Richiesta precedentemente rifiutata";

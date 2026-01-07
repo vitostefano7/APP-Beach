@@ -8,10 +8,12 @@ import {
   Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import API_URL from "../../../../config/api";
 import { styles } from "../styles";
 import ChatModal from "./ChatModal";
-import { useUnreadMessages } from "../../../../context/UnreadMessagesContext"; // Importa il context
+import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
+import { useNotifications } from "../hooks/useNotifications";
 
 interface HeaderProps {
   user: any;
@@ -30,12 +32,16 @@ const getInitials = (name?: string, surname?: string): string => {
 };
 
 const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
+  const navigation = useNavigation<any>();
   const [chatModalVisible, setChatModalVisible] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
   const [rotateAnim] = useState(new Animated.Value(0));
   
   // Usa il context dei messaggi non letti
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
+  
+  // Hook per le notifiche
+  const { unreadCount: notificationsUnreadCount, fetchUnreadCount } = useNotifications();
 
   const openChatModal = () => {
     // Animazione del bottone
@@ -74,7 +80,15 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
   // Refresh del conteggio quando il componente viene montato
   useEffect(() => {
     refreshUnreadCount();
-  }, []);
+    fetchUnreadCount();
+    
+    // Auto-refresh ogni 30 secondi
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -155,19 +169,21 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
               style={({ pressed }) => [
                 styles.notificationButtonCompact,
                 pressed && styles.chatButtonPressed,
+                notificationsUnreadCount > 0 && styles.notificationButtonUnread,
               ]}
+              onPress={() => navigation.navigate('Notifiche')}
             >
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color="#333"
+                color={notificationsUnreadCount > 0 ? "#FF5252" : "#333"}
               />
             </Pressable>
             
-            {pendingInvites.length > 0 && (
+            {notificationsUnreadCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>
-                  {pendingInvites.length > 99 ? "99+" : pendingInvites.length}
+                  {notificationsUnreadCount > 99 ? "99+" : notificationsUnreadCount}
                 </Text>
               </View>
             )}

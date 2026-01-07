@@ -13,6 +13,7 @@ import DettaglioInvitoRifiutato from "../screens/player/dashboard/DettaglioInvit
 import StruttureScreen from "../screens/player/struttura/StruttureScreen";
 import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen"
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
+import NotificheScreen from "../screens/player/dashboard/NotificheScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -29,6 +30,7 @@ export type DashboardStackParamList = {
   FieldDetails: { fieldId: string };
   CercaAmici: undefined;
   ProfiloUtente: { userId: string };
+  Notifiche: undefined;
 };
 
 const Stack = createNativeStackNavigator();
@@ -109,7 +111,12 @@ export default function DashboardStack() { // ✅ Nome corretto
         name="ProfiloUtente" 
         component={UserProfileScreen}
         options={{ headerShown: false }}
-        />
+      />
+      <Stack.Screen 
+        name="Notifiche" 
+        component={NotificheScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }

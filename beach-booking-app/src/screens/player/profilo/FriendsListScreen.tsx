@@ -85,7 +85,15 @@ export default function FriendsListScreen() {
   const renderItem = ({ item }: { item: FriendItem }) => {
     const avatarUri = getAvatarUri(item.user.avatarUrl);
     return (
-      <View style={styles.friendRow}>
+      <Pressable
+        onPress={() =>
+          navigation.navigate("Dashboard", {
+            screen: "ProfiloUtente",
+            params: { userId: item.user._id },
+          })
+        }
+        style={({ pressed }) => [styles.friendRow, pressed && styles.friendRowPressed]}
+      >
         <View style={styles.avatarBox}>
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
@@ -99,7 +107,7 @@ export default function FriendsListScreen() {
           <Text style={styles.friendName}>{item.user.name}</Text>
           <Text style={styles.friendUsername}>@{item.user.username}</Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -193,6 +201,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ececec",
     marginBottom: 12,
+  },
+  friendRowPressed: {
+    opacity: 0.7,
   },
   avatarBox: {
     width: 48,

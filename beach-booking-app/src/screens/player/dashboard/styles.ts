@@ -127,6 +127,10 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
+  notificationButtonUnread: {
+    backgroundColor: "#fff0f0",
+    borderColor: "#ffcccc",
+  },
   notificationBadge: {
     position: "absolute",
     top: -2,
