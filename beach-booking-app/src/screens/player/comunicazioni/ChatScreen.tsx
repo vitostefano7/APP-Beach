@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Keyboard } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
@@ -32,8 +33,9 @@ type Message = {
 
 export default function ChatScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
 
   const { conversationId, strutturaName } = route.params;
 
@@ -41,14 +43,51 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
+
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    const tabParent = parent?.getParent();
+    parent?.setOptions({ tabBarStyle: { display: "none" } });
+    tabParent?.setOptions({ tabBarStyle: { display: "none" } });
+    return () => {
+      parent?.setOptions({ tabBarStyle: undefined });
+      tabParent?.setOptions({ tabBarStyle: undefined });
+    };
+  }, [navigation]);
 
   useEffect(() => {
     loadMessages();
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
   }, [conversationId]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        const adjustedHeight = Platform.OS === 'android' ? e.endCoordinates.height - 1 : e.endCoordinates.height;
+        setKeyboardHeight(adjustedHeight);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const loadMessages = async () => {
     if (!token) return;
@@ -170,6 +209,16 @@ export default function ChatScreen() {
             {formatTime(item.createdAt)}
           </Text>
         </View>
+
+        {isMine && showAvatar && (
+          <View style={styles.avatarContainerMine}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={16} color="#2196F3" />
+            </View>
+          </View>
+        )}
+
+        {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
   };
@@ -186,50 +235,49 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
-    >
-      <View style={styles.safe}>
-        <SafeAreaView edges={["top"]}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-            </Pressable>
+    <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          </Pressable>
 
-            <View style={styles.headerCenter}>
-              <View style={styles.headerAvatar}>
-                <Ionicons name="business" size={24} color="#2196F3" />
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {strutturaName}
-                </Text>
-                <View style={styles.onlineIndicator}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.onlineText}>Online</Text>
-                </View>
+          <View style={styles.headerCenter}>
+            <View style={styles.headerAvatar}>
+              <Ionicons name="business" size={24} color="#2196F3" />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {strutturaName}
+              </Text>
+              <View style={styles.onlineIndicator}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.onlineText}>Online</Text>
               </View>
             </View>
           </View>
-        </SafeAreaView>
+        </View>
 
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
+          contentContainerStyle={[styles.messagesList, { flexGrow: 1 }]}
+          onContentSizeChange={() => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 100);
+          }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -244,41 +292,50 @@ export default function ChatScreen() {
           }
         />
 
-        <SafeAreaView edges={["bottom"]}>
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Scrivi un messaggio..."
-                placeholderTextColor="#999"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
-              />
-            </View>
-
-            <Pressable
-              style={[
-                styles.sendButton,
-                inputText.trim() && !sending && styles.sendButtonActive,
-              ]}
-              onPress={sendMessage}
-              disabled={!inputText.trim() || sending}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons 
-                  name={inputText.trim() ? "send" : "send-outline"} 
-                  size={20} 
-                  color="white" 
-                />
-              )}
-            </Pressable>
+        <View 
+          style={[
+            styles.inputContainer,
+            {
+              marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
+              paddingBottom: Math.max(insets.bottom, 12),
+            }
+          ]}
+        >
+          <Pressable style={styles.addButton} onPress={() => {}}>
+            <Ionicons name="add" size={22} color="#1a1a1a" />
+          </Pressable>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Scrivi un messaggio..."
+              placeholderTextColor="#999"
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={1000}
+            />
           </View>
-        </SafeAreaView>
-      </View>
-    </KeyboardAvoidingView>
+
+          <Pressable
+            style={[
+              styles.sendButton,
+              inputText.trim() && !sending && styles.sendButtonActive,
+            ]}
+            onPress={sendMessage}
+            disabled={!inputText.trim() || sending}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons 
+                name={inputText.trim() ? "send" : "send-outline"} 
+                size={20} 
+                color="white" 
+              />
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

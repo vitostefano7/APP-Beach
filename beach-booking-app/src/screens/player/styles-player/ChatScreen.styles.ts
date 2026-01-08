@@ -93,15 +93,15 @@ export const styles = StyleSheet.create({
   ========================= */
   messagesList: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 8,
     flexGrow: 1,
   },
 
   messageContainer: {
     flexDirection: "row",
-    marginBottom: 12,
-    maxWidth: "85%",
+    marginBottom: 10,
+    maxWidth: "82%",
   },
 
   messageContainerMine: {
@@ -120,6 +120,10 @@ export const styles = StyleSheet.create({
 
   avatarContainer: {
     marginRight: 8,
+    alignSelf: "flex-end",
+  },
+  avatarContainerMine: {
+    marginLeft: 8,
     alignSelf: "flex-end",
   },
 
@@ -144,22 +148,26 @@ export const styles = StyleSheet.create({
   },
 
   messageBubbleMine: {
-    backgroundColor: "#2196F3",
-    borderBottomRightRadius: 4,
-    shadowColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
+    borderBottomRightRadius: 10,
+    borderWidth: 1,
+    borderColor: "#BBDDFB",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
 
   messageBubbleTheirs: {
     backgroundColor: "white",
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E6E8EC",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 1,
   },
 
@@ -178,7 +186,7 @@ export const styles = StyleSheet.create({
   },
 
   messageTextMine: {
-    color: "white",
+    color: "#1a1a1a",
   },
 
   messageTextTheirs: {
@@ -192,7 +200,7 @@ export const styles = StyleSheet.create({
   },
 
   messageTimeMine: {
-    color: "rgba(255,255,255,0.75)",
+    color: "#666",
   },
 
   messageTimeTheirs: {
@@ -207,22 +215,32 @@ export const styles = StyleSheet.create({
     alignItems: "flex-end",
     backgroundColor: "white",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 16,
     gap: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f0f2f5",
   },
 
   inputWrapper: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
+    backgroundColor: "#F1F3F5",
     borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: "#e9ecef",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
 
   input: {
@@ -230,28 +248,28 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     maxHeight: 100,
-    minHeight: 44,
+    minHeight: 42,
     color: "#1a1a1a",
   },
 
   sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#B0BEC5",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#2196F3",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#2196F3",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0,
-    shadowRadius: 4,
-    elevation: 0,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   sendButtonActive: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#1976D2",
     shadowOpacity: 0.3,
-    elevation: 3,
+    elevation: 5,
   },
 
   /* =========================

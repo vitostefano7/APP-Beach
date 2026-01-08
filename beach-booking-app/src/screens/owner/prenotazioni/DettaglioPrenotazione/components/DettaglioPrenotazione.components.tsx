@@ -65,13 +65,36 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   const isConfirmed = player?.status === "confirmed";
   const isDeclined = player?.status === "declined";
   
-  // Per l'owner, nessuna azione è consentita (solo visualizzazione)
+  // Per l'owner, permetti di invitare se è il creatore
   const canChangeTeam = false;
   const canRemove = false;
   const canLeave = false;
+  const canInvite = isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
 
   // Se è uno slot vuoto
   if (isEmptySlot) {
+    if (canInvite && onInviteToSlot) {
+      return (
+        <Pressable 
+          style={[styles.playerSlot, styles.emptySlotInvite]} 
+          onPress={onInviteToSlot}
+        >
+          <View style={[styles.playerAvatarCircle, styles.inviteAvatarCircle]}>
+            <Ionicons name="person-add" size={24} color="#2196F3" />
+          </View>
+          <View style={styles.playerInfoSlot}>
+            <Text style={[styles.playerNameSlot, { color: "#2196F3" }]}>
+              Invita giocatore
+            </Text>
+            <Text style={[styles.playerUsernameSlot, { color: "#2196F3" }]}>
+              Slot {slotNumber}
+            </Text>
+          </View>
+          <Ionicons name="add-circle" size={24} color="#2196F3" />
+        </Pressable>
+      );
+    }
+    
     return (
       <View style={[styles.playerSlot, { opacity: 0.5 }]}>
         <View style={styles.playerAvatarCircle}>

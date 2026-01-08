@@ -17,6 +17,19 @@ import API_URL from "../../../config/api";
 /* =========================
    TYPES
 ========================= */
+interface Player {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    surname: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  team: "A" | "B";
+  status: string;
+}
+
 interface Booking {
   _id: string;
   campo: {
@@ -42,6 +55,8 @@ interface Booking {
   matchId?: string;
   isMyBooking?: boolean;
   isInvitedPlayer?: boolean;
+  players?: Player[];
+  maxPlayers?: number;
 }
 
 /* =========================
@@ -75,6 +90,13 @@ export default function LeMiePrenotazioniScreen() {
       console.log(`📋 Caricate ${data.length} prenotazioni`);
       console.log(`   - ${data.filter((b: any) => b.isMyBooking).length} create da te`);
       console.log(`   - ${data.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
+      
+      // Debug: vediamo i players
+      data.forEach((b: any, i: number) => {
+        if (b.players && b.players.length > 0) {
+          console.log(`🎮 Prenotazione ${i + 1}: ${b.players.length} players`, b.players);
+        }
+      });
       
       setBookings(data);
       setLoading(false);
@@ -323,6 +345,16 @@ export default function LeMiePrenotazioniScreen() {
           />
         </View>
 
+        {/* TEAMS */}
+        {item.players && item.players.length > 0 && (
+          <View style={styles.teamsContainer}>
+            <View style={styles.teamsRow}>
+              <TeamSection players={item.players} team="A" />
+              <TeamSection players={item.players} team="B" />
+            </View>
+          </View>
+        )}
+
         {/* RESULT */}
         {item.matchSummary && (
           <View style={styles.resultBox}>
@@ -480,7 +512,7 @@ export default function LeMiePrenotazioniScreen() {
 }
 
 /* =========================
-   SMALL COMPONENT
+   SMALL COMPONENTS
 ========================= */
 const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
   <View style={styles.infoRow}>
@@ -488,6 +520,47 @@ const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
     <Text style={styles.infoText}>{text}</Text>
   </View>
 );
+
+const PlayerAvatar = ({ player, size = 32 }: { player: Player; size?: number }) => {
+  const initials = `${player.user.name.charAt(0)}${player.user.surname.charAt(0)}`.toUpperCase();
+  const bgColor = player.team === "A" ? "#F44336" : "#2196F3"; // Rosso per A, Blu per B
+  
+  return (
+    <View style={[styles.avatarInitials, { width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor }]}>
+      <Text style={[styles.avatarText, { fontSize: size * 0.4 }]}>{initials}</Text>
+    </View>
+  );
+};
+
+const TeamSection = ({ players, team }: { players: Player[]; team: "A" | "B" }) => {
+  const teamPlayers = players.filter(p => p.team === team);
+  
+  if (teamPlayers.length === 0) return null;
+  
+  const teamColor = team === "A" ? "#F44336" : "#2196F3";
+  const teamBgColor = team === "A" ? "#FFEBEE" : "#E3F2FD";
+  
+  return (
+    <View style={styles.teamSection}>
+      <View style={[styles.teamHeader, { backgroundColor: teamBgColor }]}>
+        <View style={[styles.teamBadge, { backgroundColor: teamColor }]}>
+          <Text style={styles.teamLabel}>Team {team}</Text>
+        </View>
+        <Text style={styles.teamCount}>{teamPlayers.length}</Text>
+      </View>
+      <View style={styles.teamPlayers}>
+        {teamPlayers.map((player) => (
+          <View key={player._id} style={styles.playerItem}>
+            <PlayerAvatar player={player} size={28} />
+            <Text style={styles.playerName} numberOfLines={1}>
+              {player.user.name} {player.user.surname.charAt(0)}.
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
 
 /* =========================
    STYLES
@@ -868,5 +941,76 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#4CAF50",
+  },
+
+  // Team styles
+  teamsContainer: {
+    marginTop: 12,
+    marginBottom: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 12,
+  },
+  teamsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  teamSection: {
+    flex: 1,
+  },
+  teamHeader: {
+    marginBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  teamBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  teamLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "white",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  teamCount: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#666",
+  },
+  teamPlayers: {
+    gap: 6,
+  },
+  playerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "white",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  playerName: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+  },
+  avatarContainer: {
+    position: "relative",
+  },
+  avatarInitials: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: "white",
+    fontWeight: "800",
   },
 });

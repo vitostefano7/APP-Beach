@@ -229,11 +229,19 @@ export default function ProfileScreen() {
 
   const uploadAvatar = async (imageUri: string) => {
     try {
+      console.log("[uploadAvatar] start", {
+        apiUrl: API_URL,
+        hasToken: !!token,
+        imageUri,
+      });
+
       const formData = new FormData();
       
       const filename = imageUri.split("/").pop() || "avatar.jpg";
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      console.log("[uploadAvatar] file", { filename, type });
 
       formData.append("avatar", {
         uri: imageUri,
@@ -241,7 +249,10 @@ export default function ProfileScreen() {
         type,
       } as any);
 
-      const res = await fetch(`${API_URL}/users/me/avatar`, {
+      const endpoint = `${API_URL}/users/me/avatar`;
+      console.log("[uploadAvatar] POST", endpoint);
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -249,27 +260,37 @@ export default function ProfileScreen() {
         body: formData,
       });
 
+      console.log("[uploadAvatar] response", {
+        status: res.status,
+        ok: res.ok,
+      });
+
       const json = await res.json();
 
       if (res.ok) {
-        console.log("✅ Avatar caricato:", json.avatarUrl);
-        console.log("📍 API_URL:", API_URL);
-        console.log("🖼️ URL completo:", `${API_URL}${json.avatarUrl}`);
+        console.log("Avatar caricato:", json.avatarUrl);
+        console.log("API_URL:", API_URL);
+        console.log("URL completo:", `${API_URL}${json.avatarUrl}`);
         
         setAvatarUrl(json.avatarUrl);
         
-        // ✅ Aggiorna il contesto user
+        // Aggiorna il contesto user
         if (updateUser) {
           updateUser({ ...user, avatarUrl: json.avatarUrl });
         }
         
         Alert.alert("Successo", "Immagine profilo aggiornata!");
       } else {
-        console.log("❌ Errore upload:", json.message);
+        console.log("Errore upload:", json.message);
         Alert.alert("Errore", json.message || "Impossibile caricare l'immagine");
       }
     } catch (error) {
       console.error("Upload avatar error:", error);
+      console.log("[uploadAvatar] network error context", {
+        apiUrl: API_URL,
+        hasToken: !!token,
+        imageUri,
+      });
       Alert.alert("Errore", "Impossibile caricare l'immagine");
     }
   };
@@ -565,3 +586,4 @@ function PreferenceRow({
 }
 
 const Divider = () => <View style={styles.divider} />;
+

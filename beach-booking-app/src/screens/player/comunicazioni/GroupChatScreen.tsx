@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Alert,
+  StyleSheet,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Keyboard } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
@@ -33,8 +35,9 @@ type Message = {
 
 export default function GroupChatScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
 
   const { conversationId, groupName, matchId } = route.params;
 
@@ -50,8 +53,20 @@ export default function GroupChatScreen() {
     startTime?: string;
     endTime?: string;
   } | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
+
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    const tabParent = parent?.getParent();
+    parent?.setOptions({ tabBarStyle: { display: "none" } });
+    tabParent?.setOptions({ tabBarStyle: { display: "none" } });
+    return () => {
+      parent?.setOptions({ tabBarStyle: undefined });
+      tabParent?.setOptions({ tabBarStyle: undefined });
+    };
+  }, [navigation]);
 
   useEffect(() => {
     loadMatchInfo();
@@ -59,6 +74,48 @@ export default function GroupChatScreen() {
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
   }, [conversationId, matchId]);
+
+  useEffect(() => {
+    console.log("🎹 [GroupChat] Configurazione listener tastiera...");
+    console.log("📱 [GroupChat] insets.bottom (safe area):", insets.bottom);
+    
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        console.log("🎹 [GroupChat] Tastiera APERTA:", {
+          height: e.endCoordinates.height,
+          screenY: e.endCoordinates.screenY,
+          duration: e.duration,
+          platform: Platform.OS,
+        });
+        const adjustedHeight = Platform.OS === 'android' ? e.endCoordinates.height - 1 : e.endCoordinates.height;
+        setKeyboardHeight(adjustedHeight);
+        console.log("📍 [GroupChat] keyboardHeight settato:", adjustedHeight);
+        console.log("📍 [GroupChat] marginBottom che verrà applicato:", adjustedHeight);
+        console.log("📍 [GroupChat] paddingBottom che verrà applicato:", Math.max(insets.bottom, 12));
+        console.log("📍 [GroupChat] TOTALE spostamento container:", adjustedHeight + Math.max(insets.bottom, 12));
+        // Scrolla automaticamente quando la tastiera appare
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      (e) => {
+        console.log("🎹 [GroupChat] Tastiera CHIUSA");
+        console.log("📍 [GroupChat] keyboardHeight resettato a 0");
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      console.log("🎹 [GroupChat] Rimozione listener tastiera");
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const loadMatchInfo = async () => {
     if (!token || !matchId) return;
@@ -190,7 +247,6 @@ export default function GroupChatScreen() {
   };
 
   const getSenderColor = (senderId: string) => {
-    // Genera un colore consistente per ogni sender
     const colors = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4'];
     const index = senderId.charCodeAt(0) % colors.length;
     return colors[index];
@@ -201,6 +257,7 @@ export default function GroupChatScreen() {
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const showAvatar = !prevMessage || prevMessage.sender._id !== item.sender._id;
     const isConsecutive = prevMessage && prevMessage.sender._id === item.sender._id;
+    const senderColor = getSenderColor(item.sender._id);
 
     return (
       <View
@@ -212,8 +269,8 @@ export default function GroupChatScreen() {
       >
         {!isMine && showAvatar && (
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: getSenderColor(item.sender._id) }]}>
-              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>
+            <View style={[styles.avatar, { backgroundColor: senderColor }]}>
+              <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
                 {item.sender.name.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -230,7 +287,7 @@ export default function GroupChatScreen() {
           ]}
         >
           {!isMine && showAvatar && (
-            <Text style={[styles.senderName, { color: getSenderColor(item.sender._id) }]}>
+            <Text style={[styles.senderName, { color: senderColor }]}>
               {item.sender.name}
             </Text>
           )}
@@ -251,6 +308,18 @@ export default function GroupChatScreen() {
             {formatTime(item.createdAt)}
           </Text>
         </View>
+
+        {isMine && showAvatar && (
+          <View style={styles.avatarContainerMine}>
+            <View style={[styles.avatar, { backgroundColor: senderColor }]}>
+              <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
+                {(user?.name || "U").charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
   };
@@ -267,37 +336,39 @@ export default function GroupChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
-    >
-      <View style={styles.safe}>
-        <SafeAreaView edges={["top"]}>
+    <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Header */}
           <View style={styles.header}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-            </Pressable>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          </Pressable>
 
-            <Text style={styles.headerTitleCentered} numberOfLines={1}>
-              Chat della partita
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
-        </SafeAreaView>
+          <Text style={styles.headerTitleCentered} numberOfLines={1}>
+            Chat della partita
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
+        {/* SubHeader */}
         <View style={styles.subHeader}>
           <View style={styles.subHeaderLeft}>
             <Text style={styles.subHeaderTitle} numberOfLines={1}>
-              {(bookingInfo?.strutturaName || "Struttura") +
-                " - " +
-                formatTimeRange(bookingInfo?.startTime, bookingInfo?.endTime)}
+              {bookingInfo?.strutturaName || "Struttura"}
             </Text>
             <Text style={styles.subHeaderDay} numberOfLines={1}>
-              {formatDay(bookingInfo?.date)}
+              {formatDay(bookingInfo?.date) +
+                (bookingInfo?.startTime
+                  ? ` • ${formatTimeRange(bookingInfo?.startTime, bookingInfo?.endTime)}`
+                  : "")}
             </Text>
           </View>
           <Pressable
@@ -333,13 +404,25 @@ export default function GroupChatScreen() {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
+          contentContainerStyle={[
+            styles.messagesList,
+            { 
+              flexGrow: 1,
+              paddingBottom: 8
+            }
+          ]}
+          onContentSizeChange={() => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 100);
+          }}
+          onLayout={() => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 100);
+          }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -354,42 +437,91 @@ export default function GroupChatScreen() {
           }
         />
 
-        <SafeAreaView edges={["bottom"]}>
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder={canSendMessages ? "Scrivi un messaggio..." : "Non puoi inviare messaggi"}
-                placeholderTextColor="#999"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
-                editable={canSendMessages && !sending}
-              />
-            </View>
+        {/* Input Container - sempre in fondo, gestito da SafeAreaView */}
+        <View 
+          style={[
+            styles.inputContainer, 
+            { 
+              paddingBottom: Math.max(insets.bottom, 12),
+              marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0
+            }
+          ]}
+          onLayout={(event) => {
+            const { y, height } = event.nativeEvent.layout;
+            console.log("📦 [GroupChat] Container position:", {
+              y: y,
+              height: height,
+              containerBottom: y + height,
+              marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
+              paddingBottom: Math.max(insets.bottom, 12),
+              keyboardHeight: keyboardHeight,
+              insetsBottom: insets.bottom
+            });
+          }}
+        >
+        <Pressable style={styles.addButton} onPress={() => {}}>
+          <Ionicons name="add" size={22} color="#1a1a1a" />
+        </Pressable>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder={canSendMessages ? "Scrivi un messaggio..." : "Non puoi inviare messaggi"}
+            placeholderTextColor="#999"
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={1000}
+            editable={canSendMessages && !sending}
+            onFocus={() => {
+              console.log("⌨️ [GroupChat] Input FOCUS - keyboard height:", keyboardHeight);
+              setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              }, 100);
+            }}
+            onBlur={() => {
+              console.log("⌨️ [GroupChat] Input BLUR");
+            }}
+          />
+        </View>
 
-            <Pressable
-              style={[
-                styles.sendButton,
-                inputText.trim() && !sending && canSendMessages && styles.sendButtonActive,
-              ]}
-              onPress={sendMessage}
-              disabled={!inputText.trim() || sending || !canSendMessages}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons 
-                  name={inputText.trim() && canSendMessages ? "send" : "send-outline"} 
-                  size={20} 
-                  color="white" 
-                />
-              )}
-            </Pressable>
-          </View>
-        </SafeAreaView>
+        <Pressable
+          style={[
+            styles.sendButton,
+            inputText.trim() && !sending && canSendMessages && styles.sendButtonActive,
+          ]}
+          onPress={sendMessage}
+          disabled={!inputText.trim() || sending || !canSendMessages}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons 
+              name={inputText.trim() && canSendMessages ? "send" : "send-outline"} 
+              size={20} 
+              color="white" 
+            />
+          )}
+        </Pressable>
       </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+// Se hai bisogno di sovrascrivere o aggiungere stili, puoi farlo qui:
+const additionalStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+});

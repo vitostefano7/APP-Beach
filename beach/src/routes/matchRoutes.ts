@@ -15,6 +15,7 @@ import {
   getPendingInvites,
   updateInviteResponse,
   leaveMatch,
+  addPlayerToMatch,
 } from "../controllers/matchController";
 import { requireAuth } from "../middleware/authMiddleware";
 
@@ -39,6 +40,7 @@ router.post("/", requireAuth, createMatch);
 
 // Gestione giocatori - route specifiche
 router.post("/:matchId/invite", requireAuth, invitePlayer);
+router.post("/:matchId/players", requireAuth, addPlayerToMatch);
 router.post("/:matchId/join", requireAuth, joinMatch);
 router.patch("/:matchId/respond", requireAuth, respondToInvite);
 router.patch("/:matchId/update-response", requireAuth, updateInviteResponse);

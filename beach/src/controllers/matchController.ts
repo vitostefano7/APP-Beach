@@ -1080,3 +1080,73 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+/**
+ * POST /matches/:matchId/players
+ * Aggiunge un giocatore al match (per owner)
+ */
+export const addPlayerToMatch = async (req: AuthRequest, res: Response) => {
+  try {
+    const { matchId } = req.params;
+    const { userId, team } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(matchId)) {
+      return res.status(400).json({ message: "ID match non valido" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "ID utente non valido" });
+    }
+
+    const match = await Match.findById(matchId).populate('booking');
+    if (!match) {
+      return res.status(404).json({ message: "Match non trovato" });
+    }
+
+    // Match deve essere draft o open
+    if (!["draft", "open"].includes(match.status)) {
+      return res.status(400).json({ message: "Match non aperto a nuovi giocatori" });
+    }
+
+    // Verifica che l'utente esista
+    const userToAdd = await User.findById(userId);
+    if (!userToAdd) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Già presente?
+    const alreadyInMatch = match.players.some(
+      (p) => p.user.toString() === userId
+    );
+    if (alreadyInMatch) {
+      return res.status(400).json({ message: "Utente già nel match" });
+    }
+
+    // Max players raggiunto?
+    if (match.players.length >= match.maxPlayers) {
+      return res.status(400).json({ message: "Match pieno" });
+    }
+
+    // Valida team se fornito
+    if (team && team !== "A" && team !== "B") {
+      return res.status(400).json({ message: "Team deve essere 'A' o 'B'" });
+    }
+
+    // Aggiungi player direttamente confermato (owner bypass)
+    match.players.push({
+      user: new mongoose.Types.ObjectId(userId),
+      status: "confirmed",
+      team: team || undefined,
+      joinedAt: new Date(),
+    });
+
+    await match.save();
+    await match.populate("players.user", "username name surname avatarUrl");
+    await match.populate("createdBy", "username name surname avatarUrl");
+
+    res.json(match);
+  } catch (err) {
+    console.error("❌ addPlayerToMatch error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};

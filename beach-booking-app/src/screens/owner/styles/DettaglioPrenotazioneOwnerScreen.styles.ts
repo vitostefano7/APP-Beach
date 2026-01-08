@@ -371,7 +371,7 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
   dateDay: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     color: "white",
   },
@@ -386,7 +386,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dateFullText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: "#333",
     marginBottom: 6,
@@ -398,7 +398,7 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   timeText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#666",
   },
@@ -447,7 +447,7 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   setScoreText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#999",
     minWidth: 28,
@@ -707,6 +707,15 @@ export const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     borderRadius: 12,
     gap: 12,
+  },
+  emptySlotInvite: {
+    backgroundColor: "#E3F2FD",
+    borderWidth: 2,
+    borderColor: "#2196F3",
+    borderStyle: "dashed",
+  },
+  inviteAvatarCircle: {
+    backgroundColor: "white",
   },
   playerAvatarCircle: {
     width: 40,
@@ -1236,5 +1245,23 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: "#CCC",
     fontWeight: "700",
+  },
+  
+  // Floating Add Button
+  floatingAddButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

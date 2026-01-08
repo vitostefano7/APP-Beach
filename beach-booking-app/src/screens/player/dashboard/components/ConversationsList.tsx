@@ -199,7 +199,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
 
           <View style={styles.conversationInfo}>
             <View style={styles.conversationHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                 {item.type === 'group' && (
                   <Ionicons name="chatbubbles" size={14} color="#2196F3" />
                 )}
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: "white",
     borderBottomWidth: 1,
@@ -318,6 +318,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    minWidth: 0,
   },
   conversationImage: {
     width: 50,
@@ -337,18 +338,21 @@ const styles = StyleSheet.create({
   },
   conversationInfo: {
     flex: 1,
+    minWidth: 0,
   },
   conversationHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
+    minWidth: 0,
   },
   conversationTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1a1a1a",
     flex: 1,
+    flexShrink: 1,
   },
   conversationTime: {
     fontSize: 12,

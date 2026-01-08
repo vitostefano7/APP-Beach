@@ -273,14 +273,6 @@ const DettaglioInvito = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Dettaglio Invito</Text>
-          <View style={{ width: 40 }} />
-        </View>
 
         {/* Status Banner */}
         {expired && (

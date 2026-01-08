@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 
 import StruttureStack from "./StruttureStack";
 import BookingsStack from "./BookingsStack";
@@ -23,6 +24,14 @@ export default function PlayerTabs() {
   /*console.log('🚨🚨🚨 PLAYERTABS unreadCount:', unreadCount);
   console.log('🚨🚨🚨 PLAYERTABS typeof:', typeof unreadCount);
   console.log('🚨🚨🚨 PLAYERTABS > 0?:', unreadCount > 0);*/
+
+  const getTabBarStyle = (route: any) => {
+    const routeName = getFocusedRouteNameFromRoute(route) ?? "";
+    if (routeName === "Chat" || routeName === "GroupChat") {
+      return { display: "none" };
+    }
+    return undefined;
+  };
 
   return (
     <Tab.Navigator
@@ -54,7 +63,10 @@ export default function PlayerTabs() {
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardStack} 
-        options={{ tabBarLabel: "Dashboard" }} 
+        options={({ route }) => ({
+          tabBarLabel: "Dashboard",
+          tabBarStyle: getTabBarStyle(route),
+        })} 
       />
       <Tab.Screen 
         name="StruttureTab" 
@@ -64,6 +76,9 @@ export default function PlayerTabs() {
       <Tab.Screen 
         name="Prenotazioni" 
         component={BookingsStack}
+        options={({ route }) => ({
+          tabBarStyle: getTabBarStyle(route),
+        })}
       />
       <Tab.Screen 
         name="Profilo" 

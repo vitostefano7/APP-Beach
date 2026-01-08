@@ -19,14 +19,18 @@ import Notification from "./models/Notification";
 /* =========================
    CONFIG
 ========================= */
+import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
+
 const MONGO_URI =
   process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
   "mongodb://admin:adminpass@127.0.0.1:27017/beach?authSource=admin";
 
 const DEFAULT_PASSWORD = "123";
 const SALT_ROUNDS = 10;
 
-const MONTHS_TO_GENERATE = 15; // Rolling calendar di 15 mesi
+const MONTHS_TO_GENERATE = 3; // Rolling calendar di 3 mesi
 
 /* =========================
    UTILS

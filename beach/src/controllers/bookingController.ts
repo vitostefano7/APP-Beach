@@ -262,9 +262,11 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       })
       .sort({ date: -1, startTime: -1 });
 
-    // 3. Prende tutti i match collegati
+    // 3. Prende tutti i match collegati con populate dei player
     const bookingIds = bookings.map(b => b._id);
     const matches = await Match.find({ booking: { $in: bookingIds } })
+      .populate("players.user", "name surname username avatarUrl")
+      .populate("createdBy", "name surname username avatarUrl")
       .select('booking status players maxPlayers isPublic winner score createdBy');
 
     // 4. Crea una mappa bookingId -> match
@@ -309,6 +311,8 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
         matchSummary,
         isMyBooking, // true se hai creato tu la prenotazione
         isInvitedPlayer, // true se sei stato invitato da qualcun altro
+        players: matchData?.players || [],
+        maxPlayers: matchData?.maxPlayers || 4,
       };
     });
 

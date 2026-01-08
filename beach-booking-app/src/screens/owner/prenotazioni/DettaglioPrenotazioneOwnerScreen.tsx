@@ -42,6 +42,7 @@ import {
 } from "./DettaglioPrenotazione/components/GradientComponents";
 import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import TeamSection from "./DettaglioPrenotazione/components/TeamSection";
+import AddPlayerModal from "./DettaglioPrenotazione/components/AddPlayerModal";
 
 export default function OwnerDettaglioPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
@@ -55,6 +56,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [selectedTeamForAdd, setSelectedTeamForAdd] = useState<"A" | "B">("A");
 
   useEffect(() => {
     loadBooking();
@@ -190,6 +193,39 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const handlePlayerPress = (player: any) => {
     setSelectedPlayer(player);
     setShowPlayerProfile(true);
+  };
+
+  const handleAddPlayer = async (userId: string, team: "A" | "B") => {
+    if (!booking?.match?._id) {
+      throw new Error("Match non disponibile");
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/matches/${booking.match._id}/players`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, team }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore aggiunta giocatore");
+      }
+
+      // Ricarica i dati della prenotazione
+      await loadBooking();
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  const handleInviteToTeam = (team: "A" | "B", slotNumber: number) => {
+    console.log(`📝 Invito al Team ${team}, Slot ${slotNumber}`);
+    setSelectedTeamForAdd(team);
+    setShowAddPlayerModal(true);
   };
 
   if (loading) {
@@ -498,12 +534,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   <TeamSection
                     team="A"
                     players={booking.match.players?.filter((p: any) => p.team === 'A' && p.status === 'confirmed') || []}
-                    isCreator={false}
+                    isCreator={true}
                     currentUserId={undefined}
                     onRemovePlayer={() => {}}
                     onAssignTeam={() => {}}
                     maxPlayersPerTeam={Math.floor((booking.match.maxPlayers || 4) / 2)}
-                    onInviteToTeam={() => {}}
+                    onInviteToTeam={handleInviteToTeam}
                     matchStatus={booking.match.status}
                     onPlayerPress={handlePlayerPress}
                   />
@@ -512,12 +548,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   <TeamSection
                     team="B"
                     players={booking.match.players?.filter((p: any) => p.team === 'B' && p.status === 'confirmed') || []}
-                    isCreator={false}
+                    isCreator={true}
                     currentUserId={undefined}
                     onRemovePlayer={() => {}}
                     onAssignTeam={() => {}}
                     maxPlayersPerTeam={Math.floor((booking.match.maxPlayers || 4) / 2)}
-                    onInviteToTeam={() => {}}
+                    onInviteToTeam={handleInviteToTeam}
                     matchStatus={booking.match.status}
                     onPlayerPress={handlePlayerPress}
                   />
@@ -878,6 +914,16 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal Aggiungi Giocatore */}
+      <AddPlayerModal
+        visible={showAddPlayerModal}
+        onClose={() => setShowAddPlayerModal(false)}
+        onAddPlayer={handleAddPlayer}
+        token={token!}
+        apiUrl={API_URL}
+        initialTeam={selectedTeamForAdd}
+      />
     </SafeAreaView>
   );
 }
