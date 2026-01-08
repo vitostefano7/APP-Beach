@@ -27,6 +27,13 @@ const bookingSchema = new mongoose.Schema(
 
     price: { type: Number, required: true },
 
+    bookingType: {
+      type: String,
+      enum: ["private", "public"],
+      default: "public",
+      required: true,
+    },
+
     status: {
       type: String,
       enum: ["confirmed", "cancelled"],

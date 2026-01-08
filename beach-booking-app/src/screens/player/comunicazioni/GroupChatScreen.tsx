@@ -31,12 +31,6 @@ type Message = {
   createdAt: string;
 };
 
-type Participant = {
-  _id: string;
-  name: string;
-  email: string;
-};
-
 export default function GroupChatScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation();
@@ -45,38 +39,48 @@ export default function GroupChatScreen() {
   const { conversationId, groupName, matchId } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [canSendMessages, setCanSendMessages] = useState(true);
+  const [bookingInfo, setBookingInfo] = useState<{
+    bookingId?: string;
+    strutturaName?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+  } | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    loadConversation();
+    loadMatchInfo();
     loadMessages();
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [conversationId]);
+  }, [conversationId, matchId]);
 
-  const loadConversation = async () => {
-    if (!token) return;
+  const loadMatchInfo = async () => {
+    if (!token || !matchId) return;
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/conversations/match/${matchId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await fetch(`${API_URL}/matches/${matchId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (res.ok) {
-        const conversation = await res.json();
-        setParticipants(conversation.participants || []);
+        const match = await res.json();
+        const booking = match.booking || {};
+        setBookingInfo({
+          bookingId: booking._id,
+          strutturaName: booking.campo?.struttura?.name,
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        });
       }
     } catch (error) {
-      console.error("Errore caricamento conversazione:", error);
+      console.error("Errore caricamento match:", error);
     }
   };
 
@@ -165,6 +169,24 @@ export default function GroupChatScreen() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatDay = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("it-IT", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  const formatTimeRange = (startTime?: string, endTime?: string) => {
+    if (!startTime) return "--:--";
+    return endTime ? `${startTime} - ${endTime}` : startTime;
   };
 
   const getSenderColor = (senderId: string) => {
@@ -260,33 +282,42 @@ export default function GroupChatScreen() {
               <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
             </Pressable>
 
-            <View style={styles.headerCenter}>
-              <View style={[styles.headerAvatar, { backgroundColor: '#2196F3' }]}>
-                <Ionicons name="people" size={20} color="white" />
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {groupName || "Chat di Gruppo"}
-                </Text>
-                <Text style={styles.headerSubtitle}>
-                  {participants.length} partecipant{participants.length !== 1 ? 'i' : 'e'}
-                </Text>
-              </View>
-            </View>
-
-            <Pressable 
-              style={styles.infoButton}
-              onPress={() => {
-                Alert.alert(
-                  "Partecipanti",
-                  participants.map(p => p.name).join('\n')
-                );
-              }}
-            >
-              <Ionicons name="information-circle-outline" size={24} color="#1a1a1a" />
-            </Pressable>
+            <Text style={styles.headerTitleCentered} numberOfLines={1}>
+              Chat della partita
+            </Text>
+            <View style={styles.headerSpacer} />
           </View>
         </SafeAreaView>
+
+        <View style={styles.subHeader}>
+          <View style={styles.subHeaderLeft}>
+            <Text style={styles.subHeaderTitle} numberOfLines={1}>
+              {(bookingInfo?.strutturaName || "Struttura") +
+                " - " +
+                formatTimeRange(bookingInfo?.startTime, bookingInfo?.endTime)}
+            </Text>
+            <Text style={styles.subHeaderDay} numberOfLines={1}>
+              {formatDay(bookingInfo?.date)}
+            </Text>
+          </View>
+          <Pressable
+            style={[
+              styles.detailsButton,
+              !bookingInfo?.bookingId && { opacity: 0.5 },
+            ]}
+            onPress={() => {
+              if (bookingInfo?.bookingId) {
+                navigation.navigate("DettaglioPrenotazione", {
+                  bookingId: bookingInfo.bookingId,
+                });
+              }
+            }}
+            disabled={!bookingInfo?.bookingId}
+          >
+            <Ionicons name="calendar-outline" size={18} color="#2196F3" />
+            <Text style={styles.detailsButtonText}>Dettaglio</Text>
+          </Pressable>
+        </View>
 
         {!canSendMessages && (
           <View style={styles.warningBanner}>

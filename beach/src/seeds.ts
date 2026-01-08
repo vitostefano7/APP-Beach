@@ -146,7 +146,7 @@ async function seed() {
     ];
 
     const users = await User.insertMany(
-      usersData.map((u) => ({
+      usersData.map((u, index) => ({
         ...u,
         password,
         isActive: true,
@@ -155,6 +155,8 @@ async function seed() {
           type: "Point",
           coordinates: [9.19 + Math.random() * 0.5, 45.46 + Math.random() * 0.5],
         } : undefined,
+        // Alcuni profili privati per test (Luca, Anna, Sofia, Chiara)
+        profilePrivacy: u.role === "player" && (index === 2 || index === 3 || index === 5 || index === 7) ? "private" : "public",
       }))
     );
 
@@ -201,34 +203,156 @@ async function seed() {
     /* -------- FRIENDSHIPS -------- */
     const friendships = [];
     
-    // Creiamo amicizie tra i primi 10 player
-    const friendPlayers = players.slice(0, 10);
+    // Legenda:
+    // Mario (0), Giulia (1), Luca (2-PRIVATO), Anna (3-PRIVATO), Marco (4),
+    // Sofia (5-PRIVATO), Alessandro (6), Chiara (7-PRIVATO), Matteo (8), Elena (9)
     
-    for (let i = 0; i < friendPlayers.length; i++) {
-      for (let j = i + 1; j < friendPlayers.length; j++) {
-        // 70% probabilità di essere amici
-        if (Math.random() > 0.3) {
-          friendships.push({
-            requester: friendPlayers[i]._id,
-            recipient: friendPlayers[j]._id,
-            status: "accepted",
-            acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
-          });
+    // === SCENARI DI TEST SPECIFICI ===
+    
+    // 1. Mario → Luca: pending (Mario ha richiesto a Luca che è privato)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[2]._id, // Luca (privato)
+      status: "pending",
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 2. Luca → Mario: accepted (Luca segue Mario - direzione opposta)
+    friendships.push({
+      requester: players[2]._id, // Luca
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 3. Anna → Mario: pending (Anna privata ha richiesto Mario)
+    friendships.push({
+      requester: players[3]._id, // Anna (privato)
+      recipient: players[0]._id, // Mario
+      status: "pending",
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 4. Mario → Sofia: accepted (Mario segue Sofia privata - lei ha accettato)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[5]._id, // Sofia (privato)
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 5. Sofia → Mario: accepted (follow reciproco)
+    friendships.push({
+      requester: players[5]._id, // Sofia
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 6. Mario → Chiara: pending (Mario ha richiesto Chiara privata)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[7]._id, // Chiara (privato)
+      status: "pending",
+      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    });
+    
+    // 7. Chiara → Mario: pending (anche Chiara ha richiesto Mario)
+    friendships.push({
+      requester: players[7]._id, // Chiara
+      recipient: players[0]._id, // Mario
+      status: "pending",
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
+    
+    // === AMICIZIE NORMALI TRA ALTRI UTENTI ===
+    
+    // Giulia e Marco: amici reciproci
+    friendships.push(
+      {
+        requester: players[1]._id, // Giulia
+        recipient: players[4]._id, // Marco
+        status: "accepted",
+        acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        requester: players[4]._id, // Marco
+        recipient: players[1]._id, // Giulia
+        status: "accepted",
+        acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      }
+    );
+    
+    // Alessandro segue Mario (pubblico, auto-accepted)
+    friendships.push({
+      requester: players[6]._id, // Alessandro
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    });
+    
+    // Mario segue Giulia (pubblico, auto-accepted)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[1]._id, // Giulia
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    });
+    
+    // Matteo segue Mario
+    friendships.push({
+      requester: players[8]._id, // Matteo
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    });
+    
+    // Elena segue Mario
+    friendships.push({
+      requester: players[9]._id, // Elena
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    });
+    
+    // Amicizie tra altri player (network più ampio)
+    for (let i = 10; i < 15; i++) {
+      if (players[i]) {
+        // Alcuni seguono Mario
+        friendships.push({
+          requester: players[i]._id,
+          recipient: players[0]._id,
+          status: "accepted",
+          acceptedAt: new Date(Date.now() - randomInt(1, 20) * 24 * 60 * 60 * 1000),
+        });
+        
+        // Alcuni hanno amicizie reciproche tra loro
+        if (i < 14 && players[i + 1]) {
+          friendships.push(
+            {
+              requester: players[i]._id,
+              recipient: players[i + 1]._id,
+              status: "accepted",
+              acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
+            },
+            {
+              requester: players[i + 1]._id,
+              recipient: players[i]._id,
+              status: "accepted",
+              acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
+            }
+          );
         }
       }
     }
     
-    // Alcune richieste pending
-    for (let i = 10; i < 15; i++) {
-      friendships.push({
-        requester: friendPlayers[0]._id,
-        recipient: players[i]._id,
-        status: "pending",
-      });
-    }
-    
     await Friendship.insertMany(friendships);
     console.log(`✅ Create ${friendships.length} amicizie`);
+    console.log(`   - Scenari di test per privacy e stati diversi`);
+    console.log(`   - Mario ha richieste pending verso: Luca, Chiara`);
+    console.log(`   - Mario ha richieste incoming da: Anna, Chiara`);
+    console.log(`   - Mario segue: Sofia (privata, accettata), Giulia`);
+    console.log(`   - Mario è seguito da: Luca, Alessandro, Matteo, Elena, altri...`);
 
     /* -------- STRUTTURE (8) -------- */
     const struttureData = [
@@ -464,13 +588,13 @@ async function seed() {
             playerCountPricing: { enabled: false, prices: [] },
           },
           weeklySchedule: {
-            monday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
-            tuesday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
-            wednesday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
-            thursday: { enabled: true, slots: [{ open: "09:00", close: "22:00" }] },
-            friday: { enabled: true, slots: [{ open: "09:00", close: "23:00" }] },
-            saturday: { enabled: true, slots: [{ open: "08:00", close: "23:00" }] },
-            sunday: { enabled: true, slots: [{ open: "08:00", close: "22:00" }] },
+            monday: { enabled: true, open: "09:00", close: "22:00" },
+            tuesday: { enabled: true, open: "09:00", close: "22:00" },
+            wednesday: { enabled: true, open: "09:00", close: "22:00" },
+            thursday: { enabled: true, open: "09:00", close: "22:00" },
+            friday: { enabled: true, open: "09:00", close: "23:00" },
+            saturday: { enabled: true, open: "08:00", close: "23:00" },
+            sunday: { enabled: true, open: "08:00", close: "22:00" },
           },
         });
       }
@@ -492,11 +616,8 @@ async function seed() {
         const schedule = campo.weeklySchedule[weekday];
 
         let allSlots: any[] = [];
-        if (schedule.enabled && schedule.slots && schedule.slots.length > 0) {
-          schedule.slots.forEach((timeSlot: any) => {
-            const slotsForRange = generateHalfHourSlots(timeSlot.open, timeSlot.close);
-            allSlots.push(...slotsForRange);
-          });
+        if (schedule.enabled && schedule.open && schedule.close) {
+          allSlots = generateHalfHourSlots(schedule.open, schedule.close);
         }
 
         calendarDocs.push({
@@ -539,6 +660,7 @@ async function seed() {
         duration,
         price: randomInt(30, 50),
         status: "confirmed",
+        bookingType: Math.random() > 0.3 ? "public" : "private", // 70% pubbliche, 30% private
       });
     }
 
@@ -566,6 +688,7 @@ async function seed() {
         duration,
         price: randomInt(30, 50),
         status: "confirmed",
+        bookingType: Math.random() > 0.3 ? "public" : "private", // 70% pubbliche, 30% private
       });
     }
 
@@ -735,6 +858,7 @@ async function seed() {
         duration: 1.5,
         price: 40,
         status: "confirmed",
+        bookingType: "public", // Match in corso sono sempre pubblici per test
       });
       
       const matchPlayers = [];
@@ -886,8 +1010,8 @@ async function seed() {
       matchCounters.draft++;
     }
 
-    await Match.insertMany(matches);
-    console.log(`✅ Creati ${matches.length} match:`);
+    const savedMatches = await Match.insertMany(matches);
+    console.log(`✅ Creati ${savedMatches.length} match:`);
     console.log(`   - ${matchCounters.completed} completati con risultato`);
     console.log(`   - ${matchCounters.noResult} completati senza risultato`);
     console.log(`   - ${matchCounters.inProgress} in corso`);
@@ -907,7 +1031,7 @@ async function seed() {
       unreadByOwner: randomInt(0, 2),
     }));
 
-    const groupConversations = matches.slice(0, 3).map((m, idx) => ({
+    const groupConversations = savedMatches.slice(0, 3).map((m, idx) => ({
       type: "group",
       participants: m.players.map((p: any) => p.user),
       match: m._id,
@@ -979,7 +1103,7 @@ async function seed() {
         type: "match_invite",
         title: "Invito partita",
         message: "Sei stato invitato a una partita.",
-        relatedId: matches[0]._id,
+        relatedId: savedMatches[0]._id,
         relatedModel: "Match",
       },
       {
@@ -988,7 +1112,7 @@ async function seed() {
         type: "match_start",
         title: "Match iniziato",
         message: "Il tuo match sta per iniziare.",
-        relatedId: matches[1]._id,
+        relatedId: savedMatches[1]._id,
         relatedModel: "Match",
       },
       {
@@ -997,7 +1121,7 @@ async function seed() {
         type: "match_result",
         title: "Risultato match",
         message: "Il risultato del match e' disponibile.",
-        relatedId: matches[2]._id,
+        relatedId: savedMatches[2]._id,
         relatedModel: "Match",
       },
     ];

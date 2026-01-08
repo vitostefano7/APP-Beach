@@ -14,6 +14,7 @@ import StruttureScreen from "../screens/player/struttura/StruttureScreen";
 import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen"
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import NotificheScreen from "../screens/player/dashboard/NotificheScreen";
+import CercaPartitaScreen from "../screens/player/dashboard/CercaPartitaScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -38,6 +39,7 @@ export type DashboardStackParamList = {
     };
   };
   Notifiche: undefined;
+  CercaPartita: undefined;
 };
 
 const Stack = createNativeStackNavigator();
@@ -122,6 +124,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen 
         name="Notifiche" 
         component={NotificheScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CercaPartita" 
+        component={CercaPartitaScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

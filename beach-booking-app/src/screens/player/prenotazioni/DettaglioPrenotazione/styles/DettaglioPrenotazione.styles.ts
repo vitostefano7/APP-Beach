@@ -2087,6 +2087,55 @@ const styles = StyleSheet.create({
     color: "#CCC",
     fontWeight: "700",
   },
+
+  // ==================== JOIN MATCH CTA ====================
+  joinMatchCTA: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#4CAF50",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  joinMatchCTAContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  joinMatchCTAIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  joinMatchCTATextContainer: {
+    flex: 1,
+  },
+  joinMatchCTATitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+    letterSpacing: -0.3,
+  },
+  joinMatchCTASubtitle: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
+  },
 });
 
 export default styles;

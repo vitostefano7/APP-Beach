@@ -72,6 +72,7 @@ export default function DettaglioPrenotazioneScreen() {
   const [acceptingInvite, setAcceptingInvite] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState(false);
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
+  const [teamSelectionMode, setTeamSelectionMode] = useState<"join" | "invite">("join");
 
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
@@ -97,16 +98,23 @@ export default function DettaglioPrenotazioneScreen() {
       setLoading(true);
       setError(null);
       
+      console.log('🔍 [DettaglioPrenotazione] Caricamento booking:', bookingId);
+      console.log('🔍 [DettaglioPrenotazione] Token presente:', token ? 'SI' : 'NO');
+      
       const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log('📡 [DettaglioPrenotazione] Status risposta:', res.status);
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        console.error('❌ [DettaglioPrenotazione] Errore risposta:', errorData);
         throw new Error(errorData.message || `Errore ${res.status}`);
       }
 
       const data = await res.json();
+      console.log('✅ [DettaglioPrenotazione] Booking caricato:', data._id);
       setBooking(data);
     } catch (error: any) {
       console.error('Errore nel caricamento:', error);
@@ -218,14 +226,15 @@ export default function DettaglioPrenotazioneScreen() {
   };
 
   const handleOpenGroupChat = async () => {
-    if (!booking?.matchId) {
+    const matchId = booking?.matchId;
+    if (!matchId || matchId === "undefined") {
       Alert.alert("Errore", "Match non disponibile");
       return;
     }
 
     try {
       setLoadingGroupChat(true);
-      const res = await fetch(`${API_URL}/api/conversations/match/${booking.matchId}`, {
+      const res = await fetch(`${API_URL}/api/conversations/match/${matchId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -235,7 +244,10 @@ export default function DettaglioPrenotazioneScreen() {
       }
 
       const conversation = await res.json();
-      navigation.navigate("GroupChat", { conversationId: conversation._id });
+      navigation.navigate("GroupChat", {
+        conversationId: conversation._id,
+        matchId: booking.matchId,
+      });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
     } finally {
@@ -368,6 +380,7 @@ export default function DettaglioPrenotazioneScreen() {
     if (!booking?.matchId) return;
 
     if (response === "accept" && booking.match?.maxPlayers && booking.match?.maxPlayers > 2 && !team) {
+      setTeamSelectionMode("invite");
       setTeamSelectionModalVisible(true);
       return;
     }
@@ -407,7 +420,12 @@ export default function DettaglioPrenotazioneScreen() {
   };
 
   const handleSelectTeamForInvite = (team: "A" | "B") => {
-    handleRespondToInvite("accept", team);
+    if (teamSelectionMode === "join") {
+      handleJoinMatch(team);
+    } else {
+      handleRespondToInvite("accept", team);
+    }
+    setTeamSelectionModalVisible(false);
   };
 
   const handleRemovePlayer = async (playerId: string) => {
@@ -447,6 +465,7 @@ export default function DettaglioPrenotazioneScreen() {
     if (!booking?.matchId) return;
 
     if (!team && booking.match?.maxPlayers && booking.match?.maxPlayers > 2) {
+      setTeamSelectionMode("join");
       setTeamSelectionModalVisible(true);
       return;
     }
@@ -637,15 +656,6 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   <Text style={styles.groupChatButtonText}>Chat Gruppo</Text>
                 </>
               )}
-            </AnimatedButton>
-          )}
-          {canJoin && (
-            <AnimatedButton
-              style={styles.joinButton}
-              onPress={() => handleJoinMatch()}
-            >
-              <Ionicons name="enter" size={18} color="white" />
-              <Text style={styles.joinButtonText}>Unisciti</Text>
             </AnimatedButton>
           )}
         </View>
@@ -1082,6 +1092,31 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             createdAt={booking.createdAt}
           />
         </AnimatedCard>
+
+        {/* CTA Join Match - Solo per chi non è nel match e il match è aperto */}
+        {!isInMatch && booking.match?.status === "open" && (
+          <AnimatedCard delay={180}>
+            <Pressable 
+              style={styles.joinMatchCTA}
+              onPress={() => handleJoinMatch()}
+            >
+              <View style={styles.joinMatchCTAContent}>
+                <View style={styles.joinMatchCTAIconContainer}>
+                  <Ionicons name="people" size={24} color="#fff" />
+                </View>
+                <View style={styles.joinMatchCTATextContainer}>
+                  <Text style={styles.joinMatchCTATitle}>Unisciti a questa partita!</Text>
+                  <Text style={styles.joinMatchCTASubtitle}>
+                    {confirmedPlayers.length}/{booking.match?.maxPlayers || 0} giocatori • {
+                      (booking.match?.maxPlayers || 0) - confirmedPlayers.length
+                    } posti disponibili
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward-circle" size={28} color="#fff" />
+              </View>
+            </Pressable>
+          </AnimatedCard>
+        )}
 
         {renderMatchSection()}
       </ScrollView>
