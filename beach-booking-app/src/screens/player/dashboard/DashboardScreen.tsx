@@ -503,23 +503,23 @@ export default function HomeScreen() {
 
   const handleAddFriend = async (friendId: string, friendName: string) => {
     Alert.alert(
-      "Aggiungi amico",
-      `Vuoi inviare una richiesta di amicizia a ${friendName}?`,
+      "Segui utente",
+      `Vuoi seguire ${friendName}?`,
       [
         {
           text: "Annulla",
           style: "cancel"
         },
         {
-          text: "Invia richiesta",
+          text: "Segui",
           onPress: async () => {
             try {
               const success = await sendFriendRequest(friendId);
               if (success) {
-                Alert.alert("Successo", "Richiesta di amicizia inviata!");
+                Alert.alert("Successo", `Ora segui ${friendName}!`);
               }
             } catch (error) {
-              Alert.alert("Errore", "Impossibile inviare la richiesta");
+              Alert.alert("Errore", "Impossibile seguire questo utente");
             }
           }
         }
@@ -714,10 +714,11 @@ export default function HomeScreen() {
           </Pressable>
           
           <Pressable 
-            style={[styles.quickActionButton, styles.quickActionButtonDisabled]}
-            onPress={() => {}}
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate("CercaPartita")}
           >
-            <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
+            <Ionicons name="search-outline" size={20} color="#2196F3" />
+            <Text style={styles.quickActionText}>Cerca una partita</Text>
           </Pressable>
         </View>
 

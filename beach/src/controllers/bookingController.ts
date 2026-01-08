@@ -19,13 +19,14 @@ import { calculatePrice } from "../utils/pricingUtils";
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { campoId, date, startTime, duration = "1h" } = req.body;
+    const { campoId, date, startTime, duration = "1h", bookingType = "public" } = req.body;
 
     console.log("🏐 Nuova prenotazione:", {
       campoId,
       date,
       startTime,
       duration,
+      bookingType,
       userId: user?.id,
     });
 
@@ -40,6 +41,13 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res
         .status(400)
         .json({ message: "Duration non valida: ammessi solo '1h' o '1.5h'" });
+    }
+
+    // Valida bookingType
+    if (bookingType !== "private" && bookingType !== "public") {
+      return res
+        .status(400)
+        .json({ message: "bookingType non valido: ammessi solo 'private' o 'public'" });
     }
 
     if (user.role === "owner") {
@@ -148,6 +156,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     // ✅ Crea booking
     const booking = await Booking.create({
+      bookingType,
       user: user.id,
       campo: campoId,
       struttura: (campo as any).struttura._id || (campo as any).struttura,
@@ -378,8 +387,15 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
         (p: any) => p.user._id.toString() === userId
       );
 
-    // ❌ Non autorizzato se non è né owner né player
-    if (!isOwner && !isPlayer) {
+    // ✅ 3. Verifica se è un match pubblico con booking pubblico
+    const isPublicBooking = (booking as any).bookingType === "public";
+    const isPublicMatch = match && match.isPublic;
+
+    // ❌ Non autorizzato se:
+    // - Non è owner
+    // - Non è player
+    // - E il booking/match NON sono pubblici
+    if (!isOwner && !isPlayer && !(isPublicBooking && isPublicMatch)) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Types } from 'mongoose';
 import { AuthRequest } from '../middleware/authMiddleware';
 import Conversation from '../models/Conversazione';
 import Message from '../models/Message';
@@ -569,6 +570,10 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
 
     if (!userId) {
       return res.status(401).json({ message: 'Non autorizzato' });
+    }
+
+    if (!matchId || matchId === 'undefined' || !Types.ObjectId.isValid(matchId)) {
+      return res.status(400).json({ message: 'Match non valido' });
     }
 
     // Carica il match con i players

@@ -14,6 +14,7 @@ import {
   deleteAvatar,
   searchUsers,
   getUserPublicProfile,
+  getUserPublicProfileById,
   getUserMatches,
   getPlayedWith,
   getFrequentedVenues,
@@ -70,6 +71,7 @@ router.post("/me/change-password", requireAuth, changePassword);
 /**
  * PUBLIC PROFILES (devono essere dopo /me/*)
  */
+router.get("/:userId/public-profile", requireAuth, getUserPublicProfileById);
 router.get("/:username/profile", requireAuth, getUserPublicProfile);
 router.get("/:username/matches", requireAuth, getUserMatches);
 

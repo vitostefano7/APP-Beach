@@ -5,11 +5,14 @@ export interface IUser extends Document {
   surname?: string;
   email: string;
   password: string;
-  username: string; // 🆕 NUOVO
+  username: string;
   role: "player" | "owner";
   isActive: boolean;
   avatarUrl?: string;
-  preferredSports?: ("volleyball" | "beach_volleyball")[]; // 🆕 NUOVO
+  expoPushToken?: string;
+  pushTokenUpdatedAt?: Date;
+  preferredSports?: ("volleyball" | "beach_volleyball")[]; 
+  profilePrivacy?: "public" | "private"; // 🆕 Privacy del profilo
   location?: {
     type: "Point";
     coordinates: [number, number];
@@ -61,11 +64,28 @@ const UserSchema = new Schema<IUser>(
       default: null,
     },
 
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+
+    pushTokenUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+
     // 🆕 PREFERENZE SPORT
     preferredSports: {
       type: [String],
       enum: ["volleyball", "beach_volleyball"],
       default: [],
+    },
+
+    // 🆕 PRIVACY PROFILO
+    profilePrivacy: {
+      type: String,
+      enum: ["public", "private"],
+      default: "public",
     },
 
     // 🆕 LOCATION
@@ -98,3 +118,4 @@ UserSchema.methods.toPublicJSON = function () {
 };
 
 export default mongoose.model<IUser>("User", UserSchema);
+

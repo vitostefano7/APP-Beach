@@ -189,14 +189,26 @@ export const updateMe = async (
   try {
     const userId = req.user!.id;
 
+    // Costruisci l'oggetto di aggiornamento solo con i campi presenti
+    const updateFields: any = {};
+    if (req.body.name !== undefined) updateFields.name = req.body.name;
+    if (req.body.surname !== undefined) updateFields.surname = req.body.surname;
+    if (req.body.phone !== undefined) updateFields.phone = req.body.phone;
+    if (req.body.avatarUrl !== undefined) updateFields.avatarUrl = req.body.avatarUrl;
+    
+    // Aggiungi profilePrivacy se presente e valido
+    if (req.body.profilePrivacy !== undefined) {
+      if (!["public", "private"].includes(req.body.profilePrivacy)) {
+        return res.status(400).json({ 
+          message: "profilePrivacy deve essere 'public' o 'private'" 
+        });
+      }
+      updateFields.profilePrivacy = req.body.profilePrivacy;
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        name: req.body.name,
-        surname: req.body.surname,
-        phone: req.body.phone,
-        avatarUrl: req.body.avatarUrl,
-      },
+      updateFields,
       { new: true }
     ).select("-password");
 
@@ -400,6 +412,7 @@ export const changePassword = async (
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
     const { q } = req.query;
+    const currentUserId = req.user!.id;
 
     if (!q || typeof q !== "string" || q.length < 2) {
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
@@ -409,10 +422,58 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       username: { $regex: q.toLowerCase(), $options: "i" },
       isActive: true,
     })
-      .select("username name avatarUrl")
+      .select("username name surname avatarUrl preferredSports")
       .limit(20);
 
-    res.json(users);
+    // Calculate common matches and mutual friends for each user
+    const Friendship = (await import("../models/Friendship")).default;
+    
+    // Get current user's friends once
+    const currentUserFriends = await Friendship.find({
+      $or: [
+        { requester: currentUserId, status: 'accepted' },
+        { recipient: currentUserId, status: 'accepted' }
+      ]
+    });
+
+    const currentUserFriendIds = currentUserFriends.map(f => 
+      f.requester.toString() === currentUserId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const usersWithCommonMatches = await Promise.all(
+      users.map(async (user) => {
+        // Count matches where both users played together
+        const commonMatchesCount = await Match.countDocuments({
+          status: "completed",
+          "players.user": { $all: [currentUserId, user._id] },
+          "players.status": "confirmed"
+        });
+
+        // Count mutual friends
+        const targetUserFriends = await Friendship.find({
+          $or: [
+            { requester: user._id, status: 'accepted' },
+            { recipient: user._id, status: 'accepted' }
+          ]
+        });
+
+        const targetUserFriendIds = targetUserFriends.map(f => 
+          f.requester.toString() === user._id.toString() ? f.recipient.toString() : f.requester.toString()
+        );
+
+        const mutualFriendsCount = currentUserFriendIds.filter(id => 
+          targetUserFriendIds.includes(id)
+        ).length;
+
+        return {
+          ...user.toObject(),
+          commonMatchesCount,
+          mutualFriendsCount
+        };
+      })
+    );
+
+    res.json(usersWithCommonMatches);
   } catch (err) {
     console.error("❌ searchUsers error:", err);
     res.status(500).json({ message: "Errore server" });
@@ -451,6 +512,173 @@ export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("❌ getUserPublicProfile error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:userId/public-profile
+ * Profilo pubblico utente tramite ID
+ */
+export const getUserPublicProfileById = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user!.id;
+
+    // Validate userId format
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "ID utente non valido" });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      isActive: true,
+    }).select("_id username name surname avatarUrl preferredSports profilePrivacy createdAt");
+
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Controlla la privacy del profilo
+    const isPrivate = user.profilePrivacy === "private";
+    const isOwner = req.user!.role === "owner";
+
+    // Check friendship status - controlla entrambe le direzioni
+    const Friendship = (await import("../models/Friendship")).default;
+    
+    console.log(`🔍 [getUserPublicProfileById] Checking friendship: currentUserId=${currentUserId}, userId=${userId}`);
+    
+    // Check if I sent a request to them (my outgoing request)
+    const myOutgoingRequest = await Friendship.findOne({
+      requester: currentUserId,
+      recipient: userId
+    });
+
+    // Check if they sent a request to me (their outgoing request = my incoming request)
+    const theirOutgoingRequest = await Friendship.findOne({
+      requester: userId,
+      recipient: currentUserId
+    });
+
+    console.log(`🔍 [getUserPublicProfileById] My outgoing request (me→them):`, myOutgoingRequest ? {
+      _id: myOutgoingRequest._id,
+      status: myOutgoingRequest.status
+    } : 'NONE');
+
+    console.log(`🔍 [getUserPublicProfileById] Their outgoing request (them→me):`, theirOutgoingRequest ? {
+      _id: theirOutgoingRequest._id,
+      status: theirOutgoingRequest.status
+    } : 'NONE');
+
+    let friendshipStatus: 'none' | 'pending' | 'accepted' = 'none';
+    let isFollowing = false;
+    let theyFollowMe = false;
+    let hasIncomingRequest = false;
+    
+    // Check MY request to THEM (my outgoing)
+    if (myOutgoingRequest) {
+      if (myOutgoingRequest.status === 'accepted') {
+        friendshipStatus = 'accepted';
+        isFollowing = true;
+        console.log(`✅ [getUserPublicProfileById] I follow them - friendshipStatus=accepted`);
+      } else if (myOutgoingRequest.status === 'pending') {
+        friendshipStatus = 'pending';
+        isFollowing = false;
+        console.log(`⏳ [getUserPublicProfileById] My request pending - friendshipStatus=pending`);
+      }
+    }
+    
+    // Check if THEY follow ME
+    if (theirOutgoingRequest) {
+      if (theirOutgoingRequest.status === 'accepted') {
+        theyFollowMe = true;
+        console.log(`✅ [getUserPublicProfileById] They follow me (accepted)`);
+      } else if (theirOutgoingRequest.status === 'pending') {
+        hasIncomingRequest = true;
+        console.log(`📥 [getUserPublicProfileById] They have pending request to follow me`);
+      }
+    }
+
+    if (!myOutgoingRequest && !theirOutgoingRequest) {
+      console.log(`❌ [getUserPublicProfileById] No friendship in either direction`);
+    }
+
+    // Se il profilo è privato e non sei follower accettato (e non sei owner), limita le info
+    if (isPrivate && !isFollowing && !isOwner && currentUserId !== userId) {
+      return res.json({
+        user: {
+          _id: user._id,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          profilePrivacy: user.profilePrivacy,
+        },
+        stats: {
+          matchesPlayed: 0,
+          commonMatchesCount: 0,
+          mutualFriendsCount: 0,
+        },
+        friendshipStatus,
+        isPrivate: true,
+        message: "Questo profilo è privato",
+      });
+    }
+
+    // Statistiche pubbliche (visibili solo se pubblico o sei follower)
+    const matchesPlayed = await Match.countDocuments({
+      "players.user": user._id,
+      "players.status": "confirmed",
+      status: "completed",
+    });
+
+    // Count common matches
+    const commonMatchesCount = await Match.countDocuments({
+      status: "completed",
+      "players.user": { $all: [currentUserId, user._id] },
+      "players.status": "confirmed"
+    });
+
+    // Count mutual friends
+    const currentUserFriends = await Friendship.find({
+      $or: [
+        { requester: currentUserId, status: 'accepted' },
+        { recipient: currentUserId, status: 'accepted' }
+      ]
+    });
+
+    const currentUserFriendIds = currentUserFriends.map(f => 
+      f.requester.toString() === currentUserId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const targetUserFriends = await Friendship.find({
+      $or: [
+        { requester: userId, status: 'accepted' },
+        { recipient: userId, status: 'accepted' }
+      ]
+    });
+
+    const targetUserFriendIds = targetUserFriends.map(f => 
+      f.requester.toString() === userId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    const mutualFriendsCount = currentUserFriendIds.filter(id => 
+      targetUserFriendIds.includes(id)
+    ).length;
+
+    res.json({
+      user,
+      stats: {
+        matchesPlayed,
+        commonMatchesCount,
+        mutualFriendsCount,
+      },
+      friendshipStatus, // Il tuo status verso di loro (none/pending/accepted)
+      isPrivate: false,
+      hasIncomingRequest, // Hanno una richiesta pending verso di te
+      theyFollowMe, // Ti seguono già (accepted)
+    });
+  } catch (err) {
+    console.error("❌ getUserPublicProfileById error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

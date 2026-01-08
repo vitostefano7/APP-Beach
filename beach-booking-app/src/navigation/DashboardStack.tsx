@@ -11,6 +11,36 @@ import TuttiInvitiScreen from "../screens/player/dashboard/TuttiInviti";
 import InvitoScadutoScreen from "../screens/player/dashboard/InvitoScadutoScreen";
 import DettaglioInvitoRifiutato from "../screens/player/dashboard/DettaglioInvitoRifiutatoScreen";
 import StruttureScreen from "../screens/player/struttura/StruttureScreen";
+import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen"
+import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
+import NotificheScreen from "../screens/player/dashboard/NotificheScreen";
+import CercaPartitaScreen from "../screens/player/dashboard/CercaPartitaScreen";
+
+export type DashboardStackParamList = {
+  Home: undefined;
+  ConfermaPrenotazione: { bookingId: string };
+  LeMiePrenotazioni: undefined;
+  DettaglioPrenotazione: { bookingId: string };
+  Chat: { conversationId: string };
+  GroupChat: { matchId: string };
+  DettaglioInvito: { matchId: string };
+  TuttiInviti: undefined;
+  InvitoScaduto: { matchId: string };
+  DettaglioInvitoRifiutato: { matchId: string };
+  Strutture: undefined;
+  FieldDetails: { fieldId: string };
+  CercaAmici: undefined;
+  ProfiloUtente: {
+    userId: string;
+    backTo?: {
+      tab: "Profilo";
+      screen: "FriendsList";
+      params?: { filter?: "followers" | "following" };
+    };
+  };
+  Notifiche: undefined;
+  CercaPartita: undefined;
+};
 
 const Stack = createNativeStackNavigator();
 
@@ -80,7 +110,26 @@ export default function DashboardStack() { // ✅ Nome corretto
         name="Strutture" 
         component={StruttureScreen}
         options={{ headerShown: false }}
-
+      />
+      <Stack.Screen 
+        name="CercaAmici" 
+        component={CercaAmiciScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ProfiloUtente" 
+        component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Notifiche" 
+        component={NotificheScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CercaPartita" 
+        component={CercaPartitaScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

@@ -34,7 +34,8 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
 
   const handleOpenGroupChat = async () => {
     try {
-      if (!booking.match?._id) {
+      const matchId = booking.match?._id || booking.matchId;
+      if (!matchId || matchId === "undefined") {
         Alert.alert("Errore", "Nessun match associato a questa prenotazione");
         return;
       }
@@ -43,7 +44,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
 
       // Ottieni o crea la conversazione di gruppo
       const response = await fetch(
-        `${API_URL}/api/conversations/match/${booking.match._id}`,
+        `${API_URL}/api/conversations/match/${matchId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -62,7 +63,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
       navigation.navigate("GroupChat", {
         conversationId: conversation._id,
         groupName: conversation.groupName,
-        matchId: booking.match._id,
+        matchId,
       });
     } catch (error: any) {
       console.error("Errore apertura chat gruppo:", error);

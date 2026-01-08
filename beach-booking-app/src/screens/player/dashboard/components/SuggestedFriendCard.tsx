@@ -74,8 +74,10 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   const username = friendData.username;
   const preferredSports = friendData.preferredSports || [];
   
-  // Verifica se è già stato invitato
-  const isAlreadyInvited = friend.friendshipStatus === 'pending';
+  // Verifica lo stato dell'amicizia
+  const friendshipStatus = friend.friendshipStatus;
+  const isAlreadyFriend = friendshipStatus === 'accepted';
+  const isPendingRequest = friendshipStatus === 'pending';
   
   // Badge per motivo suggerimento
   const getPriorityBadge = () => {
@@ -167,20 +169,20 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
       <Pressable
         style={[
           styles.friendCardButton,
-          isAlreadyInvited && styles.friendCardButtonDisabled
+          (isAlreadyFriend || isPendingRequest) && styles.friendCardButtonDisabled
         ]}
         onPress={(e) => {
           e.stopPropagation();
-          if (!isAlreadyInvited) {
+          if (!isAlreadyFriend && !isPendingRequest) {
             onInvite(friendId);
           }
         }}
-        disabled={isAlreadyInvited}
+        disabled={isAlreadyFriend || isPendingRequest}
       >
         <Ionicons 
-          name={isAlreadyInvited ? "checkmark" : "person-add"} 
+          name={isAlreadyFriend ? "checkmark" : isPendingRequest ? "time" : "person-add"} 
           size={18} 
-          color={isAlreadyInvited ? "#999" : "white"} 
+          color={(isAlreadyFriend || isPendingRequest) ? "#999" : "white"} 
         />
       </Pressable>
     </Pressable>

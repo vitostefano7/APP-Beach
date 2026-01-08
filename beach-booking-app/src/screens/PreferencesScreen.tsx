@@ -17,7 +17,6 @@ import { AuthContext } from "../context/AuthContext";
 type UserPreferences = {
   pushNotifications: boolean;
   darkMode: boolean;
-  privacyLevel: "public" | "friends" | "private";
   preferredLocation?: {
     city: string;
     lat: number;
@@ -29,7 +28,7 @@ type UserPreferences = {
 };
 
 export default function PreferencesScreen({ navigation }: any) {
-  const { token } = useContext(AuthContext);
+  const { token, user, updateUser } = useContext(AuthContext);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,7 +36,7 @@ export default function PreferencesScreen({ navigation }: any) {
   // Preferenze
   const [pushNotifications, setPushNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const [privacyLevel, setPrivacyLevel] = useState<"public" | "friends" | "private">("public");
+  const [profilePrivacy, setProfilePrivacy] = useState<"public" | "private">("public");
   const [city, setCity] = useState("");
   const [radius, setRadius] = useState("30"); // ✅ 30 km default
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
@@ -62,6 +61,10 @@ export default function PreferencesScreen({ navigation }: any) {
   const loadPreferences = async () => {
     setLoading(true);
     try {
+      // Carica privacy dal profilo utente
+      setProfilePrivacy(user?.profilePrivacy || "public");
+
+      // Carica altre preferenze
       const res = await fetch(`${API_URL}/users/preferences`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -70,9 +73,8 @@ export default function PreferencesScreen({ navigation }: any) {
         const prefs: UserPreferences = await res.json();
         setPushNotifications(prefs.pushNotifications);
         setDarkMode(prefs.darkMode);
-        setPrivacyLevel(prefs.privacyLevel);
         setCity(prefs.preferredLocation?.city || "");
-        setRadius(prefs.preferredLocation?.radius?.toString() || "10");
+        setRadius(prefs.preferredLocation?.radius?.toString() || "30");
         setSelectedSports(prefs.favoriteSports || []);
         setTimeSlot(prefs.preferredTimeSlot || null);
       }
@@ -145,17 +147,39 @@ export default function PreferencesScreen({ navigation }: any) {
     console.log("⏰ [PREF] Fascia oraria:", timeSlot);
     console.log("🔔 [PREF] Push notifications:", pushNotifications);
     console.log("🌙 [PREF] Dark mode:", darkMode);
-    console.log("🔒 [PREF] Privacy:", privacyLevel);
+    console.log("🔒 [PREF] Profile Privacy:", profilePrivacy);
 
     setSaving(true);
 
     try {
+      // Salva privacy profilo
+      console.log("📤 [PREF] Invio privacy profilo...");
+      const profileRes = await fetch(`${API_URL}/users/me`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profilePrivacy }),
+      });
+
+      if (profileRes.ok) {
+        const updatedUser = await profileRes.json();
+        console.log("✅ [PREF] Privacy profilo aggiornata:", updatedUser.profilePrivacy);
+        console.log("📦 [PREF] Dati utente completi dal server:", JSON.stringify(updatedUser, null, 2));
+        // Aggiorna il context con i dati freschi dal server
+        await updateUser(updatedUser);
+        console.log("✅ [PREF] Context aggiornato con profilePrivacy:", updatedUser.profilePrivacy);
+      } else {
+        const errorData = await profileRes.json();
+        console.error("❌ [PREF] Errore privacy profilo:", errorData);
+      }
+
       // Salva preferenze generali
       console.log("📤 [PREF] Invio preferenze generali...");
       const generalPayload = {
         pushNotifications,
         darkMode,
-        privacyLevel,
         favoriteSports: selectedSports,
         preferredTimeSlot: timeSlot || undefined,
       };
@@ -338,30 +362,33 @@ export default function PreferencesScreen({ navigation }: any) {
             <Text style={styles.sectionTitle}>Privacy</Text>
           </View>
 
-          <Text style={styles.privacyLabel}>Livello di privacy</Text>
+          <Text style={styles.privacyLabel}>Visibilità profilo</Text>
+          <Text style={styles.privacyDescription}>
+            Pubblico: chiunque può seguirti e vedere il tuo profilo{"\n"}
+            Privato: devi approvare chi vuole seguirti
+          </Text>
           <View style={styles.privacyOptions}>
             {[
               { value: "public", label: "Pubblico", icon: "globe-outline" },
-              { value: "friends", label: "Amici", icon: "people-outline" },
               { value: "private", label: "Privato", icon: "lock-closed-outline" },
             ].map((option) => (
               <Pressable
                 key={option.value}
                 style={[
                   styles.privacyOption,
-                  privacyLevel === option.value && styles.privacyOptionActive,
+                  profilePrivacy === option.value && styles.privacyOptionActive,
                 ]}
-                onPress={() => setPrivacyLevel(option.value as any)}
+                onPress={() => setProfilePrivacy(option.value as any)}
               >
                 <Ionicons
                   name={option.icon as any}
                   size={24}
-                  color={privacyLevel === option.value ? "#2979ff" : "#666"}
+                  color={profilePrivacy === option.value ? "#2979ff" : "#666"}
                 />
                 <Text
                   style={[
                     styles.privacyOptionText,
-                    privacyLevel === option.value && styles.privacyOptionTextActive,
+                    profilePrivacy === option.value && styles.privacyOptionTextActive,
                   ]}
                 >
                   {option.label}
@@ -696,6 +723,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
+    marginBottom: 8,
+  },
+
+  privacyDescription: {
+    fontSize: 12,
+    color: "#666",
+    lineHeight: 18,
     marginBottom: 12,
   },
 

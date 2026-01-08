@@ -57,6 +57,17 @@ export const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginBottom: 2,
   },
+  headerTitleCentered: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
+  },
 
   onlineIndicator: {
     flexDirection: "row",
@@ -309,6 +320,50 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: "#666",
     marginTop: 2,
+  },
+  subHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  subHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  subHeaderTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  subHeaderDay: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  detailsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+  },
+  detailsButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#2196F3",
   },
 
   senderName: {

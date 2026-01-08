@@ -6,6 +6,7 @@ import Match from "../models/Match";
 import Booking from "../models/Booking";
 import Struttura from "../models/Strutture";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { createNotification } from "../utils/notificationHelper";
 
 // Interfaccia per i suggerimenti
 interface SuggestedUser {
@@ -65,26 +66,20 @@ export const friendshipController = {
         return res.status(400).json({ error: "Non puoi inviare una richiesta a te stesso" });
       }
 
-      // Controlla se esiste già una richiesta
+      // Controlla se esiste già un follow nella stessa direzione (requester → recipient)
       const existingFriendship = await Friendship.findOne({
-        $or: [
-          { requester: requesterId, recipient: recipientObjectId },
-          { requester: recipientObjectId, recipient: requesterId },
-        ],
+        requester: requesterId,
+        recipient: recipientObjectId,
       });
 
       if (existingFriendship) {
         let message = "";
         switch (existingFriendship.status) {
           case "pending":
-            if (existingFriendship.requester.equals(requesterId)) {
-              message = "Hai già inviato una richiesta a questo utente";
-            } else {
-              message = "Questo utente ti ha già inviato una richiesta";
-            }
+            message = "Hai già inviato una richiesta a questo utente";
             break;
           case "accepted":
-            message = "Siete già amici";
+            message = "Stai già seguendo questo utente";
             break;
           case "rejected":
             message = "Richiesta precedentemente rifiutata";
@@ -96,11 +91,16 @@ export const friendshipController = {
         return res.status(400).json({ error: message });
       }
 
-      // Crea nuova richiesta
+      // Controlla la privacy del recipient
+      const recipientPrivacy = recipient.profilePrivacy || "public";
+      const isPrivate = recipientPrivacy === "private";
+
+      // Crea nuovo follow
       const friendship = new Friendship({
         requester: requesterId,
         recipient: recipientObjectId,
-        status: "pending",
+        status: isPrivate ? "pending" : "accepted", // Se privato: pending, altrimenti accettato
+        acceptedAt: isPrivate ? undefined : new Date(),
       });
 
       await friendship.save();
@@ -108,12 +108,74 @@ export const friendshipController = {
       // Popola i dati per la risposta
       await friendship.populate([
         { path: "requester", select: "name username avatarUrl" },
-        { path: "recipient", select: "name username avatarUrl" },
+        { path: "recipient", select: "name username avatarUrl profilePrivacy" },
       ]);
 
+      // Se è pubblico, verifica se è reciproco
+      let isReciprocal = false;
+      if (!isPrivate) {
+        const reciprocalFriendship = await Friendship.findOne({
+          requester: recipientObjectId,
+          recipient: requesterId,
+          status: "accepted",
+        });
+        isReciprocal = !!reciprocalFriendship;
+      }
+
+      // Crea notifica per il recipient
+      try {
+        const requester = friendship.requester as any;
+        
+        if (isPrivate) {
+          // Profilo privato: notifica di richiesta follow con ID della Friendship
+          await createNotification(
+            recipientObjectId,
+            requesterId,
+            "new_follower",
+            `${requester.name} vuole seguirti`,
+            `${requester.name} (@${requester.username}) ti ha inviato una richiesta per seguirti`,
+            friendship._id, // ID della Friendship per poterla accettare/rifiutare
+            "Friendship"
+          );
+        } else {
+          // Profilo pubblico: notifica di follow automatico con ID dell'utente
+          await createNotification(
+            recipientObjectId,
+            requesterId,
+            "new_follower",
+            `${requester.name} ha iniziato a seguirti`,
+            `${requester.name} (@${requester.username}) ti sta seguendo`,
+            requesterId, // ID dell'utente per navigare al profilo
+            "User"
+          );
+
+          // Se è reciproco, notifica anche il requester
+          if (isReciprocal) {
+            const recipientUser = friendship.recipient as any;
+            await createNotification(
+              requesterId,
+              recipientObjectId,
+              "follow_back",
+              `${recipientUser.name} ti segue ora`,
+              `Ora tu e ${recipientUser.name} vi seguite a vicenda`,
+              recipientObjectId,
+              "User"
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("⚠️ Errore creazione notifiche (non bloccante):", notifError);
+      }
+
+      const responseMessage = isPrivate 
+        ? "Richiesta di follow inviata" 
+        : (isReciprocal ? "Ora vi seguite a vicenda" : "Ora segui questo utente");
+
       res.status(201).json({
-        message: "Richiesta di amicizia inviata",
+        message: responseMessage,
         friendship,
+        isReciprocal: !isPrivate && isReciprocal,
+        isPending: isPrivate,
       });
     } catch (error) {
       console.log("❌ [sendRequest] Errore:", error);
@@ -392,15 +454,24 @@ export const friendshipController = {
       }
       
       const userId = new Types.ObjectId(req.user.id);
-      const { limit = 50, skip = 0, search } = req.query;
+      const { limit = 50, skip = 0, search, type } = req.query;
 
       // Query base per trovare amici accettati
-      let query: any = {
-        $or: [
-          { requester: userId, status: "accepted" },
-          { recipient: userId, status: "accepted" },
-        ],
-      };
+      let query: any;
+      const listType = typeof type === "string" ? type : undefined;
+
+      if (listType === "followers") {
+        query = { recipient: userId, status: "accepted" };
+      } else if (listType === "following") {
+        query = { requester: userId, status: "accepted" };
+      } else {
+        query = {
+          $or: [
+            { requester: userId, status: "accepted" },
+            { recipient: userId, status: "accepted" },
+          ],
+        };
+      }
 
       // Se c'è una ricerca, aggiungiamo filtro per nome/username
       if (search && typeof search === "string") {
@@ -729,6 +800,8 @@ export const friendshipController = {
 
       const [
         friendCount,
+        followersCount,
+        followingCount,
         incomingRequestsCount,
         outgoingRequestsCount,
         mutualFriendCount,
@@ -739,6 +812,18 @@ export const friendshipController = {
             { requester: userId, status: "accepted" },
             { recipient: userId, status: "accepted" },
           ],
+        }),
+
+        // Conta follower (utenti che seguono me)
+        Friendship.countDocuments({
+          recipient: userId,
+          status: "accepted",
+        }),
+
+        // Conta following (utenti che seguo)
+        Friendship.countDocuments({
+          requester: userId,
+          status: "accepted",
         }),
 
         // Conta richieste in arrivo
@@ -759,6 +844,8 @@ export const friendshipController = {
 
       res.json({
         friendCount,
+        followersCount,
+        followingCount,
         incomingRequestsCount,
         outgoingRequestsCount,
         mutualFriendCount,
@@ -1229,22 +1316,41 @@ export const friendshipController = {
   },
 
   // Ottieni stato amicizia per un utente specifico
+  // Restituisce lo stato solo se userId è il REQUESTER (outgoing request)
   async getFriendshipStatusForUser(
     userId: Types.ObjectId, 
     targetUserId: Types.ObjectId
   ): Promise<"none" | "pending" | "accepted"> {
+    console.log(`🔍 [getFriendshipStatusForUser] Checking OUTGOING request: userId=${userId} → targetUserId=${targetUserId}`);
+    
+    // Cerca solo la richiesta DA userId VERSO targetUserId
     const friendship = await Friendship.findOne({
-      $or: [
-        { requester: userId, recipient: targetUserId },
-        { requester: targetUserId, recipient: userId },
-      ],
+      requester: userId,
+      recipient: targetUserId
     });
 
-    if (!friendship) return "none";
+    console.log(`🔍 [getFriendshipStatusForUser] Friendship found:`, friendship ? {
+      _id: friendship._id,
+      status: friendship.status
+    } : 'NONE');
+
+    if (!friendship) {
+      console.log(`❌ [getFriendshipStatusForUser] No outgoing request found, returning 'none'`);
+      return "none";
+    }
     
-    if (friendship.status === "pending") return "pending";
-    if (friendship.status === "accepted") return "accepted";
+    console.log(`🔍 [getFriendshipStatusForUser] Friendship status: ${friendship.status}`);
     
+    if (friendship.status === "pending") {
+      console.log(`⏳ [getFriendshipStatusForUser] Returning 'pending'`);
+      return "pending";
+    }
+    if (friendship.status === "accepted") {
+      console.log(`✅ [getFriendshipStatusForUser] Returning 'accepted'`);
+      return "accepted";
+    }
+    
+    console.log(`❌ [getFriendshipStatusForUser] Returning 'none' (rejected/blocked)`);
     return "none"; // Per rejected o blocked
   },
 

@@ -8,6 +8,7 @@ import {
   removePlayer,
   submitResult,
   getMyMatches,
+  getPublicMatches,
   getMatchById,
   deleteMatch,
   assignPlayerTeam,
@@ -21,17 +22,20 @@ const router = Router();
 
 // ⚠️ IMPORTANTE: Route specifiche PRIMA di quelle generiche
 
-// Crea match da booking
-router.post("/from-booking/:bookingId", requireAuth, createMatchFromBooking);
-
-// Crea match standalone
-router.post("/", requireAuth, createMatch);
-
 // Lista miei match
 router.get("/me", requireAuth, getMyMatches);
 
 // Inviti pendenti - DEVE ESSERE PRIMA di /:matchId
 router.get('/pending-invites', requireAuth, getPendingInvites);
+
+// Lista match pubblici disponibili (GET prima di POST)
+router.get("/", requireAuth, getPublicMatches);
+
+// Crea match da booking
+router.post("/from-booking/:bookingId", requireAuth, createMatchFromBooking);
+
+// Crea match standalone
+router.post("/", requireAuth, createMatch);
 
 // Gestione giocatori - route specifiche
 router.post("/:matchId/invite", requireAuth, invitePlayer);

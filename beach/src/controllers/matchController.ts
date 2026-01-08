@@ -191,7 +191,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
     const { team } = req.body;
     const userId = req.user!.id;
 
-    const match = await Match.findById(matchId);
+    const match = await Match.findById(matchId).populate('booking');
     if (!match) {
       return res.status(404).json({ message: "Match non trovato" });
     }
@@ -199,6 +199,12 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
     // Match deve essere pubblico
     if (!match.isPublic) {
       return res.status(403).json({ message: "Match privato" });
+    }
+
+    // Verifica che il booking sia pubblico
+    const booking = match.booking as any;
+    if (booking && booking.bookingType === "private") {
+      return res.status(403).json({ message: "Prenotazione privata - solo su invito" });
     }
 
     // Match deve essere open
@@ -495,6 +501,66 @@ export const getMyMatches = async (req: AuthRequest, res: Response) => {
     res.json(matches);
   } catch (err) {
     console.error("❌ getMyMatches error:", err);
+    res.status(500).json({ 
+      message: "Errore server",
+      error: err instanceof Error ? err.message : "Errore sconosciuto"
+    });
+  }
+};
+
+/**
+ * GET /matches
+ * Lista match pubblici disponibili per unirsi
+ */
+export const getPublicMatches = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { status } = req.query;
+
+    console.log('🔍 [getPublicMatches] Richiesta per userId:', userId);
+
+    // Query per match pubblici non completi
+    let query: any = {
+      isPublic: true,
+      status: { $in: ["open", "draft"] },
+      // Escludi match dove l'utente è già presente
+      "players.user": { $ne: userId }
+    };
+
+    // Se richiesto solo status=open
+    if (status === "open") {
+      query.status = "open";
+    }
+
+    const matches = await Match.find(query)
+      .sort({ createdAt: -1 })
+      .populate("players.user", "username name surname avatarUrl")
+      .populate("createdBy", "username name surname avatarUrl")
+      .populate({
+        path: "booking",
+        select: "date startTime endTime campo user price bookingType",
+        populate: {
+          path: "campo",
+          select: "name sport",
+          populate: {
+            path: "struttura",
+            select: "name location images",
+          },
+        },
+      });
+
+    // Filtra match che hanno booking con bookingType pubblico
+    const publicMatches = matches.filter(match => {
+      if (!match.booking) return false;
+      const booking = match.booking as any;
+      return !booking.bookingType || booking.bookingType === "public";
+    });
+
+    console.log(`✅ [getPublicMatches] Trovati ${publicMatches.length} match pubblici`);
+
+    res.json(publicMatches);
+  } catch (err) {
+    console.error("❌ getPublicMatches error:", err);
     res.status(500).json({ 
       message: "Errore server",
       error: err instanceof Error ? err.message : "Errore sconosciuto"

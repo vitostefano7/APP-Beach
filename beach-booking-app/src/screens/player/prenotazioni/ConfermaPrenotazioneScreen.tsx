@@ -32,6 +32,7 @@ export default function ConfermaPrenotazioneScreen() {
   } = route.params;
 
   const [loading, setLoading] = useState(false);
+  const [bookingType, setBookingType] = useState<"public" | "private">("public");
 
   // Converte il numero in formato API ("1h" o "1.5h")
   const duration = durationNumber === 1.5 ? "1.5h" : "1h";
@@ -81,6 +82,7 @@ export default function ConfermaPrenotazioneScreen() {
           date,
           startTime,
           duration, // "1h" o "1.5h"
+          bookingType,
         }),
       });
 
@@ -181,6 +183,65 @@ export default function ConfermaPrenotazioneScreen() {
                 ({durationNumber === 1 ? "1 ora" : "1 ora e 30 minuti"})
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Tipo di prenotazione */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🎯 Tipo di Partita</Text>
+          
+          <View style={styles.bookingTypeContainer}>
+            <Pressable
+              style={[
+                styles.bookingTypeOption,
+                bookingType === "public" && styles.bookingTypeOptionSelected,
+              ]}
+              onPress={() => setBookingType("public")}
+            >
+              <Ionicons
+                name={bookingType === "public" ? "radio-button-on" : "radio-button-off"}
+                size={24}
+                color={bookingType === "public" ? "#2196F3" : "#999"}
+              />
+              <View style={styles.bookingTypeContent}>
+                <Text style={[
+                  styles.bookingTypeTitle,
+                  bookingType === "public" && styles.bookingTypeTitleSelected,
+                ]}>
+                  🌍 Pubblica
+                </Text>
+                <Text style={styles.bookingTypeDescription}>
+                  Altri giocatori possono trovare e unirsi alla tua partita
+                </Text>
+              </View>
+            </Pressable>
+
+            <View style={styles.bookingTypeSeparator} />
+
+            <Pressable
+              style={[
+                styles.bookingTypeOption,
+                bookingType === "private" && styles.bookingTypeOptionSelected,
+              ]}
+              onPress={() => setBookingType("private")}
+            >
+              <Ionicons
+                name={bookingType === "private" ? "radio-button-on" : "radio-button-off"}
+                size={24}
+                color={bookingType === "private" ? "#2196F3" : "#999"}
+              />
+              <View style={styles.bookingTypeContent}>
+                <Text style={[
+                  styles.bookingTypeTitle,
+                  bookingType === "private" && styles.bookingTypeTitleSelected,
+                ]}>
+                  🔒 Privata
+                </Text>
+                <Text style={styles.bookingTypeDescription}>
+                  Solo tu puoi invitare altri giocatori
+                </Text>
+              </View>
+            </Pressable>
           </View>
         </View>
 
@@ -323,6 +384,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 2,
+  },
+
+  bookingTypeContainer: {
+    gap: 12,
+  },
+
+  bookingTypeOption: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    backgroundColor: "#FAFAFA",
+  },
+
+  bookingTypeOptionSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+
+  bookingTypeContent: {
+    flex: 1,
+  },
+
+  bookingTypeTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#212121",
+    marginBottom: 4,
+  },
+
+  bookingTypeTitleSelected: {
+    color: "#2196F3",
+  },
+
+  bookingTypeDescription: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+  },
+
+  bookingTypeSeparator: {
+    height: 8,
   },
 
   priceRow: {

@@ -8,7 +8,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback, ElementType } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -27,6 +27,9 @@ type ProfileResponse = {
     matchesPlayed: number;
     ratingAverage?: number;
     favoriteCampo?: { name: string } | null;
+    friendsCount?: number;
+    followersCount?: number;
+    followingCount?: number;
   };
   preferences: {
     pushNotifications: boolean;
@@ -79,11 +82,27 @@ export default function ProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch(`${API_URL}/users/me/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const [profileRes, friendsRes] = await Promise.all([
+        fetch(`${API_URL}/users/me/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/friends/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
 
-      const json = await res.json();
+      const json = await profileRes.json();
+      let friendsCount = 0;
+      let followersCount = 0;
+      let followingCount = 0;
+      if (friendsRes.ok) {
+        const friendsJson = await friendsRes.json();
+        friendsCount = friendsJson.friendCount ?? 0;
+        followersCount = friendsJson.followersCount ?? 0;
+        followingCount = friendsJson.followingCount ?? 0;
+      } else {
+        console.log("Errore caricamento friends stats:", friendsRes.status);
+      }
       console.log("📥 Dati profilo ricevuti:", json);
       console.log("🖼️ avatarUrl dal backend:", json.user?.avatarUrl);
 
@@ -92,6 +111,9 @@ export default function ProfileScreen() {
           matchesPlayed: json.profile?.matchesPlayed ?? 0,
           ratingAverage: json.profile?.ratingAverage ?? 0,
           favoriteCampo: json.profile?.favoriteCampo ?? null,
+          friendsCount,
+          followersCount,
+          followingCount,
         },
         preferences: {
           pushNotifications: json.preferences?.pushNotifications ?? false,
@@ -340,6 +362,13 @@ export default function ProfileScreen() {
               )}
             </Pressable>
             
+            {/* ✅ Badge lucchetto se profilo privato */}
+            {user?.profilePrivacy === 'private' && (
+              <View style={styles.privateBadge}>
+                <Ionicons name="lock-closed" size={16} color="#666" />
+              </View>
+            )}
+            
             {/* ✅ Bottone camera per cambiare foto */}
             <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
               <Ionicons name="camera" size={16} color="white" />
@@ -357,14 +386,30 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.stats}>
-          <StatCard 
-            icon="trophy" 
-            color="#FFC107" 
-            value={profile.matchesPlayed} 
-            label="Partite" 
-          />
-          
-          <Pressable 
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: "#4CAF5020" }]}>
+              <Ionicons name="people" size={24} color="#4CAF50" />
+            </View>
+            <View style={styles.dualStatRow}>
+              <Pressable
+                style={styles.dualStatCell}
+                onPress={() => navigation.navigate("FriendsList", { filter: "followers" })}
+              >
+                <Text style={styles.statValue}>{profile.followersCount ?? 0}</Text>
+                <Text style={styles.statLabel}>Follower</Text>
+              </Pressable>
+              <View style={styles.dualStatDivider} />
+              <Pressable
+                style={styles.dualStatCell}
+                onPress={() => navigation.navigate("FriendsList", { filter: "following" })}
+              >
+                <Text style={styles.statValue}>{profile.followingCount ?? 0}</Text>
+                <Text style={styles.statLabel}>Following</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable
             style={styles.statCard}
             onPress={() => navigation.navigate("Conversazione")}
           >
@@ -430,21 +475,28 @@ function StatCard({
   icon, 
   value, 
   label, 
-  color 
+  color,
+  onPress,
 }: { 
   icon: any; 
   value: number | string; 
   label: string; 
-  color: string 
+  color: string;
+  onPress?: () => void;
 }) {
+  const Container: ElementType = onPress ? Pressable : View;
+  const containerProps = onPress
+    ? { onPress, accessibilityRole: "button" as const }
+    : {};
+
   return (
-    <View style={styles.statCard}>
+    <Container style={styles.statCard} {...containerProps}>
       <View style={[styles.statIconBox, { backgroundColor: `${color}20` }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </Container>
   );
 }
 
