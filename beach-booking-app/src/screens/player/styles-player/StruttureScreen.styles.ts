@@ -121,10 +121,37 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  favoriteImageContainer: {
+    position: "relative",
+  },
+
   favoriteImage: {
     width: "100%",
     height: 80,
     backgroundColor: "#F5F5F5",
+  },
+
+  favoriteImageIndicators: {
+    position: "absolute",
+    bottom: 6,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  favoriteIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+
+  favoriteIndicatorActive: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 14,
   },
 
   favoriteContent: {
@@ -213,10 +240,37 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  imageContainer: {
+    position: "relative",
+  },
+
   image: {
     height: 120,
     width: "100%",
     backgroundColor: "#F5F5F5",
+  },
+
+  imageIndicators: {
+    position: "absolute",
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  indicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+
+  indicatorActive: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 20,
   },
 
   badge: {

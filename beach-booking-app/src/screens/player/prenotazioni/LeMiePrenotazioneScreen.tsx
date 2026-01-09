@@ -564,7 +564,7 @@ const TeamSection = ({ players, team }: { players: Player[]; team: "A" | "B" }) 
       </View>
       <View style={styles.teamPlayers}>
         {teamPlayers.map((player) => (
-          <View key={player._id} style={styles.playerItem}>
+          <View key={player.user._id} style={styles.playerItem}>
             <PlayerAvatar player={player} size={28} />
             <Text style={styles.playerName} numberOfLines={1}>
               {player.user.name} {player.user.surname.charAt(0)}.

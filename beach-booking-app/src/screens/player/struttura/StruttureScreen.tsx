@@ -14,6 +14,7 @@ import {
   UIManager,
   Alert,
   Linking,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -469,11 +470,46 @@ export default function StruttureScreen() {
 
   const markers = viewMode === "map" ? getMarkersForZoom() : [];
 
+  const handleImageSwipe = (strutturaId: string, direction: 'left' | 'right', totalImages: number) => {
+    setCurrentImageIndexes((prev) => {
+      const currentIndex = prev[strutturaId] || 0;
+      let newIndex: number;
+
+      if (direction === 'left') {
+        // Swipe a sinistra = immagine successiva
+        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
+      } else {
+        // Swipe a destra = immagine precedente
+        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+      }
+
+      return { ...prev, [strutturaId]: newIndex };
+    });
+  };
+
   const renderCard = ({ item }: { item: Struttura }) => {
     const currentIndex = currentImageIndexes[item._id] || 0;
-    const imageUri = item.images?.length 
+    const imageUri = item.images?.length
       ? resolveImageUrl(item.images[currentIndex])
       : null;
+
+    const panResponder = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (item.images && item.images.length > 1) {
+          if (gestureState.dx > 50) {
+            // Swipe a destra
+            handleImageSwipe(item._id, 'right', item.images.length);
+          } else if (gestureState.dx < -50) {
+            // Swipe a sinistra
+            handleImageSwipe(item._id, 'left', item.images.length);
+          }
+        }
+      },
+    });
 
     return (
       <Pressable
@@ -485,15 +521,32 @@ export default function StruttureScreen() {
           })
         }
       >
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.image} />
-        )}
+        <View {...panResponder.panHandlers} style={styles.imageContainer}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.image} />
+          )}
+
+          {/* Indicatori pallini */}
+          {item.images && item.images.length > 1 && (
+            <View style={styles.imageIndicators}>
+              {item.images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    index === currentIndex && styles.indicatorActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
       <View
         style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}
@@ -600,9 +653,25 @@ export default function StruttureScreen() {
             >
               {favoriteStrutture.map((fav) => {
                 const currentIndex = currentImageIndexes[fav._id] || 0;
-                const imageUri = fav.images?.length 
+                const imageUri = fav.images?.length
                   ? resolveImageUrl(fav.images[currentIndex])
                   : null;
+
+                const favPanResponder = PanResponder.create({
+                  onStartShouldSetPanResponder: () => true,
+                  onMoveShouldSetPanResponder: (_, gestureState) => {
+                    return Math.abs(gestureState.dx) > 10;
+                  },
+                  onPanResponderRelease: (_, gestureState) => {
+                    if (fav.images && fav.images.length > 1) {
+                      if (gestureState.dx > 50) {
+                        handleImageSwipe(fav._id, 'right', fav.images.length);
+                      } else if (gestureState.dx < -50) {
+                        handleImageSwipe(fav._id, 'left', fav.images.length);
+                      }
+                    }
+                  },
+                });
 
                 return (
                   <Pressable
@@ -615,15 +684,32 @@ export default function StruttureScreen() {
                       })
                     }
                   >
-                    {imageUri ? (
-                      <Image
-                        source={{ uri: imageUri }}
-                        style={styles.favoriteImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={styles.favoriteImage} />
-                    )}
+                    <View {...favPanResponder.panHandlers} style={styles.favoriteImageContainer}>
+                      {imageUri ? (
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.favoriteImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.favoriteImage} />
+                      )}
+
+                      {/* Indicatori pallini per favoriti */}
+                      {fav.images && fav.images.length > 1 && (
+                        <View style={styles.favoriteImageIndicators}>
+                          {fav.images.map((_, index) => (
+                            <View
+                              key={index}
+                              style={[
+                                styles.favoriteIndicator,
+                                index === currentIndex && styles.favoriteIndicatorActive,
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
                     <View style={styles.favoriteContent}>
                       <Text style={styles.favoriteTitle} numberOfLines={1}>
                         {fav.name}
