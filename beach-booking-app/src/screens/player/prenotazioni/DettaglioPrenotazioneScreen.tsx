@@ -11,7 +11,7 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -74,6 +74,7 @@ export default function DettaglioPrenotazioneScreen() {
   const [cancellingBooking, setCancellingBooking] = useState(false);
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
   const [teamSelectionMode, setTeamSelectionMode] = useState<"join" | "invite">("join");
+  const suppressInvitePress = useRef(false);
 
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
@@ -248,6 +249,13 @@ export default function DettaglioPrenotazioneScreen() {
       navigation.navigate("GroupChat", {
         conversationId: conversation._id,
         matchId: booking.matchId,
+        headerInfo: {
+          strutturaName: booking.campo?.struttura?.name,
+          date: booking.date,
+          startTime: booking.startTime,
+          participantsCount: booking.match?.players?.length || 0,
+          bookingId: booking._id,
+        },
       });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
@@ -272,6 +280,7 @@ export default function DettaglioPrenotazioneScreen() {
       navigation.navigate("Chat", {
         conversationId: conversation._id,
         strutturaName: booking.campo.struttura.name,
+        struttura: booking.campo.struttura,
       });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile aprire la chat. Riprova più tardi.");
@@ -541,6 +550,11 @@ export default function DettaglioPrenotazioneScreen() {
       Alert.alert("Errore", "Impossibile aprire Google Maps");
       console.error("Errore apertura Maps:", err);
     });
+  };
+
+  const openUserProfile = (userId?: string) => {
+    if (!userId || userId === user?.id) return;
+    navigation.navigate("ProfiloUtente", { userId });
   };
 
   if (loading) {
@@ -1174,23 +1188,43 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   <FadeInView key={user._id} delay={index * 50}>
                     <AnimatedButton
                       style={styles.searchResultItem}
-                      onPress={() => handleInvitePlayer(user.username)}
+                      onPress={() => {
+                        if (suppressInvitePress.current) {
+                          suppressInvitePress.current = false;
+                          return;
+                        }
+                        handleInvitePlayer(user.username);
+                      }}
                     >
-                      {user.avatarUrl ? (
-                        <Image
-                          source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
-                          style={styles.resultAvatar}
-                        />
-                      ) : (
-                        <View style={styles.resultAvatarPlaceholder}>
-                          <Ionicons name="person" size={20} color="#999" />
-                        </View>
-                      )}
-                      <View style={styles.resultInfo}>
+                      <Pressable
+                        key="avatar"
+                        onPress={() => openUserProfile(user._id)}
+                        hitSlop={10}
+                        onPressIn={() => {
+                          suppressInvitePress.current = true;
+                        }}
+                        onPressOut={() => {
+                          setTimeout(() => {
+                            suppressInvitePress.current = false;
+                          }, 150);
+                        }}
+                      >
+                        {user.avatarUrl ? (
+                          <Image
+                            source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
+                            style={styles.resultAvatar}
+                          />
+                        ) : (
+                          <View style={styles.resultAvatarPlaceholder}>
+                            <Ionicons name="person" size={20} color="#999" />
+                          </View>
+                        )}
+                      </Pressable>
+                      <View key="info" style={styles.resultInfo}>
                         <Text style={styles.resultName}>{user.name}</Text>
                         <Text style={styles.resultUsername}>@{user.username}</Text>
                       </View>
-                      <Ionicons name="add-circle" size={24} color="#2196F3" />
+                      <Ionicons key="add" name="add-circle" size={24} color="#2196F3" />
                     </AnimatedButton>
                   </FadeInView>
                 ))

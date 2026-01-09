@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from "../../../../components/Avatar";
 import { formatMatchDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
+import { useNavigation } from '@react-navigation/native';
 
 interface MatchHistoryCardProps {
   match: any;
@@ -13,12 +14,13 @@ interface MatchHistoryCardProps {
   style?: any;
 }
 
-const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ 
-  match, 
-  userId, 
+const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
+  match,
+  userId,
   onPress,
-  style 
+  style
 }) => {
+  const navigation = useNavigation<any>();
   const myPlayer = match.players.find((p: any) => p.user._id === userId);
   const isWinner = myPlayer && myPlayer.team === match.winner;
   
@@ -46,6 +48,11 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     if (match.booking?._id) {
       onPress(match.booking._id);
     }
+  };
+
+  const openUserProfile = (userId?: string) => {
+    if (!userId) return;
+    navigation.navigate("ProfiloUtente", { userId });
   };
 
   // Calculate total score for display
@@ -151,16 +158,19 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={styles.matchTeamAvatars}>
                 {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <Avatar
+                  <Pressable
                     key={player._id || player.user?._id || `teamA-${idx}`}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="A"
-                    style={idx > 0 && { marginLeft: -8 }}
-                    zIndex={2 - idx}
-                  />
+                    onPress={() => openUserProfile(player.user?._id)}
+                    style={idx > 0 && { marginLeft: -8, zIndex: 2 - idx }}
+                  >
+                    <Avatar
+                      name={player.user?.name}
+                      surname={player.user?.surname}
+                      avatarUrl={player.user?.avatarUrl}
+                      size="small"
+                      teamColor="A"
+                    />
+                  </Pressable>
                 ))}
               </View>
               {teamAPlayers.length > 0 && (
@@ -218,16 +228,19 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={styles.matchTeamAvatars}>
                 {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <Avatar
+                  <Pressable
                     key={player._id || player.user?._id || `teamB-${idx}`}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="B"
-                    style={idx > 0 && { marginLeft: -8 }}
-                    zIndex={2 - idx}
-                  />
+                    onPress={() => openUserProfile(player.user?._id)}
+                    style={idx > 0 && { marginLeft: -8, zIndex: 2 - idx }}
+                  >
+                    <Avatar
+                      name={player.user?.name}
+                      surname={player.user?.surname}
+                      avatarUrl={player.user?.avatarUrl}
+                      size="small"
+                      teamColor="B"
+                    />
+                  </Pressable>
                 ))}
               </View>
               {teamBPlayers.length > 0 && (

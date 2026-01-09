@@ -4,6 +4,7 @@ import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "../../../../components/Avatar";
 import { styles } from "../styles";
+import { useNavigation } from '@react-navigation/native';
 
 interface SuggestedFriendCardProps {
   friend: any; // Accetta qualsiasi struttura
@@ -11,15 +12,17 @@ interface SuggestedFriendCardProps {
   onInvite: (friendId: string) => void;
 }
 
-export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({ 
-  friend, 
-  onPress, 
-  onInvite 
+export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
+  friend,
+  onPress,
+  onInvite
 }) => {
+  const navigation = useNavigation<any>();
+
   // DEBUG COMPLETO
   console.log("🚨 SUGGESTED FRIEND CARD DEBUG:");
   console.log("Friend object:", JSON.stringify(friend, null, 2));
-  
+
   // Estrai i dati in base alla struttura
   const friendData = friend.user || friend; // Supporta entrambe le strutture
   
@@ -89,18 +92,25 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   
   const badge = getPriorityBadge();
 
+  const openUserProfile = (userId?: string) => {
+    if (!userId) return;
+    navigation.navigate("ProfiloUtente", { userId });
+  };
+
   return (
-    <Pressable 
+    <Pressable
       style={styles.suggestedFriendCard}
       onPress={() => onPress(friend)}
     >
       {/* AVATAR */}
-      <Avatar
-        name={friendName}
-        surname={friendData.surname}
-        avatarUrl={avatarUrl}
-        size={48}
-      />
+      <Pressable onPress={() => openUserProfile(friendId)}>
+        <Avatar
+          name={friendName}
+          surname={friendData.surname}
+          avatarUrl={avatarUrl}
+          size={48}
+        />
+      </Pressable>
       
       {/* INFO */}
       <View style={styles.friendCardInfo}>

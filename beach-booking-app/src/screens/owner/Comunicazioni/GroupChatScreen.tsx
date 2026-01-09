@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +18,7 @@ import { useContext, useState, useEffect, useRef } from "react";
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { styles } from "../styles/ChatScreen.styles";
+import Avatar from "../../../components/Avatar/Avatar";
 
 type Message = {
   _id: string;
@@ -24,6 +26,7 @@ type Message = {
   sender: {
     _id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   senderType: "user" | "owner";
   content: string;
@@ -35,6 +38,15 @@ type Participant = {
   _id: string;
   name: string;
   email: string;
+};
+
+type UserProfile = {
+  _id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string | null;
+  phone?: string;
+  createdAt: string;
 };
 
 export default function GroupChatScreen() {
@@ -50,6 +62,10 @@ export default function GroupChatScreen() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfileId, setUserProfileId] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -151,6 +167,35 @@ export default function GroupChatScreen() {
     }
   };
 
+  const loadUserProfile = async (targetUserId: string) => {
+    if (!token) return;
+
+    try {
+      setLoadingProfile(true);
+      const res = await fetch(`${API_URL}/users/${targetUserId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserProfile(data);
+        setUserProfileId(targetUserId);
+      }
+    } catch (error) {
+      console.error("Errore caricamento profilo:", error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleOpenProfile = (targetUserId?: string) => {
+    if (!targetUserId || targetUserId === user?.id) return;
+    setShowUserProfile(true);
+    if (userProfileId !== targetUserId) {
+      loadUserProfile(targetUserId);
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -163,6 +208,15 @@ export default function GroupChatScreen() {
     return date.toLocaleTimeString("it-IT", {
       hour: "2-digit",
       minute: "2-digit",
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
@@ -190,11 +244,14 @@ export default function GroupChatScreen() {
       >
         {!isMine && showAvatar && (
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: isOwner ? '#FF9800' : getSenderColor(item.sender._id) }]}>
-              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>
-                {isOwner ? '👑' : item.sender.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar
+              name={item.sender.name}
+              avatarUrl={item.sender.avatarUrl}
+              size={32}
+              backgroundColor={isOwner ? "#FF9800" : getSenderColor(item.sender._id)}
+              textColor="#fff"
+              onPress={() => handleOpenProfile(item.sender._id)}
+            />
           </View>
         )}
 
@@ -291,7 +348,7 @@ export default function GroupChatScreen() {
                         ).toLocaleDateString('it-IT', {
                           day: '2-digit',
                           month: 'short'
-                        })} - {matchData?.booking?.startTime || headerInfo?.startTime || '--:--'} - {headerInfo?.participantsCount ?? participants.length} utenti
+                        })} - {matchData?.booking?.startTime || headerInfo?.startTime || '--:--'} - {matchData?.players?.length || headerInfo?.participantsCount || 0} utenti
                       </Text>
                     </View>
                   </View>
@@ -377,6 +434,97 @@ export default function GroupChatScreen() {
           </View>
         </SafeAreaView>
       </View>
+
+      <Modal
+        visible={showUserProfile}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowUserProfile(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowUserProfile(false)}
+        >
+          <Pressable style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Profilo utente</Text>
+              <Pressable onPress={() => setShowUserProfile(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color="#1a1a1a" />
+              </Pressable>
+            </View>
+
+            {loadingProfile ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color="#2196F3" />
+                <Text style={styles.modalLoadingText}>Caricamento profilo...</Text>
+              </View>
+            ) : userProfile ? (
+              <View style={styles.profileContent}>
+                <View style={styles.profileAvatarContainer}>
+                  <Avatar
+                    name={userProfile.name}
+                    avatarUrl={userProfile.avatarUrl}
+                    size={80}
+                    backgroundColor="#E3F2FD"
+                    textColor="#fff"
+                  />
+                </View>
+
+                <View style={styles.profileInfo}>
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="person" size={18} color="#2196F3" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Nome</Text>
+                      <Text style={styles.profileValue}>{userProfile.name}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="mail" size={18} color="#2196F3" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Email</Text>
+                      <Text style={styles.profileValue}>{userProfile.email}</Text>
+                    </View>
+                  </View>
+
+                  {userProfile.phone && (
+                    <View style={styles.profileRow}>
+                      <View style={styles.profileIconContainer}>
+                        <Ionicons name="call" size={18} color="#2196F3" />
+                      </View>
+                      <View style={styles.profileRowContent}>
+                        <Text style={styles.profileLabel}>Telefono</Text>
+                        <Text style={styles.profileValue}>{userProfile.phone}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={styles.profileRow}>
+                    <View style={styles.profileIconContainer}>
+                      <Ionicons name="calendar" size={18} color="#2196F3" />
+                    </View>
+                    <View style={styles.profileRowContent}>
+                      <Text style={styles.profileLabel}>Iscritto dal</Text>
+                      <Text style={styles.profileValue}>
+                        {formatDate(userProfile.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.modalError}>
+                <Text style={styles.modalErrorText}>Profilo non disponibile</Text>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

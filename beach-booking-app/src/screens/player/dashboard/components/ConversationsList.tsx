@@ -46,6 +46,28 @@ type Conversation = {
   }>;
   match?: {
     _id: string;
+    players?: Array<{
+      _id: string;
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+      team?: "A" | "B";
+      status: string;
+    }>;
+    booking?: {
+      date?: string;
+      startTime?: string;
+      struttura?: {
+        name: string;
+      };
+      campo?: {
+        struttura?: {
+          name: string;
+        };
+      };
+    };
   };
   groupName?: string;
   
@@ -140,6 +162,16 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
         conversationId: item._id,
         groupName: item.groupName,
         matchId: item.match?._id,
+        headerInfo: {
+          strutturaName:
+            item.match?.booking?.campo?.struttura?.name ||
+            item.match?.booking?.struttura?.name ||
+            item.struttura?.name,
+          date: item.match?.booking?.date,
+          startTime: item.match?.booking?.startTime,
+          participantsCount: item.match?.participants?.length || 0,
+          bookingId: item.match?.booking?._id,
+        },
       });
     } else {
       const otherPerson = isOwner ? item.user : item.owner;
@@ -147,6 +179,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
         conversationId: item._id,
         strutturaName: item.struttura?.name,
         otherPersonName: otherPerson?.name,
+        struttura: item.struttura,
       });
     }
     
@@ -164,8 +197,24 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
     if (item.type === 'group') {
       // Chat di gruppo
       unreadCount = item.unreadCount?.[user?.id || ''] || 0;
-      displayName = item.groupName || 'Chat di Gruppo';
-      subtitle = `👥 ${item.participants?.length || 0} partecipanti`;
+      const strutturaName =
+        item.match?.booking?.campo?.struttura?.name ||
+        item.match?.booking?.struttura?.name ||
+        item.struttura?.name ||
+        "Struttura";
+      displayName = `Partita - ${strutturaName}`;
+
+      let dayLabel = "";
+      if (item.match?.booking?.date) {
+        const date = new Date(item.match.booking.date);
+        dayLabel = date.toLocaleDateString("it-IT", {
+          day: "2-digit",
+          month: "2-digit",
+        });
+      }
+      const timeLabel = item.match?.booking?.startTime || "";
+      const participantsCount = item.match?.players?.length || 0;
+      subtitle = [dayLabel || "Data", timeLabel || "Ora", `${participantsCount} partecipanti`].join(" - ");
       iconName = 'people';
     } else {
       // Chat diretta

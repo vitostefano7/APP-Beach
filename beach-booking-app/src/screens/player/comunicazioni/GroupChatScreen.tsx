@@ -19,6 +19,7 @@ import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react"
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { styles } from "../styles-player/ChatScreen.styles";
+import Avatar from "../../../components/Avatar/Avatar";
 
 type Message = {
   _id: string;
@@ -26,6 +27,7 @@ type Message = {
   sender: {
     _id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   senderType: "user" | "owner";
   content: string;
@@ -39,7 +41,7 @@ export default function GroupChatScreen() {
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const { conversationId, groupName, matchId } = route.params;
+  const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -52,6 +54,7 @@ export default function GroupChatScreen() {
     date?: string;
     startTime?: string;
     endTime?: string;
+    participantsCount?: number;
   } | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -118,23 +121,58 @@ export default function GroupChatScreen() {
   }, []);
 
   const loadMatchInfo = async () => {
-    if (!token || !matchId) return;
+    // Se abbiamo già i dati nei params, usali
+    if (headerInfo && headerInfo.strutturaName) {
+      console.log("📋 Uso headerInfo dai params:", headerInfo);
+      setBookingInfo({
+        bookingId: headerInfo.bookingId || paramBookingId,
+        strutturaName: headerInfo.strutturaName,
+        date: headerInfo.date,
+        startTime: headerInfo.startTime,
+        endTime: headerInfo.endTime,
+        participantsCount: headerInfo.participantsCount || 0,
+      });
+      return;
+    }
+
+    // Se abbiamo bookingId nei parametri, usalo direttamente
+    if (paramBookingId) {
+      console.log("📋 Uso bookingId dai params:", paramBookingId);
+      setBookingInfo({
+        bookingId: paramBookingId,
+      });
+    }
+
+    if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/matches/${matchId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const match = await res.json();
-        const booking = match.booking || {};
-        setBookingInfo({
-          bookingId: booking._id,
-          strutturaName: booking.campo?.struttura?.name,
-          date: booking.date,
-          startTime: booking.startTime,
-          endTime: booking.endTime,
+      // Se abbiamo matchId, carica direttamente il match
+      if (matchId) {
+        const matchRes = await fetch(`${API_URL}/matches/${matchId}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (matchRes.ok) {
+          const match = await matchRes.json();
+          const booking = match.booking || {};
+
+          console.log("📊 Match data:", {
+            matchId,
+            strutturaName: booking.campo?.struttura?.name,
+            date: booking.date,
+            startTime: booking.startTime,
+            players: match.players?.length
+          });
+
+          setBookingInfo({
+            bookingId: booking._id || paramBookingId,
+            strutturaName: booking.campo?.struttura?.name || booking.struttura?.name,
+            date: booking.date,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            participantsCount: match.players?.length || 0,
+          });
+        }
       }
     } catch (error) {
       console.error("Errore caricamento match:", error);
@@ -252,6 +290,11 @@ export default function GroupChatScreen() {
     return colors[index];
   };
 
+  const openUserProfile = (userId?: string) => {
+    if (!userId || userId === user?.id) return;
+    navigation.navigate("ProfiloUtente", { userId });
+  };
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMine = item.sender._id === user?.id;
     const prevMessage = index > 0 ? messages[index - 1] : null;
@@ -269,11 +312,14 @@ export default function GroupChatScreen() {
       >
         {!isMine && showAvatar && (
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: senderColor }]}>
-              <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
-                {item.sender.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar
+              name={item.sender.name}
+              avatarUrl={item.sender.avatarUrl}
+              size={32}
+              backgroundColor={senderColor}
+              textColor="#fff"
+              onPress={() => openUserProfile(item.sender._id)}
+            />
           </View>
         )}
 
@@ -311,11 +357,13 @@ export default function GroupChatScreen() {
 
         {isMine && showAvatar && (
           <View style={styles.avatarContainerMine}>
-            <View style={[styles.avatar, { backgroundColor: senderColor }]}>
-              <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
-                {(user?.name || "U").charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar
+              name={user?.name || "U"}
+              avatarUrl={user?.avatarUrl}
+              size={32}
+              backgroundColor={senderColor}
+              textColor="#fff"
+            />
           </View>
         )}
 
@@ -353,7 +401,7 @@ export default function GroupChatScreen() {
           </Pressable>
 
           <Text style={styles.headerTitleCentered} numberOfLines={1}>
-            Chat della partita
+            Chat della Partita
           </Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -365,10 +413,16 @@ export default function GroupChatScreen() {
               {bookingInfo?.strutturaName || "Struttura"}
             </Text>
             <Text style={styles.subHeaderDay} numberOfLines={1}>
-              {formatDay(bookingInfo?.date) +
-                (bookingInfo?.startTime
-                  ? ` • ${formatTimeRange(bookingInfo?.startTime, bookingInfo?.endTime)}`
-                  : "")}
+              {bookingInfo?.date
+                ? new Date(bookingInfo.date).toLocaleDateString("it-IT", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  })
+                : "Data"}
+              {" - "}
+              {bookingInfo?.startTime || "Ora"}
+              {" - "}
+              {bookingInfo?.participantsCount || 0} partecipanti
             </Text>
           </View>
           <Pressable

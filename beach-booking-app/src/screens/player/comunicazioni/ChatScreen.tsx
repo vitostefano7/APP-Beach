@@ -37,7 +37,7 @@ export default function ChatScreen() {
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const { conversationId, strutturaName } = route.params;
+  const { conversationId, strutturaName, struttura } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -249,7 +249,15 @@ export default function ChatScreen() {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
 
-          <View style={styles.headerCenter}>
+          <Pressable
+            style={styles.headerCenter}
+            onPress={() => {
+              if (struttura) {
+                navigation.navigate("FieldDetails", { struttura });
+              }
+            }}
+            disabled={!struttura}
+          >
             <View style={styles.headerAvatar}>
               <Ionicons name="business" size={24} color="#2196F3" />
             </View>
@@ -262,7 +270,7 @@ export default function ChatScreen() {
                 <Text style={styles.onlineText}>Online</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
         </View>
 
         <FlatList

@@ -1,6 +1,10 @@
 // seeds.ts
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { v2 as cloudinary } from "cloudinary";
 
 import User from "./models/User";
 import PlayerProfile from "./models/PlayerProfile";
@@ -19,8 +23,7 @@ import Notification from "./models/Notification";
 /* =========================
    CONFIG
 ========================= */
-import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
+dotenv.config({ path: "./.env" });
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -31,6 +34,23 @@ const DEFAULT_PASSWORD = "123";
 const SALT_ROUNDS = 10;
 
 const MONTHS_TO_GENERATE = 3; // Rolling calendar di 3 mesi
+
+/* =========================
+   CLOUDINARY
+========================= */
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
+
+/**
+ * Cartella avatar locali.
+ * ✅ Deve puntare a: beach/images/profilo
+ * Se lanci il seed dalla root "beach", va bene così.
+ * Altrimenti metti un path assoluto.
+ */
+const AVATAR_DIR = path.join(process.cwd(), "images", "profilo");
 
 /* =========================
    UTILS
@@ -52,7 +72,7 @@ const formatDate = (d: Date) => {
  * ✅ Genera slot ogni 30 minuti
  */
 function generateHalfHourSlots(open: string, close: string) {
-  const slots = [];
+  const slots: { time: string; enabled: boolean }[] = [];
   let [h, m] = open.split(":").map(Number);
 
   while (true) {
@@ -89,6 +109,41 @@ function generateDatesForMonths(months: number): string[] {
 }
 
 /* =========================
+   AVATAR: READ + UPLOAD
+========================= */
+function getAvatarFiles(): string[] {
+  if (!fs.existsSync(AVATAR_DIR)) return [];
+  return fs
+    .readdirSync(AVATAR_DIR)
+    .filter((file) => /\.(png|jpg|jpeg|webp)$/i.test(file))
+    .map((file) => path.join(AVATAR_DIR, file));
+}
+
+async function uploadAvatarsToCloudinary(): Promise<string[]> {
+  const files = getAvatarFiles();
+  if (!files.length) {
+    console.warn(`⚠️ Nessun file avatar trovato in: ${AVATAR_DIR}`);
+    return [];
+  }
+
+  const preset = process.env.CLOUDINARY_UPLOAD_PRESET;
+  if (!preset) {
+    throw new Error("CLOUDINARY_UPLOAD_PRESET mancante nel .env");
+  }
+
+  const uploads = await Promise.all(
+    files.map((file) =>
+      cloudinary.uploader.upload(file, {
+        folder: "avatars/users",
+        upload_preset: preset,
+      })
+    )
+  );
+
+  return uploads.map((u) => u.secure_url);
+}
+
+/* =========================
    SEED
 ========================= */
 async function seed() {
@@ -113,6 +168,15 @@ async function seed() {
       User.deleteMany({}),
     ]);
     console.log("🧹 Database pulito");
+
+    /* -------- AVATARS UPLOAD -------- */
+    console.log(`☁️ Upload avatar da: ${AVATAR_DIR}`);
+    const avatarUrls = await uploadAvatarsToCloudinary();
+    if (avatarUrls.length) {
+      console.log(`✅ Avatar caricati: ${avatarUrls.length}`);
+    } else {
+      console.log("ℹ️ Nessun avatar caricato: avatarUrl resterà vuoto");
+    }
 
     /* -------- USERS -------- */
     const password = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
@@ -139,7 +203,7 @@ async function seed() {
       { name: "Alessia", surname: "Villa", email: "alessia@test.it", username: "alessia_v", role: "player" },
       { name: "Gabriele", surname: "Caruso", email: "gabriele@test.it", username: "gabri_caruso", role: "player" },
       { name: "Beatrice", surname: "De Luca", email: "beatrice@test.it", username: "bea_deluca", role: "player" },
-      
+
       // OWNERS (6)
       { name: "Paolo", surname: "Proprietario", email: "paolo@test.it", username: "paolo_owner", role: "owner" },
       { name: "Sara", surname: "Gestore", email: "sara@test.it", username: "sara_owner", role: "owner" },
@@ -154,24 +218,32 @@ async function seed() {
         ...u,
         password,
         isActive: true,
+
+        // ✅ AVATAR URL (ciclico)
+        avatarUrl: avatarUrls.length ? avatarUrls[index % avatarUrls.length] : undefined,
+
         preferredSports: u.role === "player" ? [randomElement(["volleyball", "beach_volleyball"])] : [],
-        location: u.role === "player" ? {
-          type: "Point",
-          coordinates: [9.19 + Math.random() * 0.5, 45.46 + Math.random() * 0.5],
-        } : undefined,
+        location:
+          u.role === "player"
+            ? {
+                type: "Point",
+                coordinates: [9.19 + Math.random() * 0.5, 45.46 + Math.random() * 0.5],
+              }
+            : undefined,
+
         // Alcuni profili privati per test (Luca, Anna, Sofia, Chiara)
         profilePrivacy: u.role === "player" && (index === 2 || index === 3 || index === 5 || index === 7) ? "private" : "public",
       }))
     );
 
-    const players = users.filter((u) => u.role === "player");
-    const owners = users.filter((u) => u.role === "owner");
+    const players = users.filter((u: any) => u.role === "player");
+    const owners = users.filter((u: any) => u.role === "owner");
 
     console.log(`✅ Creati ${users.length} utenti (${players.length} player, ${owners.length} owner)`);
 
     /* -------- PLAYER PROFILES -------- */
     await PlayerProfile.insertMany(
-      players.map((p) => ({
+      players.map((p: any) => ({
         user: p._id,
         level: randomElement(["beginner", "amateur", "advanced"]),
         matchesPlayed: randomInt(0, 50),
@@ -183,9 +255,9 @@ async function seed() {
 
     /* -------- USER PREFERENCES -------- */
     const cities = ["Milano", "Roma", "Torino", "Bologna", "Firenze"];
-    
+
     await UserPreferences.insertMany(
-      players.map((p) => ({
+      players.map((p: any) => ({
         user: p._id,
         pushNotifications: Math.random() > 0.3,
         darkMode: Math.random() > 0.5,
@@ -205,14 +277,14 @@ async function seed() {
     console.log(`✅ Create ${players.length} user preferences`);
 
     /* -------- FRIENDSHIPS -------- */
-    const friendships = [];
-    
+    const friendships: any[] = [];
+
     // Legenda:
     // Mario (0), Giulia (1), Luca (2-PRIVATO), Anna (3-PRIVATO), Marco (4),
     // Sofia (5-PRIVATO), Alessandro (6), Chiara (7-PRIVATO), Matteo (8), Elena (9)
-    
+
     // === SCENARI DI TEST SPECIFICI ===
-    
+
     // 1. Mario → Luca: pending (Mario ha richiesto a Luca che è privato)
     friendships.push({
       requester: players[0]._id, // Mario
@@ -220,7 +292,7 @@ async function seed() {
       status: "pending",
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 2. Luca → Mario: accepted (Luca segue Mario - direzione opposta)
     friendships.push({
       requester: players[2]._id, // Luca
@@ -228,7 +300,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 3. Anna → Mario: pending (Anna privata ha richiesto Mario)
     friendships.push({
       requester: players[3]._id, // Anna (privato)
@@ -236,7 +308,7 @@ async function seed() {
       status: "pending",
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 4. Mario → Sofia: accepted (Mario segue Sofia privata - lei ha accettato)
     friendships.push({
       requester: players[0]._id, // Mario
@@ -244,7 +316,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 5. Sofia → Mario: accepted (follow reciproco)
     friendships.push({
       requester: players[5]._id, // Sofia
@@ -252,7 +324,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 6. Mario → Chiara: pending (Mario ha richiesto Chiara privata)
     friendships.push({
       requester: players[0]._id, // Mario
@@ -260,7 +332,7 @@ async function seed() {
       status: "pending",
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
     });
-    
+
     // 7. Chiara → Mario: pending (anche Chiara ha richiesto Mario)
     friendships.push({
       requester: players[7]._id, // Chiara
@@ -268,9 +340,9 @@ async function seed() {
       status: "pending",
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     });
-    
+
     // === AMICIZIE NORMALI TRA ALTRI UTENTI ===
-    
+
     // Giulia e Marco: amici reciproci
     friendships.push(
       {
@@ -286,7 +358,7 @@ async function seed() {
         acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
       }
     );
-    
+
     // Alessandro segue Mario (pubblico, auto-accepted)
     friendships.push({
       requester: players[6]._id, // Alessandro
@@ -294,7 +366,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     });
-    
+
     // Mario segue Giulia (pubblico, auto-accepted)
     friendships.push({
       requester: players[0]._id, // Mario
@@ -302,7 +374,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
     });
-    
+
     // Matteo segue Mario
     friendships.push({
       requester: players[8]._id, // Matteo
@@ -310,7 +382,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
     });
-    
+
     // Elena segue Mario
     friendships.push({
       requester: players[9]._id, // Elena
@@ -318,7 +390,7 @@ async function seed() {
       status: "accepted",
       acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     });
-    
+
     // Amicizie tra altri player (network più ampio)
     for (let i = 10; i < 15; i++) {
       if (players[i]) {
@@ -329,7 +401,7 @@ async function seed() {
           status: "accepted",
           acceptedAt: new Date(Date.now() - randomInt(1, 20) * 24 * 60 * 60 * 1000),
         });
-        
+
         // Alcuni hanno amicizie reciproche tra loro
         if (i < 14 && players[i + 1]) {
           friendships.push(
@@ -349,7 +421,7 @@ async function seed() {
         }
       }
     }
-    
+
     await Friendship.insertMany(friendships);
     console.log(`✅ Create ${friendships.length} amicizie`);
     console.log(`   - Scenari di test per privacy e stati diversi`);
@@ -425,8 +497,8 @@ async function seed() {
         description: "Parco beach volley con 5 campi e area eventi",
         owner: owners[5]._id,
         city: "Milano",
-        lat: 45.4520,
-        lng: 9.2100,
+        lat: 45.452,
+        lng: 9.21,
         amenities: ["toilets", "lockerRoom", "showers", "parking", "bar", "restaurant"],
         rating: 4.9,
         count: 62,
@@ -556,7 +628,7 @@ async function seed() {
     const campiData: any[] = [];
 
     // Ogni struttura ha 2-3 campi
-    strutture.forEach((struttura, idx) => {
+    strutture.forEach((struttura: any, idx: number) => {
       const numCampi = idx < 3 ? 3 : 2; // Prime 3 strutture hanno 3 campi
 
       for (let i = 1; i <= numCampi; i++) {
@@ -578,14 +650,17 @@ async function seed() {
             basePrices: { oneHour: randomInt(30, 45), oneHourHalf: randomInt(42, 63) },
             timeSlotPricing: {
               enabled: Math.random() > 0.5,
-              slots: Math.random() > 0.5 ? [
-                {
-                  start: "18:00",
-                  end: "23:00",
-                  label: "Sera",
-                  prices: { oneHour: randomInt(40, 55), oneHourHalf: randomInt(56, 77) },
-                },
-              ] : [],
+              slots:
+                Math.random() > 0.5
+                  ? [
+                      {
+                        start: "18:00",
+                        end: "23:00",
+                        label: "Sera",
+                        prices: { oneHour: randomInt(40, 55), oneHourHalf: randomInt(56, 77) },
+                      },
+                    ]
+                  : [],
             },
             dateOverrides: { enabled: false, dates: [] },
             periodOverrides: { enabled: false, periods: [] },
@@ -607,13 +682,13 @@ async function seed() {
     const campi = await Campo.insertMany(campiData);
     console.log(`✅ Creati ${campi.length} campi`);
 
-    /* -------- CALENDARIO (Rolling 15 mesi) -------- */
+    /* -------- CALENDARIO (Rolling 3 mesi) -------- */
     const dates = generateDatesForMonths(MONTHS_TO_GENERATE);
-    const calendarDocs = [];
+    const calendarDocs: any[] = [];
 
-    const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const WEEK_MAP = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
-    for (const campo of campi) {
+    for (const campo of campi as any[]) {
       for (const dateStr of dates) {
         const date = new Date(dateStr + "T12:00:00");
         const weekday = WEEK_MAP[date.getDay()] as keyof typeof campo.weeklySchedule;
@@ -637,7 +712,7 @@ async function seed() {
     console.log(`✅ Creati ${calendarDocs.length} giorni di calendario (${campi.length} campi × ${dates.length} giorni)`);
 
     /* -------- BOOKINGS (50) -------- */
-    const bookings = [];
+    const bookings: any[] = [];
     const today = new Date();
 
     // Prenotazioni passate (ultimi 30 giorni)
@@ -645,8 +720,8 @@ async function seed() {
       const pastDate = new Date(today);
       pastDate.setDate(pastDate.getDate() - randomInt(1, 30));
 
-      const campo = randomElement(campi);
-      const player = randomElement(players);
+      const campo: any = randomElement(campi as any[]);
+      const player: any = randomElement(players as any[]);
       const hour = randomInt(9, 20);
       const duration = randomElement([1, 1.5]);
       const startTime = `${String(hour).padStart(2, "0")}:00`;
@@ -673,8 +748,8 @@ async function seed() {
       const futureDate = new Date(today);
       futureDate.setDate(futureDate.getDate() + randomInt(0, 10));
 
-      const campo = randomElement(campi);
-      const player = randomElement(players);
+      const campo: any = randomElement(campi as any[]);
+      const player: any = randomElement(players as any[]);
       const hour = randomInt(9, 20);
       const duration = randomElement([1, 1.5]);
       const startTime = `${String(hour).padStart(2, "0")}:00`;
@@ -700,7 +775,7 @@ async function seed() {
     console.log(`✅ Create ${savedBookings.length} prenotazioni`);
 
     // ✅ Disabilita gli slot prenotati nel calendario
-    for (const booking of savedBookings) {
+    for (const booking of savedBookings as any[]) {
       await CampoCalendarDay.updateOne(
         {
           campo: booking.campo,
@@ -716,27 +791,27 @@ async function seed() {
     console.log(`✅ Disabilitati ${savedBookings.length} slot nel calendario`);
 
     /* -------- MATCH (vari tipi) -------- */
-    const pastBookings = savedBookings.filter((b) => {
+    const pastBookings = (savedBookings as any[]).filter((b) => {
       const bookingDate = new Date(b.date);
       return bookingDate < today;
     });
 
-    const futureBookings = savedBookings.filter((b) => {
+    const futureBookings = (savedBookings as any[]).filter((b) => {
       const bookingDate = new Date(b.date);
       return bookingDate >= today;
     });
 
-    const matches = [];
-    let matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
-    
+    const matches: any[] = [];
+    const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
+
     // 1. MATCH PASSATI COMPLETATI (con risultato) - 10 match
     for (let i = 0; i < Math.min(10, pastBookings.length); i++) {
       const booking = pastBookings[i];
       const creator = booking.user;
-      
-      const matchPlayers = [];
+
+      const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
-      
+
       // Primo giocatore è il creatore del booking
       matchPlayers.push({
         user: creator,
@@ -745,14 +820,14 @@ async function seed() {
         joinedAt: new Date(booking.date),
         respondedAt: new Date(booking.date),
       });
-      
+
       // Altri 3 giocatori casuali
       for (let j = 1; j < 4; j++) {
-        let player;
+        let player: any;
         do {
-          player = randomElement(players);
+          player = randomElement(players as any[]);
         } while (selectedPlayers.includes(player._id.toString()));
-        
+
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
@@ -764,7 +839,7 @@ async function seed() {
       }
 
       // Genera risultato realistico
-      const sets = [];
+      const sets: any[] = [];
       let winsA = 0;
       let winsB = 0;
 
@@ -773,9 +848,9 @@ async function seed() {
 
         const teamA = randomInt(15, 25);
         const teamB = randomInt(15, 25);
-        
+
         sets.push({ teamA, teamB });
-        
+
         if (teamA > teamB) winsA++;
         else winsB++;
       }
@@ -798,10 +873,10 @@ async function seed() {
     for (let i = 10; i < Math.min(15, pastBookings.length); i++) {
       const booking = pastBookings[i];
       const creator = booking.user;
-      
-      const matchPlayers = [];
+
+      const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
-      
+
       matchPlayers.push({
         user: creator,
         team: "A",
@@ -809,13 +884,13 @@ async function seed() {
         joinedAt: new Date(booking.date),
         respondedAt: new Date(booking.date),
       });
-      
+
       for (let j = 1; j < 4; j++) {
-        let player;
+        let player: any;
         do {
-          player = randomElement(players);
+          player = randomElement(players as any[]);
         } while (selectedPlayers.includes(player._id.toString()));
-        
+
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
@@ -839,19 +914,18 @@ async function seed() {
     }
 
     // 3. MATCH IN CORSO (in_progress) - 2 match
-    // Creo bookings per oggi con orario che li rende "in corso"
     const now = new Date();
     const currentHour = now.getHours();
-    
+
     for (let i = 0; i < 2; i++) {
-      const campo = randomElement(campi);
-      const creator = randomElement(players);
-      
+      const campo: any = randomElement(campi as any[]);
+      const creator: any = randomElement(players as any[]);
+
       // Orario: iniziato 30 minuti fa, finisce tra 30 minuti
       const startHour = currentHour - 1;
       const startTime = `${String(startHour).padStart(2, "0")}:30`;
       const endTime = `${String(currentHour + 1).padStart(2, "0")}:00`;
-      
+
       const inProgressBooking = await Booking.create({
         user: creator._id,
         campo: campo._id,
@@ -862,12 +936,12 @@ async function seed() {
         duration: 1.5,
         price: 40,
         status: "confirmed",
-        bookingType: "public", // Match in corso sono sempre pubblici per test
+        bookingType: "public",
       });
-      
-      const matchPlayers = [];
+
+      const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator._id.toString()];
-      
+
       matchPlayers.push({
         user: creator._id,
         team: "A",
@@ -875,13 +949,13 @@ async function seed() {
         joinedAt: now,
         respondedAt: now,
       });
-      
+
       for (let j = 1; j < 4; j++) {
-        let player;
+        let player: any;
         do {
-          player = randomElement(players);
+          player = randomElement(players as any[]);
         } while (selectedPlayers.includes(player._id.toString()));
-        
+
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
@@ -907,10 +981,10 @@ async function seed() {
     for (let i = 0; i < Math.min(5, futureBookings.length); i++) {
       const booking = futureBookings[i];
       const creator = booking.user;
-      
-      const matchPlayers = [];
+
+      const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
-      
+
       matchPlayers.push({
         user: creator,
         team: "A",
@@ -918,13 +992,13 @@ async function seed() {
         joinedAt: new Date(),
         respondedAt: new Date(),
       });
-      
+
       // Solo 2 giocatori (mancano 2 posti)
-      let player;
+      let player: any;
       do {
-        player = randomElement(players);
+        player = randomElement(players as any[]);
       } while (selectedPlayers.includes(player._id.toString()));
-      
+
       selectedPlayers.push(player._id.toString());
       matchPlayers.push({
         user: player._id,
@@ -949,10 +1023,10 @@ async function seed() {
     for (let i = 5; i < Math.min(10, futureBookings.length); i++) {
       const booking = futureBookings[i];
       const creator = booking.user;
-      
-      const matchPlayers = [];
+
+      const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
-      
+
       matchPlayers.push({
         user: creator,
         team: "A",
@@ -960,13 +1034,13 @@ async function seed() {
         joinedAt: new Date(),
         respondedAt: new Date(),
       });
-      
+
       for (let j = 1; j < 4; j++) {
-        let player;
+        let player: any;
         do {
-          player = randomElement(players);
+          player = randomElement(players as any[]);
         } while (selectedPlayers.includes(player._id.toString()));
-        
+
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
@@ -989,27 +1063,26 @@ async function seed() {
     }
 
     // 6. MATCH PER TUTTI I BOOKING RIMANENTI (draft/privati)
-    // Crea un match per ogni booking che non ne ha ancora uno
-    const bookingsWithMatch = matches.map(m => m.booking.toString());
-    const bookingsWithoutMatch = savedBookings.filter(
-      b => !bookingsWithMatch.includes(b._id.toString())
-    );
-    
+    const bookingsWithMatch = matches.map((m) => m.booking.toString());
+    const bookingsWithoutMatch = (savedBookings as any[]).filter((b) => !bookingsWithMatch.includes(b._id.toString()));
+
     console.log(`\n📝 Creazione match per i ${bookingsWithoutMatch.length} booking rimanenti...`);
-    
+
     for (const booking of bookingsWithoutMatch) {
       matches.push({
         booking: booking._id,
         createdBy: booking.user,
-        players: [{
-          user: booking.user,
-          status: "confirmed",
-          joinedAt: new Date(),
-          respondedAt: new Date(),
-        }],
+        players: [
+          {
+            user: booking.user,
+            status: "confirmed",
+            joinedAt: new Date(),
+            respondedAt: new Date(),
+          },
+        ],
         maxPlayers: 4,
         isPublic: false,
-        status: "draft", // Match privati non ancora organizzati
+        status: "draft",
       });
       matchCounters.draft++;
     }
@@ -1024,7 +1097,7 @@ async function seed() {
     console.log(`   - ${matchCounters.draft} in bozza/privati`);
 
     /* -------- CONVERSATIONS -------- */
-    const directConversations = strutture.slice(0, 4).map((s, idx) => ({
+    const directConversations = (strutture as any[]).slice(0, 4).map((s: any, idx: number) => ({
       type: "direct",
       user: players[idx]._id,
       struttura: s._id,
@@ -1035,29 +1108,24 @@ async function seed() {
       unreadByOwner: randomInt(0, 2),
     }));
 
-    const groupConversations = savedMatches.slice(0, 3).map((m, idx) => ({
+    const groupConversations = (savedMatches as any[]).slice(0, 3).map((m: any, idx: number) => ({
       type: "group",
       participants: m.players.map((p: any) => p.user),
       match: m._id,
       groupName: `Match ${idx + 1}`,
       lastMessage: "Ci vediamo in campo!",
       lastMessageAt: new Date(),
-      unreadCount: Object.fromEntries(
-        m.players.map((p: any) => [p.user.toString(), randomInt(0, 2)])
-      ),
+      unreadCount: Object.fromEntries(m.players.map((p: any) => [p.user.toString(), randomInt(0, 2)])),
     }));
 
-    const savedConversations = await Conversation.insertMany([
-      ...directConversations,
-      ...groupConversations,
-    ]);
+    const savedConversations = await Conversation.insertMany([...directConversations, ...groupConversations]);
 
     console.log(`OK Create ${savedConversations.length} conversazioni`);
 
     /* -------- MESSAGES -------- */
-    const messages = [];
+    const messages: any[] = [];
 
-    for (const conv of savedConversations) {
+    for (const conv of savedConversations as any[]) {
       if (conv.type === "direct") {
         messages.push(
           {
@@ -1107,7 +1175,7 @@ async function seed() {
         type: "match_invite",
         title: "Invito partita",
         message: "Sei stato invitato a una partita.",
-        relatedId: savedMatches[0]._id,
+        relatedId: (savedMatches as any[])[0]._id,
         relatedModel: "Match",
       },
       {
@@ -1116,7 +1184,7 @@ async function seed() {
         type: "match_start",
         title: "Match iniziato",
         message: "Il tuo match sta per iniziare.",
-        relatedId: savedMatches[1]._id,
+        relatedId: (savedMatches as any[])[1]._id,
         relatedModel: "Match",
       },
       {
@@ -1125,7 +1193,7 @@ async function seed() {
         type: "match_result",
         title: "Risultato match",
         message: "Il risultato del match e' disponibile.",
-        relatedId: savedMatches[2]._id,
+        relatedId: (savedMatches as any[])[2]._id,
         relatedModel: "Match",
       },
     ];
@@ -1139,7 +1207,7 @@ async function seed() {
     console.log("=".repeat(50));
     console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
     console.log(`🤝 Amicizie: ${friendships.length}`);
-    console.log(` Strutture: ${strutture.length}`);
+    console.log(`🏟️ Strutture: ${strutture.length}`);
     console.log(`⚽ Campi: ${campi.length}`);
     console.log(`📅 Giorni calendario: ${calendarDocs.length}`);
     console.log(`📝 Prenotazioni: ${savedBookings.length}`);
@@ -1147,12 +1215,12 @@ async function seed() {
     console.log("=".repeat(50));
     console.log("🔑 Password per tutti gli utenti: 123");
     console.log("\n📧 UTENTI PLAYER:");
-    players.slice(0, 5).forEach(p => {
+    players.slice(0, 5).forEach((p: any) => {
       console.log(`   - ${p.email} (${p.username})`);
     });
     console.log(`   ... e altri ${players.length - 5} player`);
     console.log("\n👔 UTENTI OWNER:");
-    owners.forEach(o => {
+    owners.forEach((o: any) => {
       console.log(`   - ${o.email} (${o.username})`);
     });
     console.log("=".repeat(50) + "\n");

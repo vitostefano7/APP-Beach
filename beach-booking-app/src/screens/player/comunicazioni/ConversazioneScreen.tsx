@@ -36,6 +36,16 @@ type Conversation = {
   };
   match?: {
     _id: string;
+    players?: Array<{
+      _id: string;
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+      team?: "A" | "B";
+      status: string;
+    }>;
     booking?: {
       date: string;
       startTime: string;
@@ -93,6 +103,17 @@ export default function ConversationsScreen() {
       if (res.ok) {
         const data = await res.json();
         console.log('📬 Conversazioni caricate:', data.length);
+        // Debug partecipanti
+        data.forEach((conv: any) => {
+          if (conv.type === 'group') {
+            console.log('🔍 Conversazione gruppo:', {
+              id: conv._id,
+              participants: conv.participants?.length || 0,
+              hasMatch: !!conv.match,
+              matchId: conv.match?._id
+            });
+          }
+        });
         setConversations(data);
       } else {
         console.error('❌ Errore response:', res.status);
@@ -148,30 +169,30 @@ export default function ConversationsScreen() {
     if (item.type === 'group') {
       const matchInfo = item.match?.booking;
       const campo = matchInfo?.campo;
-      const struttura = campo?.struttura;
+      const struttura = campo?.struttura || item.struttura;
       
       // Crea titolo descrittivo
-      let groupTitle = "Chat di gruppo";
-      if (struttura?.name && campo?.name) {
-        groupTitle = `${struttura.name} - ${campo.name}`;
-      } else if (struttura?.name) {
-        groupTitle = struttura.name;
-      }
+      const strutturaName = struttura?.name || "Struttura";
+      const groupTitle = `Partita - ${strutturaName}`;
       
-      // Formatta data e ora
-      let matchDateTime = "";
-      if (matchInfo?.date && matchInfo?.startTime) {
+      // Formatta giorno/ora/partecipanti
+      let dayLabel = "";
+      if (matchInfo?.date) {
         const date = new Date(matchInfo.date);
-        const dateStr = date.toLocaleDateString('it-IT', { 
-          weekday: 'short',
-          day: 'numeric', 
-          month: 'short' 
+        dayLabel = date.toLocaleDateString("it-IT", {
+          day: "2-digit",
+          month: "2-digit",
         });
-        matchDateTime = `${dateStr} alle ${matchInfo.startTime}`;
       }
+      const timeLabel = matchInfo?.startTime || "";
       
-      // Conta partecipanti
-      const participantsCount = item.participants?.length || 0;
+      // Conta partecipanti dal match
+      const participantsCount = item.match?.participants?.length || 0;
+      const metaLine = [
+        dayLabel || "Data",
+        timeLabel || "Ora",
+        `${participantsCount} partecipanti`,
+      ].join(" - ");
 
       return (
         <Pressable
@@ -179,6 +200,15 @@ export default function ConversationsScreen() {
           onPress={() => {
             navigation.navigate("GroupChat", {
               conversationId: item._id,
+              groupName: item.groupName,
+              matchId: item.match?._id,
+              headerInfo: {
+                strutturaName: struttura?.name,
+                date: matchInfo?.date,
+                startTime: matchInfo?.startTime,
+                participantsCount: item.match?.participants?.length || 0,
+                bookingId: matchInfo?._id,
+              },
             });
             setTimeout(() => refreshUnreadCount(), 1000);
           }}
@@ -199,20 +229,11 @@ export default function ConversationsScreen() {
               </View>
 
               <View style={styles.conversationFooter}>
-                {matchDateTime && (
-                  <View style={styles.matchInfoRow}>
-                    <Ionicons name="calendar-outline" size={13} color="#2196F3" />
-                    <Text style={styles.matchInfoText} numberOfLines={1}>
-                      {matchDateTime}
-                    </Text>
-                  </View>
-                )}
-                {participantsCount > 0 && (
-                  <View style={styles.participantsBadge}>
-                    <Ionicons name="people-outline" size={11} color="#666" />
-                    <Text style={styles.participantsText}>{participantsCount}</Text>
-                  </View>
-                )}
+                <View style={styles.matchInfoRow}>
+                  <Text style={styles.matchInfoText} numberOfLines={1}>
+                    {metaLine}
+                  </Text>
+                </View>
               </View>
               
               {item.lastMessage && (
@@ -250,6 +271,7 @@ export default function ConversationsScreen() {
             conversationId: item._id,
             strutturaName: strutturaName,
             otherPersonName: otherPerson?.name || "Utente",
+            struttura: item.struttura,
           });
           // Aggiorna badge dopo aver aperto la chat
           setTimeout(() => refreshUnreadCount(), 1000);

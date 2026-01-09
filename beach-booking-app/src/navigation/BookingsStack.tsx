@@ -4,6 +4,7 @@ import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/Dettagli
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
+import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 
 
 const Stack = createNativeStackNavigator();
@@ -35,6 +36,8 @@ export default function BookingsStack() {
         name="GroupChat"
         component={GroupChatScreen}
       />
+      <Stack.Screen name="ProfiloUtente" component={UserProfileScreen} />
+      
     </Stack.Navigator>
   );
 }

@@ -19,7 +19,7 @@ import CercaPartitaScreen from "../screens/player/dashboard/CercaPartitaScreen";
 export type DashboardStackParamList = {
   Home: undefined;
   ConfermaPrenotazione: { bookingId: string };
-  LeMiePrenotazioni: undefined;
+  LeMiePrenotazioni: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
   DettaglioPrenotazione: { bookingId: string };
   Chat: { conversationId: string };
   GroupChat: { matchId: string };
@@ -40,6 +40,7 @@ export type DashboardStackParamList = {
   };
   Notifiche: undefined;
   CercaPartita: undefined;
+  Storico: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
 };
 
 const Stack = createNativeStackNavigator();
@@ -129,6 +130,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen 
         name="CercaPartita" 
         component={CercaPartitaScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Storico" 
+        component={LeMiePrenotazioniScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

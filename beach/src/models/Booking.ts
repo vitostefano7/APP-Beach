@@ -16,7 +16,7 @@ const bookingSchema = new mongoose.Schema(
 
     struttura: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Strutture",
+      ref: "Struttura",
       required: true,
     },
 

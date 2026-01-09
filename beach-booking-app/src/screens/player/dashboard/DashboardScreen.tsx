@@ -824,13 +824,13 @@ export default function HomeScreen() {
                 });
               }
             }}
-            onViewAll={() => navigation.navigate("Storico")}
+            onViewAll={() => navigation.navigate("Storico", { initialFilter: "past" })}
           />
         ) : recentMatches.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Ultime Partite</Text>
-              <Pressable onPress={() => navigation.navigate("Storico")}>
+              <Pressable onPress={() => navigation.navigate("Storico", { initialFilter: "past" })}>
                 <Text style={styles.sectionLink}>Storico</Text>
               </Pressable>
             </View>

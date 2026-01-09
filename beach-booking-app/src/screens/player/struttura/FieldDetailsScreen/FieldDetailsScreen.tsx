@@ -73,6 +73,8 @@ export default function FieldDetailsScreen() {
   const { struttura } = route.params ?? {};
   const { token } = useContext(AuthContext);
   const scrollViewRef = useRef<ScrollView>(null);
+  const location = struttura?.location;
+  const hasLocation = Boolean(location?.lat && location?.lng);
 
   const [campi, setCampi] = useState<Campo[]>([]);
   const [expandedCampoId, setExpandedCampoId] = useState<string | null>(null);
@@ -199,6 +201,7 @@ export default function FieldDetailsScreen() {
       navigation.navigate("Chat", {
         conversationId: conversation._id,
         strutturaName: struttura.name,
+        struttura: struttura,
       });
     } catch (error) {
       alert("Impossibile aprire la chat. Riprova più tardi.");
@@ -344,7 +347,9 @@ export default function FieldDetailsScreen() {
           <View style={styles.locationRow}>
             <Ionicons name="location" size={18} color="#F44336" />
             <Text style={styles.address}>
-              {struttura.location.address}, {struttura.location.city}
+              {location?.address && location?.city
+                ? `${location.address}, ${location.city}`
+                : "Indirizzo non disponibile"}
             </Text>
           </View>
 
@@ -1306,25 +1311,29 @@ export default function FieldDetailsScreen() {
             <Text style={styles.sectionTitle}>Come raggiungerci</Text>
           </View>
 
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: struttura.location.lat,
-              longitude: struttura.location.lng,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-          >
-            <Marker
-              coordinate={{
-                latitude: struttura.location.lat,
-                longitude: struttura.location.lng,
+          {hasLocation ? (
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location!.lat,
+                longitude: location!.lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
               }}
-              title={struttura.name}
-            />
-          </MapView>
+            >
+              <Marker
+                coordinate={{
+                  latitude: location!.lat,
+                  longitude: location!.lng,
+                }}
+                title={struttura.name}
+              />
+            </MapView>
+          ) : (
+            <Text style={styles.emptyText}>Posizione non disponibile</Text>
+          )}
 
-          <Pressable style={styles.openMapsBtn}>
+          <Pressable style={styles.openMapsBtn} disabled={!hasLocation}>
             <Ionicons name="navigate" size={20} color="#2196F3" />
             <Text style={styles.openMapsBtnText}>Apri in Google Maps</Text>
           </Pressable>

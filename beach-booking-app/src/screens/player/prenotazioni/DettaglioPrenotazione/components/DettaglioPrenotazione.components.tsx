@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 import { Avatar } from "../../../../../components/Avatar";
 import { Player } from "../types/DettaglioPrenotazione.types";
@@ -38,6 +39,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   maxSlotsPerTeam,
   matchStatus = "open", // Valore di default
 }) => {
+  const navigation = useNavigation<any>();
   const [leaving, setLeaving] = useState(false);
   const [showTeamChangeModal, setShowTeamChangeModal] = useState(false);
 
@@ -78,6 +80,11 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
     if (currentTeam === "A") return "#2196F3";
     if (currentTeam === "B") return "#F44336";
     return "#666";
+  };
+
+  const openUserProfile = (userId?: string) => {
+    if (!userId || userId === currentUserId) return;
+    navigation.navigate("ProfiloUtente", { userId });
   };
 
   const handleTeamChange = (team: "A" | "B" | null) => {
@@ -167,13 +174,15 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
       {/* LEFT */}
       <View style={styles.playerLeft}>
-        <Avatar
-          name={player.user?.name}
-          surname={player.user?.surname}
-          avatarUrl={player.user?.avatarUrl}
-          size={48}
-          teamColor={currentTeam || 'none'}
-        />
+        <Pressable onPress={() => openUserProfile(player.user?._id)}>
+          <Avatar
+            name={player.user?.name}
+            surname={player.user?.surname}
+            avatarUrl={player.user?.avatarUrl}
+            size={48}
+            teamColor={currentTeam || 'none'}
+          />
+        </Pressable>
 
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>

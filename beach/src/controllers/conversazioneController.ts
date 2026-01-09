@@ -40,22 +40,28 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
         .populate('struttura', 'name images')
         .populate({
           path: 'match',
-          populate: {
-            path: 'booking',
-            populate: [
-              {
-                path: 'campo',
-                populate: {
+          populate: [
+            {
+              path: 'players.user',
+              select: 'name email avatarUrl'
+            },
+            {
+              path: 'booking',
+              populate: [
+                {
+                  path: 'campo',
+                  populate: {
+                    path: 'struttura',
+                    select: 'name'
+                  }
+                },
+                {
                   path: 'struttura',
-                  select: 'name'
+                  select: 'name images'
                 }
-              },
-              {
-                path: 'struttura',
-                select: 'name images'
-              }
-            ]
-          }
+              ]
+            }
+          ]
         })
         .sort({ lastMessageAt: -1 })
     ]);
@@ -81,16 +87,22 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
         .populate('participants', 'name email')
         .populate({
           path: 'match',
-          populate: {
-            path: 'booking',
-            populate: {
-              path: 'campo',
-              populate: {
-                path: 'struttura',
-                select: 'name owner',
-              },
+          populate: [
+            {
+              path: 'players.user',
+              select: 'name email avatarUrl'
             },
-          },
+            {
+              path: 'booking',
+              populate: {
+                path: 'campo',
+                populate: {
+                  path: 'struttura',
+                  select: 'name owner',
+                },
+              },
+            }
+          ]
         })
         .sort({ lastMessageAt: -1 });
 
@@ -353,7 +365,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     const messages = await Message.find(query)
       .sort({ createdAt: -1 })
       .limit(Number(limit))
-      .populate('sender', 'name email');
+      .populate('sender', 'name email avatarUrl');
 
     // Segna messaggi come letti
     if (conversation.type === 'direct') {
@@ -519,7 +531,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     const populatedMessage = await Message.findById(message._id).populate(
       'sender',
-      'name email'
+      'name email avatarUrl'
     );
 
     res.status(201).json(populatedMessage);
@@ -621,13 +633,19 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
       .populate('participants', 'name email')
       .populate({
         path: 'match',
-        populate: {
-          path: 'booking',
-          populate: {
-            path: 'struttura',
-            select: 'name images'
+        populate: [
+          {
+            path: 'players.user',
+            select: 'name email avatarUrl'
+          },
+          {
+            path: 'booking',
+            populate: {
+              path: 'struttura',
+              select: 'name images'
+            }
           }
-        }
+        ]
       });
 
     if (!conversation) {

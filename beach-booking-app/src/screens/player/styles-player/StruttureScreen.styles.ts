@@ -702,14 +702,37 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  cityInput: {
+  cityInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
+    paddingRight: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+
+  cityInput: {
+    flex: 1,
     padding: 14,
     fontSize: 15,
     fontWeight: "500",
-    borderWidth: 2,
-    borderColor: "transparent",
+    color: "#333",
+  },
+
+  geolocationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   searchBoxModal: {

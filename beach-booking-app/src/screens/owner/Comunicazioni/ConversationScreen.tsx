@@ -262,7 +262,7 @@ export default function OwnerConversationsScreen() {
                 numberOfLines={1}
               >
                 {isGroup 
-                  ? `Partita - ${item.match?.booking?.campo?.struttura?.name || item.match?.booking?.struttura?.name || item.struttura?.name || 'Struttura'}` 
+                  ? `Partita - "${item.match?.booking?.campo?.struttura?.name || item.match?.booking?.struttura?.name || item.struttura?.name || 'Struttura'}"` 
                   : item.user?.name}
               </Text>
               <Text style={styles.conversationTime}>
@@ -279,30 +279,22 @@ export default function OwnerConversationsScreen() {
               </View>
             )}
 
-            {isGroup && item.match && (
+            {isGroup && (
               <View style={styles.groupDetailsContainer}>
                 <View style={styles.groupDetailsRow}>
-                  <View style={styles.groupDetailItem}>
-                    <Ionicons name="calendar-outline" size={12} color="#2196F3" />
-                    <Text style={styles.groupDetailText}>
-                      {new Date(item.match.booking?.date).toLocaleDateString('it-IT', {
-                        day: '2-digit',
-                        month: 'short'
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.groupDetailItem}>
-                    <Ionicons name="time-outline" size={12} color="#FF9800" />
-                    <Text style={styles.groupDetailText}>
-                      {item.match.booking?.startTime}
-                    </Text>
-                  </View>
-                  <View style={styles.groupDetailItem}>
-                    <Ionicons name="people-outline" size={12} color="#4CAF50" />
-                    <Text style={styles.groupDetailText}>
-                      {item.participants?.length || 0} partecipanti
-                    </Text>
-                  </View>
+                  <Text style={styles.groupDetailText}>
+                    {[
+                      item.match?.booking?.date
+                        ? new Date(item.match.booking.date).toLocaleDateString("it-IT", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : "—",
+                      item.match?.booking?.startTime || "—",
+                      `${item.participants?.length || 0} partecipanti`,
+                    ].join(" - ")}
+                  </Text>
                 </View>
               </View>
             )}

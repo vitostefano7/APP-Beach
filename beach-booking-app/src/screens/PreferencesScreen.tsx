@@ -7,10 +7,14 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useEffect, useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import MapView, { Marker } from "react-native-maps";
 import API_URL from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 
@@ -46,6 +50,8 @@ export default function PreferencesScreen({ navigation }: any) {
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [selectedCoordinates, setSelectedCoordinates] = useState<{lat: number, lng: number} | null>(null);
+  const [showLocationPreview, setShowLocationPreview] = useState(false);
+  const [previewCoordinates, setPreviewCoordinates] = useState<{lat: number, lng: number} | null>(null);
 
   const sports = ["Beach Volley", "Volley"];
   const timeSlots = [
@@ -75,6 +81,14 @@ export default function PreferencesScreen({ navigation }: any) {
         setDarkMode(prefs.darkMode);
         setCity(prefs.preferredLocation?.city || "");
         setRadius(prefs.preferredLocation?.radius?.toString() || "30");
+        if (prefs.preferredLocation) {
+          setSelectedCoordinates({
+            lat: prefs.preferredLocation.lat,
+            lng: prefs.preferredLocation.lng,
+          });
+        } else {
+          setSelectedCoordinates(null);
+        }
         setSelectedSports(prefs.favoriteSports || []);
         setTimeSlot(prefs.preferredTimeSlot || null);
       }
@@ -131,12 +145,15 @@ export default function PreferencesScreen({ navigation }: any) {
   const selectCity = (suggestion: any) => {
     const cityName = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.name;
     setCity(cityName);
-    setSelectedCoordinates({
+    const coords = {
       lat: parseFloat(suggestion.lat),
-      lng: parseFloat(suggestion.lon)
-    });
+      lng: parseFloat(suggestion.lon),
+    };
+    setSelectedCoordinates(coords);
+    setPreviewCoordinates(coords);
     setShowCitySuggestions(false);
     setCitySuggestions([]);
+    setShowLocationPreview(true);
   };
 
   const handleSave = async () => {
@@ -148,6 +165,14 @@ export default function PreferencesScreen({ navigation }: any) {
     console.log("🔔 [PREF] Push notifications:", pushNotifications);
     console.log("🌙 [PREF] Dark mode:", darkMode);
     console.log("🔒 [PREF] Profile Privacy:", profilePrivacy);
+
+    if (city.trim() && !selectedCoordinates) {
+      Alert.alert(
+        "Seleziona una citta",
+        "Per favore scegli la citta dai suggerimenti per confermare le coordinate."
+      );
+      return;
+    }
 
     setSaving(true);
 
@@ -201,87 +226,17 @@ export default function PreferencesScreen({ navigation }: any) {
         console.error("❌ [PREF] Errore preferenze generali:", errorData);
       }
 
-      // Salva location se presente CON GEOCODING
+      // Salva location se presente (richiede coordinate selezionate)
       if (city.trim()) {
         console.log("🌍 [PREF] Salvataggio location per città:", city.trim());
         
-        let locationData;
-        
-        // Se l'utente ha selezionato dalle coordinate suggerite, usa quelle
-        if (selectedCoordinates) {
-          console.log("✅ [PREF] Uso coordinate selezionate dall'utente");
-          locationData = {
-            city: city.trim(),
-            lat: selectedCoordinates.lat,
-            lng: selectedCoordinates.lng,
-            radius: parseInt(radius) || 30,
-          };
-        } else {
-          // Altrimenti fai geocoding automatico (backward compatibility)
-          console.log("🌍 [PREF] Inizio geocoding automatico per città:", city.trim());
-          
-          const geocodeUrl = 
-            `https://nominatim.openstreetmap.org/search?` +
-            `q=${encodeURIComponent(city.trim())},Italia&` +
-            `format=json&limit=1`;
-          
-          console.log("🔗 [PREF] URL geocoding:", geocodeUrl);
-
-          const geocodeResponse = await fetch(geocodeUrl, {
-            headers: {
-              'User-Agent': 'SportBookingApp/1.0',
-            },
-          });
-
-          console.log("📡 [PREF] Status geocoding:", geocodeResponse.status);
-
-          const geocodeData = await geocodeResponse.json();
-          console.log("📊 [PREF] Risposta geocoding:", JSON.stringify(geocodeData, null, 2));
-
-          let locationDataTemp;
-          if (geocodeData && geocodeData.length > 0) {
-            // ✅ Trovate coordinate reali!
-            const lat = parseFloat(geocodeData[0].lat);
-            const lng = parseFloat(geocodeData[0].lon);
-            
-            console.log("✅ [PREF] Geocoding riuscito!");
-            console.log("📍 [PREF] Coordinate trovate:", { lat, lng });
-            console.log("📊 [PREF] Display name:", geocodeData[0].display_name);
-            
-            // Verifica che le coordinate siano ragionevoli per l'Italia
-            // Italia: lat tra 35.5 e 47.1, lng tra 6.6 e 18.5
-            if (lat >= 35.5 && lat <= 47.1 && lng >= 6.6 && lng <= 18.5) {
-              locationDataTemp = {
-                city: city.trim(),
-                lat,
-                lng,
-                radius: parseInt(radius) || 30,
-              };
-              console.log("✅ [PREF] Coordinate valide per l'Italia");
-            } else {
-              console.warn("⚠️ [PREF] Coordinate fuori dall'Italia:", { lat, lng });
-              console.warn("⚠️ [PREF] Uso coordinate Milano come fallback");
-              locationDataTemp = {
-                city: city.trim(),
-                lat: 45.4642,
-                lng: 9.19,
-                radius: parseInt(radius) || 30,
-              };
-            }
-          } else {
-            // ❌ Geocoding fallito, usa Milano di default
-            locationDataTemp = {
-              city: city.trim(),
-              lat: 45.4642,
-              lng: 9.19,
-              radius: parseInt(radius) || 30,
-            };
-            console.warn("⚠️ [PREF] Geocoding fallito per:", city.trim());
-            console.log("📍 [PREF] Uso coordinate Milano come fallback");
-          }
-          
-          locationData = locationDataTemp;
-        }
+        console.log("[PREF] Uso coordinate selezionate dall'utente");
+        const locationData = {
+          city: city.trim(),
+          lat: selectedCoordinates!.lat,
+          lng: selectedCoordinates!.lng,
+          radius: parseInt(radius) || 30,
+        };
 
         console.log("📤 [PREF] Invio location preferita...");
         console.log("📦 [PREF] Body location:", JSON.stringify(locationData, null, 2));
@@ -306,7 +261,7 @@ export default function PreferencesScreen({ navigation }: any) {
           console.error("❌ [PREF] Errore salvataggio location:", errorData);
         }
       } else {
-        console.log("⏭️ [PREF] Nessuna città inserita, skip geocoding");
+        console.log("[PREF] Nessuna citta inserita, skip location");
       }
 
       if (generalRes.ok) {
@@ -339,24 +294,28 @@ export default function PreferencesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Preferenze</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Preferenze</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-        {/* PRIVACY */}
-        <View style={styles.section}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+
+          {/* PRIVACY */}
+          <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="shield-outline" size={24} color="#2979ff" />
             <Text style={styles.sectionTitle}>Privacy</Text>
@@ -415,6 +374,8 @@ export default function PreferencesScreen({ navigation }: any) {
                 value={city}
                 onChangeText={(text) => {
                   setCity(text);
+                  setSelectedCoordinates(null);
+                  setPreviewCoordinates(null);
                   searchCitySuggestions(text);
                 }}
                 autoCapitalize="words"
@@ -596,21 +557,86 @@ export default function PreferencesScreen({ navigation }: any) {
             mostrarti le strutture più rilevanti per te
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Pressable
-          style={styles.saveButton}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? "Salvataggio..." : "Salva modifiche"}
-          </Text>
-          <Ionicons name="checkmark" size={20} color="white" />
-        </Pressable>
-      </View>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Pressable
+            style={styles.saveButton}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.saveButtonText}>
+              {saving ? "Salvataggio..." : "Salva modifiche"}
+            </Text>
+            <Ionicons name="checkmark" size={20} color="white" />
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={showLocationPreview && !!previewCoordinates}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowLocationPreview(false)}
+      >
+        <View style={styles.mapModalOverlay}>
+          <View style={styles.mapModalContent}>
+            <View style={styles.mapModalHeader}>
+              <Text style={styles.mapModalTitle}>Conferma posizione</Text>
+              <Pressable onPress={() => setShowLocationPreview(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </Pressable>
+            </View>
+
+            {previewCoordinates && (
+              <MapView
+                style={styles.mapPreview}
+                region={{
+                  latitude: previewCoordinates.lat,
+                  longitude: previewCoordinates.lng,
+                  latitudeDelta: 0.2,
+                  longitudeDelta: 0.2,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: previewCoordinates.lat,
+                    longitude: previewCoordinates.lng,
+                  }}
+                  title={city}
+                />
+              </MapView>
+            )}
+
+            <Text style={styles.mapModalHint}>
+              Verifica che il punto sulla mappa sia corretto per la citta selezionata.
+            </Text>
+
+            <View style={styles.mapModalActions}>
+              <Pressable
+                style={styles.mapModalSecondary}
+                onPress={() => {
+                  setShowLocationPreview(false);
+                  setSelectedCoordinates(null);
+                }}
+              >
+                <Text style={styles.mapModalSecondaryText}>Modifica</Text>
+              </Pressable>
+              <Pressable
+                style={styles.mapModalPrimary}
+                onPress={() => setShowLocationPreview(false)}
+              >
+                <Text style={styles.mapModalPrimaryText}>Conferma</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -665,6 +691,9 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 100,
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
 
   section: {
@@ -962,5 +991,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2E7D32',
     fontWeight: '500',
+  },
+
+  mapModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  mapModalContent: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+  },
+  mapModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  mapModalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  mapPreview: {
+    height: 220,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  mapModalHint: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 12,
+  },
+  mapModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  mapModalSecondary: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#f1f1f1",
+    alignItems: "center",
+  },
+  mapModalSecondaryText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#666",
+  },
+  mapModalPrimary: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#2979ff",
+    alignItems: "center",
+  },
+  mapModalPrimaryText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
   },
 });

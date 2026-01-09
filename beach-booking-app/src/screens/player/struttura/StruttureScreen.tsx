@@ -12,6 +12,8 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -343,6 +345,26 @@ export default function StruttureScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
+        Alert.alert(
+          "Permessi GPS richiesti",
+          "Per utilizzare la geolocalizzazione è necessario abilitare i permessi GPS nelle impostazioni del dispositivo.",
+          [
+            {
+              text: "Annulla",
+              style: "cancel"
+            },
+            {
+              text: "Impostazioni",
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
         return;
       }
 
@@ -357,7 +379,11 @@ export default function StruttureScreen() {
       setRegion(newRegion);
       mapRef.current?.animateToRegion(newRegion, 500);
     } catch (error) {
-      console.log("Errore nel centrare sulla posizione:");
+      console.log("Errore nel centrare sulla posizione:", error);
+      Alert.alert(
+        "Errore",
+        "Si è verificato un errore durante la geolocalizzazione. Assicurati di avere il GPS attivo."
+      );
     }
   };
 
@@ -929,14 +955,85 @@ function AdvancedFiltersModal({
             </View>
 
             <Text style={styles.sectionTitle}>Città</Text>
-            <TextInput
-              style={styles.cityInput}
-              placeholder="Lascia vuoto per vedere tutte le strutture"
-              value={tempFilters.city || ""}
-              onChangeText={(text) =>
-                setTempFilters((prev) => ({ ...prev, city: text || null }))
-              }
-            />
+            <View style={styles.cityInputContainer}>
+              <TextInput
+                style={styles.cityInput}
+                placeholder="Lascia vuoto per vedere tutte le strutture"
+                value={tempFilters.city || ""}
+                onChangeText={(text) =>
+                  setTempFilters((prev) => ({ ...prev, city: text || null }))
+                }
+              />
+              <Pressable
+                style={styles.geolocationButton}
+                onPress={async () => {
+                  try {
+                    // Richiedi sempre i permessi quando l'utente clicca
+                    const { status } = await Location.requestForegroundPermissionsAsync();
+
+                    if (status !== "granted") {
+                      // L'utente ha negato i permessi, mostra un alert
+                      Alert.alert(
+                        "Permessi GPS richiesti",
+                        "Per utilizzare la geolocalizzazione è necessario abilitare i permessi GPS nelle impostazioni del dispositivo.",
+                        [
+                          {
+                            text: "Annulla",
+                            style: "cancel"
+                          },
+                          {
+                            text: "Impostazioni",
+                            onPress: () => {
+                              if (Platform.OS === 'ios') {
+                                Linking.openURL('app-settings:');
+                              } else {
+                                Linking.openSettings();
+                              }
+                            }
+                          }
+                        ]
+                      );
+                      return;
+                    }
+
+                    const location = await Location.getCurrentPositionAsync({});
+                    const { latitude, longitude } = location.coords;
+
+                    // Reverse geocoding per ottenere la città
+                    const reverseGeoUrl =
+                      `https://nominatim.openstreetmap.org/reverse?` +
+                      `lat=${latitude}&lon=${longitude}&format=json`;
+
+                    const response = await fetch(reverseGeoUrl, {
+                      headers: { 'User-Agent': 'SportBookingApp/1.0' },
+                    });
+
+                    const data = await response.json();
+                    const city = data.address?.city ||
+                                 data.address?.town ||
+                                 data.address?.village ||
+                                 data.address?.municipality || '';
+
+                    if (city) {
+                      setTempFilters((prev) => ({ ...prev, city }));
+                    } else {
+                      Alert.alert(
+                        "Errore",
+                        "Non è stato possibile determinare la tua posizione. Riprova."
+                      );
+                    }
+                  } catch (error) {
+                    console.error("Errore geolocalizzazione:", error);
+                    Alert.alert(
+                      "Errore",
+                      "Si è verificato un errore durante la geolocalizzazione. Assicurati di avere il GPS attivo."
+                    );
+                  }
+                }}
+              >
+                <Ionicons name="location" size={20} color="#2979ff" />
+              </Pressable>
+            </View>
             {tempFilters.city ? (
               <View style={styles.cityHintContainer}>
                 <Text style={styles.cityHint}>

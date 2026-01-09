@@ -6,6 +6,9 @@ import PreferencesScreen from "../screens/PreferencesScreen";
 import ConversazioneScreen from "../screens/player/comunicazioni/ConversazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
+import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
+import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen/FieldDetailsScreen";
+import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -31,6 +34,9 @@ export default function ProfilePlayerStack() {
       <Stack.Screen name="Conversazione" component={ConversazioneScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+      <Stack.Screen name="DettaglioPrenotazione" component={DettaglioPrenotazioneScreen} />
+      <Stack.Screen name="FieldDetails" component={FieldDetailsScreen} />
+      <Stack.Screen name="ProfiloUtente" component={UserProfileScreen} />
     </Stack.Navigator>
   );
 }

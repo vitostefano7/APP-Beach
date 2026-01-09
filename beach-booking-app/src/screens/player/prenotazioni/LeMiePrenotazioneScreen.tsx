@@ -4,6 +4,7 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
+  Image,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -62,14 +63,15 @@ interface Booking {
 /* =========================
    SCREEN
 ========================= */
-export default function LeMiePrenotazioniScreen() {
+export default function LeMiePrenotazioniScreen({ route }: any) {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filter, setFilter] = useState<"all" | "upcoming" | "past">("upcoming");
+  const initialFilter = route?.params?.initialFilter || "upcoming";
+  const [filter, setFilter] = useState<"all" | "upcoming" | "past">(initialFilter);
 
   /* =========================
      LOAD BOOKINGS
@@ -524,7 +526,19 @@ const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
 const PlayerAvatar = ({ player, size = 32 }: { player: Player; size?: number }) => {
   const initials = `${player.user.name.charAt(0)}${player.user.surname.charAt(0)}`.toUpperCase();
   const bgColor = player.team === "A" ? "#F44336" : "#2196F3"; // Rosso per A, Blu per B
+  const avatarUrl = player.user.avatarUrl;
   
+  if (avatarUrl) {
+    return (
+      <View style={{ width: size, height: size }}>
+        <Image
+          source={{ uri: avatarUrl }}
+          style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.avatarInitials, { width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor }]}>
       <Text style={[styles.avatarText, { fontSize: size * 0.4 }]}>{initials}</Text>
@@ -1008,6 +1022,9 @@ const styles = StyleSheet.create({
   avatarInitials: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    resizeMode: "cover",
   },
   avatarText: {
     color: "white",
