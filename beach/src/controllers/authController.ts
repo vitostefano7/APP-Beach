@@ -36,11 +36,30 @@ export const register = async (req: Request, res: Response) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
+    // Genera username univoco basato sul nome
+    const baseUsername = name
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "")
+      .substring(0, 15);
+    
+    let username = baseUsername;
+    let counter = 1;
+    
+    // Controlla se l'username esiste già e aggiunge un numero se necessario
+    while (await User.findOne({ username })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+    
+    console.log("✅ Username generato:", username);
+
     // Gestione avatar durante registrazione
     const user = await User.create({
       name,
       email,
       password: hashed,
+      username,
       role: role === "owner" ? "owner" : "player",
     });
 

@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, Alert, ActivityIndicator } from "react-na
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import API_URL from "../../../../config/api";
+import { resolveImageUrl } from "../../../../utils/imageUtils";
 import { AuthContext } from "../../../../context/AuthContext";
 import { formatDate, calculateDaysUntil } from "../utils/dateFormatter";
 import { styles } from "../styles";
@@ -79,7 +80,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
     <Pressable style={styles.nextMatchCard} onPress={onPress}>
       {booking.campo?.struttura?.images?.[0] && (
         <Image
-          source={{ uri: `${API_URL}${booking.campo.struttura.images[0]}` }}
+          source={{ uri: resolveImageUrl(booking.campo.struttura.images[0]) }}
           style={styles.matchImage}
         />
       )}

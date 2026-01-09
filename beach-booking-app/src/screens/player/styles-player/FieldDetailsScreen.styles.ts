@@ -30,6 +30,30 @@ export const styles = StyleSheet.create({
     height: 300,
     backgroundColor: "#e9ecef",
   },
+
+  // Indicatori immagini
+  pagination: {
+    position: "absolute",
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    transition: "all 0.3s ease",
+  },
+  paginationDotActive: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 24,
+  },
+
   backButton: {
     position: "absolute",
     top: 16,
@@ -41,7 +65,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  
+
   favoriteButton: {
     position: "absolute",
     top: 16,

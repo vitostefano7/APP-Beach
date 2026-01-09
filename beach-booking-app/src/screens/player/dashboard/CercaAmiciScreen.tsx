@@ -17,6 +17,7 @@ import API_URL from '../../../config/api';
 import { useSuggestedFriends } from './hooks/useSuggestedFriends';
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import { StyleSheet } from 'react-native';
+import Avatar from '../../../components/Avatar/Avatar';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -247,9 +248,14 @@ export default function CercaAmiciScreen() {
         onPress={() => handlePressFriend(item, true)}
       >
         <View style={styles.searchResultLeft}>
-          <View style={styles.searchResultAvatar}>
-            <Ionicons name="person" size={24} color="#2196F3" />
-          </View>
+          <Avatar
+            name={item.name}
+            surname={item.surname}
+            avatarUrl={item.avatarUrl}
+            size={50}
+            backgroundColor="#E3F2FD"
+            textColor="#2196F3"
+          />
 
           <View style={styles.searchResultInfo}>
             <Text style={styles.searchResultName}>{displayName}</Text>
@@ -396,9 +402,14 @@ export default function CercaAmiciScreen() {
                         style={styles.recentUserCard}
                         onPress={() => handlePressFriend(user, false)}
                       >
-                        <View style={styles.recentUserAvatar}>
-                          <Ionicons name="person" size={24} color="#2196F3" />
-                        </View>
+                        <Avatar
+                          name={user.name}
+                          surname={user.surname}
+                          avatarUrl={user.avatarUrl}
+                          size={50}
+                          backgroundColor="#E3F2FD"
+                          textColor="#2196F3"
+                        />
                         <View style={styles.recentUserInfo}>
                           <Text style={styles.recentUserName} numberOfLines={1}>{displayName}</Text>
                           <Text style={styles.recentUserUsername} numberOfLines={1}>@{user.username}</Text>

@@ -16,6 +16,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
+import { resolveImageUrl } from "../../utils/imageUtils";
 
 const { width } = Dimensions.get("window");
 
@@ -230,7 +231,7 @@ export default function StrutturaDashboardScreen() {
 
   // ✅ URL immagine corrente
   const currentImageUri = struttura.images?.length
-    ? `${API_URL}${struttura.images[currentImageIndex]}`
+    ? resolveImageUrl(struttura.images[currentImageIndex])
     : null;
 
   return (

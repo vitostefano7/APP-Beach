@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, useContext, useRef } from "react";
 import { AuthContext } from "../../../../context/AuthContext";
 import { styles } from "../../styles-player/FieldDetailsScreen.styles";
 import API_URL from "../../../../config/api";
+import { resolveImageUrl } from "../../../../utils/imageUtils";
 
 import {
   MONTHS,
@@ -215,7 +216,7 @@ export default function FieldDetailsScreen() {
   const images = useMemo(
     () =>
       struttura?.images?.length
-        ? struttura.images.map((img: string) => `${API_URL}${img}`)
+        ? struttura.images.map((img: string) => resolveImageUrl(img))
         : ["https://picsum.photos/600/400"],
     [struttura?.images]
   );

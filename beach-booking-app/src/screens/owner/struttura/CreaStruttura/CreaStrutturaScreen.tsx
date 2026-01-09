@@ -515,7 +515,16 @@ export default function CreaStrutturaScreen() {
       const { struttura } = await createStruttura(strutturaPayload, token);
 
       if (s.selectedImages.length > 0) {
-        await uploadImages(struttura._id, s.selectedImages, token);
+        console.log(`📤 Caricamento di ${s.selectedImages.length} immagini...`);
+        await uploadImages(
+          struttura._id, 
+          s.selectedImages, 
+          token,
+          (current, total) => {
+            console.log(`📸 Upload immagine ${current} di ${total}`);
+          }
+        );
+        console.log("✅ Tutte le immagini caricate con successo");
       }
 
       if (s.campi.length > 0) {

@@ -20,6 +20,7 @@ import * as Location from "expo-location";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
+import Avatar from "../../../components/Avatar/Avatar";
 
 type UserPreferences = {
   preferredLocation?: {
@@ -38,9 +39,10 @@ type MatchItem = {
     name?: string;
     surname?: string;
     username?: string;
+    avatarUrl?: string | null;
   };
   players?: Array<{
-    user?: { _id?: string; name?: string; surname?: string };
+    user?: { _id?: string; name?: string; surname?: string; avatarUrl?: string | null };
     status?: "pending" | "confirmed";
     team?: "A" | "B";
   }>;
@@ -80,10 +82,25 @@ const parseMatchStart = (match: MatchItem) => {
   }
 };
 
-const getInitials = (name?: string, surname?: string) => {
-  const firstInitial = name?.charAt(0).toUpperCase() || "?";
-  const lastInitial = surname?.charAt(0).toUpperCase() || "";
-  return `${firstInitial}${lastInitial}`;
+const getSportLabel = (sport?: string) => {
+  if (!sport) return "Sport";
+  if (sport === "beach_volley") return "Beach Volley";
+  return sport.charAt(0).toUpperCase() + sport.slice(1);
+};
+
+const getSportIcon = (sport?: string) => {
+  switch (sport) {
+    case "calcio":
+      return "football";
+    case "tennis":
+      return "tennisball";
+    case "basket":
+      return "basketball";
+    case "beach_volley":
+      return "trophy";
+    default:
+      return "fitness";
+  }
 };
 
 export default function CercaPartitaScreen() {
@@ -633,6 +650,12 @@ export default function CercaPartitaScreen() {
             {item.booking?.startTime || "--:--"}
           </Text>
         </View>
+        <View style={styles.infoRow}>
+          <Ionicons name={getSportIcon(item.booking?.campo?.sport)} size={16} color="#666" />
+          <Text style={styles.infoText}>
+            {getSportLabel(item.booking?.campo?.sport)}
+          </Text>
+        </View>
 
         {/* Visualizzazione Team Grafica */}
         {maxPlayers > 2 && (
@@ -657,9 +680,14 @@ export default function CercaPartitaScreen() {
                       ]}
                     >
                       {hasPlayer && player?.user ? (
-                        <Text style={styles.teamVisualInitials}>
-                          {getInitials(player.user.name, player.user.surname)}
-                        </Text>
+                        <Avatar
+                          name={player.user.name}
+                          surname={player.user.surname}
+                          avatarUrl={player.user.avatarUrl}
+                          size={32}
+                          backgroundColor="#E3F2FD"
+                          textColor="#333"
+                        />
                       ) : (
                         <Ionicons name="person-outline" size={14} color="#ccc" />
                       )}
@@ -694,9 +722,14 @@ export default function CercaPartitaScreen() {
                       ]}
                     >
                       {hasPlayer && player?.user ? (
-                        <Text style={styles.teamVisualInitials}>
-                          {getInitials(player.user.name, player.user.surname)}
-                        </Text>
+                        <Avatar
+                          name={player.user.name}
+                          surname={player.user.surname}
+                          avatarUrl={player.user.avatarUrl}
+                          size={32}
+                          backgroundColor="#FFEBEE"
+                          textColor="#333"
+                        />
                       ) : (
                         <Ionicons name="person-outline" size={14} color="#ccc" />
                       )}

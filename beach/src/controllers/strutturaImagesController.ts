@@ -1,41 +1,29 @@
 import { Request, Response } from "express";
 import Struttura from "../models/Strutture";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import cloudinary from "../config/cloudinary";
+
+// ✅ Configurazione da variabili d'ambiente
+const STRUTTURE_FOLDER = process.env.CLOUDINARY_STRUTTURE_FOLDER || "images/struttura-images";
+const MAX_WIDTH = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_WIDTH || "1920");
+const MAX_HEIGHT = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_HEIGHT || "1080");
+const QUALITY = process.env.CLOUDINARY_STRUTTURE_QUALITY || "auto:good";
+const MAX_FILE_SIZE = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_SIZE || "10485760"); // 10MB
+const MAX_IMAGES = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_IMAGES || "10");
 
 // Estendiamo il tipo Request per includere il file di Multer
 interface RequestConFile extends Request {
     file?: Express.Multer.File;
 }
 
-// ✅ Configurazione Multer con path corretto
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Salva in beach/images/strutture
-    // Da dist/controllers/ devo salire 3 livelli: dist -> beach-backend -> APP-Beach -> beach
-    const uploadDir = path.join(__dirname, "../../../beach/images/strutture");
-    
-    // Crea directory se non esiste
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    console.log("📁 Salvando immagine struttura in:", uploadDir);
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `struttura-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
+// ✅ Configurazione Multer - Memory storage per Cloudinary
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
-  if (mimetype && extname) {
+  if (mimetype) {
     return cb(null, true);
   } else {
     cb(new Error("Solo immagini sono permesse (jpeg, jpg, png, webp)"));
@@ -44,11 +32,11 @@ const fileFilter = (req: any, file: any, cb: any) => {
 
 export const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: fileFilter,
 });
 
-// ✅ Upload immagine
+// ✅ Upload immagine su Cloudinary
 export const addStrutturaImage = async (req: RequestConFile, res: Response) => {
     try {
         console.log("📸 Upload immagine struttura");
@@ -59,55 +47,62 @@ export const addStrutturaImage = async (req: RequestConFile, res: Response) => {
             return res.status(400).json({ message: "Nessun file caricato" });
         }
 
-        console.log("📁 File ricevuto:", req.file.filename);
-        console.log("💾 Path completo:", req.file.path);
+        console.log("📁 File ricevuto:", req.file.originalname);
+        console.log("📏 Dimensione:", req.file.size, "bytes");
 
         const struttura = await Struttura.findById(strutturaId);
 
         if (!struttura) {
-            // Elimina file se struttura non esiste
-            fs.unlinkSync(req.file.path);
             return res.status(404).json({ message: "Struttura non trovata" });
         }
 
         if (struttura.owner.toString() !== userId) {
-            fs.unlinkSync(req.file.path);
             return res.status(403).json({ message: "Non autorizzato" });
         }
 
-        // ✅ Path relativo per il database
-        const imagePath = `/images/strutture/${req.file.filename}`;
-        
-        // Limite massimo 10 immagini
-        if (struttura.images.length >= 10) {
-            fs.unlinkSync(req.file.path);
-            return res.status(400).json({ message: "Limite massimo di 10 immagini raggiunto" });
+        // Limite massimo immagini
+        if (struttura.images.length >= MAX_IMAGES) {
+            return res.status(400).json({ message: `Limite massimo di ${MAX_IMAGES} immagini raggiunto` });
         }
 
-        struttura.images.push(imagePath);
-        await struttura.save();
+        // ✅ Upload su Cloudinary
+        const base64 = req.file.buffer.toString("base64");
+        const dataUri = `data:${req.file.mimetype};base64,${base64}`;
+        const timestamp = Date.now();
+        const publicId = `strutture/${strutturaId}/${timestamp}`;
 
-        console.log("✅ Immagine salvata:", imagePath);
+        console.log("☁️ Caricamento su Cloudinary...", publicId);
+
+        const result = await cloudinary.uploader.upload(dataUri, {
+            public_id: publicId,
+            folder: STRUTTURE_FOLDER,
+            resource_type: "image",
+            transformation: [
+                { width: MAX_WIDTH, height: MAX_HEIGHT, crop: "limit" },
+                { quality: QUALITY },
+                { fetch_format: "auto" }
+            ]
+        });
+
+        console.log("✅ Upload Cloudinary completato:", result.secure_url);
+
+        const imageUrl = result.secure_url;
+        struttura.images.push(imageUrl);
+        await struttura.save();
 
         res.status(201).json({ 
             message: "Immagine caricata con successo", 
-            image: imagePath,
+            image: imageUrl,
             images: struttura.images
         });
 
     } catch (error) {
         console.error("❌ Errore upload immagine struttura:", error);
-        
-        // Pulizia file in caso di errore
-        if (req.file) {
-            fs.unlinkSync(req.file.path);
-        }
-        
-        res.status(500).json({ message: "Errore server" });
+        res.status(500).json({ message: "Errore server durante l'upload" });
     }
 };
 
-// ✅ Elimina immagine
+// ✅ Elimina immagine da Cloudinary
 export const deleteStrutturaImage = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -134,13 +129,27 @@ export const deleteStrutturaImage = async (req: Request, res: Response) => {
         struttura.images.splice(imageIndex, 1);
         await struttura.save();
 
-        // Elimina file fisico
-        const filename = imageUrl.replace("/images/strutture/", "");
-        const filePath = path.join(__dirname, "../../../beach/images/strutture", filename);
-        
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            console.log("🗑️ File eliminato:", filePath);
+        // ✅ Elimina da Cloudinary se è un URL Cloudinary
+        if (imageUrl.includes("cloudinary.com")) {
+            try {
+                // Estrai public_id dall'URL
+                const urlParts = imageUrl.split("/");
+                const uploadIndex = urlParts.indexOf("upload");
+                if (uploadIndex !== -1) {
+                    const publicIdWithExt = urlParts.slice(uploadIndex + 2).join("/");
+                    const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf("."));
+                    
+                    console.log("🗑️ Eliminazione da Cloudinary:", publicId);
+                    await cloudinary.uploader.destroy(publicId, {
+                        invalidate: true,
+                        resource_type: "image"
+                    });
+                    console.log("✅ Immagine eliminata da Cloudinary");
+                }
+            } catch (cloudError) {
+                console.error("⚠️ Errore eliminazione da Cloudinary (non bloccante):", cloudError);
+                // Continua comunque, l'importante è che sia rimossa dal DB
+            }
         }
 
         res.json({

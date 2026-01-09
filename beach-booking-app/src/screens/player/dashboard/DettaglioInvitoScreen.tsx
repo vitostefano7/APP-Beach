@@ -98,13 +98,26 @@ const DettaglioInvito = () => {
     try {
       setResponding(true);
       
+      // Se accettiamo, dobbiamo includere il team assegnato
+      const myPlayer = invite?.players?.find((p: any) => 
+        p.user?._id === user?.id || p.user === user?.id
+      );
+      const assignedTeam = myPlayer?.team;
+      
+      const body: any = { action: response };
+      
+      if (response === "accept" && assignedTeam) {
+        body.team = assignedTeam;
+        console.log("Includo team nella richiesta:", assignedTeam);
+      }
+      
       const res = await fetch(`${API_URL}/matches/${inviteId}/respond`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ action: response }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {

@@ -73,7 +73,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     >
       {resolvedUrl && !imageError ? (
         <Image
-          source={{ uri: `${resolvedUrl}?t=${Date.now()}` }}
+          source={{ uri: resolvedUrl }}
           style={avatarStyles.image}
           onError={() => setImageError(true)}
         />

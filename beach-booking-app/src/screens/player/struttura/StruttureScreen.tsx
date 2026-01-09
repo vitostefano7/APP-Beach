@@ -14,6 +14,7 @@ import {
   UIManager,
   Alert,
   Linking,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -24,6 +25,7 @@ import * as Location from "expo-location";
 import { Calendar } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 // ✅ Import stili
 import { styles } from "../styles-player/StruttureScreen.styles";
@@ -468,11 +470,46 @@ export default function StruttureScreen() {
 
   const markers = viewMode === "map" ? getMarkersForZoom() : [];
 
+  const handleImageSwipe = (strutturaId: string, direction: 'left' | 'right', totalImages: number) => {
+    setCurrentImageIndexes((prev) => {
+      const currentIndex = prev[strutturaId] || 0;
+      let newIndex: number;
+
+      if (direction === 'left') {
+        // Swipe a sinistra = immagine successiva
+        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
+      } else {
+        // Swipe a destra = immagine precedente
+        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+      }
+
+      return { ...prev, [strutturaId]: newIndex };
+    });
+  };
+
   const renderCard = ({ item }: { item: Struttura }) => {
     const currentIndex = currentImageIndexes[item._id] || 0;
-    const imageUri = item.images?.length 
-      ? `${API_URL}${item.images[currentIndex]}`
+    const imageUri = item.images?.length
+      ? resolveImageUrl(item.images[currentIndex])
       : null;
+
+    const panResponder = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (item.images && item.images.length > 1) {
+          if (gestureState.dx > 50) {
+            // Swipe a destra
+            handleImageSwipe(item._id, 'right', item.images.length);
+          } else if (gestureState.dx < -50) {
+            // Swipe a sinistra
+            handleImageSwipe(item._id, 'left', item.images.length);
+          }
+        }
+      },
+    });
 
     return (
       <Pressable
@@ -484,15 +521,32 @@ export default function StruttureScreen() {
           })
         }
       >
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.image} />
-        )}
+        <View {...panResponder.panHandlers} style={styles.imageContainer}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.image} />
+          )}
+
+          {/* Indicatori pallini */}
+          {item.images && item.images.length > 1 && (
+            <View style={styles.imageIndicators}>
+              {item.images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    index === currentIndex && styles.indicatorActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
       <View
         style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}
@@ -599,9 +653,25 @@ export default function StruttureScreen() {
             >
               {favoriteStrutture.map((fav) => {
                 const currentIndex = currentImageIndexes[fav._id] || 0;
-                const imageUri = fav.images?.length 
-                  ? `${API_URL}${fav.images[currentIndex]}`
+                const imageUri = fav.images?.length
+                  ? resolveImageUrl(fav.images[currentIndex])
                   : null;
+
+                const favPanResponder = PanResponder.create({
+                  onStartShouldSetPanResponder: () => true,
+                  onMoveShouldSetPanResponder: (_, gestureState) => {
+                    return Math.abs(gestureState.dx) > 10;
+                  },
+                  onPanResponderRelease: (_, gestureState) => {
+                    if (fav.images && fav.images.length > 1) {
+                      if (gestureState.dx > 50) {
+                        handleImageSwipe(fav._id, 'right', fav.images.length);
+                      } else if (gestureState.dx < -50) {
+                        handleImageSwipe(fav._id, 'left', fav.images.length);
+                      }
+                    }
+                  },
+                });
 
                 return (
                   <Pressable
@@ -614,15 +684,32 @@ export default function StruttureScreen() {
                       })
                     }
                   >
-                    {imageUri ? (
-                      <Image
-                        source={{ uri: imageUri }}
-                        style={styles.favoriteImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={styles.favoriteImage} />
-                    )}
+                    <View {...favPanResponder.panHandlers} style={styles.favoriteImageContainer}>
+                      {imageUri ? (
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.favoriteImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.favoriteImage} />
+                      )}
+
+                      {/* Indicatori pallini per favoriti */}
+                      {fav.images && fav.images.length > 1 && (
+                        <View style={styles.favoriteImageIndicators}>
+                          {fav.images.map((_, index) => (
+                            <View
+                              key={index}
+                              style={[
+                                styles.favoriteIndicator,
+                                index === currentIndex && styles.favoriteIndicatorActive,
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
                     <View style={styles.favoriteContent}>
                       <Text style={styles.favoriteTitle} numberOfLines={1}>
                         {fav.name}
@@ -776,7 +863,7 @@ export default function StruttureScreen() {
 
                     {selectedMarker.images?.length ? (
                       <Image
-                        source={{ uri: `${API_URL}${selectedMarker.images[0]}` }}
+                        source={{ uri: resolveImageUrl(selectedMarker.images[0]) }}
                         style={styles.mapModalImage}
                         resizeMode="cover"
                       />
@@ -964,7 +1051,7 @@ function AdvancedFiltersModal({
                   setTempFilters((prev) => ({ ...prev, city: text || null }))
                 }
               />
-              <Pressable
+                <Pressable
                 style={styles.geolocationButton}
                 onPress={async () => {
                   try {
@@ -1031,7 +1118,7 @@ function AdvancedFiltersModal({
                   }
                 }}
               >
-                <Ionicons name="location" size={20} color="#2979ff" />
+                <Ionicons name="location" size={20} color="#2196F3" />
               </Pressable>
             </View>
             {tempFilters.city ? (
@@ -1092,7 +1179,7 @@ function AdvancedFiltersModal({
               <Ionicons 
                 name="calendar-outline" 
                 size={20} 
-                color={tempFilters.date ? "#2979ff" : "#666"} 
+                color={tempFilters.date ? "#2196F3" : "#666"} 
               />
               <Text style={[
                 styles.datePickerText,
