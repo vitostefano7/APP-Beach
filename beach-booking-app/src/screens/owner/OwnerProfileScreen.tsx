@@ -21,6 +21,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Network from 'expo-network';
 
 import API_URL from "../../config/api";
+import { resolveAvatarUrl } from "../../utils/avatar";
 
 // ==================== TIPI ====================
 interface OwnerStats {
@@ -55,21 +56,6 @@ interface Struttura {
 }
 
 // ==================== UTILITY FUNCTIONS ====================
-const getAvatarUrl = (avatarUrl: string | null | undefined): string | null => {
-  if (!avatarUrl) return null;
-  
-  // Se l'URL inizia già con http, usalo così com'è
-  if (avatarUrl.startsWith('http')) {
-    return avatarUrl;
-  }
-  
-  // Se è un percorso relativo, aggiungi il base URL
-  // Rimuovi eventuali doppi slash
-  const baseUrl = API_URL.replace(/\/$/, '');
-  const cleanAvatarUrl = avatarUrl.replace(/^\//, '');
-  
-  return `${baseUrl}/${cleanAvatarUrl}`;
-};
 
 // ==================== CUSTOM HOOKS ====================
 const useOwnerProfile = (token: string | null) => {
@@ -259,7 +245,6 @@ const useAvatarManager = (token: string | null, user: User | null, updateUser: (
     uploadAvatar, 
     removeAvatar, 
     handleAvatarError,
-    getAvatarUrl: (url: string | null) => getAvatarUrl(url),
   };
 };
 
@@ -445,7 +430,6 @@ export default function OwnerProfileScreen() {
     uploadAvatar, 
     removeAvatar, 
     handleAvatarError,
-    getAvatarUrl,
   } = useAvatarManager(token, user, updateUser);
   
   const [refreshing, setRefreshing] = useState(false);
@@ -634,7 +618,7 @@ export default function OwnerProfileScreen() {
   }
 
   // Calcola URL avatar finale
-  const finalAvatarUrl = getAvatarUrl(avatarError ? null : avatarUrl);
+  const finalAvatarUrl = resolveAvatarUrl(avatarError ? null : avatarUrl);
   const shouldShowAvatar = finalAvatarUrl && !avatarError;
 
   return (

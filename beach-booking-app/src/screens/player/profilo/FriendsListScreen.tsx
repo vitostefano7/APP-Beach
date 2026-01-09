@@ -15,6 +15,7 @@ import { RouteProp } from "@react-navigation/native";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 
 type FriendItem = {
@@ -89,11 +90,7 @@ export default function FriendsListScreen() {
     loadFriends();
   };
 
-  const getAvatarUri = (avatarUrl?: string) => {
-    if (!avatarUrl) return null;
-    if (avatarUrl.startsWith("http")) return avatarUrl;
-    return `${API_URL}${avatarUrl}`;
-  };
+  const getAvatarUri = (avatarUrl?: string) => resolveAvatarUrl(avatarUrl);
 
   const renderItem = ({ item }: { item: FriendItem }) => {
     const avatarUri = getAvatarUri(item.user.avatarUrl);

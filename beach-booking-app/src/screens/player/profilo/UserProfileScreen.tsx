@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthContext } from "../../../context/AuthContext";
 import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import { styles } from "../styles-player/UserProfileScreen.styles";
 
 type UserProfileRouteProp = RouteProp<DashboardStackParamList, "ProfiloUtente">;
@@ -225,7 +226,7 @@ export default function UserProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             {data.user.avatarUrl ? (
-              <Image source={{ uri: data.user.avatarUrl }} style={styles.avatar} />
+              <Image source={{ uri: resolveAvatarUrl(data.user.avatarUrl) || "" }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Ionicons name="person" size={48} color="#2196F3" />

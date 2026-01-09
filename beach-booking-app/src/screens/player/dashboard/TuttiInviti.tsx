@@ -15,6 +15,7 @@ import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import styles from "./TuttiInviti.styles";
 
 export default function TuttiInvitiScreen() {
@@ -340,7 +341,7 @@ const loadAllMatches = async () => {
           <View style={styles.cardHeaderLeft}>
             {item.createdBy?.avatarUrl ? (
               <Image
-                source={{ uri: `${API_URL}${item.createdBy.avatarUrl}` }}
+                source={{ uri: resolveAvatarUrl(item.createdBy.avatarUrl) || "" }}
                 style={styles.creatorAvatar}
               />
             ) : (
@@ -432,7 +433,7 @@ const loadAllMatches = async () => {
               >
                 {player.user?.avatarUrl ? (
                   <Image
-                    source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
+                    source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
                     style={[
                       styles.playerAvatarSmall,
                       isExpired && styles.expiredPlayerAvatar

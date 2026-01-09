@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Pressable, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import API_URL from "../../../../../config/api";
+import { resolveAvatarUrl } from "../../../../../utils/avatar";
 import { Player } from "../types/DettaglioPrenotazione.types";
 import styles from "../styles/DettaglioPrenotazione.styles";
 import TeamChangeModal from "./TeamChangeModal";
@@ -180,7 +180,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
       <View style={styles.playerLeft}>
         {player.user?.avatarUrl ? (
           <Image
-            source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
+            source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
             style={styles.playerAvatar}
           />
         ) : (

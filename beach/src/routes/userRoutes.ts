@@ -44,6 +44,13 @@ router.patch("/me", requireAuth, updateMe);
 router.post(
   "/me/avatar",
   requireAuth,
+  (req, _res, next) => {
+    console.log("[route] /users/me/avatar hit", {
+      hasAuth: !!req.headers.authorization,
+      contentType: req.headers["content-type"],
+    });
+    next();
+  },
   uploadMiddleware.single("avatar"),
   uploadAvatar
 );

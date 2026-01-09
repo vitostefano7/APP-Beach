@@ -14,6 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useContext } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import styles from "./InvitoScaduto.styles"; // Crea questo file di stili
 
 export default function InvitoScadutoScreen() {
@@ -158,7 +159,7 @@ export default function InvitoScadutoScreen() {
               <View style={styles.creatorInfo}>
                 {createdBy?.avatarUrl ? (
                   <Image
-                    source={{ uri: `${API_URL}${createdBy.avatarUrl}` }}
+                    source={{ uri: resolveAvatarUrl(createdBy.avatarUrl) || "" }}
                     style={styles.creatorAvatar}
                   />
                 ) : (
@@ -236,7 +237,7 @@ export default function InvitoScadutoScreen() {
                 <View style={styles.playerInfo}>
                   {player.user?.avatarUrl ? (
                     <Image
-                      source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
+                      source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
                       style={styles.playerAvatar}
                     />
                   ) : (

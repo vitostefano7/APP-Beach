@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import API_URL from "../../../../../config/api";
+import { resolveAvatarUrl } from "../../../../../utils/avatar";
 import { styles } from "../../../styles/DettaglioPrenotazioneOwnerScreen.styles";
 
 const getInitials = (name?: string, surname?: string): string => {
@@ -106,7 +106,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
       <View style={styles.playerAvatarCircle}>
         {player.user?.avatarUrl ? (
           <Image
-            source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
+            source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
             style={{ width: 40, height: 40, borderRadius: 20 }}
           />
         ) : (

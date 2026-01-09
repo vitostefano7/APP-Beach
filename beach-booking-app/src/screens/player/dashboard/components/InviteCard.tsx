@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../../../../config/api";
+import { resolveAvatarUrl } from "../../../../utils/avatar";
 import { formatDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
 
@@ -152,7 +152,7 @@ const InviteCard: React.FC<InviteCardProps> = ({
         <View style={styles.inviteLeft}>
           {createdBy?.avatarUrl ? (
             <Image
-              source={{ uri: `${API_URL}${createdBy.avatarUrl}` }}
+              source={{ uri: resolveAvatarUrl(createdBy.avatarUrl) || "" }}
               style={styles.inviteAvatar}
             />
           ) : (

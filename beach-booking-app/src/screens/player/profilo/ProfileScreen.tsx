@@ -19,17 +19,18 @@ import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 import { styles } from "../styles-player/ProfileScreen.styles";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 
 type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
 
 type ProfileResponse = {
   profile: {
     matchesPlayed: number;
-    ratingAverage?: number;
-    favoriteCampo?: { name: string } | null;
-    friendsCount?: number;
-    followersCount?: number;
-    followingCount?: number;
+    ratingAverage: number;
+    favoriteCampo: { name: string } | null;
+    friendsCount: number;
+    followersCount: number;
+    followingCount: number;
   };
   preferences: {
     pushNotifications: boolean;
@@ -50,15 +51,17 @@ export default function ProfileScreen() {
   const [data, setData] = useState<ProfileResponse | null>(null);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
-    console.log("👤 User context aggiornato, avatarUrl:", user?.avatarUrl);
-    if (user?.avatarUrl) {
+    console.log("👤 User context aggiornato, avatarUrl:", user.avatarUrl);
+    if (user.avatarUrl) {
       setAvatarUrl(user.avatarUrl);
     }
-  }, [user?.avatarUrl]);
+    setAvatarLoadError(false);
+  }, [user.avatarUrl]);
 
   useEffect(() => {
     if (token) {
@@ -103,8 +106,8 @@ export default function ProfileScreen() {
       } else {
         console.log("Errore caricamento friends stats:", friendsRes.status);
       }
-      console.log("📥 Dati profilo ricevuti:", json);
-      console.log("🖼️ avatarUrl dal backend:", json.user?.avatarUrl);
+      console.log("Dati profilo ricevuti:", json);
+      console.log("avatarUrl dal backend:", json.user?.avatarUrl);
 
       const parsed: ProfileResponse = {
         profile: {
@@ -127,9 +130,10 @@ export default function ProfileScreen() {
       setDarkMode(parsed.preferences.darkMode);
       
       // ✅ Aggiorna avatar se presente
-      if (json.user?.avatarUrl) {
+      if (json.user.avatarUrl) {
         console.log("✅ Setting avatarUrl:", json.user.avatarUrl);
         setAvatarUrl(json.user.avatarUrl);
+        setAvatarLoadError(false);
       } else {
         console.log("⚠️ Nessun avatarUrl ricevuto dal backend");
       }
@@ -144,7 +148,7 @@ export default function ProfileScreen() {
       // Se c'è già un avatar, mostra anche "Rimuovi foto"
       Alert.alert(
         "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
+        "Come vuoi caricare la tua foto",
         [
           { text: "Annulla", onPress: () => {}, style: "cancel" as const },
           { text: "Galleria", onPress: pickImageFromGallery },
@@ -161,7 +165,7 @@ export default function ProfileScreen() {
       // Se non c'è avatar, solo galleria e fotocamera
       Alert.alert(
         "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
+        "Come vuoi caricare la tua foto",
         [
           { text: "Annulla", onPress: () => {}, style: "cancel" as const },
           { text: "Galleria", onPress: pickImageFromGallery },
@@ -229,11 +233,19 @@ export default function ProfileScreen() {
 
   const uploadAvatar = async (imageUri: string) => {
     try {
+      console.log("[uploadAvatar] start", {
+        imageUri,
+        apiUrl: API_URL,
+        hasToken: !!token,
+      });
+
       const formData = new FormData();
       
       const filename = imageUri.split("/").pop() || "avatar.jpg";
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      console.log("[uploadAvatar] file", { filename, type });
 
       formData.append("avatar", {
         uri: imageUri,
@@ -241,7 +253,10 @@ export default function ProfileScreen() {
         type,
       } as any);
 
-      const res = await fetch(`${API_URL}/users/me/avatar`, {
+      const endpoint = `${API_URL}/users/me/avatar`;
+      console.log("[uploadAvatar] POST", endpoint);
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -249,14 +264,20 @@ export default function ProfileScreen() {
         body: formData,
       });
 
+      console.log("[uploadAvatar] response", {
+        status: res.status,
+        ok: res.ok,
+      });
+
       const json = await res.json();
 
       if (res.ok) {
-        console.log("✅ Avatar caricato:", json.avatarUrl);
-        console.log("📍 API_URL:", API_URL);
-        console.log("🖼️ URL completo:", `${API_URL}${json.avatarUrl}`);
+        console.log("Avatar caricato:", json.avatarUrl);
+        console.log("API_URL:", API_URL);
+        console.log("URL completo:", resolveAvatarUrl(json.avatarUrl));
         
         setAvatarUrl(json.avatarUrl);
+        setAvatarLoadError(false);
         
         // ✅ Aggiorna il contesto user
         if (updateUser) {
@@ -270,6 +291,11 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Upload avatar error:", error);
+      console.log("[uploadAvatar] network error context", {
+        apiUrl: API_URL,
+        hasToken: !!token,
+        imageUri,
+      });
       Alert.alert("Errore", "Impossibile caricare l'immagine");
     }
   };
@@ -302,7 +328,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Conferma uscita", "Vuoi uscire dal tuo account?", [
+    Alert.alert("Conferma uscita", "Vuoi uscire dal tuo account", [
       { text: "Annulla", style: "cancel" },
       { text: "Esci", style: "destructive", onPress: logout },
     ]);
@@ -328,6 +354,11 @@ export default function ProfileScreen() {
 
   const { profile } = data;
 
+  const resolvedAvatarUrl = resolveAvatarUrl(avatarUrl);
+  const avatarUri = resolvedAvatarUrl
+    ? `${resolvedAvatarUrl}${resolvedAvatarUrl.includes("?") ? "&" : "?"}t=${Date.now()}`
+    : null;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -335,23 +366,25 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             {/* ✅ AVATAR con immagine o iniziali */}
             <Pressable style={styles.avatar} onPress={changeAvatar}>
-              {avatarUrl ? (
+              {avatarUrl && !avatarLoadError ? (
                 <>
                   <Image 
                     source={{ 
-                      uri: `${API_URL}${avatarUrl}?t=${Date.now()}` 
+                      uri: avatarUri || "" 
                     }} 
                     style={styles.avatarImage}
                     onError={(error) => {
                       console.log("❌ Errore caricamento immagine:");
                       console.log("   - avatarUrl:", avatarUrl);
-                      console.log("   - API_URL:", API_URL);
-                      console.log("   - URI completo:", `${API_URL}${avatarUrl}`);
+        console.log("API_URL:", API_URL);
+                      console.log("   - URI completo:", resolvedAvatarUrl);
                       console.log("   - Error:", error.nativeEvent.error);
+                      setAvatarLoadError(true);
                     }}
                     onLoad={() => {
                       console.log("✅ Immagine caricata con successo!");
-                      console.log("   - URI:", `${API_URL}${avatarUrl}`);
+                      console.log("   - URI:", resolvedAvatarUrl);
+                      setAvatarLoadError(false);
                     }}
                   />
                 </>
@@ -363,7 +396,7 @@ export default function ProfileScreen() {
             </Pressable>
             
             {/* ✅ Badge lucchetto se profilo privato */}
-            {user?.profilePrivacy === 'private' && (
+            {user.profilePrivacy === 'private' && (
               <View style={styles.privateBadge}>
                 <Ionicons name="lock-closed" size={16} color="#666" />
               </View>
@@ -482,7 +515,7 @@ function StatCard({
   value: number | string; 
   label: string; 
   color: string;
-  onPress?: () => void;
+  onPress: () => void;
 }) {
   const Container: ElementType = onPress ? Pressable : View;
   const containerProps = onPress
@@ -542,7 +575,7 @@ function PreferenceRow({
   subtitle: string; 
   value: boolean; 
   onChange: (v: boolean) => void; 
-  disabled?: boolean 
+  disabled: boolean 
 }) {
   return (
     <View style={styles.prefRow}>

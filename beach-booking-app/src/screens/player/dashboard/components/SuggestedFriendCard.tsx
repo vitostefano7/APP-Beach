@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../../../../config/api";
+import { resolveAvatarUrl } from "../../../../utils/avatar";
 import { styles } from "../styles";
 
 interface SuggestedFriendCardProps {
@@ -112,7 +112,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
       {/* AVATAR */}
       {avatarUrl ? (
         <Image
-          source={{ uri: `${API_URL}${avatarUrl}` }}
+          source={{ uri: resolveAvatarUrl(avatarUrl) || "" }}
           style={styles.friendCardAvatar}
         />
       ) : (

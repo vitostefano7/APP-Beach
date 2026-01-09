@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import API_URL from "../../../../config/api";
+import { resolveAvatarUrl } from "../../../../utils/avatar";
 import { styles } from "../styles";
 import ChatModal from "./ChatModal";
 import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
@@ -104,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
           <View style={styles.avatarContainer}>
             {user?.avatarUrl ? (
               <Image
-                source={{ uri: `${API_URL}${user.avatarUrl}` }}
+                source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
                 style={styles.avatar}
               />
             ) : (
