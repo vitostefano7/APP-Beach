@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { styles } from "../styles/DettaglioPrenotazioneOwnerScreen.styles";
 import { getSportIcon } from "../utils/DettaglioPrenotazione.utils";
+import { Avatar } from "../../../components/Avatar";
 
 // Componenti animati e gradients
 import {
@@ -358,24 +359,17 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             </View>
 
             <View style={styles.clientCard}>
-              <Pressable 
+              <Pressable
                 style={styles.clientInfoPressable}
                 onPress={() => setShowClientProfile(true)}
               >
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>
-                    {(() => {
-                      const name = booking.user?.name || '';
-                      const surname = booking.user?.surname || '';
-                      if (!name) return '??';
-                      if (surname) return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-                      const parts = name.trim().split(' ');
-                      return parts.length === 1
-                        ? parts[0][0].toUpperCase()
-                        : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                    })()}
-                  </Text>
-                </View>
+                <Avatar
+                  name={booking.user?.name}
+                  surname={booking.user?.surname}
+                  avatarUrl={booking.user?.avatarUrl}
+                  size={48}
+                  fallbackIcon="person"
+                />
                 <View style={styles.clientInfo}>
                   <Text style={styles.clientName}>
                     {booking.user?.name || "Utente"} {booking.user?.surname || ""}
@@ -677,20 +671,13 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             <ScrollView style={styles.modalBody}>
               {/* Avatar e Nome */}
               <View style={styles.profileHeader}>
-                <View style={styles.profileAvatarLarge}>
-                  <Text style={styles.profileAvatarTextLarge}>
-                    {(() => {
-                      const name = booking?.user?.name || '';
-                      const surname = booking?.user?.surname || '';
-                      if (!name) return '??';
-                      if (surname) return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-                      const parts = name.trim().split(' ');
-                      return parts.length === 1
-                        ? parts[0][0].toUpperCase()
-                        : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                    })()}
-                  </Text>
-                </View>
+                <Avatar
+                  name={booking?.user?.name}
+                  surname={booking?.user?.surname}
+                  avatarUrl={booking?.user?.avatarUrl}
+                  size={80}
+                  fallbackIcon="person"
+                />
                 <Text style={styles.profileName}>
                   {booking?.user?.name || "Utente"} {booking?.user?.surname || ""}
                 </Text>
@@ -805,20 +792,13 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             <ScrollView style={styles.modalBody}>
               {/* Avatar e Nome */}
               <View style={styles.profileHeader}>
-                <View style={styles.profileAvatarLarge}>
-                  <Text style={styles.profileAvatarTextLarge}>
-                    {(() => {
-                      const name = selectedPlayer?.user?.name || '';
-                      const surname = selectedPlayer?.user?.surname || '';
-                      if (!name) return '??';
-                      if (surname) return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-                      const parts = name.trim().split(' ');
-                      return parts.length === 1
-                        ? parts[0][0].toUpperCase()
-                        : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                    })()}
-                  </Text>
-                </View>
+                <Avatar
+                  name={selectedPlayer?.user?.name}
+                  surname={selectedPlayer?.user?.surname}
+                  avatarUrl={selectedPlayer?.user?.avatarUrl}
+                  size={80}
+                  fallbackIcon="person"
+                />
                 <Text style={styles.profileName}>
                   {selectedPlayer?.user?.name || "Giocatore"} {selectedPlayer?.user?.surname || ""}
                 </Text>

@@ -30,24 +30,31 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
 
     const [directConversations, groupConversations] = await Promise.all([
       Conversation.find(directQuery)
-        .populate('user', 'name email')
+        .populate('user', 'name email avatarUrl')
         .populate('struttura', 'name images')
         .populate('owner', 'name email')
         .sort({ lastMessageAt: -1 }),
       
       Conversation.find(groupQuery)
         .populate('participants', 'name email')
+        .populate('struttura', 'name images')
         .populate({
           path: 'match',
           populate: {
             path: 'booking',
-            populate: {
-              path: 'campo',
-              populate: {
+            populate: [
+              {
+                path: 'campo',
+                populate: {
+                  path: 'struttura',
+                  select: 'name'
+                }
+              },
+              {
                 path: 'struttura',
-                select: 'name'
+                select: 'name images'
               }
-            }
+            ]
           }
         })
         .sort({ lastMessageAt: -1 })
@@ -80,7 +87,7 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
               path: 'campo',
               populate: {
                 path: 'struttura',
-                select: 'owner',
+                select: 'name owner',
               },
             },
           },
@@ -610,7 +617,18 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
     let conversation = await Conversation.findOne({
       type: 'group',
       match: matchId,
-    }).populate('participants', 'name email');
+    })
+      .populate('participants', 'name email')
+      .populate({
+        path: 'match',
+        populate: {
+          path: 'booking',
+          populate: {
+            path: 'struttura',
+            select: 'name images'
+          }
+        }
+      });
 
     if (!conversation) {
       // Crea nuova conversazione di gruppo
@@ -634,7 +652,16 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
 
       conversation = await Conversation.findById(conversation._id)
         .populate('participants', 'name email')
-        .populate('match');
+        .populate({
+          path: 'match',
+          populate: {
+            path: 'booking',
+            populate: {
+              path: 'struttura',
+              select: 'name images'
+            }
+          }
+        });
 
       console.log(`✅ Creata chat di gruppo: ${groupName} con ${participants.length} partecipanti`);
     }

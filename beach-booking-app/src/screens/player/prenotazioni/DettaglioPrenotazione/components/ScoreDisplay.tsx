@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Avatar } from '../../../../../components/Avatar';
 import styles from '../styles/DettaglioPrenotazione.styles';
 
 // Import componenti animati e gradients
@@ -67,9 +68,6 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
     return { teamAWins, teamBWins };
   };
 
-  const getInitials = (name: string, surname: string) => {
-    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-  };
 
   const { teamAWins, teamBWins } = getSetSummary();
   const canEdit = isInMatch && matchStatus !== "cancelled";
@@ -116,11 +114,16 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
               {/* Avatar Team A */}
               <View style={styles.scoreTeamAvatars}>
                 {teamAPlayers.map((player, index) => (
-                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamAPlayers.length - index }]}>
-                    <Text style={styles.scoreAvatarText}>
-                      {getInitials(player.user?.name || '', player.user?.surname || '')}
-                    </Text>
-                  </View>
+                  <Avatar
+                    key={player.user._id}
+                    name={player.user?.name}
+                    surname={player.user?.surname}
+                    avatarUrl={player.user?.avatarUrl}
+                    size="small"
+                    teamColor="A"
+                    style={index > 0 && { marginLeft: -8 }}
+                    zIndex={teamAPlayers.length - index}
+                  />
                 ))}
               </View>
 
@@ -157,11 +160,16 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
               {/* Avatar Team B */}
               <View style={styles.scoreTeamAvatars}>
                 {teamBPlayers.map((player, index) => (
-                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamBPlayers.length - index }]}>
-                    <Text style={styles.scoreAvatarText}>
-                      {getInitials(player.user?.name || '', player.user?.surname || '')}
-                    </Text>
-                  </View>
+                  <Avatar
+                    key={player.user._id}
+                    name={player.user?.name}
+                    surname={player.user?.surname}
+                    avatarUrl={player.user?.avatarUrl}
+                    size="small"
+                    teamColor="B"
+                    style={index > 0 && { marginLeft: -8 }}
+                    zIndex={teamBPlayers.length - index}
+                  />
                 ))}
               </View>
 

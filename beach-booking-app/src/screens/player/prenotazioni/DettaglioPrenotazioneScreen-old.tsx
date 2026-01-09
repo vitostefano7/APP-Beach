@@ -16,6 +16,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 
 interface Player {
   user: {
@@ -883,7 +884,7 @@ export default function DettaglioPrenotazioneScreen() {
                   >
                     {user.avatarUrl ? (
                       <Image
-                        source={{ uri: `${API_URL}${user.avatarUrl}` }}
+                        source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
                         style={styles.resultAvatar}
                       />
                     ) : (
@@ -938,7 +939,7 @@ const PlayerCardWithTeam = ({
       <View style={styles.playerLeft}>
         {player.user?.avatarUrl ? (
           <Image
-            source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
+            source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
             style={styles.playerAvatar}
           />
         ) : (

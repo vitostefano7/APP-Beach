@@ -10,6 +10,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
+import cloudinary from "../config/cloudinary";
 
 const { Types } = mongoose;
 
@@ -227,44 +228,82 @@ export const uploadAvatar = async (
   req: AuthRequest,
   res: Response
 ) => {
+  const userId = req.user?.id;
   try {
-    const userId = req.user!.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Utente non autenticato" });
+    }
 
-    if (!req.file) {
+    console.log("[uploadAvatar] start", {
+      userId,
+      hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+      hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+      uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET || "userImage",
+    });
+
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      console.log("[uploadAvatar] missing file");
       return res.status(400).json({ message: "Nessun file caricato" });
     }
 
-    console.log("📸 Upload avatar per user:", userId);
-    console.log("📁 File:", req.file.filename);
+    console.log("[uploadAvatar] file", {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
 
-    // ✅ Trova l'utente e il vecchio avatar
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    // ✅ Elimina il vecchio avatar se esiste
-    if (user.avatarUrl) {
+    if (user.avatarUrl && user.avatarUrl.startsWith("/images/profilo/")) {
       const oldFilePath = path.join(__dirname, "../../../", user.avatarUrl);
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
-        console.log("🗑️ Vecchio avatar eliminato:", oldFilePath);
+        console.log("Vecchio avatar locale eliminato:", oldFilePath);
       }
     }
 
-    // ✅ Aggiorna l'utente con il nuovo avatar
-    const avatarUrl = `/images/profilo/${req.file.filename}`;
+    const base64 = file.buffer.toString("base64");
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || "userImage";
+    const publicId = `avatars/${userId}`;
+
+    const result = await cloudinary.uploader.upload(dataUri, {
+      public_id: publicId,
+      overwrite: true,
+      invalidate: true,
+      upload_preset: uploadPreset,
+      resource_type: "image",
+    });
+
+    console.log("[uploadAvatar] cloudinary result", {
+      public_id: result.public_id,
+      secure_url: result.secure_url,
+      url: result.url,
+    });
+
+    const avatarUrl = result.secure_url || result.url;
+    if (!avatarUrl) {
+      return res.status(500).json({ message: "Errore upload Cloudinary" });
+    }
+
     user.avatarUrl = avatarUrl;
     await user.save();
-
-    console.log("✅ Avatar aggiornato:", avatarUrl);
 
     res.json({
       message: "Avatar caricato con successo",
       avatarUrl,
     });
   } catch (error) {
-    console.error("❌ uploadAvatar error:", error);
+    console.error("uploadAvatar error:", error);
+    console.log("[uploadAvatar] error context", {
+      userId,
+      hasFile: !!req.file,
+    });
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -285,22 +324,26 @@ export const deleteAvatar = async (
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    // ✅ Elimina il file se esiste
-    if (user.avatarUrl) {
+    const publicId = `avatars/${userId}`;
+    await cloudinary.uploader.destroy(publicId, {
+      invalidate: true,
+      resource_type: "image",
+    });
+
+    if (user.avatarUrl && user.avatarUrl.startsWith("/images/profilo/")) {
       const filePath = path.join(__dirname, "../../", user.avatarUrl);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log("🗑️ Avatar eliminato:", filePath);
+        console.log("Avatar locale eliminato:", filePath);
       }
     }
 
-    // ✅ Rimuovi avatar dal database
-    user.avatarUrl = undefined;
+    user.avatarUrl = null as any;
     await user.save();
 
     res.json({ message: "Avatar rimosso con successo" });
   } catch (error) {
-    console.error("❌ deleteAvatar error:", error);
+    console.error("deleteAvatar error:", error);
     res.status(500).json({ message: "Errore server" });
   }
 };

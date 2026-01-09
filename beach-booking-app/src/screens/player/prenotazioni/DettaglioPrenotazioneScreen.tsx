@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import { openStrutturaChat } from "../struttura/FieldDetailsScreen/api/fieldDetails.api";
 import { BookingDetails, Player } from "./DettaglioPrenotazione/types/DettaglioPrenotazione.types";
 import { 
@@ -1177,7 +1178,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     >
                       {user.avatarUrl ? (
                         <Image
-                          source={{ uri: `${API_URL}${user.avatarUrl}` }}
+                          source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
                           style={styles.resultAvatar}
                         />
                       ) : (

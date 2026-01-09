@@ -270,43 +270,41 @@ export default function OwnerChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-        </Pressable>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.safe}>
+        <SafeAreaView edges={["top"]}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+            </Pressable>
 
-        {/* ✅ HEADER CLICCABILE PER APRIRE PROFILO */}
-        <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
-          <View style={styles.headerAvatar}>
-            <Ionicons name="person" size={24} color="#2196F3" />
+            <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
+              <View style={styles.headerAvatar}>
+                <Ionicons name="person" size={24} color="#2196F3" />
+              </View>
+              <View style={styles.headerInfo}>
+                <View style={styles.headerTitleRow}>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    {userName}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#999" />
+                </View>
+                <View style={styles.onlineIndicator}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.onlineText}>Online</Text>
+                </View>
+              </View>
+            </Pressable>
           </View>
-          <View style={styles.headerInfo}>
-            <View style={styles.headerTitleRow}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
-                {userName}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="#999" />
-            </View>
-            <View style={styles.headerSubtitleRow}>
-              <Ionicons name="business-outline" size={12} color="#666" />
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
-                {strutturaName}
-              </Text>
-            </View>
-          </View>
-        </Pressable>
+        </SafeAreaView>
 
-        <View style={styles.ownerBadge}>
-          <Ionicons name="shield-checkmark" size={18} color="#4CAF50" />
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -323,9 +321,9 @@ export default function OwnerChatScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="chatbubbles-outline" size={64} color="#4CAF50" />
+                <Ionicons name="chatbubbles-outline" size={64} color="#2196F3" />
               </View>
-              <Text style={styles.emptyTitle}>Nessun messaggio</Text>
+              <Text style={styles.emptyTitle}>Inizia la conversazione</Text>
               <Text style={styles.emptyText}>
                 Rispondi al cliente per avviare la conversazione
               </Text>
@@ -333,46 +331,42 @@ export default function OwnerChatScreen() {
           }
         />
 
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Rispondi al cliente..."
-              placeholderTextColor="#999"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-              onFocus={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
-            />
-          </View>
-
-          <Pressable
-            style={[
-              styles.sendButton,
-              inputText.trim() && !sending && styles.sendButtonActive,
-            ]}
-            onPress={sendMessage}
-            disabled={!inputText.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Ionicons 
-                name={inputText.trim() ? "send" : "send-outline"} 
-                size={20} 
-                color="white" 
+        <SafeAreaView edges={["bottom"]}>
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Rispondi al cliente..."
+                placeholderTextColor="#999"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
               />
-            )}
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+            </View>
 
-      {/* ✅ MODAL PROFILO UTENTE */}
+            <Pressable
+              style={[
+                styles.sendButton,
+                inputText.trim() && !sending && styles.sendButtonActive,
+              ]}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || sending}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons 
+                  name={inputText.trim() ? "send" : "send-outline"} 
+                  size={20} 
+                  color="white" 
+                />
+              )}
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+
       <Modal
         visible={showUserProfile}
         animationType="slide"
@@ -471,6 +465,6 @@ export default function OwnerChatScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }

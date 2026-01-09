@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User";
 import PlayerProfile from "../models/PlayerProfile";
 import UserPreferences from "../models/UserPreferences";
+import cloudinary from "../config/cloudinary";
 
 const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi env
 
@@ -35,26 +36,15 @@ export const register = async (req: Request, res: Response) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ Gestione avatar durante registrazione
-    let avatarUrl: string | undefined = undefined;
-    let tempFilePath: string | undefined = undefined;
-    
-    if ((req as any).file) {
-      console.log("📸 File ricevuto durante registrazione:", (req as any).file.filename);
-      tempFilePath = (req as any).file.path;
-      // Per ora usiamo il filename temporaneo
-      avatarUrl = `/images/profilo/${(req as any).file.filename}`;
-    }
-
+    // Gestione avatar durante registrazione
     const user = await User.create({
       name,
       email,
       password: hashed,
       role: role === "owner" ? "owner" : "player",
-      ...(avatarUrl && { avatarUrl }), // ✅ Aggiungi solo se esiste
     });
 
-    console.log("✅ Utente registrato:", {
+    console.log("Utente registrato:", {
       id: user._id,
       name: user.name,
       email: user.email,
@@ -62,27 +52,29 @@ export const register = async (req: Request, res: Response) => {
       avatarUrl: user.avatarUrl,
     });
 
-    // ✅ Se c'è un file temporaneo, rinominalo con l'userId reale
-    if (tempFilePath && (req as any).file) {
-      const fs = require("fs");
-      const path = require("path");
-      
-      const oldFilename = (req as any).file.filename;
-      const ext = path.extname(oldFilename);
-      const newFilename = `${user._id}_${Date.now()}${ext}`;
-      const newFilePath = path.join(path.dirname(tempFilePath), newFilename);
-      
+    if ((req as any).file) {
       try {
-        fs.renameSync(tempFilePath, newFilePath);
-        console.log("🔄 File rinominato:", oldFilename, "→", newFilename);
-        
-        // Aggiorna avatarUrl nel database
-        user.avatarUrl = `/images/profilo/${newFilename}`;
-        await user.save();
-        
-        console.log("✅ avatarUrl aggiornato nel DB:", user.avatarUrl);
+        const file = (req as any).file as Express.Multer.File;
+        const base64 = file.buffer.toString("base64");
+        const dataUri = `data:${file.mimetype};base64,${base64}`;
+        const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || "userImage";
+        const publicId = `avatars/${user._id}`;
+
+        const result = await cloudinary.uploader.upload(dataUri, {
+          public_id: publicId,
+          overwrite: true,
+          invalidate: true,
+          upload_preset: uploadPreset,
+          resource_type: "image",
+        });
+
+        const avatarUrl = result.secure_url || result.url;
+        if (avatarUrl) {
+          user.avatarUrl = avatarUrl;
+          await user.save();
+        }
       } catch (err) {
-        console.error("❌ Errore rinomina file:", err);
+        console.error("Avatar upload failed during registration:", err);
       }
     }
 

@@ -6,12 +6,15 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useContext, useState, useCallback } from "react";
 import API_URL from "../../../config/api";
+import Avatar from "../../../components/Avatar/Avatar";
 import { AuthContext } from "../../../context/AuthContext";
 import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
 import { styles } from "../styles/ConversationScreen.styles";
@@ -23,6 +26,7 @@ type Conversation = {
     _id: string;
     name: string;
     email: string;
+    avatarUrl?: string;
   };
   struttura?: {
     _id: string;
@@ -36,7 +40,24 @@ type Conversation = {
   };
   groupName?: string;
   participants?: any[];
-  match?: string;
+  match?: {
+    _id: string;
+    booking?: {
+      date: string;
+      startTime: string;
+      struttura?: {
+        _id: string;
+        name: string;
+      };
+      campo?: {
+        name: string;
+        struttura?: {
+          _id: string;
+          name: string;
+        };
+      };
+    };
+  };
   lastMessage: string;
   lastMessageAt: string;
   unreadByUser?: number;
@@ -53,6 +74,8 @@ export default function OwnerConversationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"all" | "personal" | "group">("all");
+  const [selectedStruttura, setSelectedStruttura] = useState<string | null>(null);
+  const [showStruttureModal, setShowStruttureModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,6 +116,8 @@ export default function OwnerConversationsScreen() {
             groupName: g.groupName,
             participants: g.participants?.length,
             match: g.match,
+            matchBooking: g.match?.booking,
+            struttura: g.struttura,
             lastMessage: g.lastMessage,
           })));
         }
@@ -144,18 +169,31 @@ export default function OwnerConversationsScreen() {
     return count;
   };
 
-  const filteredConversations = conversations.filter((conv) => {
-    if (filter === "personal") {
-      return conv.type === 'direct';
-    }
-    if (filter === "group") {
-      return conv.type === 'group';
-    }
-    return true; // "all"
+  // Estrai strutture uniche dalle conversazioni
+  const strutture = Array.from(
+    new Set(
+      conversations
+        .filter(c => c.struttura)
+        .map(c => JSON.stringify({ id: c.struttura!._id, name: c.struttura!.name }))
+    )
+  ).map(s => JSON.parse(s));
+
+  // Filtra prima per struttura (se selezionata)
+  const conversationsByStruttura = selectedStruttura
+    ? conversations.filter(c => c.struttura?._id === selectedStruttura)
+    : conversations;
+
+  // Poi filtra per tipo
+  const filteredConversations = conversationsByStruttura.filter((conv) => {
+    if (filter === "personal" && conv.type !== 'direct') return false;
+    if (filter === "group" && conv.type !== 'group') return false;
+    return true;
   });
 
-  const personalCount = conversations.filter(c => c.type === 'direct').length;
-  const groupCount = conversations.filter(c => c.type === 'group').length;
+  // Calcola i conteggi basati sulla struttura selezionata
+  const allCount = conversationsByStruttura.length;
+  const personalCount = conversationsByStruttura.filter(c => c.type === 'direct').length;
+  const groupCount = conversationsByStruttura.filter(c => c.type === 'group').length;
   const totalUnread = conversations.reduce(
     (sum, conv) => sum + getUnreadCount(conv),
     0
@@ -175,6 +213,16 @@ export default function OwnerConversationsScreen() {
               conversationId: item._id,
               groupName: item.groupName,
               matchId: item.match,
+              headerInfo: {
+                strutturaName:
+                  item.match?.booking?.campo?.struttura?.name ||
+                  item.match?.booking?.struttura?.name ||
+                  item.struttura?.name,
+                date: item.match?.booking?.date,
+                startTime: item.match?.booking?.startTime,
+                participantsCount: item.participants?.length,
+                bookingId: item.match?.booking?._id,
+              },
             });
           } else {
             navigation.navigate("Chat", {
@@ -189,13 +237,18 @@ export default function OwnerConversationsScreen() {
       >
         <View style={styles.conversationLeft}>
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, isGroup && { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons 
-                name={isGroup ? "people" : "person"} 
-                size={24} 
-                color="#2196F3" 
+            {isGroup ? (
+              <View style={[styles.avatar, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="people" size={22} color="#2196F3" />
+              </View>
+            ) : (
+              <Avatar
+                name={item.user?.name}
+                avatarUrl={item.user?.avatarUrl}
+                size={50}
+                fallbackIcon="person"
               />
-            </View>
+            )}
             {hasUnread && <View style={styles.unreadDot} />}
           </View>
 
@@ -208,7 +261,9 @@ export default function OwnerConversationsScreen() {
                 ]}
                 numberOfLines={1}
               >
-                {isGroup ? item.groupName : item.user?.name}
+                {isGroup 
+                  ? `Partita - ${item.match?.booking?.campo?.struttura?.name || item.match?.booking?.struttura?.name || item.struttura?.name || 'Struttura'}` 
+                  : item.user?.name}
               </Text>
               <Text style={styles.conversationTime}>
                 {formatTime(item.lastMessageAt)}
@@ -217,7 +272,7 @@ export default function OwnerConversationsScreen() {
 
             {!isGroup && item.struttura && (
               <View style={styles.strutturaRow}>
-                <Ionicons name="business-outline" size={14} color="#666" />
+                <Ionicons name="business-outline" size={12} color="#666" />
                 <Text style={styles.strutturaName} numberOfLines={1}>
                   {item.struttura.name}
                 </Text>
@@ -225,26 +280,31 @@ export default function OwnerConversationsScreen() {
             )}
 
             {isGroup && item.match && (
-              <>
-                <View style={styles.strutturaRow}>
-                  <Ionicons name="calendar-outline" size={14} color="#2196F3" />
-                  <Text style={styles.strutturaName} numberOfLines={1}>
-                    {new Date(item.match.booking?.date).toLocaleDateString('it-IT', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric'
-                    })} • {item.match.booking?.startTime}
-                  </Text>
-                </View>
-                {item.match.booking?.campo && (
-                  <View style={styles.strutturaRow}>
-                    <Ionicons name="location-outline" size={14} color="#4CAF50" />
-                    <Text style={styles.strutturaName} numberOfLines={1}>
-                      {item.match.booking.campo.name}
+              <View style={styles.groupDetailsContainer}>
+                <View style={styles.groupDetailsRow}>
+                  <View style={styles.groupDetailItem}>
+                    <Ionicons name="calendar-outline" size={12} color="#2196F3" />
+                    <Text style={styles.groupDetailText}>
+                      {new Date(item.match.booking?.date).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: 'short'
+                      })}
                     </Text>
                   </View>
-                )}
-              </>
+                  <View style={styles.groupDetailItem}>
+                    <Ionicons name="time-outline" size={12} color="#FF9800" />
+                    <Text style={styles.groupDetailText}>
+                      {item.match.booking?.startTime}
+                    </Text>
+                  </View>
+                  <View style={styles.groupDetailItem}>
+                    <Ionicons name="people-outline" size={12} color="#4CAF50" />
+                    <Text style={styles.groupDetailText}>
+                      {item.participants?.length || 0} partecipanti
+                    </Text>
+                  </View>
+                </View>
+              </View>
             )}
 
             {item.lastMessage && (
@@ -313,7 +373,7 @@ export default function OwnerConversationsScreen() {
                 filter === "all" && styles.filterButtonTextActive,
               ]}
             >
-              Tutte ({conversations.length})
+              Tutte ({allCount})
             </Text>
           </Pressable>
 
@@ -327,7 +387,7 @@ export default function OwnerConversationsScreen() {
             <View style={styles.filterButtonContent}>
               <Ionicons 
                 name="person-outline" 
-                size={16} 
+                size={14} 
                 color={filter === "personal" ? "white" : "#666"} 
               />
               <Text
@@ -351,7 +411,7 @@ export default function OwnerConversationsScreen() {
             <View style={styles.filterButtonContent}>
               <Ionicons 
                 name="people-outline" 
-                size={16} 
+                size={14} 
                 color={filter === "group" ? "white" : "#666"} 
               />
               <Text
@@ -365,6 +425,29 @@ export default function OwnerConversationsScreen() {
             </View>
           </Pressable>
         </View>
+
+        {strutture.length > 0 && (
+          <View style={styles.struttureFilterContainer}>
+            <Pressable
+              style={styles.strutturaChipSelector}
+              onPress={() => setShowStruttureModal(true)}
+            >
+              <View style={styles.strutturaChipContent}>
+                <Ionicons
+                  name={selectedStruttura ? "business" : "grid-outline"}
+                  size={16}
+                  color="#4CAF50"
+                />
+                <Text style={styles.strutturaChipSelectorText} numberOfLines={1}>
+                  {selectedStruttura
+                    ? strutture.find(s => s.id === selectedStruttura)?.name || "Tutte le strutture"
+                    : "Tutte le strutture"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color="#666" />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {filteredConversations.length === 0 ? (
@@ -405,6 +488,117 @@ export default function OwnerConversationsScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={showStruttureModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowStruttureModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowStruttureModal(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHandle} />
+
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleziona struttura</Text>
+              <Pressable onPress={() => setShowStruttureModal(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color="#333" />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalList}>
+              <Pressable
+                style={[
+                  styles.modalItem,
+                  !selectedStruttura && styles.modalItemActive,
+                ]}
+                onPress={() => {
+                  setSelectedStruttura(null);
+                  setShowStruttureModal(false);
+                }}
+              >
+                <View style={styles.modalItemLeft}>
+                  <View style={[
+                    styles.modalItemIcon,
+                    !selectedStruttura && styles.modalItemIconActive,
+                  ]}>
+                    <Ionicons
+                      name="grid"
+                      size={20}
+                      color={!selectedStruttura ? "white" : "#4CAF50"}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.modalItemText,
+                    !selectedStruttura && styles.modalItemTextActive,
+                  ]}>
+                    Tutte le strutture
+                  </Text>
+                </View>
+                {!selectedStruttura && (
+                  <Ionicons name="checkmark" size={24} color="#4CAF50" />
+                )}
+              </Pressable>
+
+              {strutture.map((struttura) => {
+                const isActive = selectedStruttura === struttura.id;
+                const count = conversations.filter(
+                  (c) => c.struttura?._id === struttura.id
+                ).length;
+
+                return (
+                  <Pressable
+                    key={struttura.id}
+                    style={[
+                      styles.modalItem,
+                      isActive && styles.modalItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedStruttura(struttura.id);
+                      setShowStruttureModal(false);
+                    }}
+                  >
+                    <View style={styles.modalItemLeft}>
+                      <View style={[
+                        styles.modalItemIcon,
+                        isActive && styles.modalItemIconActive,
+                      ]}>
+                        <Ionicons
+                          name="business"
+                          size={20}
+                          color={isActive ? "white" : "#4CAF50"}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[
+                          styles.modalItemText,
+                          isActive && styles.modalItemTextActive,
+                        ]} numberOfLines={1}>
+                          {struttura.name}
+                        </Text>
+                        {count > 0 && (
+                          <Text style={styles.modalItemSubtext}>
+                            {count} {count === 1 ? 'conversazione' : 'conversazioni'}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={24} color="#4CAF50" />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

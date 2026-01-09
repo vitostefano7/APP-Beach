@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import { Avatar } from "../../../../components/Avatar";
 import { formatMatchDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
 
@@ -24,14 +25,6 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
   // Get players for each team
   const teamAPlayers = match.players.filter((p: any) => p.team === 'A');
   const teamBPlayers = match.players.filter((p: any) => p.team === 'B');
-  
-  // Helper to get initials
-  const getInitials = (name?: string, surname?: string) => {
-    if (!name) return '?';
-    const firstInitial = name.charAt(0).toUpperCase();
-    const lastInitial = surname ? surname.charAt(0).toUpperCase() : '';
-    return firstInitial + lastInitial;
-  };
 
   // Get sport icon
   const getSportIcon = (sport: string) => {
@@ -158,18 +151,16 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={styles.matchTeamAvatars}>
                 {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <View 
+                  <Avatar
                     key={player._id || player.user?._id || `teamA-${idx}`}
-                    style={[
-                      styles.matchAvatar,
-                      styles.matchAvatarA,
-                      idx > 0 && { marginLeft: -8 }
-                    ]}
-                  >
-                    <Text style={styles.matchAvatarText}>
-                      {getInitials(player.user?.name, player.user?.surname)}
-                    </Text>
-                  </View>
+                    name={player.user?.name}
+                    surname={player.user?.surname}
+                    avatarUrl={player.user?.avatarUrl}
+                    size="small"
+                    teamColor="A"
+                    style={idx > 0 && { marginLeft: -8 }}
+                    zIndex={2 - idx}
+                  />
                 ))}
               </View>
               {teamAPlayers.length > 0 && (
@@ -227,18 +218,16 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={styles.matchTeamAvatars}>
                 {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <View 
+                  <Avatar
                     key={player._id || player.user?._id || `teamB-${idx}`}
-                    style={[
-                      styles.matchAvatar,
-                      styles.matchAvatarB,
-                      idx > 0 && { marginLeft: -8 }
-                    ]}
-                  >
-                    <Text style={styles.matchAvatarText}>
-                      {getInitials(player.user?.name, player.user?.surname)}
-                    </Text>
-                  </View>
+                    name={player.user?.name}
+                    surname={player.user?.surname}
+                    avatarUrl={player.user?.avatarUrl}
+                    size="small"
+                    teamColor="B"
+                    style={idx > 0 && { marginLeft: -8 }}
+                    zIndex={2 - idx}
+                  />
                 ))}
               </View>
               {teamBPlayers.length > 0 && (

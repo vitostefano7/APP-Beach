@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
 import { AuthContext } from "../../../context/AuthContext";
 
 const DettaglioInvito = () => {
@@ -290,7 +291,7 @@ const DettaglioInvito = () => {
             <View style={styles.avatarContainer}>
               {createdBy?.avatarUrl ? (
                 <Image
-                  source={{ uri: `${API_URL}${createdBy.avatarUrl}` }}
+                  source={{ uri: resolveAvatarUrl(createdBy.avatarUrl) || "" }}
                   style={styles.creatorAvatar}
                 />
               ) : (
@@ -376,7 +377,7 @@ const DettaglioInvito = () => {
             
             {struttura.images?.[0] && (
               <Image
-                source={{ uri: `${API_URL}${struttura.images[0]}` }}
+                source={{ uri: resolveAvatarUrl(struttura.images[0]) || "" }}
                 style={styles.structureImage}
               />
             )}
@@ -440,7 +441,7 @@ const DettaglioInvito = () => {
                   <View style={styles.playerAvatarContainer}>
                     {playerUser.avatarUrl ? (
                       <Image
-                        source={{ uri: `${API_URL}${playerUser.avatarUrl}` }}
+                        source={{ uri: resolveAvatarUrl(playerUser.avatarUrl) || "" }}
                         style={styles.playerAvatar}
                       />
                     ) : (

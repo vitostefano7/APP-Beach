@@ -27,66 +27,69 @@ export const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "700",
     color: "#1a1a1a",
+    marginBottom: 14,
   },
 
   totalUnreadBadge: {
     backgroundColor: "#FF5252",
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
   },
 
   totalUnreadText: {
     color: "white",
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "700",
   },
 
   filterContainer: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
 
   filterButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     backgroundColor: "#f5f5f5",
     alignItems: "center",
-    borderWidth: 0,
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
 
   filterButtonActive: {
     backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
     shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   filterButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
 
   filterButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "600",
     color: "#666",
   },
 
   filterButtonTextActive: {
     color: "white",
-    fontWeight: "800",
+    fontWeight: "700",
   },
 
   filterBadge: {
@@ -105,6 +108,131 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  struttureFilterContainer: {
+    marginTop: 12,
+  },
+
+  strutturaChipSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#E8F5E9",
+    borderWidth: 1.5,
+    borderColor: "#4CAF50",
+  },
+
+  strutturaChipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+
+  strutturaChipSelectorText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2E7D32",
+    flex: 1,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+
+  modalContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "80%",
+    paddingBottom: 20,
+  },
+
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+
+  modalList: {
+    maxHeight: 400,
+  },
+
+  modalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+
+  modalItemActive: {
+    backgroundColor: "#F1F8F4",
+  },
+
+  modalItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+
+  modalItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalItemIconActive: {
+    backgroundColor: "#4CAF50",
+  },
+
+  modalItemText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  modalItemTextActive: {
+    color: "#2E7D32",
+    fontWeight: "700",
+  },
+
+  modalItemSubtext: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -113,9 +241,9 @@ export const styles = StyleSheet.create({
   },
 
   loadingText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#666",
-    fontWeight: "600",
+    fontWeight: "500",
   },
 
   listContent: {
@@ -127,16 +255,16 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 14,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 0,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: "transparent",
   },
 
@@ -159,34 +287,34 @@ export const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "#E3F2FD",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   unreadDot: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: "#FF5252",
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: "white",
   },
 
   conversationInfo: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
 
   conversationHeader: {
@@ -197,19 +325,19 @@ export const styles = StyleSheet.create({
   },
 
   conversationTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "600",
     color: "#1a1a1a",
     flex: 1,
   },
 
   conversationTitleUnread: {
-    fontWeight: "800",
+    fontWeight: "700",
     color: "#000",
   },
 
   conversationTime: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#999",
     fontWeight: "500",
     marginLeft: 8,
@@ -219,20 +347,44 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 4,
+    marginBottom: 3,
   },
 
   strutturaName: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     fontWeight: "500",
     flex: 1,
   },
 
+  groupDetailsContainer: {
+    marginTop: 2,
+    marginBottom: 4,
+  },
+
+  groupDetailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+
+  groupDetailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  groupDetailText: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "500",
+  },
+
   conversationLastMessage: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#999",
-    lineHeight: 20,
+    lineHeight: 18,
   },
 
   conversationLastMessageUnread: {
@@ -242,25 +394,25 @@ export const styles = StyleSheet.create({
 
   unreadBadge: {
     backgroundColor: "#FF5252",
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     marginLeft: 8,
     shadowColor: "#FF5252",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
 
   unreadBadgeText: {
     color: "white",
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
 
   emptyState: {

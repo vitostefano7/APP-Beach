@@ -1,22 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image, Alert } from "react-native";
+import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import API_URL from "../../../../../config/api";
+import { Avatar } from "../../../../../components/Avatar";
 import { Player } from "../types/DettaglioPrenotazione.types";
 import styles from "../styles/DettaglioPrenotazione.styles";
 import TeamChangeModal from "./TeamChangeModal";
-
-const getInitials = (name?: string, surname?: string): string => {
-  if (!name) return "??";
-  if (surname) {
-    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-  }
-  const parts = name.trim().split(" ");
-  return parts.length === 1
-    ? parts[0][0].toUpperCase()
-    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 interface PlayerCardWithTeamProps {
   player?: Player;
@@ -178,23 +167,13 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
       {/* LEFT */}
       <View style={styles.playerLeft}>
-        {player.user?.avatarUrl ? (
-          <Image
-            source={{ uri: `${API_URL}${player.user.avatarUrl}` }}
-            style={styles.playerAvatar}
-          />
-        ) : (
-          <View style={[
-            styles.playerAvatarPlaceholder,
-            currentTeam === "A" ? styles.avatarTeamA : 
-            currentTeam === "B" ? styles.avatarTeamB : 
-            styles.avatarNoTeam
-          ]}>
-            <Text style={styles.avatarInitials}>
-              {getInitials(player.user?.name, player.user?.surname)}
-            </Text>
-          </View>
-        )}
+        <Avatar
+          name={player.user?.name}
+          surname={player.user?.surname}
+          avatarUrl={player.user?.avatarUrl}
+          size={48}
+          teamColor={currentTeam || 'none'}
+        />
 
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>

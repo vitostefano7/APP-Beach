@@ -1,8 +1,8 @@
 // SuggestedFriendCard.tsx
 import React from 'react';
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../../../../config/api";
+import { Avatar } from "../../../../components/Avatar";
 import { styles } from "../styles";
 
 interface SuggestedFriendCardProps {
@@ -10,21 +10,6 @@ interface SuggestedFriendCardProps {
   onPress: (friend: any) => void;
   onInvite: (friendId: string) => void;
 }
-
-// Funzione per ottenere iniziali
-const getInitials = (name?: string): string => {
-  if (!name || typeof name !== 'string') return "?";
-  
-  const trimmedName = name.trim();
-  if (trimmedName.length === 0) return "?";
-  
-  const parts = trimmedName.split(" ").filter(part => part.length > 0);
-  
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({ 
   friend, 
@@ -110,18 +95,12 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
       onPress={() => onPress(friend)}
     >
       {/* AVATAR */}
-      {avatarUrl ? (
-        <Image
-          source={{ uri: `${API_URL}${avatarUrl}` }}
-          style={styles.friendCardAvatar}
-        />
-      ) : (
-        <View style={styles.friendCardAvatarPlaceholder}>
-          <Text style={styles.friendCardAvatarInitials}>
-            {getInitials(friendName)}
-          </Text>
-        </View>
-      )}
+      <Avatar
+        name={friendName}
+        surname={friendData.surname}
+        avatarUrl={avatarUrl}
+        size={48}
+      />
       
       {/* INFO */}
       <View style={styles.friendCardInfo}>

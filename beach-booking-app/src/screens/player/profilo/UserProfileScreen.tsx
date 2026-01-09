@@ -4,7 +4,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useContext, useEffect, useState } from "react";
@@ -15,6 +14,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthContext } from "../../../context/AuthContext";
 import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
+import { Avatar } from "../../../components/Avatar";
 import { styles } from "../styles-player/UserProfileScreen.styles";
 
 type UserProfileRouteProp = RouteProp<DashboardStackParamList, "ProfiloUtente">;
@@ -224,13 +224,13 @@ export default function UserProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            {data.user.avatarUrl ? (
-              <Image source={{ uri: data.user.avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={48} color="#2196F3" />
-              </View>
-            )}
+            <Avatar
+              name={data.user.name}
+              surname={data.user.surname}
+              avatarUrl={data.user.avatarUrl}
+              size="large"
+              fallbackIcon="person"
+            />
             {data.user.profilePrivacy === 'private' && (
               <View style={styles.privateBadge}>
                 <Ionicons name="lock-closed" size={16} color="#666" />

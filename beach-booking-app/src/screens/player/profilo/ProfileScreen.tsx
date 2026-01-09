@@ -19,17 +19,21 @@ import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 import { styles } from "../styles-player/ProfileScreen.styles";
 import API_URL from "../../../config/api";
+import { resolveAvatarUrl } from "../../../utils/avatar";
+import { Avatar } from "../../../components/Avatar";
+import { useCustomAlert } from "../../../components/CustomAlert";
+import { AvatarPicker } from "../../../components/AvatarPicker";
 
 type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
 
 type ProfileResponse = {
   profile: {
     matchesPlayed: number;
-    ratingAverage?: number;
-    favoriteCampo?: { name: string } | null;
-    friendsCount?: number;
-    followersCount?: number;
-    followingCount?: number;
+    ratingAverage: number;
+    favoriteCampo: { name: string } | null;
+    friendsCount: number;
+    followersCount: number;
+    followingCount: number;
   };
   preferences: {
     pushNotifications: boolean;
@@ -46,19 +50,22 @@ export default function ProfileScreen() {
   const { token, logout, user, updateUser } = useContext(AuthContext);
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
   const navigation = useNavigation<ProfileNavigationProp>();
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [data, setData] = useState<ProfileResponse | null>(null);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null);
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
-    console.log("👤 User context aggiornato, avatarUrl:", user?.avatarUrl);
-    if (user?.avatarUrl) {
+    console.log("👤 User context aggiornato, avatarUrl:", user.avatarUrl);
+    if (user.avatarUrl) {
       setAvatarUrl(user.avatarUrl);
     }
-  }, [user?.avatarUrl]);
+  }, [user.avatarUrl]);
 
   useEffect(() => {
     if (token) {
@@ -103,8 +110,8 @@ export default function ProfileScreen() {
       } else {
         console.log("Errore caricamento friends stats:", friendsRes.status);
       }
-      console.log("📥 Dati profilo ricevuti:", json);
-      console.log("🖼️ avatarUrl dal backend:", json.user?.avatarUrl);
+      console.log("Dati profilo ricevuti:", json);
+      console.log("avatarUrl dal backend:", json.user?.avatarUrl);
 
       const parsed: ProfileResponse = {
         profile: {
@@ -127,7 +134,7 @@ export default function ProfileScreen() {
       setDarkMode(parsed.preferences.darkMode);
       
       // ✅ Aggiorna avatar se presente
-      if (json.user?.avatarUrl) {
+      if (json.user.avatarUrl) {
         console.log("✅ Setting avatarUrl:", json.user.avatarUrl);
         setAvatarUrl(json.user.avatarUrl);
       } else {
@@ -140,47 +147,20 @@ export default function ProfileScreen() {
 
   // ✅ Funzione per cambiare avatar
   const changeAvatar = () => {
-    if (avatarUrl) {
-      // Se c'è già un avatar, mostra anche "Rimuovi foto"
-      Alert.alert(
-        "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
-          { text: "Galleria", onPress: pickImageFromGallery },
-          { text: "Fotocamera", onPress: takePhotoWithCamera },
-          { 
-            text: "Rimuovi foto", 
-            onPress: removeAvatar,
-            style: "destructive" as const
-          },
-        ],
-        { cancelable: true }
-      );
-    } else {
-      // Se non c'è avatar, solo galleria e fotocamera
-      Alert.alert(
-        "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
-          { text: "Galleria", onPress: pickImageFromGallery },
-          { text: "Fotocamera", onPress: takePhotoWithCamera },
-        ],
-        { cancelable: true }
-      );
-    }
+    setShowAvatarPicker(true);
   };
 
   const pickImageFromGallery = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
-        Alert.alert(
-          "Permesso negato",
-          "Devi concedere il permesso per accedere alle foto"
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Permesso necessario',
+          message: 'Devi concedere il permesso per accedere alle tue foto',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -196,19 +176,26 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Errore selezione immagine:", error);
-      Alert.alert("Errore", "Impossibile selezionare l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile selezionare l\'immagine',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   };
 
   const takePhotoWithCamera = async () => {
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
-        Alert.alert(
-          "Permesso negato",
-          "Devi concedere il permesso per usare la fotocamera"
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Permesso necessario',
+          message: 'Devi concedere il permesso per usare la fotocamera',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -223,20 +210,25 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Errore fotocamera:", error);
-      Alert.alert("Errore", "Impossibile scattare la foto");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile scattare la foto',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   };
 
   const uploadAvatar = async (imageUri: string) => {
     try {
       console.log("[uploadAvatar] start", {
+        imageUri,
         apiUrl: API_URL,
         hasToken: !!token,
-        imageUri,
       });
 
       const formData = new FormData();
-      
+
       const filename = imageUri.split("/").pop() || "avatar.jpg";
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : "image/jpeg";
@@ -270,19 +262,34 @@ export default function ProfileScreen() {
       if (res.ok) {
         console.log("Avatar caricato:", json.avatarUrl);
         console.log("API_URL:", API_URL);
-        console.log("URL completo:", `${API_URL}${json.avatarUrl}`);
-        
+        console.log("URL completo:", resolveAvatarUrl(json.avatarUrl));
+
+        // ✅ Aggiorna lo stato locale con un nuovo timestamp per forzare il refresh
         setAvatarUrl(json.avatarUrl);
-        
-        // Aggiorna il contesto user
+        setAvatarRefreshKey(prev => prev + 1);
+
+        // ✅ Aggiorna il contesto user
         if (updateUser) {
           updateUser({ ...user, avatarUrl: json.avatarUrl });
         }
-        
-        Alert.alert("Successo", "Immagine profilo aggiornata!");
+
+        // ✅ Ricarica il profilo per assicurarsi che tutto sia sincronizzato
+        await loadProfile();
+
+        showAlert({
+          type: 'success',
+          title: 'Perfetto!',
+          message: 'La tua immagine profilo è stata aggiornata con successo',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       } else {
-        console.log("Errore upload:", json.message);
-        Alert.alert("Errore", json.message || "Impossibile caricare l'immagine");
+        console.log("❌ Errore upload:", json.message);
+        showAlert({
+          type: 'error',
+          title: 'Ops!',
+          message: json.message || 'Non siamo riusciti a caricare l\'immagine. Riprova.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       }
     } catch (error) {
       console.error("Upload avatar error:", error);
@@ -291,7 +298,12 @@ export default function ProfileScreen() {
         hasToken: !!token,
         imageUri,
       });
-      Alert.alert("Errore", "Impossibile caricare l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore di connessione',
+        message: 'Verifica la tua connessione internet e riprova',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   };
 
@@ -306,35 +318,48 @@ export default function ProfileScreen() {
 
       if (res.ok) {
         setAvatarUrl(null);
-        
+        setAvatarRefreshKey(prev => prev + 1);
+
         // ✅ Aggiorna il contesto user
         if (updateUser) {
           updateUser({ ...user, avatarUrl: null });
         }
-        
-        Alert.alert("Successo", "Immagine profilo rimossa!");
+
+        // ✅ Ricarica il profilo
+        await loadProfile();
+
+        showAlert({
+          type: 'success',
+          title: 'Fatto!',
+          message: 'La tua immagine profilo è stata rimossa',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       } else {
-        Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+        showAlert({
+          type: 'error',
+          title: 'Ops!',
+          message: 'Non siamo riusciti a rimuovere l\'immagine',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       }
     } catch (error) {
       console.error("Remove avatar error:", error);
-      Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Non siamo riusciti a rimuovere l\'immagine',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   };
 
   const handleLogout = () => {
-    Alert.alert("Conferma uscita", "Vuoi uscire dal tuo account?", [
+    Alert.alert("Conferma uscita", "Vuoi uscire dal tuo account", [
       { text: "Annulla", style: "cancel" },
       { text: "Esci", style: "destructive", onPress: logout },
     ]);
   };
 
-  const getInitials = (name: string) => {
-    const parts = name.split(" ");
-    return parts.length >= 2
-      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      : name.substring(0, 2).toUpperCase();
-  };
 
   if (!data) {
     return (
@@ -351,45 +376,35 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AlertComponent />
+      <AvatarPicker
+        visible={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        onSelectGallery={pickImageFromGallery}
+        onSelectCamera={takePhotoWithCamera}
+        onRemovePhoto={removeAvatar}
+        hasPhoto={!!avatarUrl}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.avatarContainer}>
             {/* ✅ AVATAR con immagine o iniziali */}
-            <Pressable style={styles.avatar} onPress={changeAvatar}>
-              {avatarUrl ? (
-                <>
-                  <Image 
-                    source={{ 
-                      uri: `${API_URL}${avatarUrl}?t=${Date.now()}` 
-                    }} 
-                    style={styles.avatarImage}
-                    onError={(error) => {
-                      console.log("❌ Errore caricamento immagine:");
-                      console.log("   - avatarUrl:", avatarUrl);
-                      console.log("   - API_URL:", API_URL);
-                      console.log("   - URI completo:", `${API_URL}${avatarUrl}`);
-                      console.log("   - Error:", error.nativeEvent.error);
-                    }}
-                    onLoad={() => {
-                      console.log("✅ Immagine caricata con successo!");
-                      console.log("   - URI:", `${API_URL}${avatarUrl}`);
-                    }}
-                  />
-                </>
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
-                </View>
-              )}
-            </Pressable>
-            
+            <Avatar
+              key={`avatar-${avatarRefreshKey}`}
+              name={user.name}
+              surname={user.surname}
+              avatarUrl={avatarUrl}
+              size="xlarge"
+              onPress={changeAvatar}
+            />
+
             {/* ✅ Badge lucchetto se profilo privato */}
-            {user?.profilePrivacy === 'private' && (
+            {user.profilePrivacy === 'private' && (
               <View style={styles.privateBadge}>
                 <Ionicons name="lock-closed" size={16} color="#666" />
               </View>
             )}
-            
+
             {/* ✅ Bottone camera per cambiare foto */}
             <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
               <Ionicons name="camera" size={16} color="white" />
@@ -503,7 +518,7 @@ function StatCard({
   value: number | string; 
   label: string; 
   color: string;
-  onPress?: () => void;
+  onPress: () => void;
 }) {
   const Container: ElementType = onPress ? Pressable : View;
   const containerProps = onPress
@@ -563,7 +578,7 @@ function PreferenceRow({
   subtitle: string; 
   value: boolean; 
   onChange: (v: boolean) => void; 
-  disabled?: boolean 
+  disabled: boolean 
 }) {
   return (
     <View style={styles.prefRow}>
@@ -586,4 +601,3 @@ function PreferenceRow({
 }
 
 const Divider = () => <View style={styles.divider} />;
-
