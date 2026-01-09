@@ -24,6 +24,7 @@ import * as Location from "expo-location";
 import { Calendar } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 // ✅ Import stili
 import { styles } from "../styles-player/StruttureScreen.styles";
@@ -471,7 +472,7 @@ export default function StruttureScreen() {
   const renderCard = ({ item }: { item: Struttura }) => {
     const currentIndex = currentImageIndexes[item._id] || 0;
     const imageUri = item.images?.length 
-      ? `${API_URL}${item.images[currentIndex]}`
+      ? resolveImageUrl(item.images[currentIndex])
       : null;
 
     return (
@@ -600,7 +601,7 @@ export default function StruttureScreen() {
               {favoriteStrutture.map((fav) => {
                 const currentIndex = currentImageIndexes[fav._id] || 0;
                 const imageUri = fav.images?.length 
-                  ? `${API_URL}${fav.images[currentIndex]}`
+                  ? resolveImageUrl(fav.images[currentIndex])
                   : null;
 
                 return (
@@ -776,7 +777,7 @@ export default function StruttureScreen() {
 
                     {selectedMarker.images?.length ? (
                       <Image
-                        source={{ uri: `${API_URL}${selectedMarker.images[0]}` }}
+                        source={{ uri: resolveImageUrl(selectedMarker.images[0]) }}
                         style={styles.mapModalImage}
                         resizeMode="cover"
                       />

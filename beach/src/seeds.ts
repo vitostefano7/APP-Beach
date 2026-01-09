@@ -51,6 +51,7 @@ cloudinary.config({
  * Altrimenti metti un path assoluto.
  */
 const AVATAR_DIR = path.join(process.cwd(), "images", "profilo");
+const STRUTTURA_IMG_DIR = path.join(process.cwd(), "images", "struttura");
 
 /* =========================
    UTILS
@@ -143,6 +144,43 @@ async function uploadAvatarsToCloudinary(): Promise<string[]> {
   return uploads.map((u) => u.secure_url);
 }
 
+function getStrutturaImageFiles(): string[] {
+  if (!fs.existsSync(STRUTTURA_IMG_DIR)) return [];
+  return fs
+    .readdirSync(STRUTTURA_IMG_DIR)
+    .filter((file) => /\.(png|jpg|jpeg|webp)$/i.test(file))
+    .map((file) => path.join(STRUTTURA_IMG_DIR, file));
+}
+
+async function uploadStrutturaImagesToCloudinary(): Promise<string[]> {
+  const files = getStrutturaImageFiles();
+  if (!files.length) {
+    console.warn(`⚠️ Nessuna immagine struttura trovata in: ${STRUTTURA_IMG_DIR}`);
+    return [];
+  }
+
+  const folder = process.env.CLOUDINARY_STRUTTURE_FOLDER || "images/struttura-images";
+  const maxWidth = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_WIDTH || "1920");
+  const maxHeight = parseInt(process.env.CLOUDINARY_STRUTTURE_MAX_HEIGHT || "1080");
+  const quality = process.env.CLOUDINARY_STRUTTURE_QUALITY || "auto:good";
+
+  const uploads = await Promise.all(
+    files.map((file) =>
+      cloudinary.uploader.upload(file, {
+        folder: folder,
+        resource_type: "image",
+        transformation: [
+          { width: maxWidth, height: maxHeight, crop: "limit" },
+          { quality: quality },
+          { fetch_format: "auto" }
+        ]
+      })
+    )
+  );
+
+  return uploads.map((u) => u.secure_url);
+}
+
 /* =========================
    SEED
 ========================= */
@@ -176,6 +214,15 @@ async function seed() {
       console.log(`✅ Avatar caricati: ${avatarUrls.length}`);
     } else {
       console.log("ℹ️ Nessun avatar caricato: avatarUrl resterà vuoto");
+    }
+
+    /* -------- STRUTTURA IMAGES UPLOAD -------- */
+    console.log(`☁️ Upload immagini strutture da: ${STRUTTURA_IMG_DIR}`);
+    const strutturaImageUrls = await uploadStrutturaImagesToCloudinary();
+    if (strutturaImageUrls.length) {
+      console.log(`✅ Immagini strutture caricate: ${strutturaImageUrls.length}`);
+    } else {
+      console.log("ℹ️ Nessuna immagine struttura caricata");
     }
 
     /* -------- USERS -------- */
@@ -531,36 +578,51 @@ async function seed() {
     ];
 
     const strutture = await Struttura.insertMany(
-      struttureData.map((s) => ({
-        name: s.name,
-        description: s.description,
-        owner: s.owner,
-        location: {
-          address: `Via Test ${randomInt(1, 100)}`,
-          city: s.city,
-          lat: s.lat,
-          lng: s.lng,
-          coordinates: [s.lng, s.lat],
-        },
-        amenities: s.amenities,
-        openingHours: {
-          monday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
-          tuesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
-          wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
-          thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
-          friday: { closed: false, slots: [{ open: "09:00", close: "23:00" }] },
-          saturday: { closed: false, slots: [{ open: "08:00", close: "23:00" }] },
-          sunday: { closed: false, slots: [{ open: "08:00", close: "22:00" }] },
-        },
-        images: [],
-        rating: { average: s.rating, count: s.count },
-        isActive: true,
-        isFeatured: s.isFeatured,
-        isDeleted: false,
-      }))
+      struttureData.map((s) => {
+        // ✅ Assegna randomicamente 2-4 immagini a ogni struttura
+        const numImages = strutturaImageUrls.length > 0 ? randomInt(2, Math.min(4, strutturaImageUrls.length)) : 0;
+        const strutturaImages: string[] = [];
+        
+        if (numImages > 0) {
+          const shuffled = [...strutturaImageUrls].sort(() => 0.5 - Math.random());
+          strutturaImages.push(...shuffled.slice(0, numImages));
+        }
+
+        return {
+          name: s.name,
+          description: s.description,
+          owner: s.owner,
+          location: {
+            address: `Via Test ${randomInt(1, 100)}`,
+            city: s.city,
+            lat: s.lat,
+            lng: s.lng,
+            coordinates: [s.lng, s.lat],
+          },
+          amenities: s.amenities,
+          openingHours: {
+            monday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+            tuesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+            wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+            thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
+            friday: { closed: false, slots: [{ open: "09:00", close: "23:00" }] },
+            saturday: { closed: false, slots: [{ open: "08:00", close: "23:00" }] },
+            sunday: { closed: false, slots: [{ open: "08:00", close: "22:00" }] },
+          },
+          images: strutturaImages,
+          rating: { average: s.rating, count: s.count },
+          isActive: true,
+          isFeatured: s.isFeatured,
+          isDeleted: false,
+        };
+      })
     );
 
     console.log(`✅ Create ${strutture.length} strutture`);
+    if (strutturaImageUrls.length > 0) {
+      const totImagesAssigned = strutture.reduce((acc: number, s: any) => acc + s.images.length, 0);
+      console.log(`   📸 ${totImagesAssigned} immagini assegnate alle strutture (2-4 per struttura)`);
+    }
 
     /* -------- EVENTS (4) -------- */
     const eventsData = [

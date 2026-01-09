@@ -19,6 +19,7 @@ import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/nativ
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 import { styles } from "../styles/ModificaStruttura-styles";
 import {
@@ -405,7 +406,7 @@ export default function ModificaStrutturaScreen() {
                 {images.map((img, index) => (
                   <View key={index} style={styles.imagePreviewCard}>
                     <Image
-                      source={{ uri: `${API_URL}${img}` }}
+                      source={{ uri: resolveImageUrl(img) }}
                       style={styles.imagePreview}
                       resizeMode="cover"
                     />

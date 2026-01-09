@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
 import API_URL from "../../../config/api";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 export default function GestisciImmaginiStrutturaScreen() {
   const { token } = useContext(AuthContext);
@@ -90,82 +91,44 @@ export default function GestisciImmaginiStrutturaScreen() {
     setUploading(true);
 
     try {
-      for (const asset of assets) {
-        console.log("🔄 Inizio upload per:", asset.uri);
+      console.log(`📤 Caricamento di ${assets.length} immagini tramite backend...`);
+      
+      // Carica le immagini una alla volta tramite backend
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        console.log(`📸 Upload immagine ${i + 1} di ${assets.length}`);
         
-        // ✅ Usa XMLHttpRequest invece di fetch (bug noto React Native + FormData)
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          
-          const formData = new FormData();
-          
-          const filename = asset.uri.split("/").pop();
-          const match = /\.(\w+)$/.exec(filename || "");
-          const type = match ? `image/${match[1]}` : "image/jpeg";
+        const ext = asset.uri.split(".").pop();
+        const formData = new FormData();
 
-          console.log("📝 Filename:", filename);
-          console.log("📝 Type:", type);
+        formData.append("image", {
+          uri: asset.uri,
+          type: `image/${ext === "jpg" ? "jpeg" : ext}`,
+          name: `struttura-${Date.now()}.${ext}`,
+        } as any);
 
-          formData.append("image", {
-            uri: asset.uri,
-            type: type,
-            name: filename || `struttura-${Date.now()}.jpg`,
-          } as any);
+        const response = await fetch(
+          `${API_URL}/strutture/${strutturaId}/images`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
 
-          const url = `${API_URL}/strutture/${strutturaId}/images`;
-          console.log("🌐 URL completa:", url);
-
-          xhr.open("POST", url);
-          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
-          xhr.onload = () => {
-            console.log("📡 Response status:", xhr.status);
-            
-            if (xhr.status >= 200 && xhr.status < 300) {
-              console.log("✅ Upload successo:", xhr.responseText);
-              resolve();
-            } else {
-              console.log("❌ Response error:", xhr.responseText);
-              try {
-                const error = JSON.parse(xhr.responseText);
-                reject(new Error(error.message || "Errore upload"));
-              } catch {
-                reject(new Error(`Errore upload: ${xhr.status}`));
-              }
-            }
-          };
-
-          xhr.onerror = () => {
-            console.error("❌ Network error");
-            reject(new Error("Errore di rete durante l'upload"));
-          };
-
-          xhr.ontimeout = () => {
-            console.error("❌ Timeout");
-            reject(new Error("Timeout durante l'upload"));
-          };
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percentComplete = (event.loaded / event.total) * 100;
-              console.log(`📤 Upload progress: ${percentComplete.toFixed(0)}%`);
-            }
-          };
-
-          console.log("🚀 Sending request...");
-          xhr.send(formData);
-        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Errore upload immagine");
+        }
       }
 
+      console.log("✅ Tutte le immagini caricate con successo");
       Alert.alert("Successo", `${assets.length} immagine/i caricate!`);
       await loadImages();
     } catch (error: any) {
       console.error("❌ Errore upload:", error);
-      console.error("❌ Error name:", error.name);
-      console.error("❌ Error message:", error.message);
-      if (error.stack) {
-        console.error("❌ Stack:", error.stack);
-      }
       Alert.alert("Errore", error.message || "Errore durante l'upload");
     } finally {
       setUploading(false);
@@ -331,7 +294,7 @@ export default function GestisciImmaginiStrutturaScreen() {
             {images.map((img, index) => (
               <View key={index} style={styles.imageCard}>
                 <Image
-                  source={{ uri: `${API_URL}${img}` }}
+                  source={{ uri: resolveImageUrl(img) }}
                   style={styles.image}
                   resizeMode="cover"
                 />

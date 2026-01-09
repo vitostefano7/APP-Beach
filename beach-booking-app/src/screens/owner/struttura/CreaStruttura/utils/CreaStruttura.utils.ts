@@ -80,30 +80,41 @@ export async function searchAddress(query: string) {
 export async function uploadImages(
   strutturaId: string,
   images: string[],
-  token: string
+  token: string,
+  onProgress?: (current: number, total: number) => void
 ) {
-  for (const imageUri of images) {
+  // Carica le immagini tramite backend
+  for (let i = 0; i < images.length; i++) {
+    const imageUri = images[i];
+    
+    // Notifica progresso
+    if (onProgress) {
+      onProgress(i + 1, images.length);
+    }
+
     const ext = imageUri.split(".").pop();
     const formData = new FormData();
 
     formData.append("image", {
-      uri:
-        Platform.OS === "android"
-          ? imageUri
-          : imageUri.replace("file://", ""),
+      uri: Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
       type: `image/${ext === "jpg" ? "jpeg" : ext}`,
-      name: `photo-${Date.now()}.${ext}`,
+      name: `struttura-${Date.now()}.${ext}`,
     } as any);
 
     const res = await fetch(
       `${API_URL}/strutture/${strutturaId}/images`,
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       }
     );
 
-    if (!res.ok) throw new Error("Errore upload immagini");
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Errore upload immagini");
+    }
   }
 }

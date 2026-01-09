@@ -5,6 +5,7 @@ import Booking from "../models/Booking";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import { AuthRequest } from "../middleware/authMiddleware";
 import axios from "axios";
+import cloudinary from "../config/cloudinary";
 
 /**
  * 📌 GET /strutture
@@ -453,7 +454,7 @@ export const updateStruttura = async (
 
 /**
  * 📌 DELETE /strutture/:id
- * Elimina struttura (OWNER)
+ * Elimina struttura (OWNER) con cleanup Cloudinary
  */
 export const deleteStruttura = async (
   req: AuthRequest,
@@ -474,13 +475,43 @@ export const deleteStruttura = async (
       });
     }
 
+    // ✅ Elimina immagini da Cloudinary
+    if (struttura.images && struttura.images.length > 0) {
+      console.log(`🗑️ Eliminazione di ${struttura.images.length} immagini da Cloudinary...`);
+      
+      for (const imageUrl of struttura.images) {
+        if (imageUrl.includes("cloudinary.com")) {
+          try {
+            // Estrai public_id dall'URL
+            const urlParts = imageUrl.split("/");
+            const uploadIndex = urlParts.indexOf("upload");
+            if (uploadIndex !== -1) {
+              const publicIdWithExt = urlParts.slice(uploadIndex + 2).join("/");
+              const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf("."));
+              
+              await cloudinary.uploader.destroy(publicId, {
+                invalidate: true,
+                resource_type: "image"
+              });
+              console.log("✅ Immagine eliminata:", publicId);
+            }
+          } catch (cloudError) {
+            console.error("⚠️ Errore eliminazione immagine Cloudinary:", cloudError);
+            // Continua con le altre
+          }
+        }
+      }
+    }
+
+    // Elimina campi associati
     const campiEliminati = await Campo.deleteMany({ struttura: req.params.id });
     console.log(`✅ ${campiEliminati.deletedCount} campi eliminati`);
 
+    // Elimina struttura
     await Struttura.findByIdAndDelete(req.params.id);
     console.log("✅ Struttura eliminata:", struttura.name);
 
-    res.json({ message: "Struttura e campi eliminati con successo" });
+    res.json({ message: "Struttura, campi e immagini eliminati con successo" });
   } catch (err) {
     console.error("❌ Errore deleteStruttura:", err);
     res.status(500).json({ message: "Errore eliminazione struttura" });
