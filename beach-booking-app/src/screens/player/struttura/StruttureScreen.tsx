@@ -1051,7 +1051,7 @@ function AdvancedFiltersModal({
                   setTempFilters((prev) => ({ ...prev, city: text || null }))
                 }
               />
-              <Pressable
+                <Pressable
                 style={styles.geolocationButton}
                 onPress={async () => {
                   try {
@@ -1118,7 +1118,7 @@ function AdvancedFiltersModal({
                   }
                 }}
               >
-                <Ionicons name="location" size={20} color="#2979ff" />
+                <Ionicons name="location" size={20} color="#2196F3" />
               </Pressable>
             </View>
             {tempFilters.city ? (
@@ -1179,7 +1179,7 @@ function AdvancedFiltersModal({
               <Ionicons 
                 name="calendar-outline" 
                 size={20} 
-                color={tempFilters.date ? "#2979ff" : "#666"} 
+                color={tempFilters.date ? "#2196F3" : "#666"} 
               />
               <Text style={[
                 styles.datePickerText,

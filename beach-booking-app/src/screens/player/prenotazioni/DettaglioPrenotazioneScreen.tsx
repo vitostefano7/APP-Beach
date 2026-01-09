@@ -1105,6 +1105,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             duration={calculateDuration(booking.startTime, booking.endTime)}
             price={booking.price}
             createdAt={booking.createdAt}
+            isPublic={booking.match?.isPublic}
           />
         </AnimatedCard>
 

@@ -70,21 +70,51 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   // Badge per motivo suggerimento
   const getPriorityBadge = () => {
     const reason = friend.reason;
-    if (!reason || typeof reason !== 'string') return null;
+    if (!reason) return null;
     
     let color, icon, text;
-    if (reason.includes('matches')) {
-      color = '#2196F3';
-      icon = 'trophy';
-      text = 'Compagno';
-    } else if (reason.includes('friends')) {
-      color = '#FF9800';
-      icon = 'people';
-      text = 'Amici comuni';
-    } else if (reason.includes('venue')) {
-      color = '#9C27B0';
-      icon = 'location';
-      text = 'Stesso centro';
+    
+    // Gestisci la struttura oggetto del backend
+    if (typeof reason === 'object' && reason.type) {
+      const reasonType = reason.type;
+      const details = reason.details || {};
+      
+      if (reasonType === 'match_together') {
+        // Se ha molte partite (>=3) è un utente VIP
+        if (details.matchCount >= 3) {
+          color = '#FFD700'; // Oro
+          icon = 'star';
+          text = 'Giocatore VIP';
+        } else {
+          color = '#2196F3';
+          icon = 'trophy';
+          text = 'Compagno';
+        }
+      } else if (reasonType === 'mutual_friends') {
+        color = '#FF9800';
+        icon = 'people';
+        text = 'Amici comuni';
+      } else if (reasonType === 'same_venue') {
+        color = '#9C27B0';
+        icon = 'location';
+        text = 'Stesso centro';
+      }
+    } 
+    // Gestisci la struttura stringa legacy
+    else if (typeof reason === 'string') {
+      if (reason.includes('matches')) {
+        color = '#2196F3';
+        icon = 'trophy';
+        text = 'Compagno';
+      } else if (reason.includes('friends')) {
+        color = '#FF9800';
+        icon = 'people';
+        text = 'Amici comuni';
+      } else if (reason.includes('venue')) {
+        color = '#9C27B0';
+        icon = 'location';
+        text = 'Stesso centro';
+      }
     }
     
     return color ? { color, icon, text } : null;
@@ -135,8 +165,11 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         <View style={styles.friendCardStats}>
           {matchCount > 0 && (
             <View style={styles.friendStatItem}>
-              <Ionicons name="trophy-outline" size={12} color="#2196F3" />
-              <Text style={styles.friendStatText}>{matchCount} {matchCount === 1 ? 'partita' : 'partite'}</Text>
+              <Ionicons name="trophy-outline" size={12} color={matchCount >= 3 ? "#FFD700" : "#2196F3"} />
+              <Text style={styles.friendStatText}>
+                {matchCount} {matchCount === 1 ? 'partita' : 'partite'}
+                {matchCount >= 3 && ' 🌟'}
+              </Text>
             </View>
           )}
           {commonFriends > 0 && (

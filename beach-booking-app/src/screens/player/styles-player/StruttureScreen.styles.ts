@@ -749,22 +749,23 @@ export const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1A1A1A",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a1a1a",
     marginTop: 20,
-    marginBottom: 12,
+    marginBottom: 10,
+    letterSpacing: -0.2,
   },
 
   cityInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
     paddingRight: 8,
-    borderWidth: 2,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
 
   cityInput: {
@@ -793,12 +794,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
 
   inputModal: {
@@ -853,27 +854,27 @@ export const styles = StyleSheet.create({
   },
 
   option: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 2,
-    borderColor: "transparent",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1.5,
+    borderColor: "#e9ecef",
   },
 
   optionActive: {
     backgroundColor: "#E3F2FD",
-    borderColor: "#2979ff",
+    borderColor: "#2196F3",
   },
 
   optionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: "#495057",
   },
 
   optionTextActive: {
-    color: "#2979ff",
+    color: "#2196F3",
     fontWeight: "700",
   },
 
@@ -915,24 +916,24 @@ export const styles = StyleSheet.create({
   timeSlot: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 2,
-    borderColor: "transparent",
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1.5,
+    borderColor: "#e9ecef",
   },
 
   timeSlotActive: {
-    backgroundColor: "#2979ff",
-    borderColor: "#2979ff",
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
   },
 
   timeSlotText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: "#495057",
   },
 
   timeSlotTextActive: {
@@ -959,24 +960,26 @@ export const styles = StyleSheet.create({
   resetModalButton: {
     flex: 1,
     paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+    borderRadius: 16,
+    backgroundColor: "#f8f9fa",
     alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#e9ecef",
   },
 
   resetModalText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#666",
+    color: "#495057",
   },
 
   applyButton: {
     flex: 2,
     paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: "#2979ff",
+    borderRadius: 16,
+    backgroundColor: "#2196F3",
     alignItems: "center",
-    shadowColor: "#2979ff",
+    shadowColor: "#2196F3",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1069,28 +1072,28 @@ export const styles = StyleSheet.create({
   datePickerButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#F5F5F5",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
+    gap: 10,
+    backgroundColor: "#f8f9fa",
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#e9ecef",
   },
 
   datePickerButtonActive: {
     backgroundColor: "#E3F2FD",
-    borderColor: "#2979ff",
+    borderColor: "#2196F3",
   },
 
   datePickerText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: "#495057",
   },
 
   datePickerTextActive: {
-    color: "#2979ff",
+    color: "#2196F3",
     fontWeight: "700",
   },
 

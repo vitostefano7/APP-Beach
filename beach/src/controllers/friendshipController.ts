@@ -747,11 +747,23 @@ export const friendshipController = {
 
       // STEP 3: Combina e calcola punteggi
       console.log("🔄 STEP 3: Combinazione suggerimenti...");
-      const allSuggestions = friendshipController.combineSuggestions(
+      let allSuggestions = friendshipController.combineSuggestions(
         matchSuggestions,
         mutualFriendSuggestions,
         venueSuggestions
       );
+
+      console.log(`📊 Suggerimenti combinati: ${allSuggestions.length}`);
+
+      // STEP 3.5: Se non ci sono suggerimenti, aggiungi utenti VIP
+      if (allSuggestions.length === 0) {
+        console.log("🌟 Nessun suggerimento trovato, cerco utenti VIP...");
+        const vipSuggestions = await friendshipController.getVipUserSuggestions(userId, excludedUsers, 20);
+        console.log(`🌟 Trovati ${vipSuggestions.length} utenti VIP`);
+        allSuggestions = vipSuggestions;
+      } else {
+        console.log(`✅ Usando ${allSuggestions.length} suggerimenti normali`);
+      }
 
       // STEP 4: Ordina per punteggio e applica limite
       console.log("🔄 STEP 4: Ordinamento suggerimenti...");
@@ -1277,6 +1289,153 @@ export const friendshipController = {
       return suggestions;
     } catch (error) {
       console.log("❌ [getVenueBasedSuggestions] Errore:", error);
+      return [];
+    }
+  },
+
+  // Priorità 4: Utenti VIP (con molte partite e follower)
+  async getVipUserSuggestions(
+    userId: Types.ObjectId,
+    excludedUsers: Types.ObjectId[],
+    limit: number = 10
+  ): Promise<SuggestedUser[]> {
+    try {
+      console.log("🌟 [getVipUserSuggestions] Cerco utenti VIP...");
+
+      // Trova utenti con:
+      // 1. Molte partite completate (almeno 10)
+      // 2. Molti follower (almeno 5)
+      const vipUsers = await User.aggregate([
+        {
+          $match: {
+            _id: { $nin: [...excludedUsers] },
+            isActive: true,
+            role: "player",
+          },
+        },
+        {
+          // Conta le partite completate
+          $lookup: {
+            from: "matches",
+            let: { userId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$status", "completed"] },
+                      {
+                        $in: [
+                          "$$userId",
+                          {
+                            $map: {
+                              input: {
+                                $filter: {
+                                  input: "$players",
+                                  cond: { $eq: ["$$this.status", "confirmed"] },
+                                },
+                              },
+                              in: "$$this.user",
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "matches",
+          },
+        },
+        {
+          // Conta i follower
+          $lookup: {
+            from: "friendships",
+            let: { userId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$recipient", "$$userId"] },
+                      { $eq: ["$status", "accepted"] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "followers",
+          },
+        },
+        {
+          $addFields: {
+            matchCount: { $size: "$matches" },
+            followerCount: { $size: "$followers" },
+          },
+        },
+        {
+          // Filtra solo utenti con almeno 3 partite e 2 follower (soglie ridotte)
+          $match: {
+            matchCount: { $gte: 3 },
+            followerCount: { $gte: 2 },
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            username: 1,
+            avatarUrl: 1,
+            preferredSports: 1,
+            matchCount: 1,
+            followerCount: 1,
+            // Calcola uno score VIP basato su match e follower
+            vipScore: {
+              $add: [
+                { $multiply: ["$matchCount", 2] }, // 2 punti per match
+                { $multiply: ["$followerCount", 3] }, // 3 punti per follower
+              ],
+            },
+          },
+        },
+        {
+          $sort: { vipScore: -1 },
+        },
+        {
+          $limit: limit,
+        },
+      ]);
+
+      console.log(`🌟 [getVipUserSuggestions] Trovati ${vipUsers.length} utenti VIP`);
+
+      const suggestions: SuggestedUser[] = [];
+
+      for (const user of vipUsers) {
+        // Calcola score normalizzato (30% del vipScore)
+        const score = (user.vipScore * 0.3);
+
+        suggestions.push({
+          user: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            preferredSports: user.preferredSports,
+          },
+          reason: {
+            type: "match_together", // Usiamo questo tipo per indicare utenti popolari
+            details: {
+              matchCount: user.matchCount,
+            },
+          },
+          score,
+          friendshipStatus: await friendshipController.getFriendshipStatusForUser(userId, user._id),
+        });
+      }
+
+      return suggestions;
+    } catch (error) {
+      console.log("❌ [getVipUserSuggestions] Errore:", error);
       return [];
     }
   },

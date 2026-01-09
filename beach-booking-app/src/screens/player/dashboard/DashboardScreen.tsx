@@ -18,7 +18,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import { useSuggestedFriends } from './hooks/useSuggestedFriends';
 import Header from "./components/Header";
-import StatsRow from "./components/StatsRow";
+// import StatsRow from "./components/StatsRow";
 import NextMatchCard from "./components/NextMatchCard";
 import InviteCard from "./components/InviteCard";
 import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
@@ -89,12 +89,12 @@ export default function HomeScreen() {
   const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
   
   const friendsCarouselRef = useRef<FlatList>(null);
-  
-  const [stats, setStats] = useState({
-    totalMatches: 0,
-    wins: 0,
-    winRate: 0,
-  });
+
+  // const [stats, setStats] = useState({
+  //   totalMatches: 0,
+  //   wins: 0,
+  //   winRate: 0,
+  // });
 
   // Custom Hook per amici suggeriti
   const {
@@ -367,21 +367,21 @@ export default function HomeScreen() {
         
         setRecentMatches(sortedMatches);
 
-        const myMatches = sortedMatches.filter((m: any) => {
-          const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
-          return myPlayer && myPlayer.status === "confirmed";
-        });
+        // const myMatches = sortedMatches.filter((m: any) => {
+        //   const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
+        //   return myPlayer && myPlayer.status === "confirmed";
+        // });
 
-        const wins = myMatches.filter((m: any) => {
-          const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
-          return myPlayer && myPlayer.team === m.winner;
-        }).length;
+        // const wins = myMatches.filter((m: any) => {
+        //   const myPlayer = m.players.find((p: any) => p.user._id === user?.id);
+        //   return myPlayer && myPlayer.team === m.winner;
+        // }).length;
 
-        setStats({
-          totalMatches: myMatches.length,
-          wins,
-          winRate: myMatches.length > 0 ? Math.round((wins / myMatches.length) * 100) : 0,
-        });
+        // setStats({
+        //   totalMatches: myMatches.length,
+        //   wins,
+        //   winRate: myMatches.length > 0 ? Math.round((wins / myMatches.length) * 100) : 0,
+        // });
       }
     } catch (error) {
       console.error("Errore caricamento match:", error);
@@ -657,7 +657,7 @@ export default function HomeScreen() {
               Aggiungi amici per iniziare!
             </Text>
             <Text style={styles.emptyCarouselSubtext}>
-              Troveremo suggerimenti basati su partite giocate insieme e interessi comuni
+              Troveremo suggerimenti basati su partite giocate insieme, amici comuni e giocatori VIP più attivi
             </Text>
             <Pressable 
               style={[styles.bookButton, { marginTop: 16 }]}
@@ -692,7 +692,7 @@ export default function HomeScreen() {
         }
       >
         <Header user={user} pendingInvites={validPendingInvites} />
-        
+
         {__DEV__ && validPendingInvites.length > 0 && (
           <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
             <Text style={{ fontSize: 12, color: '#666' }}>
@@ -701,7 +701,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <StatsRow stats={stats} />
+        {/* <StatsRow stats={stats} /> */}
 
         {/* Quick Action Buttons */}
         <View style={styles.quickActionsContainer}>
@@ -725,18 +725,21 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              {nextBooking && (() => {
-                try {
-                  const now = new Date();
-                  const bookingStartTime = new Date(`${nextBooking.date}T${nextBooking.startTime}:00`);
-                  const bookingEndTime = new Date(`${nextBooking.date}T${nextBooking.endTime}:00`);
-                  if (now >= bookingStartTime && now <= bookingEndTime) {
-                    return "Partita in corso";
-                  }
-                } catch (error) {}
-                return "La tua prossima partita";
-              })()}
-            </Text>
+      {nextBooking ? (() => {
+        try {
+          const now = new Date();
+          const bookingStartTime = new Date(`${nextBooking.date}T${nextBooking.startTime}:00`);
+          const bookingEndTime = new Date(`${nextBooking.date}T${nextBooking.endTime}:00`);
+          
+          if (now >= bookingStartTime && now <= bookingEndTime) {
+            return "Partita in corso";
+          }
+        } catch (error) {
+          // In caso di errore nel parsing delle date
+        }
+        return "La tua prossima partita";
+      })() : "La tua prossima partita"}
+    </Text>
             
             <Pressable onPress={() => navigation.navigate("LeMiePrenotazioni")}>
               <Text style={styles.sectionLink}>Calendario</Text>

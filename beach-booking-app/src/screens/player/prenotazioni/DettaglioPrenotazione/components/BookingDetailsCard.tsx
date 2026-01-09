@@ -10,6 +10,7 @@ interface BookingDetailsCardProps {
   duration: string; // es: "1h 30min"
   price: number;
   createdAt: string; // formato ISO o compatibile con Date
+  isPublic?: boolean; // Se la partita è pubblica o privata
 }
 
 const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
@@ -19,6 +20,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
   duration,
   price,
   createdAt,
+  isPublic,
 }) => {
   const formatDateTime = (dateStr: string, time: string) => {
     try {
@@ -137,6 +139,27 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
             </View>
           </View>
         </FadeInView>
+
+        {/* Visibilità Partita */}
+        {isPublic !== undefined && (
+          <FadeInView delay={500} style={styles.gridItem}>
+            <View style={styles.itemContent}>
+              <View style={styles.iconContainer}>
+                <Ionicons 
+                  name={isPublic ? "globe-outline" : "lock-closed"} 
+                  size={20} 
+                  color={isPublic ? "#03A9F4" : "#FF5722"} 
+                />
+              </View>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemLabel}>VISIBILITÀ</Text>
+                <Text style={styles.itemValue}>
+                  {isPublic ? "Aperta" : "Privata"}
+                </Text>
+              </View>
+            </View>
+          </FadeInView>
+        )}
       </View>
     </View>
   );
