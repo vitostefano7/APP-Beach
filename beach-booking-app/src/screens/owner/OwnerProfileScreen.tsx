@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Image,
   Alert,
   RefreshControl,
   useColorScheme,
@@ -21,6 +20,9 @@ import * as ImagePicker from "expo-image-picker";
 import * as Network from 'expo-network';
 
 import API_URL from "../../config/api";
+import { Avatar } from "../../components/Avatar";
+import { useCustomAlert } from "../../components/CustomAlert";
+import { AvatarPicker } from "../../components/AvatarPicker";
 import { resolveAvatarUrl } from "../../utils/avatar";
 
 // ==================== TIPI ====================
@@ -125,10 +127,17 @@ const useOwnerProfile = (token: string | null) => {
   return { stats, loading, error, fetchProfile, setError };
 };
 
-const useAvatarManager = (token: string | null, user: User | null, updateUser: ((updatedUser: Partial<User>) => void) | null) => {
+const useAvatarManager = (
+  token: string | null,
+  user: User | null,
+  updateUser: ((updatedUser: Partial<User>) => void) | null,
+  showAlert: any,
+  fetchProfile: () => Promise<void>
+) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
   const [uploading, setUploading] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
 
   useEffect(() => {
     if (user?.avatarUrl) {
@@ -144,19 +153,29 @@ const useAvatarManager = (token: string | null, user: User | null, updateUser: (
 
   const uploadAvatar = useCallback(async (imageUri: string) => {
     if (!token) {
-      Alert.alert("Errore", "Token non disponibile");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Token non disponibile',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
       return;
     }
 
     try {
       setUploading(true);
-      
+
       // Validazione dimensioni immagine
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      
+
       if (!validateImage(blob.size)) {
-        Alert.alert("Errore", "L'immagine è troppo grande (massimo 5MB)");
+        showAlert({
+          type: 'warning',
+          title: 'Immagine troppo grande',
+          message: 'L\'immagine deve essere massimo 5MB',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -183,26 +202,50 @@ const useAvatarManager = (token: string | null, user: User | null, updateUser: (
         const newAvatarUrl = json.avatarUrl;
         setAvatarUrl(newAvatarUrl);
         setAvatarError(false);
-        
+        setAvatarRefreshKey(prev => prev + 1);
+
         if (updateUser && user) {
           updateUser({ ...user, avatarUrl: newAvatarUrl });
         }
-        
-        Alert.alert("Successo", "Immagine profilo aggiornata!");
+
+        // ✅ Ricarica il profilo
+        await fetchProfile();
+
+        showAlert({
+          type: 'success',
+          title: 'Perfetto!',
+          message: 'La tua immagine profilo è stata aggiornata con successo',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       } else {
-        Alert.alert("Errore", json.message || "Impossibile caricare l'immagine");
+        showAlert({
+          type: 'error',
+          title: 'Ops!',
+          message: json.message || 'Non siamo riusciti a caricare l\'immagine. Riprova.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       }
     } catch (error) {
       console.error("Upload avatar error:", error);
-      Alert.alert("Errore", "Impossibile caricare l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore di connessione',
+        message: 'Verifica la tua connessione internet e riprova',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } finally {
       setUploading(false);
     }
-  }, [token, user, updateUser]);
+  }, [token, user, updateUser, showAlert, fetchProfile]);
 
   const removeAvatar = useCallback(async () => {
     if (!token) {
-      Alert.alert("Errore", "Token non disponibile");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Token non disponibile',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
       return;
     }
 
@@ -216,34 +259,54 @@ const useAvatarManager = (token: string | null, user: User | null, updateUser: (
       if (res.ok) {
         setAvatarUrl(null);
         setAvatarError(false);
-        
+        setAvatarRefreshKey(prev => prev + 1);
+
         if (updateUser && user) {
           updateUser({ ...user, avatarUrl: undefined });
         }
-        
-        Alert.alert("Successo", "Immagine profilo rimossa!");
+
+        // ✅ Ricarica il profilo
+        await fetchProfile();
+
+        showAlert({
+          type: 'success',
+          title: 'Fatto!',
+          message: 'La tua immagine profilo è stata rimossa',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       } else {
-        Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+        showAlert({
+          type: 'error',
+          title: 'Ops!',
+          message: 'Non siamo riusciti a rimuovere l\'immagine',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
       }
     } catch (error) {
       console.error("Remove avatar error:", error);
-      Alert.alert("Errore", "Impossibile rimuovere l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Non siamo riusciti a rimuovere l\'immagine',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } finally {
       setUploading(false);
     }
-  }, [token, user, updateUser]);
+  }, [token, user, updateUser, showAlert, fetchProfile]);
 
   const handleAvatarError = useCallback(() => {
     console.warn("Failed to load avatar, falling back to placeholder");
     setAvatarError(true);
   }, []);
 
-  return { 
-    avatarUrl, 
+  return {
+    avatarUrl,
     avatarError,
-    uploading, 
-    uploadAvatar, 
-    removeAvatar, 
+    avatarRefreshKey,
+    uploading,
+    uploadAvatar,
+    removeAvatar,
     handleAvatarError,
   };
 };
@@ -421,18 +484,21 @@ export default function OwnerProfileScreen() {
   const navigation = useNavigation<any>();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
-  
+  const { showAlert, AlertComponent } = useCustomAlert();
+
   const { stats, loading, error, fetchProfile, setError } = useOwnerProfile(token);
-  const { 
-    avatarUrl, 
+  const {
+    avatarUrl,
     avatarError,
-    uploading, 
-    uploadAvatar, 
-    removeAvatar, 
+    avatarRefreshKey,
+    uploading,
+    uploadAvatar,
+    removeAvatar,
     handleAvatarError,
-  } = useAvatarManager(token, user, updateUser);
-  
+  } = useAvatarManager(token, user, updateUser, showAlert, fetchProfile);
+
   const [refreshing, setRefreshing] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   
   // Usa il nuovo hook per il controllo della connessione
   const isOffline = useNetworkStatus();
@@ -458,45 +524,22 @@ export default function OwnerProfileScreen() {
 
   const changeAvatar = useCallback(() => {
     if (uploading) return;
-
-    if (avatarUrl && !avatarError) {
-      Alert.alert(
-        "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", style: "cancel" },
-          { text: "Galleria", onPress: pickImageFromGallery },
-          { text: "Fotocamera", onPress: takePhotoWithCamera },
-          { 
-            text: "Rimuovi foto", 
-            onPress: removeAvatar,
-            style: "destructive"
-          },
-        ],
-        { cancelable: true }
-      );
-    } else {
-      Alert.alert(
-        "Cambia immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", style: "cancel" },
-          { text: "Galleria", onPress: pickImageFromGallery },
-          { text: "Fotocamera", onPress: takePhotoWithCamera },
-        ],
-        { cancelable: true }
-      );
-    }
-  }, [avatarUrl, uploading, avatarError, removeAvatar]);
+    setShowAvatarPicker(true);
+  }, [uploading]);
 
   const pickImageFromGallery = useCallback(async () => {
     if (uploading) return;
 
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
-        Alert.alert("Permesso negato", "Devi concedere il permesso per accedere alle foto");
+        showAlert({
+          type: 'warning',
+          title: 'Permesso necessario',
+          message: 'Devi concedere il permesso per accedere alle tue foto',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -513,18 +556,28 @@ export default function OwnerProfileScreen() {
       }
     } catch (error) {
       console.error("Errore selezione immagine:", error);
-      Alert.alert("Errore", "Impossibile selezionare l'immagine");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile selezionare l\'immagine',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
-  }, [uploadAvatar, uploading]);
+  }, [uploadAvatar, uploading, showAlert]);
 
   const takePhotoWithCamera = useCallback(async () => {
     if (uploading) return;
 
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
-        Alert.alert("Permesso negato", "Devi concedere il permesso per usare la fotocamera");
+        showAlert({
+          type: 'warning',
+          title: 'Permesso necessario',
+          message: 'Devi concedere il permesso per usare la fotocamera',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -539,18 +592,15 @@ export default function OwnerProfileScreen() {
       }
     } catch (error) {
       console.error("Errore fotocamera:", error);
-      Alert.alert("Errore", "Impossibile scattare la foto");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile scattare la foto',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
-  }, [uploadAvatar, uploading]);
+  }, [uploadAvatar, uploading, showAlert]);
 
-  const getInitials = useCallback((name: string) => {
-    if (!name) return "??";
-    const sanitizedName = name.trim().replace(/[<>]/g, '');
-    const parts = sanitizedName.split(" ");
-    return parts.length >= 2
-      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      : sanitizedName.substring(0, 2).toUpperCase();
-  }, []);
 
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
@@ -623,7 +673,16 @@ export default function OwnerProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, isDarkMode && styles.darkSafe]}>
-      <ScrollView 
+      <AlertComponent />
+      <AvatarPicker
+        visible={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        onSelectGallery={pickImageFromGallery}
+        onSelectCamera={takePhotoWithCamera}
+        onRemovePhoto={removeAvatar}
+        hasPhoto={!!avatarUrl && !avatarError}
+      />
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -645,32 +704,26 @@ export default function OwnerProfileScreen() {
         {/* HEADER CON AVATAR */}
         <View style={[styles.header, isDarkMode && styles.darkHeader]}>
           <View style={styles.headerContent}>
-            <Pressable 
-              style={styles.avatar} 
+            <Pressable
+              style={styles.avatar}
               onPress={changeAvatar}
               accessibilityLabel="Cambia immagine profilo"
               accessibilityHint="Premi per cambiare la tua foto profilo"
               accessibilityRole="button"
               disabled={uploading}
             >
-              {shouldShowAvatar ? (
-                <Image 
-                  source={{ uri: finalAvatarUrl }} 
-                  style={styles.avatarImage}
-                  onError={handleAvatarError}
-                  // Per un'immagine di fallback, puoi usare:
-                  // defaultSource={require('../../assets/default-avatar.png')}
-                />
-              ) : (
-                <View style={[styles.avatarPlaceholder, uploading && styles.uploadingAvatar]}>
-                  {uploading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text style={styles.avatarText}>
-                      {getInitials(user?.name || "")}
-                    </Text>
-                  )}
+              {uploading ? (
+                <View style={[styles.avatarPlaceholder, styles.uploadingAvatar]}>
+                  <ActivityIndicator size="small" color="white" />
                 </View>
+              ) : (
+                <Avatar
+                  key={`avatar-${avatarRefreshKey}`}
+                  name={user?.name}
+                  surname={user?.surname}
+                  avatarUrl={avatarUrl}
+                  size="large"
+                />
               )}
               <View style={styles.ownerBadge}>
                 <Ionicons name="business" size={14} color="white" />

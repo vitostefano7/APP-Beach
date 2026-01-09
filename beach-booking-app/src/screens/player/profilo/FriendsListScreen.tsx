@@ -5,7 +5,6 @@ import {
   FlatList,
   ActivityIndicator,
   Pressable,
-  Image,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,7 +14,7 @@ import { RouteProp } from "@react-navigation/native";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
-import { resolveAvatarUrl } from "../../../utils/avatar";
+import { Avatar } from "../../../components/Avatar";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 
 type FriendItem = {
@@ -90,10 +89,7 @@ export default function FriendsListScreen() {
     loadFriends();
   };
 
-  const getAvatarUri = (avatarUrl?: string) => resolveAvatarUrl(avatarUrl);
-
   const renderItem = ({ item }: { item: FriendItem }) => {
-    const avatarUri = getAvatarUri(item.user.avatarUrl);
     return (
       <Pressable
         onPress={() =>
@@ -111,15 +107,13 @@ export default function FriendsListScreen() {
         }
         style={({ pressed }) => [styles.friendRow, pressed && styles.friendRowPressed]}
       >
-        <View style={styles.avatarBox}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={22} color="#2196F3" />
-            </View>
-          )}
-        </View>
+        <Avatar
+          name={item.user.name}
+          surname={item.user.surname}
+          avatarUrl={item.user.avatarUrl}
+          size={48}
+          fallbackIcon="person"
+        />
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{item.user.name}</Text>
           <Text style={styles.friendUsername}>@{item.user.username}</Text>

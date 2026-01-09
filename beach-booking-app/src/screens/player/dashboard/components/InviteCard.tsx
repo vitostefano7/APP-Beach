@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, Image, Pressable, Alert } from "react-native";
+import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { resolveAvatarUrl } from "../../../../utils/avatar";
+import { Avatar } from "../../../../components/Avatar";
 import { formatDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
 
@@ -150,16 +150,13 @@ const InviteCard: React.FC<InviteCardProps> = ({
 
       <View style={styles.inviteHeader}>
         <View style={styles.inviteLeft}>
-          {createdBy?.avatarUrl ? (
-            <Image
-              source={{ uri: resolveAvatarUrl(createdBy.avatarUrl) || "" }}
-              style={styles.inviteAvatar}
-            />
-          ) : (
-            <View style={styles.inviteAvatarPlaceholder}>
-              <Ionicons name="person" size={20} color="#999" />
-            </View>
-          )}
+          <Avatar
+            name={createdBy?.name}
+            surname={createdBy?.surname}
+            avatarUrl={createdBy?.avatarUrl}
+            size="small"
+            fallbackIcon="person"
+          />
           <View style={styles.inviteInfo}>
             <Text style={styles.inviteTitle}>
               {createdBy?.name} ti ha invitato

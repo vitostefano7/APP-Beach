@@ -42,10 +42,11 @@ export default function GroupChatScreen() {
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
 
-  const { conversationId, groupName, matchId } = route.params;
+  const { conversationId, groupName, matchId, headerInfo } = route.params || {};
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [matchData, setMatchData] = useState<any>(null);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -61,6 +62,7 @@ export default function GroupChatScreen() {
 
   const loadConversation = async () => {
     if (!token) return;
+    if (!matchId) return;
 
     try {
       const res = await fetch(
@@ -72,7 +74,16 @@ export default function GroupChatScreen() {
 
       if (res.ok) {
         const conversation = await res.json();
+        console.log('🎯 Conversation data:', JSON.stringify(conversation, null, 2));
         setParticipants(conversation.participants || []);
+        
+        // Carica anche i dati del match
+        if (conversation.match) {
+          console.log('🎯 Match data:', JSON.stringify(conversation.match, null, 2));
+          setMatchData(conversation.match);
+        } else {
+          console.log('⚠️ Nessun match nella conversazione');
+        }
       }
     } catch (error) {
       console.error("Errore caricamento conversazione:", error);
@@ -262,24 +273,44 @@ export default function GroupChatScreen() {
               </View>
               <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                  {groupName || "Chat di Gruppo"}
+                  {matchData?.booking?.campo?.struttura?.name
+                    ? `Partita - ${matchData.booking.campo.struttura.name}`
+                    : matchData?.booking?.struttura?.name
+                    ? `Partita - ${matchData.booking.struttura.name}`
+                    : headerInfo?.strutturaName
+                    ? `Partita - ${headerInfo.strutturaName}`
+                    : groupName || "Chat di Gruppo"}
                 </Text>
-                <Text style={styles.headerSubtitle}>
-                  {participants.length} partecipant{participants.length !== 1 ? 'i' : 'e'}
-                </Text>
+                {(matchData?.booking || headerInfo?.date || headerInfo?.startTime) && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Ionicons name="calendar-outline" size={11} color="#666" />
+                      <Text style={[styles.headerSubtitle, { fontSize: 11 }]}>
+                        {new Date(
+                          matchData?.booking?.date || headerInfo?.date || new Date()
+                        ).toLocaleDateString('it-IT', {
+                          day: '2-digit',
+                          month: 'short'
+                        })} - {matchData?.booking?.startTime || headerInfo?.startTime || '--:--'} - {headerInfo?.participantsCount ?? participants.length} utenti
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
             </View>
 
             <Pressable 
               style={styles.infoButton}
               onPress={() => {
-                Alert.alert(
-                  "Partecipanti",
-                  participants.map(p => p.name).join('\n')
-                );
+                const bookingId = matchData?.booking?._id || headerInfo?.bookingId;
+                if (!bookingId) {
+                  Alert.alert("Errore", "Prenotazione non disponibile");
+                  return;
+                }
+                navigation.navigate("OwnerDettaglioPrenotazione" as never, { bookingId } as never);
               }}
             >
-              <Ionicons name="information-circle-outline" size={24} color="#1a1a1a" />
+              <Ionicons name="calendar-outline" size={24} color="#1a1a1a" />
             </Pressable>
           </View>
         </SafeAreaView>

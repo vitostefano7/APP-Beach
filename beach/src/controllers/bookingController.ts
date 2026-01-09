@@ -635,7 +635,7 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
           select: "name location images owner",
         },
       })
-      .populate("user", "name surname email");
+      .populate("user", "name surname email avatarUrl");
 
     if (!booking) {
       return res.status(404).json({ message: "Prenotazione non trovata" });

@@ -1,20 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { resolveAvatarUrl } from "../../../../../utils/avatar";
+import { Avatar } from "../../../../../components/Avatar";
 import { styles } from "../../../styles/DettaglioPrenotazioneOwnerScreen.styles";
-
-const getInitials = (name?: string, surname?: string): string => {
-  if (!name) return "??";
-  if (surname) {
-    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-  }
-  const parts = name.trim().split(" ");
-  return parts.length === 1
-    ? parts[0][0].toUpperCase()
-    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 interface Player {
   user: {
@@ -103,18 +92,13 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
       disabled={!onPlayerPress}
     >
       {/* LEFT */}
-      <View style={styles.playerAvatarCircle}>
-        {player.user?.avatarUrl ? (
-          <Image
-            source={{ uri: resolveAvatarUrl(player.user.avatarUrl) || "" }}
-            style={{ width: 40, height: 40, borderRadius: 20 }}
-          />
-        ) : (
-          <Text style={styles.playerInitials}>
-            {getInitials(player.user?.name, player.user?.surname)}
-          </Text>
-        )}
-      </View>
+      <Avatar
+        name={player.user?.name}
+        surname={player.user?.surname}
+        avatarUrl={player.user?.avatarUrl}
+        size="small"
+        teamColor={currentTeam || 'none'}
+      />
 
       <View style={styles.playerInfoSlot}>
         <Text style={styles.playerNameSlot}>

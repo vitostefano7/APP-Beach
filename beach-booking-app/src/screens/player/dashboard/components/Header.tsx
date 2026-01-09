@@ -2,14 +2,13 @@ import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
-  Image,
   Pressable,
   Animated,
   Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { resolveAvatarUrl } from "../../../../utils/avatar";
+import { Avatar } from "../../../../components/Avatar";
 import { styles } from "../styles";
 import ChatModal from "./ChatModal";
 import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
@@ -19,17 +18,6 @@ interface HeaderProps {
   user: any;
   pendingInvites: any[];
 }
-
-const getInitials = (name?: string, surname?: string): string => {
-  if (!name) return "??";
-  if (surname) {
-    return `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-  }
-  const parts = name.trim().split(" ");
-  return parts.length === 1
-    ? parts[0][0].toUpperCase()
-    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
   const navigation = useNavigation<any>();
@@ -101,21 +89,14 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
       <View style={styles.headerSection}>
         {/* LEFT: Avatar e nome */}
         <View style={styles.headerLeft}>
-          <View style={styles.avatarContainer}>
-            {user?.avatarUrl ? (
-              <Image
-                source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitials}>
-                  {getInitials(user?.name)}
-                </Text>
-              </View>
-            )}
-            <View style={styles.statusDot} />
-          </View>
+          <Avatar
+            name={user?.name}
+            surname={user?.surname}
+            avatarUrl={user?.avatarUrl}
+            size="medium"
+            showStatusDot
+            statusDotColor="#4CAF50"
+          />
 
           <View>
             <Text style={styles.greeting}>BENVENUTO</Text>
