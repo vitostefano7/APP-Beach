@@ -298,7 +298,8 @@ export default function GroupChatScreen() {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMine = item.sender._id === user?.id;
     const prevMessage = index > 0 ? messages[index - 1] : null;
-    const showAvatar = !prevMessage || prevMessage.sender._id !== item.sender._id;
+    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+    const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;
     const isConsecutive = prevMessage && prevMessage.sender._id === item.sender._id;
     const senderColor = getSenderColor(item.sender._id);
 

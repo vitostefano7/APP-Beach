@@ -704,9 +704,21 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
       f.requester.toString() === userId ? f.recipient.toString() : f.requester.toString()
     );
 
-    const mutualFriendsCount = currentUserFriendIds.filter(id => 
+    const mutualFriendsCount = currentUserFriendIds.filter(id =>
       targetUserFriendIds.includes(id)
     ).length;
+
+    // Conta follower (chi segue l'utente target)
+    const followersCount = await Friendship.countDocuments({
+      recipient: userId,
+      status: 'accepted'
+    });
+
+    // Conta following (chi l'utente target segue)
+    const followingCount = await Friendship.countDocuments({
+      requester: userId,
+      status: 'accepted'
+    });
 
     res.json({
       user,
@@ -714,6 +726,8 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
         matchesPlayed,
         commonMatchesCount,
         mutualFriendsCount,
+        followersCount,
+        followingCount,
       },
       friendshipStatus, // Il tuo status verso di loro (none/pending/accepted)
       isPrivate: false,
@@ -987,6 +1001,78 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("❌ getUserStats error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:userId/posts
+ * Ottiene i post pubblici di un utente (solo se profilo pubblico o se lo seguiamo)
+ */
+export const getUserPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user!.id;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    console.log("📝 getUserPosts chiamato per userId:", userId);
+
+    // Validate userId format
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "ID utente non valido" });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      isActive: true,
+    }).select("profilePrivacy");
+
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Check se il profilo è privato
+    const isPrivate = user.profilePrivacy === "private";
+
+    // Se privato, verifica che l'utente corrente lo segua
+    if (isPrivate && currentUserId !== userId) {
+      const Friendship = (await import("../models/Friendship")).default;
+      const friendship = await Friendship.findOne({
+        requester: currentUserId,
+        recipient: userId,
+        status: 'accepted'
+      });
+
+      if (!friendship) {
+        return res.status(403).json({
+          message: "Questo profilo è privato. Segui l'utente per vedere i suoi post."
+        });
+      }
+    }
+
+    // Recupera i post dell'utente
+    const Post = (await import("../models/Post")).default;
+    const posts = await Post.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .populate("user", "name surname avatarUrl")
+      .populate("comments.user", "name avatarUrl")
+      .lean();
+
+    const total = await Post.countDocuments({ user: userId });
+    const hasMore = offset + limit < total;
+
+    console.log("✅ Posts trovati:", posts.length);
+
+    res.json({
+      posts,
+      total,
+      hasMore,
+    });
+  } catch (err) {
+    console.error("❌ getUserPosts error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

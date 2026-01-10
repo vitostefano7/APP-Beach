@@ -150,6 +150,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         conversationId: conversation._id,
         strutturaName: booking.campo.struttura.name,
         userName: booking.user.name,
+        userId: booking.user._id,
+        struttura: booking.campo.struttura,
       });
     } catch (error) {
       console.error("❌ Errore apertura chat:", error);
@@ -183,6 +185,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         conversationId: conversation._id,
         groupName: `Match - ${booking.campo?.struttura?.name || 'Gruppo'}`,
         matchId: booking.match._id,
+        struttura: booking.campo?.struttura,
       });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");

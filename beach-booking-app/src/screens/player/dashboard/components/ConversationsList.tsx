@@ -16,6 +16,7 @@ import { useContext } from "react";
 import API_URL from "../../../../config/api";
 import { AuthContext } from "../../../../context/AuthContext";
 import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
+import { resolveImageUrl } from "../../../../utils/imageUtils";
 
 type Conversation = {
   _id: string;
@@ -222,7 +223,9 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
       displayName = item.struttura?.name || 'Struttura';
       const otherPerson = isOwner ? item.user : item.owner;
       subtitle = isOwner ? `👤 ${otherPerson?.name}` : `🏢 Chat con la struttura`;
-      imageUri = item.struttura?.images?.[0] || '';
+      imageUri = item.struttura?.images?.[0]
+        ? resolveImageUrl(item.struttura.images[0])
+        : '';
     }
 
     return (

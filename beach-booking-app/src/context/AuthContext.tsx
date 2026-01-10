@@ -5,6 +5,8 @@ type User = {
   id: string;
   role: "player" | "owner";
   name?: string;
+  surname?: string;
+  username?: string;
   email?: string;
   createdAt?: string;
   avatarUrl?: string;

@@ -18,6 +18,8 @@ import { useContext, useState, useEffect, useRef } from "react";
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { styles } from "../styles/ChatScreen.styles";
+import Avatar from "../../../components/Avatar/Avatar";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 type Message = {
   _id: string;
@@ -25,6 +27,7 @@ type Message = {
   sender: {
     _id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   senderType: "user" | "owner";
   content: string;
@@ -36,6 +39,7 @@ type UserProfile = {
   _id: string;
   name: string;
   email: string;
+  avatarUrl?: string | null;
   phone?: string;
   createdAt: string;
 };
@@ -45,7 +49,7 @@ export default function OwnerChatScreen() {
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
 
-  const { conversationId, strutturaName, userName, userId } = route.params;
+  const { conversationId, strutturaName, userName, userId, struttura } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -74,6 +78,12 @@ export default function OwnerChatScreen() {
 
     return () => showSub.remove();
   }, []);
+
+  useEffect(() => {
+    if (userId && !userProfile && !loadingProfile) {
+      loadUserProfile();
+    }
+  }, [userId, userProfile, loadingProfile]);
 
   const loadMessages = async () => {
     if (!token) return;
@@ -209,8 +219,13 @@ export default function OwnerChatScreen() {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMine = item.sender._id === user?.id;
     const prevMessage = index > 0 ? messages[index - 1] : null;
-    const showAvatar = !prevMessage || prevMessage.sender._id !== item.sender._id;
+    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+    const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;
     const isConsecutive = prevMessage && prevMessage.sender._id === item.sender._id;
+    const otherAvatarUrl = item.sender.avatarUrl || userProfile?.avatarUrl;
+    const strutturaAvatarUrl = struttura?.images?.[0]
+      ? resolveImageUrl(struttura.images[0])
+      : undefined;
 
     return (
       <View
@@ -222,9 +237,13 @@ export default function OwnerChatScreen() {
       >
         {!isMine && showAvatar && (
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={16} color="#2196F3" />
-            </View>
+            <Avatar
+              name={item.sender.name || userName}
+              avatarUrl={otherAvatarUrl}
+              size={32}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
           </View>
         )}
 
@@ -254,6 +273,20 @@ export default function OwnerChatScreen() {
             {formatTime(item.createdAt)}
           </Text>
         </View>
+
+        {isMine && showAvatar && (
+          <View style={styles.avatarContainerMine}>
+            <Avatar
+              name={strutturaName || user?.name || "U"}
+              avatarUrl={strutturaAvatarUrl}
+              size={32}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
+          </View>
+        )}
+
+        {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
   };
@@ -270,53 +303,49 @@ export default function OwnerChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
-    >
-      <View style={styles.safe}>
-        <SafeAreaView edges={["top"]}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-            </Pressable>
+    <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          </Pressable>
 
-            <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
-              <View style={styles.headerAvatar}>
-                <Ionicons name="person" size={24} color="#2196F3" />
+          <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
+            <View style={styles.headerAvatar}>
+              <Ionicons name="person" size={24} color="#2196F3" />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {userName}
+              </Text>
+              <View style={styles.onlineIndicator}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.onlineText}>Online</Text>
               </View>
-              <View style={styles.headerInfo}>
-                <View style={styles.headerTitleRow}>
-                  <Text style={styles.headerTitle} numberOfLines={1}>
-                    {userName}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#999" />
-                </View>
-                <View style={styles.onlineIndicator}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.onlineText}>Online</Text>
-                </View>
-              </View>
-            </Pressable>
-          </View>
-        </SafeAreaView>
+            </View>
+          </Pressable>
+        </View>
 
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
+          contentContainerStyle={[styles.messagesList, { flexGrow: 1 }]}
+          onContentSizeChange={() => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 100);
+          }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -331,41 +360,39 @@ export default function OwnerChatScreen() {
           }
         />
 
-        <SafeAreaView edges={["bottom"]}>
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Rispondi al cliente..."
-                placeholderTextColor="#999"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
-              />
-            </View>
-
-            <Pressable
-              style={[
-                styles.sendButton,
-                inputText.trim() && !sending && styles.sendButtonActive,
-              ]}
-              onPress={sendMessage}
-              disabled={!inputText.trim() || sending}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons 
-                  name={inputText.trim() ? "send" : "send-outline"} 
-                  size={20} 
-                  color="white" 
-                />
-              )}
-            </Pressable>
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Rispondi al cliente..."
+              placeholderTextColor="#999"
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={1000}
+            />
           </View>
-        </SafeAreaView>
-      </View>
+
+          <Pressable
+            style={[
+              styles.sendButton,
+              inputText.trim() && !sending && styles.sendButtonActive,
+            ]}
+            onPress={sendMessage}
+            disabled={!inputText.trim() || sending}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons 
+                name={inputText.trim() ? "send" : "send-outline"} 
+                size={20} 
+                color="white" 
+              />
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showUserProfile}
@@ -465,6 +492,6 @@ export default function OwnerChatScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

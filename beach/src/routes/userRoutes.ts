@@ -19,6 +19,7 @@ import {
   getPlayedWith,
   getFrequentedVenues,
   getUserStats,
+  getUserPosts,
 } from "../controllers/profileController";
 
 import { uploadAvatar as uploadMiddleware } from "../middleware/uploadProfiloImages";
@@ -79,6 +80,7 @@ router.post("/me/change-password", requireAuth, changePassword);
  * PUBLIC PROFILES (devono essere dopo /me/*)
  */
 router.get("/:userId/public-profile", requireAuth, getUserPublicProfileById);
+router.get("/:userId/posts", requireAuth, getUserPosts);
 router.get("/:username/profile", requireAuth, getUserPublicProfile);
 router.get("/:username/matches", requireAuth, getUserMatches);
 

@@ -17,6 +17,8 @@ import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react"
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { styles } from "../styles-player/ChatScreen.styles";
+import Avatar from "../../../components/Avatar/Avatar";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 type Message = {
   _id: string;
@@ -24,6 +26,7 @@ type Message = {
   sender: {
     _id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   senderType: "user" | "owner";
   content: string;
@@ -164,8 +167,10 @@ export default function ChatScreen() {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMine = item.sender._id === user?.id;
     const prevMessage = index > 0 ? messages[index - 1] : null;
-    const showAvatar = !prevMessage || prevMessage.sender._id !== item.sender._id;
+    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+    const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;
     const isConsecutive = prevMessage && prevMessage.sender._id === item.sender._id;
+    const otherAvatarUrl = item.sender.avatarUrl || struttura?.images?.[0];
 
     return (
       <View
@@ -177,9 +182,13 @@ export default function ChatScreen() {
       >
         {!isMine && showAvatar && (
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Ionicons name="business" size={16} color="#2196F3" />
-            </View>
+            <Avatar
+              name={item.sender.name || strutturaName}
+              avatarUrl={otherAvatarUrl ? resolveImageUrl(otherAvatarUrl) : undefined}
+              size={32}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
           </View>
         )}
 
@@ -212,9 +221,13 @@ export default function ChatScreen() {
 
         {isMine && showAvatar && (
           <View style={styles.avatarContainerMine}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={16} color="#2196F3" />
-            </View>
+            <Avatar
+              name={user?.name || "U"}
+              avatarUrl={user?.avatarUrl}
+              size={32}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
           </View>
         )}
 
@@ -258,9 +271,13 @@ export default function ChatScreen() {
             }}
             disabled={!struttura}
           >
-            <View style={styles.headerAvatar}>
-              <Ionicons name="business" size={24} color="#2196F3" />
-            </View>
+            <Avatar
+              name={strutturaName}
+              avatarUrl={struttura?.images?.[0] ? resolveImageUrl(struttura.images[0]) : undefined}
+              size={44}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {strutturaName}

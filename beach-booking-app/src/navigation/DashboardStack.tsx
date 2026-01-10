@@ -15,6 +15,8 @@ import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen"
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import NotificheScreen from "../screens/player/dashboard/NotificheScreen";
 import CercaPartitaScreen from "../screens/player/dashboard/CercaPartitaScreen";
+import CommunityScreen from "../screens/player/dashboard/CommunityScreen";
+import CreatePostScreen from "../screens/player/dashboard/CreatePostScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -41,6 +43,8 @@ export type DashboardStackParamList = {
   Notifiche: undefined;
   CercaPartita: undefined;
   Storico: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
+  Community: undefined;
+  CreatePost: undefined;
 };
 
 const Stack = createNativeStackNavigator();
@@ -132,9 +136,19 @@ export default function DashboardStack() { // ✅ Nome corretto
         component={CercaPartitaScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="Storico" 
+      <Stack.Screen
+        name="Storico"
         component={LeMiePrenotazioniScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Community"
+        component={CommunityScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreatePost"
+        component={CreatePostScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

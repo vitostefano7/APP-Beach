@@ -3,6 +3,7 @@ import ProfileScreen from "../screens/player/profilo/ProfileScreen";
 import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
 import PrivacySecurityScreen from "../screens/player/profilo/PrivacySecurityScreen";
 import PreferencesScreen from "../screens/PreferencesScreen";
+import SettingsScreen from "../screens/player/profilo/SettingsScreen";
 import ConversazioneScreen from "../screens/player/comunicazioni/ConversazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
@@ -12,16 +13,24 @@ import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
-  FriendsList: { filter?: "followers" | "following" } | undefined;
+  FriendsList: { userId?: string; filter?: "followers" | "following" | "all" } | undefined;
+  Settings: undefined;
   PrivacySecurity: undefined;
   Preferences: undefined;
+  Conversazione: undefined;
+  Chat: { conversationId: string };
+  GroupChat: { groupId: string };
+  DettaglioPrenotazione: { bookingId: string };
+  FieldDetails: { fieldId: string };
+  ProfiloUtente: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export default function ProfilePlayerStack() {
   return (
-    <Stack.Navigator 
+    // @ts-ignore
+    <Stack.Navigator
       initialRouteName="Profile"
       screenOptions={{
       headerShown: false,
@@ -29,6 +38,7 @@ export default function ProfilePlayerStack() {
   >
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="FriendsList" component={FriendsListScreen} />
+    <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="Conversazione" component={ConversazioneScreen} />

@@ -24,6 +24,7 @@ import InviteCard from "./components/InviteCard";
 import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
 import EmptyStateCard from "./components/EmptyStateCard";
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
+import OpenMatchCard from './components/OpenMatchCard';
 import { styles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -86,6 +87,7 @@ export default function HomeScreen() {
   const [nextBooking, setNextBooking] = useState<any>(null);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
+  const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
   
   const friendsCarouselRef = useRef<FlatList>(null);
@@ -124,6 +126,7 @@ export default function HomeScreen() {
         loadNextBooking(),
         loadPendingInvites(),
         loadRecentMatchesAndStats(),
+        loadOpenMatches(),
       ]);
 
     } catch (error) {
@@ -327,6 +330,51 @@ export default function HomeScreen() {
     }
   };
 
+  const loadOpenMatches = async () => {
+    try {
+      const res = await fetch(`${API_URL}/matches?status=open`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
+        
+        const now = new Date();
+        const filtered = rawMatches.filter((match: any) => {
+          if (!match?._id || match.status && ['completed', 'cancelled', 'full'].includes(match.status)) return false;
+          if (match.isPublic === false) return false;
+
+          const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
+          const maxPlayers = match.maxPlayers || 0;
+          if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
+
+          const start = match.booking?.date && match.booking?.startTime ? 
+            new Date(`${match.booking.date}T${match.booking.startTime}`) : null;
+          if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) return false;
+
+          const alreadyJoined = match.players?.some((p: any) => p.user?._id === user?.id);
+          if (alreadyJoined) return false;
+
+          return true;
+        });
+
+        const sorted = filtered.sort((a: any, b: any) => {
+          const dateA = a.booking?.date && a.booking?.startTime ? 
+            new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
+          const dateB = b.booking?.date && b.booking?.startTime ? 
+            new Date(`${b.booking.date}T${b.booking.startTime}`).getTime() : 0;
+          return dateA - dateB;
+        });
+
+        setOpenMatches(sorted.slice(0, 10));
+        console.log(`✅ ${sorted.length} partite aperte caricate`);
+      }
+    } catch (error) {
+      console.error('Errore caricamento partite aperte:', error);
+    }
+  };
+
   const loadRecentMatchesAndStats = async () => {
     try {
       const matchesRes = await fetch(`${API_URL}/matches/me?status=completed`, {
@@ -470,7 +518,7 @@ export default function HomeScreen() {
 
   const handleFriendsScrollEnd = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const cardWidth = screenWidth * 0.8;
+    const cardWidth = screenWidth * 0.74;
     const index = Math.round(offsetX / cardWidth);
     
     if (index !== currentFriendIndex && index >= 0 && index < (suggestedFriends?.length || 0)) {
@@ -600,8 +648,8 @@ export default function HomeScreen() {
                 return (
                   <View
                     style={{
-                      width: screenWidth * 0.75,
-                      marginHorizontal: screenWidth * 0.025,
+                      width: screenWidth * 0.7,
+                      marginHorizontal: screenWidth * 0.02,
                     }}
                   >
                     <SuggestedFriendCard 
@@ -618,15 +666,15 @@ export default function HomeScreen() {
               keyExtractor={(item, index) => `friend-${item.user?._id || item._id || index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              snapToInterval={screenWidth * 0.8}
+              snapToInterval={screenWidth * 0.74}
               decelerationRate="fast"
               snapToAlignment="start"
               onMomentumScrollEnd={handleFriendsScrollEnd}
               scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: screenWidth * 0.025 }}
+              contentContainerStyle={{ paddingHorizontal: screenWidth * 0.02 }}
               getItemLayout={(data, index) => ({
-                length: screenWidth * 0.8,
-                offset: screenWidth * 0.8 * index,
+                length: screenWidth * 0.74,
+                offset: screenWidth * 0.74 * index,
                 index,
               })}
             />
@@ -715,10 +763,10 @@ export default function HomeScreen() {
           
           <Pressable 
             style={styles.quickActionButton}
-            onPress={() => navigation.navigate("CercaPartita")}
+            onPress={() => navigation.navigate("Community")}
           >
-            <Ionicons name="search-outline" size={20} color="#2196F3" />
-            <Text style={styles.quickActionText}>Cerca una partita</Text>
+            <Ionicons name="people-outline" size={20} color="#2196F3" />
+            <Text style={styles.quickActionText}>Community</Text>
           </Pressable>
         </View>
 
@@ -767,7 +815,39 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {validPendingInvites.length > 0 ? (
+        {/* Partite Aperte */}
+        {openMatches.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Partite aperte</Text>
+              <Pressable onPress={() => navigation.navigate('CercaPartita')}>
+                <Text style={styles.sectionLink}>Vedi tutte</Text>
+              </Pressable>
+            </View>
+            <FlatList
+              data={openMatches}
+              renderItem={({ item }) => (
+                <View style={{ width: screenWidth * 0.85, marginRight: 12 }}>
+                  <OpenMatchCard
+                    match={item}
+                    onPress={() => {
+                      const bookingId = item.booking?._id;
+                      if (bookingId) {
+                        navigation.navigate('DettaglioPrenotazione', { bookingId });
+                      }
+                    }}
+                  />
+                </View>
+              )}
+              keyExtractor={(item) => item._id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
+            />
+          </View>
+        )}
+
+        {validPendingInvites.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <InviteCardTitle 
@@ -797,21 +877,6 @@ export default function HomeScreen() {
                 <Ionicons name="chevron-forward" size={16} color="#2196F3" />
               </Pressable>
             )}
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Inviti in attesa</Text>
-              <Pressable onPress={handleViewAllInvites}>
-                <Text style={styles.sectionLink}>Vedi tutti</Text>
-              </Pressable>
-            </View>
-            
-            <EmptyStateCard
-              icon="mail-open-outline"
-              title="Nessun invito in attesa"
-              type="invite"
-            />
           </View>
         )}
 

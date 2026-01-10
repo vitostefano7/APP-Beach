@@ -1,0 +1,395 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+
+  // Header
+  header: {
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#212121',
+  },
+  createButton: {
+    padding: 4,
+  },
+
+  // Tab Bar
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: '#E3F2FD',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+  },
+  tabTextActive: {
+    color: '#2196F3',
+  },
+
+  // List Content
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+
+  // Post Card
+  postCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  postHeaderText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 2,
+  },
+  postTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  postContent: {
+    fontSize: 15,
+    color: '#424242',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  postActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  postAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  postActionText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+
+  // Event Card (stile Domani)
+  eventCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+
+  // Image Container con overlay
+  eventImageContainer: {
+    position: 'relative',
+    height: 140,
+  },
+  eventImage: {
+    width: '100%',
+    height: '100%',
+  },
+  eventImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+
+  // Time Badge (Tra 24h)
+  eventTimeBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  eventTimeBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Title and time on image
+  eventImageInfo: {
+    position: 'absolute',
+    bottom: 12,
+    left: 16,
+    right: 16,
+  },
+  eventTitleOnImage: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  eventTimeOnImage: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
+  // Content section
+  eventContent: {
+    padding: 16,
+  },
+  eventInfo: {
+    marginBottom: 12,
+  },
+  eventDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  eventDetailText: {
+    fontSize: 14,
+    color: '#424242',
+    fontWeight: '500',
+  },
+
+  // Participants row
+  eventParticipantsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  participantsAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  participantAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  participantAvatarText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Action buttons
+  eventActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  eventActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#E3F2FD',
+    gap: 6,
+  },
+  eventActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2196F3',
+  },
+  eventJoinButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#2196F3',
+    gap: 6,
+  },
+  eventJoinButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'white',
+  },
+
+  // Legacy styles (mantieni per compatibilità)
+  eventTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 12,
+  },
+  eventFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  eventParticipants: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  eventParticipantsText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '600',
+  },
+  joinButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  joinButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Rankings
+  rankingsContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  comingSoonContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  comingSoonTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#212121',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  comingSoonText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Empty State
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#212121',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyStateButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});
