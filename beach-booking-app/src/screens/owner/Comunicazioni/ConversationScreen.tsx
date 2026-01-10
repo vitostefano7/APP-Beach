@@ -223,6 +223,7 @@ export default function OwnerConversationsScreen() {
                 participantsCount: item.participants?.length,
                 bookingId: item.match?.booking?._id,
               },
+              struttura: item.struttura,
             });
           } else {
             navigation.navigate("Chat", {
@@ -230,6 +231,7 @@ export default function OwnerConversationsScreen() {
               strutturaName: item.struttura?.name,
               userName: item.user?.name,
               userId: item.user?._id,
+              struttura: item.struttura,
             });
           }
           setTimeout(() => refreshUnreadCount(), 1000);

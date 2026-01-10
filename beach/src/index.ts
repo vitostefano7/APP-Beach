@@ -17,6 +17,7 @@ import conversazioneRoute from "./routes/conversazioneRoutes";
 import struttureImagesRoutes from "./routes/struttureImagesRoutes";
 import friendshipRoutes from "./routes/friendshipRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
+import communityRoutes from "./routes/communityRoutes";
 
 import { requireAuth, AuthRequest } from "./middleware/authMiddleware";
 
@@ -100,6 +101,7 @@ async function start() {
 
   app.use("/friends", friendshipRoutes);
   app.use("/notifications", notificationRoutes);
+  app.use("/community", communityRoutes);
 
   /* =========================
      AUTH TEST

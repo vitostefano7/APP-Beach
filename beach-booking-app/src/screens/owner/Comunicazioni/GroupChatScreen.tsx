@@ -19,6 +19,7 @@ import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { styles } from "../styles/ChatScreen.styles";
 import Avatar from "../../../components/Avatar/Avatar";
+import { resolveImageUrl } from "../../../utils/imageUtils";
 
 type Message = {
   _id: string;
@@ -54,7 +55,7 @@ export default function GroupChatScreen() {
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
 
-  const { conversationId, groupName, matchId, headerInfo } = route.params || {};
+  const { conversationId, groupName, matchId, headerInfo, struttura } = route.params || {};
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -230,9 +231,13 @@ export default function GroupChatScreen() {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMine = item.sender._id === user?.id;
     const prevMessage = index > 0 ? messages[index - 1] : null;
-    const showAvatar = !prevMessage || prevMessage.sender._id !== item.sender._id;
+    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+    const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;
     const isConsecutive = prevMessage && prevMessage.sender._id === item.sender._id;
     const isOwner = item.senderType === 'owner';
+    const strutturaAvatarUrl = struttura?.images?.[0]
+      ? resolveImageUrl(struttura.images[0])
+      : undefined;
 
     return (
       <View
@@ -293,6 +298,20 @@ export default function GroupChatScreen() {
             {formatTime(item.createdAt)}
           </Text>
         </View>
+
+        {isMine && showAvatar && (
+          <View style={styles.avatarContainerMine}>
+            <Avatar
+              name={headerInfo?.strutturaName || groupName || "Struttura"}
+              avatarUrl={strutturaAvatarUrl}
+              size={32}
+              backgroundColor="#E3F2FD"
+              textColor="#2196F3"
+            />
+          </View>
+        )}
+
+        {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
   };

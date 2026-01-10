@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, Image, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Image, Pressable, Alert, ActivityIndicator, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import API_URL from "../../../../config/api";
@@ -74,77 +74,139 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
     }
   };
 
+  const handleOpenMaps = () => {
+    const location = booking.campo?.struttura?.location;
+    if (!location) {
+      Alert.alert("Errore", "Indirizzo non disponibile");
+      return;
+    }
+
+    const { address, city } = location;
+    const query = address ? `${address}, ${city}` : city;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Errore", "Impossibile aprire Google Maps");
+    });
+  };
+
   const matchInProgress = isMatchInProgress();
+
+  // Debug players
+  console.log("NextMatchCard - hasMatch:", booking.hasMatch);
+  console.log("NextMatchCard - players:", booking.players);
+  console.log("NextMatchCard - players length:", booking.players?.length);
 
   return (
     <Pressable style={styles.nextMatchCard} onPress={onPress}>
-      {booking.campo?.struttura?.images?.[0] && (
-        <Image
-          source={{ uri: resolveImageUrl(booking.campo.struttura.images[0]) }}
-          style={styles.matchImage}
-        />
-      )}
-      <View style={styles.matchOverlay} />
+      {/* Immagine in alto */}
+      <View style={styles.matchImageContainer}>
+        {booking.campo?.struttura?.images?.[0] && (
+          <Image
+            source={{ uri: resolveImageUrl(booking.campo.struttura.images[0]) }}
+            style={styles.matchImage}
+          />
+        )}
+        <View style={styles.matchOverlay} />
+        
+        <View style={[
+          styles.matchTimeBadge,
+          matchInProgress && { backgroundColor: 'rgba(76, 175, 80, 0.95)' }
+        ]}>
+          {matchInProgress ? (
+            <>
+              <Ionicons name="play-circle" size={14} color="white" style={{ marginRight: 4 }} />
+              <Text style={styles.matchTimeText}>IN CORSO</Text>
+            </>
+          ) : (
+            <Text style={styles.matchTimeText}>
+              {displayDate === "Oggi" || displayDate === "Domani"
+                ? `Tra ${daysUntil === 0 ? '24' : daysUntil === 1 ? '24' : daysUntil * 24}h`
+                : `Tra ${daysUntil}g`}
+            </Text>
+          )}
+        </View>
+      </View>
 
-      <View style={[
-        styles.matchTimeBadge,
-        matchInProgress && { backgroundColor: 'rgba(76, 175, 80, 0.95)' }
-      ]}>
-        {matchInProgress ? (
-          <>
-            <Ionicons name="play-circle" size={14} color="white" style={{ marginRight: 4 }} />
-            <Text style={styles.matchTimeText}>IN CORSO</Text>
-          </>
-        ) : (
-          <Text style={styles.matchTimeText}>
-            {displayDate === "Oggi" || displayDate === "Domani"
-              ? displayDate
-              : `Tra ${daysUntil} giorni`}
-          </Text>
+      {/* Contenuto sotto l'immagine */}
+      <View style={styles.matchContent}>
+        <View style={styles.matchInfoRow}>
+          {/* Data, orario e location */}
+          <View style={styles.matchInfoLeft}>
+            <View style={styles.matchInfoSection}>
+              <Text style={styles.matchDay}>{displayDate}</Text>
+              <Text style={styles.matchTime}>
+                {booking.startTime} - {booking.endTime}
+              </Text>
+            </View>
+
+            {/* Location */}
+            <View style={styles.matchLocation}>
+              <Ionicons name="location" size={16} color="#666" />
+              <Text style={styles.matchLocationText}>
+                {booking.campo?.struttura?.name}
+              </Text>
+            </View>
+          </View>
+
+          {/* Avatar partecipanti */}
+          {booking.players && booking.players.length > 0 ? (
+            <View style={styles.playersAvatarContainer}>
+              {booking.players.slice(0, 4).map((player: any, index: number) => (
+                <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - index }]}>
+                  {player.user?.avatarUrl ? (
+                    <Image 
+                      source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
+                      <Text style={styles.avatarInitial}>
+                        {player.user?.name?.charAt(0).toUpperCase() || '?'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+              {booking.players.length > 4 && (
+                <View style={[styles.playerAvatar, styles.morePlayersAvatar]}>
+                  <Text style={styles.morePlayersText}>+{booking.players.length - 4}</Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+        </View>
+
+        {/* Pulsanti azioni */}
+        {booking.hasMatch && (
+          <View style={styles.matchActions}>
+            <Pressable
+              style={styles.matchActionButton}
+              onPress={(event) => {
+                event?.stopPropagation?.();
+                handleOpenMaps();
+              }}
+            >
+              <Ionicons name="information-circle-outline" size={20} color="#2196F3" />
+              <Text style={styles.matchActionText}>Indicazioni</Text>
+            </Pressable>
+            <Pressable 
+              style={[styles.matchActionButton, styles.chatButton, loadingChat && { opacity: 0.6 }]}
+              onPress={handleOpenGroupChat}
+              disabled={loadingChat}
+            >
+              {loadingChat ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="chatbubble" size={20} color="white" />
+                  <Text style={styles.chatActionText}>Chat Gruppo</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
         )}
       </View>
-
-      <View style={styles.matchInfo}>
-        <Text style={styles.matchDay}>{displayDate}</Text>
-        <Text style={styles.matchTime}>
-          {booking.startTime} - {booking.endTime}
-        </Text>
-      </View>
-
-      <View style={styles.matchDetails}>
-        <Text style={styles.matchTitle}>
-          {booking.hasMatch ? "Partita Amichevole" : "Prenotazione Campo"}
-        </Text>
-        <View style={styles.matchLocation}>
-          <Ionicons name="location" size={14} color="white" />
-          <Text style={styles.matchLocationText}>
-            {booking.campo?.struttura?.name}
-          </Text>
-        </View>
-      </View>
-
-      {booking.hasMatch && (
-        <View style={styles.matchActions}>
-          <Pressable style={styles.matchActionButton}>
-            <Ionicons name="information-circle-outline" size={16} color="white" />
-            <Text style={styles.matchActionText}>Indicazioni</Text>
-          </Pressable>
-          <Pressable 
-            style={[styles.matchActionButton, loadingChat && { opacity: 0.6 }]}
-            onPress={handleOpenGroupChat}
-            disabled={loadingChat}
-          >
-            {loadingChat ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Ionicons name="chatbubble-outline" size={16} color="white" />
-                <Text style={styles.matchActionText}>Chat Gruppo</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-      )}
     </Pressable>
   );
 };

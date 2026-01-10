@@ -4,6 +4,8 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  FlatList,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useContext, useEffect, useState } from "react";
@@ -33,12 +35,32 @@ type UserProfileData = {
   stats: {
     matchesPlayed: number;
     commonMatchesCount?: number;
+    followersCount?: number;
+    followingCount?: number;
   };
   friendshipStatus?: 'none' | 'pending' | 'accepted'; // Il TUO status verso di loro
   isPrivate?: boolean;
   message?: string;
   hasIncomingRequest?: boolean; // Hanno una richiesta pending verso di te
   theyFollowMe?: boolean; // Ti seguono già (accepted)
+};
+
+type Post = {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  content: string;
+  image?: string;
+  likes: string[];
+  comments: Array<{
+    _id: string;
+    user: { name: string };
+    text: string;
+  }>;
+  createdAt: string;
 };
 
 export default function UserProfileScreen() {
@@ -50,16 +72,20 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<UserProfileData | null>(null);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   // Ricarica il profilo quando la schermata viene focalizzata
   useFocusEffect(
     React.useCallback(() => {
       loadUserProfile();
+      loadUserPosts();
     }, [userId])
   );
 
   useEffect(() => {
     loadUserProfile();
+    loadUserPosts();
   }, [userId]);
 
   const loadUserProfile = async () => {
@@ -68,7 +94,7 @@ export default function UserProfileScreen() {
     try {
       setLoading(true);
       console.log("🔍 [UserProfile] Caricamento profilo per userId:", userId);
-      
+
       const res = await fetch(`${API_URL}/users/${userId}/public-profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,6 +117,39 @@ export default function UserProfileScreen() {
       console.error("❌ [UserProfile] Exception:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserPosts = async () => {
+    if (!token || !userId) return;
+
+    try {
+      setLoadingPosts(true);
+      console.log("📝 [UserProfile] Caricamento posts per userId:", userId);
+
+      const res = await fetch(`${API_URL}/users/${userId}/posts?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("📡 [UserProfile] Posts response status:", res.status);
+
+      if (res.ok) {
+        const json = await res.json();
+        console.log("📦 [UserProfile] Posts ricevuti:", json.posts?.length || 0);
+        setPosts(json.posts || []);
+      } else if (res.status === 403) {
+        // Profilo privato e non lo segui
+        console.log("🔒 [UserProfile] Posts non accessibili (profilo privato)");
+        setPosts([]);
+      } else {
+        console.error("❌ [UserProfile] Error loading posts:", res.status);
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception loading posts:", error);
+      setPosts([]);
+    } finally {
+      setLoadingPosts(false);
     }
   };
 
@@ -265,19 +324,65 @@ export default function UserProfileScreen() {
             </View>
           )}
 
-          {/* Stats - Hidden if private and not friend */}
+          {/* Stats Cards - Hidden if private and not friend */}
           {!isPrivateProfile && (
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{data.stats.matchesPlayed}</Text>
-                <Text style={styles.statLabel}>Partite giocate</Text>
-              </View>
-              {data.stats.commonMatchesCount !== undefined && data.stats.commonMatchesCount > 0 && (
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{data.stats.commonMatchesCount}</Text>
-                  <Text style={styles.statLabel}>Partite insieme</Text>
+            <View style={styles.statsCardsContainer}>
+              {/* Partite Card */}
+              <View style={styles.statsCard}>
+                <View style={styles.statsCardHeader}>
+                  <Ionicons name="trophy" size={18} color="#2196F3" />
+                  <Text style={styles.statsCardTitle}>Partite</Text>
                 </View>
-              )}
+                <View style={styles.statsCardContent}>
+                  <View style={styles.statsCardItem}>
+                    <Text style={styles.statsCardValue}>{data.stats.matchesPlayed}</Text>
+                    <Text style={styles.statsCardLabel}>Giocate</Text>
+                  </View>
+                  {data.stats.commonMatchesCount !== undefined && data.stats.commonMatchesCount > 0 && (
+                    <View style={styles.statsCardItem}>
+                      <Text style={styles.statsCardValue}>{data.stats.commonMatchesCount}</Text>
+                      <Text style={styles.statsCardLabel}>Insieme</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Community Card - Clickable */}
+              <Pressable
+                style={styles.statsCard}
+                onPress={() => {
+                  const parent = navigation.getParent();
+                  if (parent) {
+                    parent.navigate("Profilo" as never, {
+                      screen: "FriendsList",
+                      params: { userId, filter: "all" },
+                    } as never);
+                  }
+                }}
+              >
+                <View style={styles.statsCardHeader}>
+                  <Ionicons name="people" size={18} color="#4CAF50" />
+                  <Text style={styles.statsCardTitle}>Community</Text>
+                </View>
+                <View style={styles.statsCardContent}>
+                  {data.stats.followersCount !== undefined && (
+                    <View style={styles.statsCardItem}>
+                      <Text style={styles.statsCardValue}>{data.stats.followersCount}</Text>
+                      <Text style={styles.statsCardLabel}>Follower</Text>
+                    </View>
+                  )}
+                  {data.stats.followingCount !== undefined && (
+                    <View style={styles.statsCardItem}>
+                      <Text style={styles.statsCardValue}>{data.stats.followingCount}</Text>
+                      <Text style={styles.statsCardLabel}>Following</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.statsCardFooter}>
+                  <Text style={styles.statsCardLink}>Vedi</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+                </View>
+              </Pressable>
             </View>
           )}
 
@@ -315,6 +420,62 @@ export default function UserProfileScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        {/* Posts Section - Only if not private or if friend */}
+        {!isPrivateProfile && (
+          <View style={styles.postsSection}>
+            <View style={styles.postsSectionHeader}>
+              <Text style={styles.postsSectionTitle}>Post</Text>
+              {loadingPosts && <ActivityIndicator size="small" color="#2196F3" />}
+            </View>
+
+            {posts.length > 0 ? (
+              posts.map((post) => (
+                <View key={post._id} style={styles.postCard}>
+                  <View style={styles.postHeader}>
+                    <Avatar
+                      avatarUrl={post.user.avatarUrl}
+                      name={post.user.name}
+                      size={32}
+                    />
+                    <View style={styles.postHeaderText}>
+                      <Text style={styles.postAuthor}>{post.user.name}</Text>
+                      <Text style={styles.postTime}>
+                        {new Date(post.createdAt).toLocaleDateString('it-IT')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.postContent}>{post.content}</Text>
+
+                  {post.image && (
+                    <Image
+                      source={{ uri: post.image }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
+                  )}
+
+                  <View style={styles.postStats}>
+                    <View style={styles.postStat}>
+                      <Ionicons name="heart-outline" size={18} color="#666" />
+                      <Text style={styles.postStatText}>{post.likes.length}</Text>
+                    </View>
+                    <View style={styles.postStat}>
+                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
+                      <Text style={styles.postStatText}>{post.comments.length}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))
+            ) : !loadingPosts ? (
+              <View style={styles.emptyPosts}>
+                <Ionicons name="newspaper-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyPostsText}>Nessun post pubblicato</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

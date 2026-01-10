@@ -113,10 +113,16 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statsContainer: {
-    flexDirection: "row",
-    gap: 32,
+    flexDirection: "column",
+    gap: 16,
     marginTop: 24,
     marginBottom: 24,
+    width: '100%',
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    gap: 32,
   },
   statItem: {
     alignItems: "center",
@@ -211,5 +217,147 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     flex: 1,
+  },
+
+  // Posts Section
+  postsSection: {
+    marginTop: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  postsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  postsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  postCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    marginTop: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  postHeaderText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  postTime: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  postContent: {
+    fontSize: 15,
+    color: '#1a1a1a',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  postImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  postStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  postStatText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyPosts: {
+    backgroundColor: 'white',
+    padding: 48,
+    alignItems: 'center',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  emptyPostsText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 12,
+  },
+
+  // Stats Cards
+  statsCardsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  statsCard: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 14,
+  },
+  statsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  statsCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  statsCardContent: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statsCardItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statsCardValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  statsCardLabel: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+  },
+  statsCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    marginTop: 8,
+  },
+  statsCardLink: {
+    fontSize: 12,
+    color: '#2196F3',
+    fontWeight: '500',
   },
 });
