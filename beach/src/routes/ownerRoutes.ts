@@ -6,6 +6,7 @@ import {
   getMyStrutture,
   updateStruttura,
   getOwnerBookings,
+  getOwnerMatches,
 } from "../controllers/ownerController";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.post("/strutture", createStruttura);
 router.get("/strutture", getMyStrutture);
 router.put("/strutture/:id", updateStruttura);
 router.get("/bookings", getOwnerBookings);
+router.get("/matches", getOwnerMatches);
 
 export default router;

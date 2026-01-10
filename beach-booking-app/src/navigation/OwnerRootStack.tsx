@@ -15,6 +15,7 @@ import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCa
 import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
 import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
 import GroupChatScreen from "../screens/owner/Comunicazioni/GroupChatScreen";
+import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -36,6 +37,10 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="StrutturaDashboard"
         component={StrutturaDashboardScreen}
+      />
+      <Stack.Screen
+        name="Strutture"
+        component={OwnerStruttureScreen}
       />
       <Stack.Screen
         name="CreaStruttura"

@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import { AuthRequest } from "../middleware/authMiddleware";
 import Strutture from "../models/Strutture";
 import Booking from "../models/Booking";
+import Match from "../models/Match";
+import Campo from "../models/Campo";
 
 /**
  * CREA STRUTTURA
@@ -153,7 +155,7 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
 
     // ✅ Formatta risposta con dati user accessibili
     const formattedBookings = bookings.map((b: any) => ({
-      id: b._id,
+      _id: b._id,
       userId: b.user?._id,
       userName: b.user?.name || "N/A",
       userSurname: b.user?.surname || "",
@@ -167,11 +169,120 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
       status: b.status,
       campo: b.campo,
       struttura: b.struttura,
+      createdAt: b.createdAt,
     }));
 
     res.json(formattedBookings);
   } catch (err) {
     console.error("❌ Errore getOwnerBookings:", err);
     res.status(500).json({ message: "Errore bookings" });
+  }
+};
+
+/**
+ * GET /owner/matches
+ * Ottiene i match delle strutture del proprietario
+ */
+export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerId = req.user!.id;
+    const { status } = req.query;
+
+    console.log("🏐 [getOwnerMatches] Richiesta per owner:", ownerId);
+
+    // Trova le strutture dell'owner
+    const strutture = await Strutture.find({
+      owner: new mongoose.Types.ObjectId(ownerId),
+    }).select("_id");
+
+    const struttureIds = strutture.map(s => s._id);
+    console.log("🏢 [getOwnerMatches] Strutture owner:", struttureIds.length);
+
+    // Trova tutti i campi delle strutture dell'owner
+    const campi = await Campo.find({
+      struttura: { $in: struttureIds },
+    }).select("_id");
+
+    const campiIds = campi.map(c => c._id);
+    console.log("⚽ [getOwnerMatches] Campi owner:", campiIds.length);
+
+    // Trova booking dei campi dell'owner con data >= oggi
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0];
+
+    const bookings = await Booking.find({
+      campo: { $in: campiIds },
+      date: { $gte: todayStr },
+    }).select("_id");
+
+    const bookingIds = bookings.map(b => b._id);
+    console.log("📋 [getOwnerMatches] Booking owner futuri:", bookingIds.length);
+
+    // Costruisci filtro per i match
+    const filter: any = {
+      booking: { $in: bookingIds },
+    };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    // Trova i match
+    const matches = await Match.find(filter)
+      .populate("players.user", "username name surname avatarUrl")
+      .populate("createdBy", "username name surname avatarUrl")
+      .populate({
+        path: "booking",
+        populate: [
+          {
+            path: "campo",
+            select: "name sport",
+            populate: {
+              path: "struttura",
+              select: "name location",
+            },
+          },
+          {
+            path: "user",
+            select: "name surname",
+          },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    // Filtra match con booking valido e campo/struttura popolati
+    const validMatches = matches.filter(m => {
+      if (!m.booking) {
+        console.log("⚠️ Match senza booking:", m._id);
+        return false;
+      }
+      const booking = m.booking as any;
+      if (!booking.campo) {
+        console.log("⚠️ Booking senza campo:", booking._id);
+        return false;
+      }
+      if (!booking.campo.struttura) {
+        console.log("⚠️ Campo senza struttura:", booking.campo._id);
+        return false;
+      }
+      return true;
+    });
+
+    // Ordina per data e ora
+    validMatches.sort((a, b) => {
+      const bookingA = a.booking as any;
+      const bookingB = b.booking as any;
+      const dateA = new Date(`${bookingA.date}T${bookingA.startTime}`);
+      const dateB = new Date(`${bookingB.date}T${bookingB.startTime}`);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    console.log(`✅ [getOwnerMatches] Match validi trovati: ${validMatches.length}`);
+
+    res.json(validMatches);
+  } catch (err) {
+    console.error("❌ [getOwnerMatches] Errore:", err);
+    res.status(500).json({ message: "Errore caricamento match" });
   }
 };
