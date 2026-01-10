@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 
+import OwnerDashboardScreen from "../screens/owner/dashboard/OwnerDashboardScreen";
 import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
 import OwnerBookingsScreen from "../screens/owner/prenotazioni/OwnerBookingsScreen";
 import OwnerProfileScreen from "../screens/owner/OwnerProfileScreen";
@@ -28,6 +29,7 @@ export default function OwnerTabs() {
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
           const icons: any = {
+            Dashboard: "grid",
             Strutture: "business",
             Prenotazioni: "calendar",
             Comunicazioni: "chatbox",
@@ -39,7 +41,7 @@ export default function OwnerTabs() {
         tabBarInactiveTintColor: "#999",
       })}
     >
-      <Tab.Screen name="Strutture" component={OwnerStruttureScreen} />
+      <Tab.Screen name="Dashboard" component={OwnerDashboardScreen} />
       <Tab.Screen name="Prenotazioni" component={OwnerBookingsScreen} />
       <Tab.Screen 
         name="Comunicazioni" 
