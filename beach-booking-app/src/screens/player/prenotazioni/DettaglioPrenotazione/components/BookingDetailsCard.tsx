@@ -86,7 +86,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
         <FadeInView delay={100} style={styles.gridItem}>
           <View style={styles.itemContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="calendar" size={20} color="#2196F3" />
+              <Ionicons name="calendar" size={18} color="#2196F3" />
             </View>
             <View style={styles.itemInfo}>
               <Text style={styles.itemLabel}>DATA E ORA</Text>
@@ -101,7 +101,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
         <FadeInView delay={200} style={styles.gridItem}>
           <View style={styles.itemContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="time" size={20} color="#FF9800" />
+              <Ionicons name="time" size={18} color="#FF9800" />
             </View>
             <View style={styles.itemInfo}>
               <Text style={styles.itemLabel}>DURATA</Text>
@@ -114,7 +114,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
         <FadeInView delay={300} style={styles.gridItem}>
           <View style={styles.itemContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="cash" size={20} color="#4CAF50" />
+              <Ionicons name="cash" size={18} color="#4CAF50" />
             </View>
             <View style={styles.itemInfo}>
               <Text style={styles.itemLabel}>PREZZO</Text>
@@ -125,34 +125,20 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
           </View>
         </FadeInView>
 
-        {/* Data Prenotazione */}
-        <FadeInView delay={400} style={styles.gridItem}>
-          <View style={styles.itemContent}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="checkmark-circle" size={20} color="#9C27B0" />
-            </View>
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemLabel}>PRENOTATO IL</Text>
-              <Text style={styles.itemValue}>
-                {formatBookingDate(createdAt)}
-              </Text>
-            </View>
-          </View>
-        </FadeInView>
 
         {/* Visibilità Partita */}
         {isPublic !== undefined && (
           <FadeInView delay={500} style={styles.gridItem}>
             <View style={styles.itemContent}>
               <View style={styles.iconContainer}>
-                <Ionicons 
-                  name={isPublic ? "globe-outline" : "lock-closed"} 
-                  size={20} 
-                  color={isPublic ? "#03A9F4" : "#FF5722"} 
+                <Ionicons
+                  name={isPublic ? "globe-outline" : "lock-closed"}
+                  size={18}
+                  color={isPublic ? "#03A9F4" : "#FF5722"}
                 />
               </View>
               <View style={styles.itemInfo}>
-                <Text style={styles.itemLabel}>VISIBILITÀ</Text>
+                <Text style={styles.itemLabel}>Tipo di Partita</Text>
                 <Text style={styles.itemValue}>
                   {isPublic ? "Aperta" : "Privata"}
                 </Text>
@@ -200,16 +186,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   itemContent: {
-    padding: 14,
+    padding: 12,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -220,17 +206,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   itemLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#999',
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   itemValue: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#1a1a1a',
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 19,
     letterSpacing: -0.2,
   },
   priceValue: {

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  FlatList,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -17,6 +18,7 @@ import { AuthContext } from "../../../../context/AuthContext";
 import { styles } from "../../styles-player/FieldDetailsScreen.styles";
 import API_URL from "../../../../config/api";
 import { resolveImageUrl } from "../../../../utils/imageUtils";
+import OpenMatchCard from "../../dashboard/components/OpenMatchCard";
 
 import {
   MONTHS,
@@ -93,6 +95,11 @@ export default function FieldDetailsScreen() {
   
   // ✅ Dropdown orari apertura
   const [openingHoursExpanded, setOpeningHoursExpanded] = useState(false);
+  
+  // ✅ Navigation chips
+  const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite' | 'mappa'>('campi');
+  const [openMatches, setOpenMatches] = useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
 
   /* =======================
      INIT
@@ -209,6 +216,68 @@ export default function FieldDetailsScreen() {
     }
   };
 
+  const fetchOpenMatches = async () => {
+    if (!token) return;
+    
+    try {
+      setLoadingMatches(true);
+      const res = await fetch(`${API_URL}/matches?status=open`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
+        
+        const now = new Date();
+        
+        // Filter by struttura and availability
+        const filtered = rawMatches.filter((match: any) => {
+          // Filter by struttura
+          if (match.booking?.campo?.struttura?._id !== struttura._id) {
+            return false;
+          }
+          
+          // Exclude completed, cancelled, full
+          if (match.status && ['completed', 'cancelled', 'full'].includes(match.status)) {
+            return false;
+          }
+          
+          // Only public matches
+          if (match.isPublic === false) {
+            return false;
+          }
+
+          // Check available spots
+          const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
+          const maxPlayers = match.maxPlayers || 0;
+          if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) {
+            return false;
+          }
+
+          // Exclude matches starting soon (< 30 minutes)
+          const start = match.booking?.date && match.booking?.startTime
+            ? new Date(`${match.booking.date}T${match.booking.startTime}`)
+            : null;
+          if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) {
+            return false;
+          }
+
+          return true;
+        });
+
+        setOpenMatches(filtered.slice(0, 10)); // Limit to 10
+      }
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
+
   /* =======================
      MEMO
   ======================= */
@@ -243,6 +312,13 @@ export default function FieldDetailsScreen() {
       });
     }
   }, [currentImageIndex, images.length]);
+
+  // ✅ Fetch open matches when switching to partite chip
+  useEffect(() => {
+    if (activeChip === 'partite' && openMatches.length === 0 && !loadingMatches) {
+      fetchOpenMatches();
+    }
+  }, [activeChip]);
 
   const todayStr = useMemo(() => toLocalDateString(new Date()), []);
 
@@ -363,15 +439,115 @@ export default function FieldDetailsScreen() {
         {token && (
           <View style={styles.chatSection}>
             <Pressable style={styles.chatButton} onPress={startChat}>
-              <Ionicons name="chatbubble-outline" size={20} color="white" />
+              <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
               <Text style={styles.chatButtonText}>Contatta la struttura</Text>
-              <Ionicons name="arrow-forward" size={16} color="white" />
+              <Ionicons name="arrow-forward" size={16} color="#2196F3" />
             </Pressable>
           </View>
         )}
 
-        {/* OPENING HOURS */}
-        {struttura.openingHours && Object.keys(struttura.openingHours).length > 0 && (
+        {/* NAVIGATION CHIPS */}
+        <View style={styles.chipsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}
+          >
+            <Pressable
+              style={[
+                styles.chip,
+                activeChip === 'info' && styles.chipActive,
+              ]}
+              onPress={() => setActiveChip('info')}
+            >
+              <Ionicons
+                name="information-circle"
+                size={16}
+                color={activeChip === 'info' ? 'white' : '#2196F3'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  activeChip === 'info' && styles.chipTextActive,
+                ]}
+              >
+                Informazioni
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.chip,
+                activeChip === 'campi' && styles.chipActive,
+              ]}
+              onPress={() => setActiveChip('campi')}
+            >
+              <Ionicons
+                name="list"
+                size={16}
+                color={activeChip === 'campi' ? 'white' : '#2196F3'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  activeChip === 'campi' && styles.chipTextActive,
+                ]}
+              >
+                Prenota Campo
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.chip,
+                activeChip === 'partite' && styles.chipActive,
+              ]}
+              onPress={() => setActiveChip('partite')}
+            >
+              <Ionicons
+                name="people"
+                size={16}
+                color={activeChip === 'partite' ? 'white' : '#2196F3'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  activeChip === 'partite' && styles.chipTextActive,
+                ]}
+              >
+                Partite Aperte
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.chip,
+                activeChip === 'mappa' && styles.chipActive,
+              ]}
+              onPress={() => setActiveChip('mappa')}
+            >
+              <Ionicons
+                name="map"
+                size={16}
+                color={activeChip === 'mappa' ? 'white' : '#2196F3'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  activeChip === 'mappa' && styles.chipTextActive,
+                ]}
+              >
+                Mappa
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+
+        {/* INFORMAZIONI SECTION */}
+        {activeChip === 'info' && (
+          <>
+            {/* OPENING HOURS */}
+            {struttura.openingHours && Object.keys(struttura.openingHours).length > 0 && (
           <View style={styles.section}>
             <Pressable 
               style={styles.dropdownHeader}
@@ -443,8 +619,11 @@ export default function FieldDetailsScreen() {
             </View>
           </View>
         )}
+          </>
+        )}
 
         {/* CAMPI DISPONIBILI */}
+        {activeChip === 'campi' && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="list" size={20} color="#2196F3" />
@@ -1304,8 +1483,55 @@ export default function FieldDetailsScreen() {
             );
           })}
         </View>
+        )}
+
+        {/* PARTITE APERTE SECTION */}
+        {activeChip === 'partite' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people" size={20} color="#2196F3" />
+              <Text style={styles.sectionTitle}>Partite aperte in questa struttura</Text>
+            </View>
+
+            {loadingMatches ? (
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color="#2196F3" />
+                <Text style={styles.emptyText}>Caricamento partite...</Text>
+              </View>
+            ) : openMatches.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="trophy-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>Nessuna partita aperta al momento</Text>
+                <Text style={styles.emptySubtext}>
+                  Le partite pubbliche create per questa struttura appariranno qui
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={openMatches}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <OpenMatchCard
+                    match={item}
+                    onPress={() => {
+                      const bookingId = item.booking?._id;
+                      if (bookingId) {
+                        navigation.navigate('DettaglioPrenotazione', { bookingId });
+                      } else {
+                        alert('ID prenotazione non disponibile');
+                      }
+                    }}
+                  />
+                )}
+                scrollEnabled={false}
+                contentContainerStyle={{ gap: 12 }}
+              />
+            )}
+          </View>
+        )}
 
         {/* MAP */}
+        {activeChip === 'mappa' && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="map" size={20} color="#F44336" />
@@ -1339,6 +1565,7 @@ export default function FieldDetailsScreen() {
             <Text style={styles.openMapsBtnText}>Apri in Google Maps</Text>
           </Pressable>
         </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
