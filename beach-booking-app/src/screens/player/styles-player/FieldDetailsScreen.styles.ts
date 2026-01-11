@@ -893,6 +893,41 @@ export const styles = StyleSheet.create({
     color: "white",
   },
 
+  // Sport filters
+  sportFiltersContainer: {
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sportFiltersScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+    flexDirection: "row",
+  },
+  sportFilterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  sportFilterChipActive: {
+    backgroundColor: "#2196F3",
+    borderColor: "#1976D2",
+  },
+  sportFilterText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666",
+    textTransform: "inherit",
+  },
+  sportFilterTextActive: {
+    color: "white",
+  },
+
   // Empty states
   emptySubtext: {
     fontSize: 12,

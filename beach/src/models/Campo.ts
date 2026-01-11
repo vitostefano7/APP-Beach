@@ -107,7 +107,7 @@ export interface PricingRules {
 export interface ICampo extends Document {
   struttura: mongoose.Types.ObjectId;
   name: string;
-  sport: "beach_volley" | "volley";
+  sport: "beach volley" | "volley";
   surface: "sand" | "cement" | "pvc";
   maxPlayers: number;
   indoor: boolean;
@@ -306,7 +306,7 @@ const CampoSchema = new Schema<ICampo>(
 
     sport: {
       type: String,
-      enum: ["beach_volley", "volley"],
+      enum: ["beach volley", "volley"],
       required: true,
     },
 
@@ -318,7 +318,7 @@ const CampoSchema = new Schema<ICampo>(
         validator: function (value: string) {
           const doc = this as any;
 
-          if (doc.sport === "beach_volley") {
+          if (doc.sport === "beach volley") {
             return value === "sand";
           }
 
@@ -335,7 +335,7 @@ const CampoSchema = new Schema<ICampo>(
         message: function () {
           const doc = this as any;
 
-          if (doc.sport === "beach_volley") {
+          if (doc.sport === "beach volley") {
             return "Beach volley deve avere superficie sabbia";
           }
           if (doc.sport === "volley" && doc.indoor) {

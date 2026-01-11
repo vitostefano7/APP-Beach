@@ -11,7 +11,7 @@ export interface IUser extends Document {
   avatarUrl?: string;
   expoPushToken?: string;
   pushTokenUpdatedAt?: Date;
-  preferredSports?: ("volleyball" | "beach_volleyball")[]; 
+  preferredSports?: ("volley" | "beach volley")[]; 
   profilePrivacy?: "public" | "private"; // 🆕 Privacy del profilo
   location?: {
     type: "Point";
@@ -77,7 +77,7 @@ const UserSchema = new Schema<IUser>(
     // 🆕 PREFERENZE SPORT
     preferredSports: {
       type: [String],
-      enum: ["volleyball", "beach_volleyball"],
+      enum: ["volley", "beach volley"],
       default: [],
     },
 

@@ -3,7 +3,7 @@
  * Frontend version
  */
 
-export type SportType = "beach_volley" | "volley";
+export type SportType = "beach volley" | "volley";
 
 export interface MaxPlayersRules {
   min: number;
@@ -18,7 +18,7 @@ export interface MaxPlayersRules {
  */
 export function getMaxPlayersRulesForSport(sport: SportType): MaxPlayersRules {
   switch (sport) {
-    case "beach_volley":
+    case "beach volley":
       return {
         min: 4,
         max: 8,

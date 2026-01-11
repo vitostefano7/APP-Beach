@@ -355,7 +355,7 @@ export default function StrutturaDashboardScreen() {
                 onPress={() => navigation.navigate("AggiungiCampo", { strutturaId })}
               >
                 <Ionicons name="add" size={16} color="white" />
-                <Text style={styles.addButtonTextSmall}>Aggiungi</Text>
+                <Text style={styles.addButtonTextSmall}>Aggiungi un nuovo campo</Text>
               </Pressable>
             )}
           </View>

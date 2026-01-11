@@ -100,6 +100,7 @@ export default function FieldDetailsScreen() {
   const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite' | 'mappa'>('campi');
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [sportFilter, setSportFilter] = useState<string | 'all'>('all');
 
   /* =======================
      INIT
@@ -630,6 +631,58 @@ export default function FieldDetailsScreen() {
             <Text style={styles.sectionTitle}>Campi disponibili</Text>
           </View>
 
+          {/* FILTRI SPORT */}
+          {campi.length > 0 && (
+            <View style={styles.sportFiltersContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.sportFiltersScroll}
+              >
+                <Pressable
+                  style={[
+                    styles.sportFilterChip,
+                    sportFilter === 'all' && styles.sportFilterChipActive,
+                  ]}
+                  onPress={() => setSportFilter('all')}
+                >
+                  <Text
+                    style={[
+                      styles.sportFilterText,
+                      sportFilter === 'all' && styles.sportFilterTextActive,
+                    ]}
+                  >
+                    Tutti
+                  </Text>
+                </Pressable>
+                {Array.from(new Set(campi.map(c => c.sport))).map((sport) => (
+                  <Pressable
+                    key={sport}
+                    style={[
+                      styles.sportFilterChip,
+                      sportFilter === sport && styles.sportFilterChipActive,
+                    ]}
+                    onPress={() => setSportFilter(sport)}
+                  >
+                    <Ionicons
+                      name={getSportIcon(sport) as any}
+                      size={14}
+                      color={sportFilter === sport ? 'white' : '#2196F3'}
+                    />
+                    <Text
+                      style={[
+                        styles.sportFilterText,
+                        sportFilter === sport && styles.sportFilterTextActive,
+                      ]}
+                    >
+                      {SPORT_LABELS[sport] || sport}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {campi.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="basketball-outline" size={48} color="#ccc" />
@@ -637,7 +690,9 @@ export default function FieldDetailsScreen() {
             </View>
           )}
 
-          {campi.map((campo) => {
+          {campi
+            .filter(campo => sportFilter === 'all' || campo.sport === sportFilter)
+            .map((campo) => {
             const isExpanded = expandedCampoId === campo._id;
             const currentMonth = currentMonths[campo._id] || new Date();
             const isLoading = loadingCalendars[campo._id];

@@ -205,7 +205,7 @@ MatchSchema.pre("save", async function () {
 
     const booking = match.booking as any;
     if (booking?.campo?.sport) {
-      const sportType = booking.campo.sport as "beach_volley" | "volley";
+      const sportType = booking.campo.sport as "beach volley" | "volley";
       const validation = validateMaxPlayersForSport(match.maxPlayers, sportType);
       
       if (!validation.valid) {

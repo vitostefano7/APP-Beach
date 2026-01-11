@@ -211,13 +211,21 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split("T")[0];
 
-    const bookings = await Booking.find({
+    // Recupera tutti i booking da oggi in poi con i campi necessari per il filtro
+    const allBookings = await Booking.find({
       campo: { $in: campiIds },
       date: { $gte: todayStr },
-    }).select("_id");
+    }).select("_id date endTime");
+
+    // Filtra manualmente per escludere quelli già terminati
+    const now = new Date();
+    const bookings = allBookings.filter(b => {
+      const bookingEndDateTime = new Date(`${b.date}T${b.endTime}:00`);
+      return bookingEndDateTime > now;
+    });
 
     const bookingIds = bookings.map(b => b._id);
-    console.log("📋 [getOwnerMatches] Booking owner futuri:", bookingIds.length);
+    console.log("📋 [getOwnerMatches] Booking owner futuri/in corso:", bookingIds.length);
 
     // Costruisci filtro per i match
     const filter: any = {

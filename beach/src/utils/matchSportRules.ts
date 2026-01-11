@@ -2,7 +2,7 @@
  * Regole e validazioni per i partecipanti alle partite basate sul tipo di sport
  */
 
-export type SportType = "beach_volley" | "volley";
+export type SportType = "beach volley" | "volley";
 
 export interface MaxPlayersRules {
   min: number;
@@ -17,7 +17,7 @@ export interface MaxPlayersRules {
  */
 export function getMaxPlayersRulesForSport(sport: SportType): MaxPlayersRules {
   switch (sport) {
-    case "beach_volley":
+    case "beach volley":
       return {
         min: 4,
         max: 8,
@@ -103,7 +103,7 @@ export function getTeamFormationLabel(maxPlayers: number, sport?: SportType): st
  */
 export function getSportDisplayName(sport: SportType): string {
   switch (sport) {
-    case "beach_volley":
+    case "beach volley":
       return "Beach Volley";
     case "volley":
       return "Volley";

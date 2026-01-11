@@ -180,7 +180,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     console.log("✅ Prenotazione creata:", booking._id);
 
     // 🆕 Determina maxPlayers basandosi sul tipo di sport del campo
-    const sportType = campo.sport as "beach_volley" | "volley";
+    const sportType = campo.sport as "beach volley" | "volley";
     
     // Se l'utente ha specificato maxPlayers (per beach volley), usa quello
     // Altrimenti usa il default per lo sport

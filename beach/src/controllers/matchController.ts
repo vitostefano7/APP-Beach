@@ -52,7 +52,7 @@ export const createMatchFromBooking = async (
     let finalMaxPlayers = maxPlayers;
     
     if (campo?.sport) {
-      const sportType = campo.sport as "beach_volley" | "volley";
+      const sportType = campo.sport as "beach volley" | "volley";
       
       // Se maxPlayers non è fornito, usa il default per lo sport
       if (!maxPlayers) {
@@ -113,7 +113,7 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
     let finalMaxPlayers = maxPlayers;
     
     if (campo?.sport) {
-      const sportType = campo.sport as "beach_volley" | "volley";
+      const sportType = campo.sport as "beach volley" | "volley";
       
       // Se maxPlayers non è fornito, usa il default per lo sport
       if (!maxPlayers) {
