@@ -537,7 +537,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     backgroundColor: "#F5F5F5",
     borderWidth: 1,

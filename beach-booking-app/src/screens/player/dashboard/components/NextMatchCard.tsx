@@ -187,7 +187,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
                 handleOpenMaps();
               }}
             >
-              <Ionicons name="information-circle-outline" size={20} color="#2196F3" />
+              <Ionicons name="navigate" size={20} color="#2196F3" />
               <Text style={styles.matchActionText}>Indicazioni</Text>
             </Pressable>
             <Pressable 
@@ -200,7 +200,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
               ) : (
                 <>
                   <Ionicons name="chatbubble" size={20} color="white" />
-                  <Text style={styles.chatActionText}>Chat Gruppo</Text>
+                  <Text style={styles.chatActionText}>Chat Partita</Text>
                 </>
               )}
             </Pressable>

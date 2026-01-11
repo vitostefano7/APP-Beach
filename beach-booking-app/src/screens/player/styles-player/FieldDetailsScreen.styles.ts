@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#666",
     fontWeight: "600",
   },
@@ -91,7 +91,7 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "800",
     color: "#1a1a1a",
     marginBottom: 8,
@@ -103,21 +103,22 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   address: {
-    fontSize: 15,
+    fontSize: 13,
     color: "#666",
     fontWeight: "500",
     flex: 1,
   },
   description: {
-    fontSize: 15,
+    fontSize: 13,
     color: "#333",
-    lineHeight: 22,
+    lineHeight: 20,
     marginTop: 8,
   },
 
   chatSection: {
     paddingHorizontal: 16,
     marginTop: 16,
+    marginBottom: 8,
   },
 
   chatButton: {
@@ -125,21 +126,23 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#4CAF50",
-    paddingVertical: 16,
+    backgroundColor: "white",
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
-    shadowColor: "#4CAF50",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: "#2196F3",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   chatButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#2196F3",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   section: {
@@ -153,7 +156,7 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "700",
     color: "#1a1a1a",
   },
@@ -196,7 +199,7 @@ export const styles = StyleSheet.create({
     borderBottomColor: "#f0f0f0",
   },
   dayName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#333",
     flex: 1,
@@ -206,12 +209,12 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   hoursLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#4CAF50",
   },
   closedLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#F44336",
   },
@@ -242,7 +245,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
   amenityLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#333",
   },
@@ -253,7 +256,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 13,
     color: "#999",
     fontWeight: "500",
   },
@@ -288,7 +291,7 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   campoName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#1a1a1a",
   },
@@ -304,7 +307,7 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
   },
   sportBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: "#2196F3",
   },
@@ -315,7 +318,7 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
   },
   surfaceBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: "#F57C00",
   },
@@ -329,7 +332,7 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
   },
   indoorText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: "#666",
   },
@@ -343,12 +346,12 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     fontWeight: "500",
   },
   priceText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#4CAF50",
     fontWeight: "700",
   },
@@ -373,7 +376,7 @@ export const styles = StyleSheet.create({
     padding: 6,
   },
   monthText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
   },
@@ -398,7 +401,7 @@ export const styles = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
     fontWeight: "500",
   },
@@ -409,7 +412,7 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#666",
     fontWeight: "600",
   },
@@ -426,7 +429,7 @@ export const styles = StyleSheet.create({
   weekDay: {
     flex: 1,
     textAlign: "center",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     color: "#999",
   },
@@ -462,7 +465,7 @@ export const styles = StyleSheet.create({
   },
 
   dayNumber: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#333",
   },
@@ -514,7 +517,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   dayDetailTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     textTransform: "capitalize",
     color: "#1a1a1a",
@@ -530,7 +533,7 @@ export const styles = StyleSheet.create({
   },
 
   selectSlotHint: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     marginBottom: 12,
   },
@@ -545,7 +548,7 @@ export const styles = StyleSheet.create({
   closedText: {
     color: "#F44336",
     fontWeight: "700",
-    fontSize: 15,
+    fontSize: 13,
   },
 
   // === DURATION SELECTION ===
@@ -553,14 +556,14 @@ export const styles = StyleSheet.create({
     padding: 12,
   },
   durationTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "#333",
     marginBottom: 4,
     textAlign: "center",
   },
   durationSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
     marginBottom: 16,
     textAlign: "center",
@@ -600,13 +603,13 @@ export const styles = StyleSheet.create({
     color: "#2196F3",
   },
   durationCardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#333",
     marginBottom: 2,
   },
   durationCardSubtitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
     marginBottom: 8,
   },
@@ -616,7 +619,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   durationCardPriceAmount: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "700",
     color: "#4CAF50",
   },
@@ -648,7 +651,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   selectedDurationText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#1565C0",
     flex: 1,
@@ -661,7 +664,7 @@ export const styles = StyleSheet.create({
     borderColor: "#2196F3",
   },
   changeDurationText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#2196F3",
   },
@@ -675,17 +678,17 @@ export const styles = StyleSheet.create({
     marginTop: 12,
   },
   noSlotsTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
     color: "#F57C00",
     marginTop: 12,
     marginBottom: 8,
   },
   noSlotsText: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#E65100",
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 18,
     marginBottom: 16,
   },
   changeDurationBtn2: {
@@ -696,7 +699,7 @@ export const styles = StyleSheet.create({
   },
   changeDurationText2: {
     color: "white",
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
   },
 
@@ -752,7 +755,7 @@ export const styles = StyleSheet.create({
     gap: 1,
   },
   slotTime: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#4CAF50",
   },
@@ -763,7 +766,7 @@ export const styles = StyleSheet.create({
     color: "white",
   },
   slotEndTime: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#999",
     fontWeight: "600",
   },
@@ -776,7 +779,7 @@ export const styles = StyleSheet.create({
     gap: 2,
   },
   slotPrice: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "800",
     color: "#4CAF50",
     textAlign: "center",
@@ -786,7 +789,7 @@ export const styles = StyleSheet.create({
   },
   // 🆕 Label fascia di prezzo
   slotPricingLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "600",
     color: "#666",
     textAlign: "center",
@@ -816,17 +819,17 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   prenotaBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "white",
   },
   prenotaBtnTime: {
-    fontSize: 13,
+    fontSize: 11,
     color: "rgba(255,255,255,0.9)",
     marginTop: 2,
   },
   prenotaBtnPrice: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     color: "white",
   },
@@ -848,8 +851,54 @@ export const styles = StyleSheet.create({
     borderColor: "#2196F3",
   },
   openMapsBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "#2196F3",
+  },
+
+  // Navigation chips
+  chipsContainer: {
+    backgroundColor: "white",
+    paddingVertical: 12,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  chipsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+    flexDirection: "row",
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1.5,
+    borderColor: "#90CAF9",
+  },
+  chipActive: {
+    backgroundColor: "#2196F3",
+    borderColor: "#1976D2",
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1976D2",
+  },
+  chipTextActive: {
+    color: "white",
+  },
+
+  // Empty states
+  emptySubtext: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: 20,
   },
 });
