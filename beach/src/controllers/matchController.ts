@@ -4,6 +4,7 @@ import Match from "../models/Match";
 import Booking from "../models/Booking";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { getDefaultMaxPlayersForSport, validateMaxPlayersForSport } from "../utils/matchSportRules";
 
 // Tipo per user popolato
 interface PopulatedUser {
@@ -30,7 +31,7 @@ export const createMatchFromBooking = async (
       return res.status(400).json({ message: "ID prenotazione non valido" });
     }
 
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId).populate('campo');
     if (!booking) {
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
@@ -46,11 +47,34 @@ export const createMatchFromBooking = async (
       return res.status(400).json({ message: "Match già creato per questa prenotazione" });
     }
 
+    // Determina maxPlayers basandosi sul tipo di sport del campo
+    const campo = (booking as any).campo;
+    let finalMaxPlayers = maxPlayers;
+    
+    if (campo?.sport) {
+      const sportType = campo.sport as "beach_volley" | "volley";
+      
+      // Se maxPlayers non è fornito, usa il default per lo sport
+      if (!maxPlayers) {
+        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
+      } else {
+        // Valida che maxPlayers sia valido per lo sport
+        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
+        if (!validation.valid) {
+          return res.status(400).json({ message: validation.error });
+        }
+        finalMaxPlayers = maxPlayers;
+      }
+    } else {
+      // Fallback se non c'è sport
+      finalMaxPlayers = maxPlayers || 4;
+    }
+
     // Crea match
     const match = await Match.create({
       booking: bookingId,
       createdBy: userId,
-      maxPlayers: maxPlayers || 4,
+      maxPlayers: finalMaxPlayers,
       isPublic: isPublic || false,
       players: players || [],
       status: "draft",
@@ -79,15 +103,38 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "booking è obbligatorio" });
     }
 
-    const bookingDoc = await Booking.findById(booking);
+    const bookingDoc = await Booking.findById(booking).populate('campo');
     if (!bookingDoc) {
       return res.status(404).json({ message: "Prenotazione non trovata" });
+    }
+
+    // Determina maxPlayers basandosi sul tipo di sport del campo
+    const campo = (bookingDoc as any).campo;
+    let finalMaxPlayers = maxPlayers;
+    
+    if (campo?.sport) {
+      const sportType = campo.sport as "beach_volley" | "volley";
+      
+      // Se maxPlayers non è fornito, usa il default per lo sport
+      if (!maxPlayers) {
+        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
+      } else {
+        // Valida che maxPlayers sia valido per lo sport
+        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
+        if (!validation.valid) {
+          return res.status(400).json({ message: validation.error });
+        }
+        finalMaxPlayers = maxPlayers;
+      }
+    } else {
+      // Fallback se non c'è sport
+      finalMaxPlayers = maxPlayers || 4;
     }
 
     const match = await Match.create({
       booking,
       createdBy: userId,
-      maxPlayers: maxPlayers || 4,
+      maxPlayers: finalMaxPlayers,
       isPublic: isPublic || false,
       players: players || [],
       event: event || undefined,

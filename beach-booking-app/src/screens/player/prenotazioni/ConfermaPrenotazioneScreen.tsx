@@ -14,6 +14,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
+import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../utils/matchSportRules";
 
 export default function ConfermaPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
@@ -33,6 +34,17 @@ export default function ConfermaPrenotazioneScreen() {
 
   const [loading, setLoading] = useState(false);
   const [bookingType, setBookingType] = useState<"public" | "private">("public");
+  const [maxPlayers, setMaxPlayers] = useState<number | null>(null);
+
+  // Determina le opzioni disponibili per lo sport
+  const sportRules = sport === "beach_volley" || sport === "volley" 
+    ? getMaxPlayersRulesForSport(sport as "beach_volley" | "volley")
+    : null;
+
+  // Imposta il default al primo caricamento
+  if (maxPlayers === null && sportRules) {
+    setMaxPlayers(sportRules.fixed || sportRules.allowedValues[sportRules.allowedValues.length - 1]);
+  }
 
   // Converte il numero in formato API ("1h" o "1.5h")
   const duration = durationNumber === 1.5 ? "1.5h" : "1h";
@@ -83,6 +95,7 @@ export default function ConfermaPrenotazioneScreen() {
           startTime,
           duration, // "1h" o "1.5h"
           bookingType,
+          maxPlayers: maxPlayers || undefined, // Invia maxPlayers se selezionato
         }),
       });
 
@@ -245,6 +258,58 @@ export default function ConfermaPrenotazioneScreen() {
           </View>
         </View>
 
+        {/* Selezione numero giocatori per Beach Volley */}
+        {sport === "beach_volley" && sportRules && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>👥 Numero Giocatori</Text>
+            <Text style={styles.cardSubtitle}>
+              Scegli la formazione per la partita
+            </Text>
+            
+            <View style={styles.maxPlayersContainer}>
+              {sportRules.allowedValues.map((players) => {
+                const formation = getTeamFormationLabel(players);
+                const isSelected = maxPlayers === players;
+                
+                return (
+                  <Pressable
+                    key={players}
+                    style={[
+                      styles.maxPlayersOption,
+                      isSelected && styles.maxPlayersOptionSelected,
+                    ]}
+                    onPress={() => setMaxPlayers(players)}
+                  >
+                    <View style={styles.maxPlayersContent}>
+                      <Text style={[
+                        styles.maxPlayersNumber,
+                        isSelected && styles.maxPlayersNumberSelected,
+                      ]}>
+                        {players}
+                      </Text>
+                      <Text style={[
+                        styles.maxPlayersLabel,
+                        isSelected && styles.maxPlayersLabelSelected,
+                      ]}>
+                        giocatori
+                      </Text>
+                      <Text style={[
+                        styles.maxPlayersFormation,
+                        isSelected && styles.maxPlayersFormationSelected,
+                      ]}>
+                        {formation}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>💰 Pagamento</Text>
           
@@ -359,6 +424,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  cardSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: -12,
+    marginBottom: 8,
+  },
+
   detailRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -429,6 +501,63 @@ const styles = StyleSheet.create({
 
   bookingTypeSeparator: {
     height: 8,
+  },
+
+  maxPlayersContainer: {
+    gap: 12,
+    marginTop: 12,
+  },
+
+  maxPlayersOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    backgroundColor: "#FAFAFA",
+  },
+
+  maxPlayersOptionSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+  },
+
+  maxPlayersContent: {
+    alignItems: "center",
+    gap: 4,
+  },
+
+  maxPlayersNumber: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#212121",
+  },
+
+  maxPlayersNumberSelected: {
+    color: "#2196F3",
+  },
+
+  maxPlayersLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
+
+  maxPlayersLabelSelected: {
+    color: "#1976D2",
+  },
+
+  maxPlayersFormation: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#999",
+    marginTop: 4,
+  },
+
+  maxPlayersFormationSelected: {
+    color: "#2196F3",
   },
 
   priceRow: {

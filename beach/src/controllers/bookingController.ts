@@ -6,6 +6,7 @@ import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
+import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
 
 /* =====================================================
    PLAYER
@@ -19,7 +20,7 @@ import { calculatePrice } from "../utils/pricingUtils";
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { campoId, date, startTime, duration = "1h", bookingType = "public" } = req.body;
+    const { campoId, date, startTime, duration = "1h", bookingType = "public", maxPlayers } = req.body;
 
     console.log("🏐 Nuova prenotazione:", {
       campoId,
@@ -27,6 +28,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       startTime,
       duration,
       bookingType,
+      maxPlayers,
       userId: user?.id,
     });
 
@@ -177,6 +179,13 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     console.log("✅ Prenotazione creata:", booking._id);
 
+    // 🆕 Determina maxPlayers basandosi sul tipo di sport del campo
+    const sportType = campo.sport as "beach_volley" | "volley";
+    
+    // Se l'utente ha specificato maxPlayers (per beach volley), usa quello
+    // Altrimenti usa il default per lo sport
+    const finalMaxPlayers = maxPlayers || getDefaultMaxPlayersForSport(sportType);
+
     // 🆕 Crea automaticamente un Match associato
     const match = await Match.create({
       booking: new mongoose.Types.ObjectId(booking._id),
@@ -189,12 +198,12 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
           joinedAt: new Date(),
         },
       ],
-      maxPlayers: 4, // Default per beach volley 2v2
+      maxPlayers: finalMaxPlayers, // Usa il valore selezionato o il default
       isPublic: false,
       status: "open", // Cambiato da "draft" a "open" per rendere visibile il match
     });
 
-    console.log("✅ Match creato automaticamente:", match._id);
+    console.log("✅ Match creato automaticamente:", match._id, `con ${finalMaxPlayers} giocatori max (${sportType})`);
 
     // Popola i dati per la risposta
     const populatedBooking = await Booking.findById(booking._id)

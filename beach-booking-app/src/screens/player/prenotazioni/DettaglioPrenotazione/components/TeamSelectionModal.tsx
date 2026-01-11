@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/DettaglioPrenotazione.styles';
+import { getTeamFormationLabel } from '../../../../../utils/matchSportRules';
 
 // Import componenti animati e gradients
 import {
@@ -31,6 +32,7 @@ interface TeamSelectionModalProps {
   };
   matchStatus?: string;
   maxPlayersPerTeam: number;
+  maxPlayers: number; // Aggiunto per calcolare la formazione
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
@@ -41,10 +43,14 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   teamB,
   matchStatus,
   maxPlayersPerTeam,
+  maxPlayers,
 }) => {
   const isTeamAFull = teamA.current >= maxPlayersPerTeam;
   const isTeamBFull = teamB.current >= maxPlayersPerTeam;
   const matchLocked = matchStatus === 'completed' || matchStatus === 'cancelled';
+  
+  // Calcola l'etichetta della formazione (es. "2v2", "5v5")
+  const formationLabel = getTeamFormationLabel(maxPlayers);
 
   return (
     <Modal
@@ -86,7 +92,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <Ionicons name="shield" size={32} color="white" />
                       <View style={styles.teamModalOptionInfo}>
-                        <Text style={[styles.teamModalOptionTitle, { color: 'white' }]}>Team A</Text>
+                        <Text style={[styles.teamModalOptionTitle, { color: 'white' }]}>Team A ({formationLabel})</Text>
                         <Text style={[styles.teamModalOptionCount, { color: 'rgba(255,255,255,0.8)' }]}>
                           {teamA.current}/{maxPlayersPerTeam} giocatori
                         </Text>
@@ -120,7 +126,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <Ionicons name="shield" size={32} color="white" />
                       <View style={styles.teamModalOptionInfo}>
-                        <Text style={[styles.teamModalOptionTitle, { color: 'white' }]}>Team B</Text>
+                        <Text style={[styles.teamModalOptionTitle, { color: 'white' }]}>Team B ({formationLabel})</Text>
                         <Text style={[styles.teamModalOptionCount, { color: 'rgba(255,255,255,0.8)' }]}>
                           {teamB.current}/{maxPlayersPerTeam} giocatori
                         </Text>

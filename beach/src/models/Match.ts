@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
+import { validateMaxPlayersForSport } from "../utils/matchSportRules";
 
 export interface IMatchPlayer {
   user: Types.ObjectId;
@@ -108,7 +109,7 @@ const MatchSchema = new Schema<IMatch>(
       type: Number,
       required: true,
       min: 2,
-      max: 8,
+      max: 12, // Aumentato per supportare volley (10) e futuri sport
     },
 
     isPublic: {
@@ -175,7 +176,7 @@ MatchSchema.methods.isFull = function () {
 };
 
 // Validazione pre-save: team obbligatorio se maxPlayers > 2 E match non in draft
-MatchSchema.pre("save", function () {
+MatchSchema.pre("save", async function () {
   const match = this as IMatch;
 
   // ✅ Se il match è in draft, non serve il team
@@ -188,6 +189,28 @@ MatchSchema.pre("save", function () {
     const playersWithoutTeam = match.players.filter((p: IMatchPlayer) => !p.team);
     if (playersWithoutTeam.length > 0) {
       throw new Error("Team obbligatorio per match con più di 2 giocatori");
+    }
+  }
+
+  // ✅ Validazione sport-specifica: controlla se maxPlayers è valido per il tipo di sport
+  if (match.isModified("maxPlayers") || match.isNew) {
+    // Popola il booking per accedere al campo
+    await match.populate({
+      path: "booking",
+      populate: {
+        path: "campo",
+        select: "sport",
+      },
+    });
+
+    const booking = match.booking as any;
+    if (booking?.campo?.sport) {
+      const sportType = booking.campo.sport as "beach_volley" | "volley";
+      const validation = validateMaxPlayersForSport(match.maxPlayers, sportType);
+      
+      if (!validation.valid) {
+        throw new Error(validation.error || "Numero di giocatori non valido per questo sport");
+      }
     }
   }
 });

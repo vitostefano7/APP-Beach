@@ -27,6 +27,7 @@ import {
   calculateDuration,
   submitMatchScore
 } from "./DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
+import { getTeamFormationLabel } from "../../../utils/matchSportRules";
 import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import TeamSelectionModal from "./DettaglioPrenotazione/components/TeamSelectionModal";
 import ScoreModal from "./DettaglioPrenotazione/components/ScoreModal";
@@ -808,7 +809,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             <View style={styles.teamSection}>
               <TeamAGradient style={styles.teamHeader}>
                 <Ionicons name="people-circle" size={20} color="white" />
-                <Text style={[styles.teamTitle, { color: "white" }]}>Team A</Text>
+                <Text style={[styles.teamTitle, { color: "white" }]}>
+                  Team A ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
+                </Text>
                 <View style={styles.teamHeaderRight}>
                   <Text style={[styles.teamCount, { color: "white" }]}>
                     {teamAConfirmed.length}/{maxPlayersPerTeam}
@@ -851,7 +854,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             <View style={styles.teamSection}>
               <TeamBGradient style={styles.teamHeader}>
                 <Ionicons name="people" size={20} color="white" />
-                <Text style={[styles.teamTitle, { color: "white" }]}>Team B</Text>
+                <Text style={[styles.teamTitle, { color: "white" }]}>
+                  Team B ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
+                </Text>
                 <View style={styles.teamHeaderRight}>
                   <Text style={[styles.teamCount, { color: "white" }]}>
                     {teamBConfirmed.length}/{maxPlayersPerTeam}
@@ -1252,6 +1257,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
         }}
         matchStatus={booking?.match?.status}
         maxPlayersPerTeam={maxPlayersPerTeam}
+        maxPlayers={booking?.match?.maxPlayers || 4}
       />
 
       {/* Score Modal */}
