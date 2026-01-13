@@ -386,6 +386,7 @@ export default function FieldDetailsScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View ref={contentViewRef} collapsable={false}>
         {/* GALLERY CON CAROUSEL */}
@@ -1076,17 +1077,6 @@ export default function FieldDetailsScreen() {
                                                 size={24}
                                                 color="#2196F3"
                                               />
-                                              <View
-                                                style={styles.durationBadge}
-                                              >
-                                                <Text
-                                                  style={
-                                                    styles.durationBadgeText
-                                                  }
-                                                >
-                                                  Popolare
-                                                </Text>
-                                              </View>
                                             </View>
                                             <Text
                                               style={styles.durationCardTitle}

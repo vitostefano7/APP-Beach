@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { View } from "react-native";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator();
 
 export default function PlayerTabs() {
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
+  const previousUnreadCount = useRef(unreadCount);
 
   // 🔥 FORZA REFRESH IMMEDIATO AL MOUNT
   useEffect(() => {
@@ -20,10 +22,21 @@ export default function PlayerTabs() {
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
-  // DEBUG
-  /*console.log('🚨🚨🚨 PLAYERTABS unreadCount:', unreadCount);
-  console.log('🚨🚨🚨 PLAYERTABS typeof:', typeof unreadCount);
-  console.log('🚨🚨🚨 PLAYERTABS > 0?:', unreadCount > 0);*/
+  // DEBUG unread count changes
+  useEffect(() => {
+    if (previousUnreadCount.current !== unreadCount) {
+      console.log('📊 Unread count changed:', previousUnreadCount.current, '->', unreadCount);
+      previousUnreadCount.current = unreadCount;
+    }
+  }, [unreadCount]);
+
+  // DEBUG ridotto - solo quando necessario
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('🔄 PlayerTabs render check - unreadCount:', unreadCount);
+    }, 5000); // Solo ogni 5 secondi
+    return () => clearInterval(interval);
+  }, [unreadCount]);
 
   const getTabBarStyle = (route: any) => {
     const routeName = getFocusedRouteNameFromRoute(route) ?? "";
@@ -44,8 +57,17 @@ export default function PlayerTabs() {
           paddingBottom: 10,
           paddingTop: 6,
           backgroundColor: "white",
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
+        tabBarItemStyle: {
+          height: 65, // Forza altezza fissa per ogni tab
+        },
+        animation: 'none', // Disabilita animazioni
         tabBarIcon: ({ color, size, focused }) => {
+          // Rimuovi logging pesante che causa re-render
           let iconName: any;
           if (route.name === "Dashboard")
             iconName = focused ? "home" : "home-outline";
@@ -56,45 +78,62 @@ export default function PlayerTabs() {
           if (route.name === "Profilo")
             iconName = focused ? "person" : "person-outline";
 
-          return <Ionicons name={iconName} size={22} color={color} />;
+          return (
+            <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name={iconName} size={22} color={color} />
+            </View>
+          );
         },
       })}
+      screenListeners={{
+        tabPress: (e) => {
+          console.log('🎯 TAB PRESSED:', e.target?.split('-')[0]);
+        },
+        state: (e) => {
+          console.log('🎯 TAB STATE CHANGED to:', e.data?.state?.routes?.[e.data?.state?.index]?.name);
+        }
+      }}
     >
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardStack} 
-        options={({ route }) => ({
+        options={{
           tabBarLabel: "Dashboard",
-          tabBarStyle: getTabBarStyle(route),
-        })} 
+          tabBarLabelStyle: { fontSize: 12 },
+        }} 
       />
       <Tab.Screen 
         name="StruttureTab" 
         component={StruttureStack} 
-        options={{ tabBarLabel: "Strutture" }} 
+        options={{ 
+          tabBarLabel: "Strutture",
+          tabBarLabelStyle: { fontSize: 12 },
+        }} 
       />
       <Tab.Screen 
         name="Prenotazioni" 
         component={BookingsStack}
-        options={({ route }) => ({
-          tabBarStyle: getTabBarStyle(route),
-        })}
+        options={{
+          tabBarLabelStyle: { fontSize: 12 },
+        }}
       />
       <Tab.Screen 
         name="Profilo" 
         component={ProfilePlayerStack}
         options={{
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: "#FF5252",
-            color: "white",
-            fontSize: 11,
-            fontWeight: "700",
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-            top: 3,
-          },
+          tabBarLabel: "Profilo",
+          tabBarLabelStyle: { fontSize: 12 },
+          // Temporaneamente rimosso badge per test
+          // tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          // tabBarBadgeStyle: {
+          //   backgroundColor: "#FF5252",
+          //   color: "white",
+          //   fontSize: 11,
+          //   fontWeight: "700",
+          //   minWidth: 18,
+          //   height: 18,
+          //   borderRadius: 9,
+          // },
         }}
       />
     </Tab.Navigator>

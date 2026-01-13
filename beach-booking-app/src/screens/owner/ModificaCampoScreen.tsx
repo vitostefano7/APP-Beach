@@ -158,7 +158,7 @@ export default function ModificaCampoScreen() {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* NOME */}
         <View style={styles.section}>
           <Text style={styles.label}>Nome campo *</Text>

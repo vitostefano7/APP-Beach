@@ -125,7 +125,7 @@ export default function DettaglioCampoScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* HEADER CON GRADIENTE */}
       <LinearGradient
         colors={["#2196F3", "#1976D2"]}
@@ -146,6 +146,7 @@ export default function DettaglioCampoScreen() {
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* HEADER CAMPO CON CARD */}
         <View style={styles.campoHeaderCard}>

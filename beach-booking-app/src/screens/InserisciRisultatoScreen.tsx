@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 100,
   },
 
   teamsHeader: {

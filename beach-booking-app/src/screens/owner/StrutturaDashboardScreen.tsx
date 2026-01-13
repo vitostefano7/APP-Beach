@@ -506,6 +506,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: 14,
+    paddingBottom: 100,
   },
 
   // STRUTTURA CARD + IMMAGINI

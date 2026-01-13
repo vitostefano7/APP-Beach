@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   back: { fontSize: 20, fontWeight: "800" },
   headerTitle: { fontSize: 18, fontWeight: "800", flex: 1, textAlign: "center" },
   
-  container: { padding: 16 },
+  container: { padding: 16, paddingBottom: 100 },
   
   infoBox: {
     backgroundColor: "#E3F2FD",

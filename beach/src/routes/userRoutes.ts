@@ -19,6 +19,7 @@ import {
   getPlayedWith,
   getFrequentedVenues,
   getUserStats,
+  getPerformanceStats,
   getUserPosts,
 } from "../controllers/profileController";
 
@@ -33,6 +34,7 @@ router.get("/search", requireAuth, searchUsers);
 router.get("/me/played-with", requireAuth, getPlayedWith);
 router.get("/me/frequented-venues", requireAuth, getFrequentedVenues);
 router.get("/me/stats", requireAuth, getUserStats);
+router.get("/me/performance-stats", requireAuth, getPerformanceStats);
 
 /**
  * USER BASE

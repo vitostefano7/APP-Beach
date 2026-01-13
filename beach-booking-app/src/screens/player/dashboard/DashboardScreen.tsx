@@ -741,6 +741,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         <Header user={user} pendingInvites={validPendingInvites} />
 

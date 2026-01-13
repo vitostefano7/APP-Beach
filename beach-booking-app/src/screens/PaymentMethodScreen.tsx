@@ -58,7 +58,7 @@ export default function PaymentMethodsScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.infoBox}>
           <Ionicons name="shield-checkmark" size={20} color="#4CAF50" />
           <Text style={styles.infoText}>

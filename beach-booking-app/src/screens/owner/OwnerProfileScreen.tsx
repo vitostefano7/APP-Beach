@@ -433,7 +433,7 @@ InfoCard.displayName = 'InfoCard';
 // ==================== SKELETON LOADER ====================
 const SkeletonLoader = () => (
   <SafeAreaView style={styles.safe}>
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
       {/* Skeleton Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -684,6 +684,7 @@ export default function OwnerProfileScreen() {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

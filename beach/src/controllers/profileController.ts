@@ -1006,6 +1006,154 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * GET /users/me/performance-stats
+ * Statistiche performance dettagliate per le card del profilo
+ */
+export const getPerformanceStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    // Match giocati (completed e confirmed)
+    const completedMatches = await Match.find({
+      "players.user": userId,
+      "players.status": "confirmed",
+      status: "completed",
+    }).select("winner players score playedAt").lean();
+
+    const matchesPlayed = completedMatches.length;
+
+    // Trova il team dell'utente in ogni match
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    let setsWon = 0;
+    let setsLost = 0;
+    let totalPointsScored = 0;
+
+    for (const match of completedMatches) {
+      const myPlayer = match.players.find(
+        (p: any) => p.user.toString() === userId
+      );
+
+      if (!myPlayer) continue;
+
+      const myTeam = myPlayer.team;
+
+      // Conta vittorie/sconfitte/pareggi
+      if (match.winner === myTeam) {
+        wins++;
+      } else if (match.winner === "draw") {
+        draws++;
+      } else if (match.winner) {
+        losses++;
+      }
+
+      // Conta set e punti
+      if (match.score && match.score.sets) {
+        for (const set of match.score.sets) {
+          const myScore = myTeam === "A" ? set.teamA : set.teamB;
+          const opponentScore = myTeam === "A" ? set.teamB : set.teamA;
+
+          totalPointsScored += myScore || 0;
+
+          if (myScore > opponentScore) {
+            setsWon++;
+          } else if (opponentScore > myScore) {
+            setsLost++;
+          }
+        }
+      }
+    }
+
+    // Calcola win rate
+    const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+
+    // Trova streak più lunga
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    // Ordina i match per data
+    const sortedMatches = completedMatches
+      .filter((m: any) => m.playedAt)
+      .sort((a: any, b: any) =>
+        new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime()
+      );
+
+    for (const match of sortedMatches) {
+      const myPlayer = match.players.find(
+        (p: any) => p.user.toString() === userId
+      );
+      if (!myPlayer) continue;
+
+      if (match.winner === myPlayer.team) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else if (match.winner && match.winner !== "draw") {
+        currentStreak = 0;
+      }
+    }
+
+    // Ultima partita giocata
+    const lastMatch = sortedMatches[sortedMatches.length - 1];
+    let lastMatchInfo = null;
+
+    if (lastMatch) {
+      const booking = await Booking.findOne({ _id: lastMatch.booking })
+        .populate("campo", "name")
+        .select("date campo");
+
+      lastMatchInfo = {
+        date: lastMatch.playedAt || booking?.date,
+        campo: (booking?.campo as any)?.name || "Campo sconosciuto",
+      };
+    }
+
+    // Partite questo mese
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const matchesThisMonth = completedMatches.filter((m: any) => {
+      const playedAt = new Date(m.playedAt);
+      return playedAt >= startOfMonth;
+    }).length;
+
+    // Giorno preferito (0 = domenica, 6 = sabato)
+    const dayCount: { [key: number]: number } = {};
+    for (const match of sortedMatches) {
+      if (match.playedAt) {
+        const day = new Date(match.playedAt).getDay();
+        dayCount[day] = (dayCount[day] || 0) + 1;
+      }
+    }
+
+    const preferredDay = Object.keys(dayCount).length > 0
+      ? parseInt(Object.keys(dayCount).reduce((a, b) =>
+          dayCount[parseInt(a)] > dayCount[parseInt(b)] ? a : b
+        ))
+      : null;
+
+    const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+    res.json({
+      matchesPlayed,
+      wins,
+      losses,
+      draws,
+      winRate,
+      setsWon,
+      setsLost,
+      totalPointsScored,
+      longestStreak,
+      lastMatch: lastMatchInfo,
+      matchesThisMonth,
+      preferredDay: preferredDay !== null ? dayNames[preferredDay] : null,
+    });
+  } catch (err) {
+    console.error("❌ getPerformanceStats error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
  * GET /users/:userId/posts
  * Ottiene i post pubblici di un utente (solo se profilo pubblico o se lo seguiamo)
  */

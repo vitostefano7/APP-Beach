@@ -558,7 +558,7 @@ export default function CommunityScreen() {
         return (
           <ScrollView
             style={styles.container}
-            contentContainerStyle={{ flex: 1 }}
+            contentContainerStyle={{ flex: 1, paddingBottom: 100 }}
           >
             {renderEmptyState()}
           </ScrollView>
@@ -583,7 +583,7 @@ export default function CommunityScreen() {
         return (
           <ScrollView
             style={styles.container}
-            contentContainerStyle={{ flex: 1 }}
+            contentContainerStyle={{ flex: 1, paddingBottom: 100 }}
           >
             {renderEmptyState()}
           </ScrollView>
@@ -596,6 +596,7 @@ export default function CommunityScreen() {
         <ScrollView
           style={styles.container}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
         >
           {renderRankings()}
         </ScrollView>

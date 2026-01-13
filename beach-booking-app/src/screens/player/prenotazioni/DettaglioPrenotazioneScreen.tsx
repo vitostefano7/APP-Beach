@@ -1107,7 +1107,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
       <ScrollView 
         style={styles.container} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 0 }}
+        contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 100 }}
       >
         {/* Campo Info Card - Versione compatta */}
         <AnimatedCard delay={100}>

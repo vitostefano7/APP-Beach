@@ -485,6 +485,7 @@ export default function AggiungiCampoScreen() {
         style={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* INFO */}
         <View style={styles.infoBox}>

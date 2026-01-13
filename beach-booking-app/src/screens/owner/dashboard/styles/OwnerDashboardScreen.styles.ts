@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
 
   loadingContainer: {

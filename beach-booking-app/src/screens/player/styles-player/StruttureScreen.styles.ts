@@ -995,7 +995,7 @@ export const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 15,
-    bottom: 15,
+    bottom: 80,
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -1010,7 +1010,7 @@ export const styles = StyleSheet.create({
   },
 
   fabList: {
-    bottom: 9,
+    bottom: 74,
   },
 
   fabBadge: {

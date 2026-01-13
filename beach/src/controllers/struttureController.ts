@@ -10,15 +10,109 @@ import cloudinary from "../config/cloudinary";
 /**
  * 📌 GET /strutture
  * Tutte le strutture pubbliche (PLAYER) - CON SPORTS AGGREGATI
+ * Query params: date (YYYY-MM-DD), timeSlot (Mattina|Pomeriggio|Sera)
  */
-export const getStrutture = async (_req: Request, res: Response) => {
+export const getStrutture = async (req: Request, res: Response) => {
   try {
-    const strutture = await Struttura.find({
+    const { date, timeSlot } = req.query;
+    
+    let strutture = await Struttura.find({
       isActive: true,
       isDeleted: false,
     })
       .sort({ isFeatured: -1, createdAt: -1 })
       .lean();
+
+    // Se sono specificati date e timeSlot, filtra per disponibilità
+    if (date && timeSlot) {
+      const dateStr = date as string;
+      const timeSlotStr = timeSlot as string;
+      
+      // Determina l'intervallo orario basato sul timeSlot
+      let startHour: number, endHour: number;
+      if (timeSlotStr === "Mattina (6:00 - 12:00)") {
+        startHour = 6;
+        endHour = 12;
+      } else if (timeSlotStr === "Pomeriggio (12:00 - 18:00)") {
+        startHour = 12;
+        endHour = 18;
+      } else if (timeSlotStr === "Sera (18:00 - 24:00)") {
+        startHour = 18;
+        endHour = 24;
+      } else {
+        return res.status(400).json({ message: "TimeSlot non valido" });
+      }
+
+      // Verifica che la data/orario sia nel futuro
+      const now = new Date();
+      const selectedDate = new Date(dateStr);
+      const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (selectedDate < currentDate) {
+        // Data nel passato - nessuna struttura disponibile
+        strutture = [];
+      } else if (selectedDate.toDateString() === currentDate.toDateString()) {
+        // Oggi - verifica orario corrente
+        if (now.getHours() >= endHour) {
+          strutture = [];
+        } else {
+          startHour = Math.max(startHour, now.getHours());
+        }
+      }
+
+      if (strutture.length > 0) {
+        // Filtra strutture che hanno almeno un campo disponibile
+        const availableStrutture = [];
+        
+        for (const struttura of strutture) {
+          const campi = await Campo.find({
+            struttura: struttura._id,
+            isActive: true,
+          }).select('_id');
+          
+          let hasAvailableSlot = false;
+          
+          for (const campo of campi) {
+            // Verifica disponibilità nel calendario
+            const calendarDay = await CampoCalendarDay.findOne({
+              campo: campo._id,
+              date: dateStr,
+            });
+            
+            if (calendarDay) {
+              // Controlla se ci sono slot disponibili nell'intervallo
+              const availableSlots = (calendarDay as any).slots.filter((slot: any) => {
+                if (!slot.enabled) return false;
+                
+                const [slotHour] = slot.time.split(':').map(Number);
+                return slotHour >= startHour && slotHour < endHour;
+              });
+              
+              if (availableSlots.length > 0) {
+                // Verifica che non ci siano prenotazioni confermate
+                const conflicts = await Booking.find({
+                  campo: campo._id,
+                  date: dateStr,
+                  startTime: { $in: availableSlots.map((s: any) => s.time) },
+                  status: 'confirmed'
+                });
+                
+                if (conflicts.length < availableSlots.length) {
+                  hasAvailableSlot = true;
+                  break;
+                }
+              }
+            }
+          }
+          
+          if (hasAvailableSlot) {
+            availableStrutture.push(struttura);
+          }
+        }
+        
+        strutture = availableStrutture;
+      }
+    }
 
     const struttureWithSports = await Promise.all(
       strutture.map(async (struttura) => {

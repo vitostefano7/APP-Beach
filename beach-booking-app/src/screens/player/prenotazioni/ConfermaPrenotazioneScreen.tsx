@@ -123,7 +123,7 @@ export default function ConfermaPrenotazioneScreen() {
   return (
     <SafeAreaView style={styles.safe}>
 
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Card riepilogo */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryContent}>

@@ -21,6 +21,7 @@ import { resolveAvatarUrl } from "../../../utils/avatar";
 import { Avatar } from "../../../components/Avatar";
 import { useCustomAlert } from "../../../components/CustomAlert";
 import { AvatarPicker } from "../../../components/AvatarPicker";
+import { StatsCarousel } from "./components/StatsCarousel";
 
 type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
 
@@ -55,6 +56,12 @@ export default function ProfileScreen() {
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
+  // Stati per le statistiche
+  const [performanceStats, setPerformanceStats] = useState<any>(null);
+  const [socialStats, setSocialStats] = useState<any>(null);
+  const [venuesStats, setVenuesStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
     console.log("👤 User context aggiornato, dati completi:", user);
@@ -79,6 +86,7 @@ export default function ProfileScreen() {
       if (token) {
         refreshUnreadCount();
         loadProfile();
+        loadStats();
       }
     }, [token])
   );
@@ -152,6 +160,58 @@ export default function ProfileScreen() {
       }
     } catch (e) {
       console.error("Errore caricamento profilo", e);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      setStatsLoading(true);
+
+      // Chiamate parallele per performance, social e venues
+      const [performanceRes, playedWithRes, venuesRes] = await Promise.all([
+        fetch(`${API_URL}/users/me/performance-stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/users/me/played-with`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/users/me/frequented-venues`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      let perfData = null;
+
+      // Performance stats
+      if (performanceRes.ok) {
+        perfData = await performanceRes.json();
+        setPerformanceStats(perfData);
+      }
+
+      // Social stats (played with)
+      if (playedWithRes.ok) {
+        const socialData = await playedWithRes.json();
+        setSocialStats({
+          totalPeopleMet: socialData.playedWith?.length || 0,
+          topPlayers: socialData.playedWith || [],
+        });
+      }
+
+      // Venues stats
+      if (venuesRes.ok) {
+        const venuesData = await venuesRes.json();
+        setVenuesStats({
+          totalVenues: venuesData.venues?.length || 0,
+          topVenues: venuesData.venues || [],
+          lastMatch: perfData?.lastMatch,
+          preferredDay: perfData?.preferredDay,
+          matchesThisMonth: perfData?.matchesThisMonth,
+        });
+      }
+    } catch (e) {
+      console.error("Errore caricamento statistiche", e);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -410,7 +470,7 @@ export default function ProfileScreen() {
         onRemovePhoto={removeAvatar}
         hasPhoto={!!avatarUrl}
       />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.hero}>
           {/* Layout stile Instagram */}
           <View style={styles.instagramHeader}>
@@ -512,6 +572,14 @@ export default function ProfileScreen() {
             <Text style={styles.favoriteName}>{profile.favoriteCampo.name}</Text>
           </View>
         )}
+
+        {/* Statistiche Carousel */}
+        <StatsCarousel
+          performanceData={performanceStats}
+          socialData={socialStats}
+          venuesData={venuesStats}
+          loading={statsLoading}
+        />
 
         <Pressable style={styles.logout} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#F44336" />

@@ -164,6 +164,11 @@ export default function StruttureScreen() {
     }
   };
 
+  const formatDate = (date: Date | null) => {
+    if (!date) return null;
+    return date.toISOString().split('T')[0];
+  };
+
   useEffect(() => {
     if (preferencesLoaded) {
       loadStrutture();
@@ -173,7 +178,25 @@ export default function StruttureScreen() {
 
   const loadStrutture = async () => {
     try {
-      const res = await fetch(`${API_URL}/strutture`);
+      // Costruisci URL con parametri di query per filtri data/fascia oraria
+      let url = `${API_URL}/strutture`;
+      const params = new URLSearchParams();
+      
+      if (filters.date) {
+        const formattedDate = formatDate(filters.date);
+        if (formattedDate) {
+          params.append('date', formattedDate);
+        }
+      }
+      if (filters.timeSlot) {
+        params.append('timeSlot', filters.timeSlot);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const res = await fetch(url);
       let data: Struttura[] = await res.json();
 
       const filterCity = filters.city;
@@ -750,7 +773,7 @@ export default function StruttureScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {viewMode === "list" && (
         <View style={styles.header}>
           <View style={styles.searchRow}>
@@ -1285,8 +1308,8 @@ function AdvancedFiltersModal({
             </View>
             
             <Calendar
-              current={formatDate(tempFilters.date) || formatDate(new Date())}
-              minDate={formatDate(new Date())}
+              current={formatDate(tempFilters.date) || formatDate(new Date()) || undefined}
+              minDate={formatDate(new Date()) || undefined}
               onDayPress={(day) => {
                 setTempFilters((prev) => ({
                   ...prev,
@@ -1294,12 +1317,16 @@ function AdvancedFiltersModal({
                 }));
                 setShowCalendar(false);
               }}
-              markedDates={{
-                [formatDate(tempFilters.date) || '']: {
-                  selected: true,
-                  selectedColor: '#2979ff',
-                },
-              }}
+              markedDates={
+                formatDate(tempFilters.date) 
+                  ? {
+                      [formatDate(tempFilters.date)!]: {
+                        selected: true,
+                        selectedColor: '#2979ff',
+                      },
+                    }
+                  : {}
+              }
               theme={{
                 backgroundColor: '#ffffff',
                 calendarBackground: '#ffffff',
