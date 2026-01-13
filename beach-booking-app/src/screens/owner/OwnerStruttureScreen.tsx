@@ -112,7 +112,7 @@ function StrutturaCard({ item }: { item: any }) {
 
         <View style={styles.cardInfo}>
           <View style={styles.infoRow}>
-            <Ionicons name="location" size={14} color="#666" />
+            <Ionicons name="location" size={10} color="#666" />
             <Text style={styles.infoText}>
               {item.location?.city || "Città non specificata"}
             </Text>
@@ -120,7 +120,7 @@ function StrutturaCard({ item }: { item: any }) {
 
           {item.campiCount !== undefined && (
             <View style={styles.infoRow}>
-              <Ionicons name="basketball" size={14} color="#666" />
+              <Ionicons name="basketball" size={10} color="#666" />
               <Text style={styles.infoText}>
                 {item.campiCount}{" "}
                 {item.campiCount === 1 ? "campo" : "campi"}
@@ -142,7 +142,7 @@ function StrutturaCard({ item }: { item: any }) {
 
           <View style={styles.viewDetailsButton}>
             <Text style={styles.viewDetailsText}>Gestisci</Text>
-            <Ionicons name="chevron-forward" size={16} color="white" />
+            <Ionicons name="chevron-forward" size={11} color="white" />
           </View>
         </View>
       </View>
@@ -213,7 +213,7 @@ export default function OwnerStruttureScreen() {
             style={styles.addButton}
             onPress={() => navigation.navigate("CreaStruttura")}
           >
-            <Ionicons name="add" size={24} color="white" />
+            <Ionicons name="add" size={18} color="white" />
           </Pressable>
         </View>
 
@@ -235,8 +235,8 @@ export default function OwnerStruttureScreen() {
             <View style={styles.emptyContainer}>
               <Ionicons
                 name="business-outline"
-                size={64}
-                color="#ccc"
+                size={42}
+                color="#ddd"
               />
               <Text style={styles.emptyTitle}>Nessuna struttura</Text>
               <Text style={styles.emptyText}>
@@ -248,7 +248,7 @@ export default function OwnerStruttureScreen() {
               >
                 <Ionicons
                   name="add-circle"
-                  size={20}
+                  size={14}
                   color="white"
                 />
                 <Text style={styles.emptyButtonText}>
@@ -268,94 +268,96 @@ export default function OwnerStruttureScreen() {
 ========================= */
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  safe: { flex: 1, backgroundColor: "#f5f7fa" },
   container: { flex: 1 },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 16,
-    paddingVertical: 16,
+    padding: 14,
+    paddingVertical: 10,
     alignItems: "center",
     backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
 
-  title: { 
-    fontSize: 24, 
-    fontWeight: "800",
-    color: "#1a1a1a",
-    letterSpacing: -0.5,
-  },
-  subtitle: { 
-    fontSize: 13, 
-    color: "#666",
+  title: {
+    fontSize: 16,
     fontWeight: "600",
+    color: "#1a1a1a",
+    letterSpacing: 0.3,
+  },
+  subtitle: {
+    fontSize: 9,
+    color: "#999",
+    fontWeight: "500",
     marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
 
   addButton: {
     backgroundColor: "#2196F3",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
-  listContent: { paddingHorizontal: 16, paddingBottom: 20 },
+  listContent: { paddingHorizontal: 14, paddingBottom: 14 },
 
   card: {
     backgroundColor: "white",
-    borderRadius: 16,
-    marginBottom: 14,
+    borderRadius: 18,
+    marginBottom: 8,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
 
   cardImage: {
     width: "100%",
-    height: 160,
-    backgroundColor: "#eee",
+    height: 110,
+    backgroundColor: "#f8f8f8",
   },
 
   statusBadge: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 7,
+    right: 7,
     flexDirection: "row",
-    backgroundColor: "rgba(76,175,80,0.95)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: "rgba(33,150,243,0.95)",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
     alignItems: "center",
   },
 
   statusBadgeInactive: {
-    backgroundColor: "rgba(229,57,53,0.95)",
+    backgroundColor: "rgba(139,139,139,0.90)",
   },
 
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: "white",
-    marginRight: 6,
+    marginRight: 3,
   },
 
   statusDotInactive: {
@@ -364,115 +366,120 @@ const styles = StyleSheet.create({
 
   statusText: {
     color: "white",
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 8,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 
   statusTextInactive: {
     color: "white",
   },
 
-  cardContent: { padding: 14 },
-  cardName: { 
-    fontSize: 17, 
-    fontWeight: "800", 
-    marginBottom: 8,
+  cardContent: { padding: 9 },
+  cardName: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 5,
     color: "#1a1a1a",
-    letterSpacing: -0.3,
+    letterSpacing: 0.2,
   },
 
-  cardInfo: { gap: 6, marginBottom: 12 },
+  cardInfo: { gap: 3, marginBottom: 7 },
 
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 3,
   },
 
-  infoText: { fontSize: 14, color: "#666" },
+  infoText: { fontSize: 10, color: "#666" },
 
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingTop: 12,
+    borderTopColor: "#f5f5f5",
+    paddingTop: 7,
     marginTop: 2,
   },
 
-  statValue: { 
-    fontSize: 18, 
-    fontWeight: "800",
+  statValue: {
+    fontSize: 13,
+    fontWeight: "700",
     color: "#2196F3",
   },
-  statLabel: { 
-    fontSize: 11, 
+  statLabel: {
+    fontSize: 8,
     color: "#999",
-    fontWeight: "600",
+    fontWeight: "500",
     marginTop: 1,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 
   viewDetailsButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 2,
     backgroundColor: "#2196F3",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 
   viewDetailsText: {
     color: "white",
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: "600",
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 
   emptyContainer: {
     alignItems: "center",
-    paddingVertical: 80,
-    paddingHorizontal: 32,
+    paddingVertical: 48,
+    paddingHorizontal: 20,
   },
 
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginTop: 14,
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 10,
     color: "#1a1a1a",
+    letterSpacing: 0.2,
   },
 
   emptyText: {
-    fontSize: 14,
-    color: "#666",
-    marginVertical: 8,
+    fontSize: 11,
+    color: "#999",
+    marginVertical: 5,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 16,
   },
 
   emptyButton: {
-    marginTop: 16,
+    marginTop: 10,
     backgroundColor: "#2196F3",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
     flexDirection: "row",
-    gap: 8,
+    gap: 4,
     alignItems: "center",
     shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
   emptyButtonText: {
     color: "white",
-    fontWeight: "700",
+    fontWeight: "600",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 });

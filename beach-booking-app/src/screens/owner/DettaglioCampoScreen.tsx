@@ -13,6 +13,7 @@ import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 
@@ -465,12 +466,15 @@ export default function DettaglioCampoScreen() {
               })
             }
           >
-            <View style={styles.actionButtonIcon}>
-              <Text style={styles.actionButtonIconText}>📅</Text>
+            <View style={styles.actionButtonLeft}>
+              <View style={[styles.actionButtonIcon, styles.actionButtonIconPrimary]}>
+                <Text style={styles.actionButtonIconText}>📅</Text>
+              </View>
+              <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                Gestisci Calendario Annuale
+              </Text>
             </View>
-            <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-              Gestisci Calendario Annuale
-            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#2196F3" style={styles.actionButtonChevron} />
           </Pressable>
 
           {/* 💰 GESTIONE PREZZI */}
@@ -488,12 +492,15 @@ export default function DettaglioCampoScreen() {
               })
             }
           >
-            <View style={styles.actionButtonIcon}>
-              <Text style={styles.actionButtonIconText}>💰</Text>
+            <View style={styles.actionButtonLeft}>
+              <View style={[styles.actionButtonIcon, styles.actionButtonIconSecondary]}>
+                <Text style={styles.actionButtonIconText}>💰</Text>
+              </View>
+              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
+                Gestisci Prezzi
+              </Text>
             </View>
-            <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
-              Gestisci Prezzi
-            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#4CAF50" style={styles.actionButtonChevron} />
           </Pressable>
 
           <Pressable
@@ -505,10 +512,13 @@ export default function DettaglioCampoScreen() {
               navigation.navigate("ModificaCampo", { campoId: campo._id })
             }
           >
-            <View style={styles.actionButtonIcon}>
-              <Text style={styles.actionButtonIconText}>✏️</Text>
+            <View style={styles.actionButtonLeft}>
+              <View style={styles.actionButtonIcon}>
+                <Text style={styles.actionButtonIconText}>✏️</Text>
+              </View>
+              <Text style={styles.actionButtonText}>Modifica Info Campo</Text>
             </View>
-            <Text style={styles.actionButtonText}>Modifica Info Campo</Text>
+            <Ionicons name="chevron-forward" size={18} color="#999" style={styles.actionButtonChevron} />
           </Pressable>
 
           <Pressable
@@ -519,17 +529,20 @@ export default function DettaglioCampoScreen() {
             ]}
             onPress={handleDelete}
           >
-            <View style={styles.actionButtonIcon}>
-              <Text style={styles.actionButtonIconText}>🗑️</Text>
+            <View style={styles.actionButtonLeft}>
+              <View style={[styles.actionButtonIcon, styles.actionButtonIconDanger]}>
+                <Text style={styles.actionButtonIconText}>🗑️</Text>
+              </View>
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  styles.actionButtonDangerText,
+                ]}
+              >
+                Elimina Campo
+              </Text>
             </View>
-            <Text
-              style={[
-                styles.actionButtonText,
-                styles.actionButtonDangerText,
-              ]}
-            >
-              Elimina Campo
-            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#FF3B30" style={styles.actionButtonChevron} />
           </Pressable>
         </View>
 
@@ -548,41 +561,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.03,
         shadowRadius: 3,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
     }),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
   back: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: "white",
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "700",
     color: "white",
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 14,
   },
   errorText: {
     textAlign: "center",
@@ -594,18 +607,18 @@ const styles = StyleSheet.create({
   // HEADER CAMPO
   campoHeaderCard: {
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 6,
+        elevation: 2,
       },
     }),
   },
@@ -614,10 +627,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   campoName: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: "800",
     color: "#1a1a1a",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sportRow: {
     flexDirection: "row",
@@ -625,34 +638,34 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   sportBadge: {
-    backgroundColor: "#E3F2FD",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: "#EEF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   sportText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: "#2196F3",
   },
   surfaceBadge: {
     backgroundColor: "#FFF3E0",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   surfaceText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: "#FF9800",
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    gap: 5,
   },
   statusActive: {
     backgroundColor: "#E8F5E9",
@@ -661,19 +674,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFEBEE",
   },
   statusIconContainer: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: "rgba(0,0,0,0.05)",
     justifyContent: "center",
     alignItems: "center",
   },
   statusIcon: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
   },
   statusTextActive: {
@@ -686,40 +699,40 @@ const styles = StyleSheet.create({
   // CARDS
   card: {
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
     }),
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-    gap: 12,
+    marginBottom: 16,
+    gap: 10,
   },
   cardIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E3F2FD",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#EEF6FF",
     justifyContent: "center",
     alignItems: "center",
   },
   cardIcon: {
-    fontSize: 22,
+    fontSize: 20,
   },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
     flex: 1,
@@ -729,30 +742,30 @@ const styles = StyleSheet.create({
   infoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 10,
   },
   infoBox: {
     flex: 1,
     minWidth: "45%",
     backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E8EAED",
   },
   infoIcon: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 24,
+    marginBottom: 6,
   },
   infoLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
-    marginBottom: 4,
+    marginBottom: 3,
     textAlign: "center",
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1a1a1a",
     textAlign: "center",
@@ -764,100 +777,101 @@ const styles = StyleSheet.create({
   },
   priceModeHeader: {
     backgroundColor: "#F8F9FA",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   priceModeLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#333",
   },
   priceValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "800",
     color: "#2196F3",
   },
   priceHierarchyTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#2196F3",
-    marginTop: 20,
-    marginBottom: 12,
-    paddingBottom: 10,
+    marginTop: 16,
+    marginBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: 2,
-    borderBottomColor: "#E3F2FD",
+    borderBottomColor: "#EEF6FF",
   },
   priceSection: {
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   priceSectionHeader: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   priceSectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   priceSectionDate: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#2196F3",
     fontWeight: "600",
   },
   priceSectionDays: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#FF9800",
     fontWeight: "600",
     marginTop: 2,
   },
   priceSectionSubtitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
     fontStyle: "italic",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   priceDetailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
   },
   priceDetailLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#333",
   },
   priceDetailDuration: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     fontWeight: "500",
   },
   priceDetailValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#2196F3",
   },
 
-  // ACTION BUTTONS
+  // ACTION BUTTONS - STILE MODERNO
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
+    justifyContent: "space-between",
+    backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "#E8EAED",
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.02,
         shadowRadius: 2,
       },
       android: {
@@ -867,45 +881,67 @@ const styles = StyleSheet.create({
   },
   actionButtonPressed: {
     opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: 0.99 }],
   },
   actionButtonPrimary: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#EEF6FF",
     borderColor: "#2196F3",
   },
   actionButtonSecondary: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#E8F5E9",
     borderColor: "#4CAF50",
   },
   actionButtonDanger: {
-    borderColor: "#FF3B30",
     backgroundColor: "#FFF5F5",
+    borderColor: "#FFCDD2",
+  },
+  actionButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   actionButtonIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  actionButtonIconPrimary: {
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
+  },
+  actionButtonIconSecondary: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
+  actionButtonIconDanger: {
+    backgroundColor: "#FF3B30",
+    borderColor: "#FF3B30",
   },
   actionButtonIconText: {
-    fontSize: 18,
+    fontSize: 16,
   },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#333",
     flex: 1,
   },
   actionButtonTextPrimary: {
-    color: "white",
+    color: "#2196F3",
   },
   actionButtonTextSecondary: {
-    color: "white",
+    color: "#4CAF50",
   },
   actionButtonDangerText: {
     color: "#FF3B30",
+  },
+  actionButtonChevron: {
+    marginLeft: 8,
   },
 });
