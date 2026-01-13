@@ -158,6 +158,82 @@ export default function DettaglioPrenotazioneScreen() {
     return now > matchEndTime;
   };
 
+  const getTimeUntilMatchStart = () => {
+    if (!booking) return null;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    const diffMs = matchStartTime.getTime() - now.getTime();
+
+    if (diffMs <= 0) return null; // Match già iniziato
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  const getTimeUntilRegistrationDeadline = () => {
+    if (!booking) return null;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    // Deadline: 45 minuti prima dell'inizio
+    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
+    const diffMs = deadlineTime.getTime() - now.getTime();
+
+    if (diffMs <= 0) return null; // Deadline passata
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  const isRegistrationOpen = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    // Deadline: 45 minuti prima dell'inizio
+    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
+    return now < deadlineTime;
+  };
+
+  // Helper functions for team colors
+  const getTeamColors = (team: "A" | "B" | null) => {
+    if (team === "A") {
+      return {
+        primary: "#2196F3",
+        gradient: ["#2196F3", "#1976D2", "#1565C0"],
+        light: "#E3F2FD",
+        text: "white"
+      };
+    } else if (team === "B") {
+      return {
+        primary: "#F44336",
+        gradient: ["#F44336", "#E53935", "#D32F2F"],
+        light: "#FFEBEE",
+        text: "white"
+      };
+    }
+    return {
+      primary: "#667eea",
+      gradient: ["#667eea", "#764ba2"],
+      light: "#f0f2f5",
+      text: "white"
+    };
+  };
+
+  const getTeamIcon = (team: "A" | "B" | null) => {
+    return team === "A" ? "people" : team === "B" ? "people" : "person-add";
+  };
+
   const canCancelBooking = () => {
     if (!booking || !user) return false;
     // Solo il creatore della prenotazione può cancellarla
@@ -475,6 +551,14 @@ export default function DettaglioPrenotazioneScreen() {
   const handleJoinMatch = async (team?: "A" | "B") => {
     if (!booking?.matchId) return;
 
+    if (!isRegistrationOpen()) {
+      Alert.alert(
+        "Registrazione chiusa",
+        "La deadline per le registrazioni è passata. Non è più possibile unirsi al match."
+      );
+      return;
+    }
+
     if (!team && booking.match?.maxPlayers && booking.match?.maxPlayers > 2) {
       setTeamSelectionMode("join");
       setTeamSelectionModalVisible(true);
@@ -532,6 +616,13 @@ export default function DettaglioPrenotazioneScreen() {
       Alert.alert(
         "Match in corso",
         "Non è possibile invitare giocatori durante il match. Attendi la fine della partita."
+      );
+      return;
+    }
+    if (!isRegistrationOpen()) {
+      Alert.alert(
+        "Registrazione chiusa",
+        "La deadline per le registrazioni è passata. Non è più possibile invitare giocatori."
       );
       return;
     }
@@ -644,8 +735,8 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
   const effectiveStatus = getMatchStatus();
   
   const statusInfo = getMatchStatusInfo();
-  const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "draft" && effectiveStatus !== "in_progress";
-  const canJoin = !isInMatch && match.status === "open";
+  const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "draft" && effectiveStatus !== "in_progress" && isRegistrationOpen();
+  const canJoin = !isInMatch && match.status === "open" && isRegistrationOpen();
   // Tutti i giocatori confermati possono inserire il risultato dopo la fine del match
   const canSubmitScore = isInMatch && isMatchPassed() && effectiveStatus !== "cancelled";
 
@@ -669,7 +760,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
               ) : (
                 <>
                   <Ionicons name="chatbubbles" size={18} color="white" />
-                  <Text style={styles.groupChatButtonText}>Chat Gruppo</Text>
+                  <Text style={styles.groupChatButtonText}>Chat Partita</Text>
                 </>
               )}
             </AnimatedButton>
@@ -681,32 +772,53 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
       <FadeInView delay={400}>
         <View style={styles.matchStatusCard}>
           <View style={styles.matchStatusRow}>
+            <View style={styles.matchStatusLeft}>
+              <View style={[styles.matchStatusIcon, { backgroundColor: statusInfo.color + '20' }]}>
+                <Ionicons name={statusInfo.icon} size={16} color={statusInfo.color} />
+              </View>
+              <Text style={styles.matchStatusTitle}>Stato Partita</Text>
+            </View>
             <View style={[
               styles.matchStatusBadge,
               match.status === "completed" && styles.matchStatusCompleted,
               match.status === "open" && styles.matchStatusOpen,
               match.status === "full" && styles.matchStatusFull,
               match.status === "cancelled" && styles.matchStatusCancelled,
+              effectiveStatus === "in_progress" && styles.matchStatusInProgress,
             ]}>
               <Text style={styles.matchStatusText}>{statusInfo.text}</Text>
             </View>
+          </View>
 
-            <View style={styles.matchInfoRow}>
-              <View style={styles.matchInfoItem}>
-                <Ionicons name="people" size={16} color={statusInfo.color} />
-                <Text style={styles.matchInfoText}>
-                  {confirmedPlayers.length}/{match.maxPlayers}
+          <View style={styles.matchStatsCompact}>
+            <View style={styles.matchStatItem}>
+              <View style={[styles.matchStatIcon, { backgroundColor: '#E8F5E920' }]}>
+                <Ionicons name="people" size={12} color="#4CAF50" />
+              </View>
+              <Text style={styles.matchStatText}>{confirmedPlayers.length}/{match.maxPlayers}</Text>
+            </View>
+
+            {pendingPlayers.length > 0 && (
+              <View style={styles.matchStatItem}>
+                <View style={[styles.matchStatIcon, { backgroundColor: '#FFF3E020' }]}>
+                  <Ionicons name="time" size={12} color="#FF9800" />
+                </View>
+                <Text style={styles.matchStatText}>{pendingPlayers.length}</Text>
+              </View>
+            )}
+
+            <View style={styles.matchStatItem}>
+              <View style={[styles.matchStatIcon, { backgroundColor: '#2196F320' }]}>
+                <Ionicons name="hourglass" size={12} color="#2196F3" />
+              </View>
+              <View>
+                <Text style={[styles.matchStatText, { fontSize: 10, color: '#666', marginBottom: 2 }]}>
+                  Chiusura prenotazione
+                </Text>
+                <Text style={styles.matchStatText}>
+                  {getTimeUntilRegistrationDeadline() || 'Chiusa'}
                 </Text>
               </View>
-              
-              {pendingPlayers.length > 0 && (
-                <View style={[styles.matchInfoItem, styles.pendingBadge]}>
-                  <Ionicons name="time" size={14} color="#FF9800" />
-                  <Text style={[styles.matchInfoText, { color: "#FF9800" }]}>
-                    {pendingPlayers.length} in attesa
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
         </View>
@@ -1114,8 +1226,8 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           />
         </AnimatedCard>
 
-        {/* CTA Join Match - Solo per chi non è nel match e il match è aperto */}
-        {!isInMatch && booking.match?.status === "open" && (
+        {/* CTA Join Match - Solo per chi non è nel match e la registrazione è aperta */}
+        {!isInMatch && booking.match?.status === "open" && isRegistrationOpen() && (
           <AnimatedCard delay={180}>
             <Pressable 
               style={styles.joinMatchCTA}
@@ -1130,7 +1242,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   <Text style={styles.joinMatchCTASubtitle}>
                     {confirmedPlayers.length}/{booking.match?.maxPlayers || 0} giocatori • {
                       (booking.match?.maxPlayers || 0) - confirmedPlayers.length
-                    } posti disponibili
+                    } posti disponibili • {getTimeUntilRegistrationDeadline()} rimasti
                   </Text>
                 </View>
                 <Ionicons name="arrow-forward-circle" size={28} color="#fff" />
@@ -1155,17 +1267,25 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
       >
         <View style={styles.modalOverlay}>
           <ScaleInView style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {inviteToTeam ? `Invita a Team ${inviteToTeam}` : 'Invita Giocatore'}
-                {inviteToSlot && ` - Slot ${inviteToSlot}`}
-              </Text>
+            <View style={[styles.modalHeader, { backgroundColor: getTeamColors(inviteToTeam).primary }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons 
+                  name={getTeamIcon(inviteToTeam)} 
+                  size={24} 
+                  color="white" 
+                  style={{ marginRight: 12 }} 
+                />
+                <Text style={styles.modalTitle}>
+                  {inviteToTeam ? `Invita a Team ${inviteToTeam}` : 'Invita Giocatore'}
+                  {inviteToSlot && ` - Slot ${inviteToSlot}`}
+                </Text>
+              </View>
               <AnimatedButton onPress={() => {
                 setInviteModalVisible(false);
                 setInviteToTeam(null);
                 setInviteToSlot(null);
               }} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color="white" />
               </AnimatedButton>
             </View>
 
@@ -1228,9 +1348,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                       </Pressable>
                       <View key="info" style={styles.resultInfo}>
                         <Text style={styles.resultName}>{user.name}</Text>
-                        <Text style={styles.resultUsername}>@{user.username}</Text>
+                        <Text style={[styles.resultUsername, { color: getTeamColors(inviteToTeam).primary }]}>@{user.username}</Text>
                       </View>
-                      <Ionicons key="add" name="add-circle" size={24} color="#2196F3" />
+                      <Ionicons key="add" name="add-circle" size={24} color={getTeamColors(inviteToTeam).primary} />
                     </AnimatedButton>
                   </FadeInView>
                 ))

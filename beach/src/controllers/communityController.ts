@@ -69,8 +69,8 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
       .sort(sortQuery)
       .skip(offset)
       .limit(limit)
-      .populate("user", "name avatarUrl")
-      .populate("comments.user", "name avatarUrl")
+      .populate("user", "name surname username avatarUrl")
+      .populate("comments.user", "name surname username avatarUrl")
       .lean();
 
     console.log('Posts trovati:', posts.length);
@@ -188,10 +188,12 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 
     // Popola user per response
     console.log('\n👤 POPOLO USER:');
-    await post.populate("user", "name avatarUrl");
+    await post.populate("user", "name surname username avatarUrl");
     console.log('  User popolato:', {
       id: (post.user as any)._id,
       name: (post.user as any).name,
+      surname: (post.user as any).surname,
+      username: (post.user as any).username,
       avatarUrl: (post.user as any).avatarUrl
     });
 
@@ -298,7 +300,7 @@ export const addComment = async (req: AuthRequest, res: Response) => {
     await post.save();
 
     // Popola l'ultimo commento per response
-    await post.populate("comments.user", "name avatarUrl");
+    await post.populate("comments.user", "name surname username avatarUrl");
     const newComment = post.comments[post.comments.length - 1];
 
     res.status(201).json({
