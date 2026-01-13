@@ -16,9 +16,23 @@ export const styles = StyleSheet.create({
     borderBottomColor: "#f0f0f0",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#1a1a1a",
+    textAlign: "center",
+    flex: 1,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+    marginTop: 2,
+  },
+  headerSpacer: {
+    width: 40,
   },
   settingsButton: {
     width: 40,
@@ -81,6 +95,28 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1a1a1a",
     letterSpacing: 0.3,
+  },
+  statValueUnread: {
+    color: "#FF5252",
+  },
+  statWithIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  unreadIndicator: {
+    backgroundColor: "#FF5252",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+  unreadIndicatorText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "700",
   },
   instagramStatLabel: {
     fontSize: 11,

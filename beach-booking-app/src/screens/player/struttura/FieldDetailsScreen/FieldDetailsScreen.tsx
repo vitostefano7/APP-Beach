@@ -76,6 +76,9 @@ export default function FieldDetailsScreen() {
   const { struttura } = route.params ?? {};
   const { token } = useContext(AuthContext);
   const scrollViewRef = useRef<ScrollView>(null);
+  const galleryScrollViewRef = useRef<ScrollView>(null);
+  const contentViewRef = useRef<View>(null);
+  const dayDetailRefs = useRef<Record<string, View>>({});
   const location = struttura?.location;
   const hasLocation = Boolean(location?.lat && location?.lng);
 
@@ -133,6 +136,30 @@ export default function FieldDetailsScreen() {
         .catch(() => {});
     }
   }, [struttura?._id, token]);
+
+  // Auto-scroll to dayDetail when date is selected
+  useEffect(() => {
+    console.log('useEffect triggered, selectedDate:', selectedDate);
+    Object.keys(selectedDate).forEach(campoId => {
+      if (selectedDate[campoId] && dayDetailRefs.current[campoId] && contentViewRef.current) {
+        // Delay to ensure layout is stable
+        setTimeout(() => {
+          dayDetailRefs.current[campoId].measureLayout(
+            contentViewRef.current as any,
+            (x, y, width, height) => {
+              console.log('measureLayout for campo:', campoId, 'y:', y, 'height:', height);
+              const targetY = Math.max(0, y - 100);
+              console.log('Scrolling to targetY:', targetY);
+              scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+            },
+            (error) => {
+              console.log('measureLayout error:', error);
+            }
+          );
+        }, 150);
+      }
+    });
+  }, [selectedDate]);
 
   /* =======================
      ACTIONS
@@ -306,8 +333,8 @@ export default function FieldDetailsScreen() {
 
   // ✅ Scroll automatico gallery
   useEffect(() => {
-    if (scrollViewRef.current && images.length > 1) {
-      scrollViewRef.current.scrollTo({
+    if (galleryScrollViewRef.current && images.length > 1) {
+      galleryScrollViewRef.current.scrollTo({
         x: currentImageIndex * width,
         animated: true,
       });
@@ -350,6 +377,7 @@ export default function FieldDetailsScreen() {
   return (
     <View style={styles.safe}>
       <ScrollView
+        ref={scrollViewRef}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -359,10 +387,11 @@ export default function FieldDetailsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        <View ref={contentViewRef} collapsable={false}>
         {/* GALLERY CON CAROUSEL */}
         <View style={styles.galleryContainer}>
           <ScrollView
-            ref={scrollViewRef}
+            ref={galleryScrollViewRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -889,6 +918,7 @@ export default function FieldDetailsScreen() {
                                     ]}
                                     onPress={() => {
                                       if (isPast) return;
+                                      console.log('Selecting date:', dateStr, 'for campo:', campo._id);
                                       setSelectedDate((prev) => ({
                                         ...prev,
                                         [campo._id]: isSelected ? "" : dateStr,
@@ -941,7 +971,10 @@ export default function FieldDetailsScreen() {
 
                         {/* DAY DETAIL */}
                         {selectedDateStr && selectedDayData && (
-                          <View style={styles.dayDetail}>
+                          <View 
+                            style={styles.dayDetail}
+                            ref={(ref) => { if (ref) dayDetailRefs.current[campo._id] = ref; }}
+                          >
                             <View style={styles.dayDetailHeader}>
                               <View style={styles.dayDetailHeaderLeft}>
                                 <Ionicons
@@ -1623,6 +1656,7 @@ export default function FieldDetailsScreen() {
         )}
 
         <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
     </View>
   );

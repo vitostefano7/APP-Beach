@@ -47,7 +47,19 @@ export default function LoginScreen({ navigation }: any) {
       const data = await res.json();
 
       // 🔐 salva token + user nel context
-      login(data.token, data.user);
+      // Estrai i dati utente dalla risposta del server
+      const userData = {
+        id: data.user._id,
+        role: data.user.role,
+        name: data.user.name,
+        surname: data.user.surname,
+        username: data.user.username,
+        email: data.user.email,
+        createdAt: data.user.createdAt,
+        avatarUrl: data.user.avatarUrl,
+        profilePrivacy: data.user.profilePrivacy,
+      };
+      login(data.token, userData);
     } catch (error) {
       console.error("Errore login:", error);
       Alert.alert("Errore", "Impossibile contattare il server");

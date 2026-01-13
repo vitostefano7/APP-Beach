@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState } from "react";
@@ -35,6 +36,8 @@ export default function ConfermaPrenotazioneScreen() {
   const [loading, setLoading] = useState(false);
   const [bookingType, setBookingType] = useState<"public" | "private">("public");
   const [maxPlayers, setMaxPlayers] = useState<number | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Determina le opzioni disponibili per lo sport
   const sportRules = sport === "beach_volley" || sport === "volley" 
@@ -107,20 +110,8 @@ export default function ConfermaPrenotazioneScreen() {
 
       console.log("✅ Prenotazione creata:", data._id);
 
-      Alert.alert(
-        "✅ Prenotazione confermata!",
-        "La tua prenotazione è stata registrata con successo.",
-        [
-          {
-            text: "Vedi prenotazioni",
-            onPress: () => navigation.navigate("LeMiePrenotazioni"),
-          },
-          {
-            text: "OK",
-            onPress: () => navigation.navigate("Strutture"),
-          },
-        ]
-      );
+      setCreatedBookingId(data._id);
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error("❌ Errore prenotazione:", error);
       Alert.alert("Errore", error.message || "Impossibile completare la prenotazione");
@@ -134,66 +125,13 @@ export default function ConfermaPrenotazioneScreen() {
 
       <ScrollView style={styles.container}>
         {/* Card riepilogo */}
-        <View style={styles.card}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="checkmark-circle" size={60} color="#4CAF50" />
-          </View>
-
-          <Text style={styles.title}>Conferma i dettagli</Text>
-          <Text style={styles.subtitle}>
-            Verifica che le informazioni siano corrette prima di confermare
-          </Text>
-        </View>
-
-        {/* Dettagli prenotazione */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📍 Struttura e Campo</Text>
-          
-          <View style={styles.detailRow}>
-            <Ionicons name="business" size={20} color="#666" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Struttura</Text>
-              <Text style={styles.detailValue}>{strutturaName}</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="tennisball" size={20} color="#666" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Campo</Text>
-              <Text style={styles.detailValue}>{campoName}</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="trophy" size={20} color="#666" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Sport</Text>
-              <Text style={styles.detailValue}>{sport}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📅 Data e Orario</Text>
-          
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar" size={20} color="#666" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Data</Text>
-              <Text style={styles.detailValue}>{formatDate(date)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="time" size={20} color="#666" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Orario</Text>
-              <Text style={styles.detailValue}>
-                {startTime} - {endTime}
-              </Text>
-              <Text style={styles.detailHint}>
-                ({durationNumber === 1 ? "1 ora" : "1 ora e 30 minuti"})
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryContent}>
+            <Ionicons name="checkmark-circle" size={36} color="#28a745" />
+            <View style={styles.summaryTextContainer}>
+              <Text style={styles.summaryTitle}>Conferma i dettagli</Text>
+              <Text style={styles.summarySubtitle}>
+                Verifica che tutto sia corretto
               </Text>
             </View>
           </View>
@@ -255,6 +193,60 @@ export default function ConfermaPrenotazioneScreen() {
                 </Text>
               </View>
             </Pressable>
+          </View>
+        </View>
+
+        {/* Dettagli prenotazione */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📍 Struttura e Campo</Text>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="business" size={20} color="#2563eb" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Struttura</Text>
+              <Text style={styles.detailValue}>{strutturaName}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Ionicons name="tennisball" size={20} color="#f59e0b" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Campo</Text>
+              <Text style={styles.detailValue}>{campoName}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Ionicons name="trophy" size={20} color="#eab308" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Sport</Text>
+              <Text style={styles.detailValue}>{sport}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📅 Data e Orario</Text>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar" size={20} color="#3b82f6" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Data</Text>
+              <Text style={styles.detailValue}>{formatDate(date)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Ionicons name="time" size={20} color="#7c3aed" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Orario</Text>
+              <Text style={styles.detailValue}>
+                {startTime} - {endTime}
+              </Text>
+              <Text style={styles.detailHint}>
+                ({durationNumber === 1 ? "1 ora" : "1 ora e 30 minuti"})
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -347,6 +339,7 @@ export default function ConfermaPrenotazioneScreen() {
           onPress={() => navigation.goBack()}
           disabled={loading}
         >
+          <Ionicons name="close" size={20} color="#dc3545" />
           <Text style={styles.buttonSecondaryText}>Annulla</Text>
         </Pressable>
 
@@ -359,18 +352,64 @@ export default function ConfermaPrenotazioneScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <Ionicons name="checkmark" size={20} color="white" />
+              <Ionicons name="checkmark-circle" size={20} color="white" />
               <Text style={styles.buttonPrimaryText}>Conferma Prenotazione</Text>
             </>
           )}
         </Pressable>
       </View>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        bookingId={createdBookingId}
+        navigation={navigation}
+      />
     </SafeAreaView>
   );
 }
 
+const SuccessModal = ({ visible, onClose, bookingId, navigation }: any) => {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={80} color="#28a745" />
+          </View>
+          
+          <Text style={styles.modalTitle}>🎉 Prenotazione Completata!</Text>
+          
+          <Text style={styles.modalMessage}>
+            La tua prenotazione è stata registrata con successo. Riceverai una conferma via email.
+          </Text>
+          
+          <Pressable
+            style={styles.modalButton}
+            onPress={() => {
+              onClose();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "DettaglioPrenotazione", params: { bookingId } }],
+              });
+            }}
+          >
+            <Text style={styles.modalButtonText}>Vedi Dettagli Prenotazione</Text>
+            <Ionicons name="arrow-forward" size={20} color="white" />
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f6f7f9" },
+  safe: { flex: 1, backgroundColor: "#fafbfc" },
   
   header: {
     flexDirection: "row",
@@ -383,38 +422,55 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#212121" },
 
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 12 },
 
   card: {
     backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+
+  summaryCard: {
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: "#28a745",
   },
 
-  iconContainer: {
+  summaryContent: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    gap: 12,
   },
 
-  title: {
-    fontSize: 24,
+  summaryTextContainer: {
+    flex: 1,
+  },
+
+  summaryTitle: {
+    fontSize: 16,
     fontWeight: "700",
-    textAlign: "center",
     color: "#212121",
-    marginBottom: 8,
+    marginBottom: 2,
   },
 
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
+  summarySubtitle: {
+    fontSize: 12,
     color: "#666",
-    lineHeight: 20,
+    lineHeight: 16,
   },
 
   cardTitle: {
@@ -433,7 +489,7 @@ const styles = StyleSheet.create({
 
   detailRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 16,
     gap: 12,
   },
@@ -622,9 +678,10 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     padding: 16,
+    paddingBottom: 28,
     backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: "#e9ecef",
     gap: 12,
   },
 
@@ -633,39 +690,107 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderRadius: 12,
     gap: 8,
   },
 
   buttonSecondary: {
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#DDD",
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "#dc3545",
   },
 
   buttonSecondaryText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#666",
+    fontWeight: "700",
+    color: "#dc3545",
   },
 
   buttonPrimary: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#28a745",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 0,
   },
 
   buttonPrimaryText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "white",
+    letterSpacing: 0.5,
   },
 
   buttonDisabled: {
     opacity: 0.6,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 30,
+    margin: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+    maxWidth: 350,
+  },
+
+  successIconContainer: {
+    marginBottom: 20,
+  },
+
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#212121',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+
+  modalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+
+  modalButton: {
+    backgroundColor: '#28a745',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
   },
 });
