@@ -269,7 +269,7 @@ async function seed() {
         // ✅ AVATAR URL (ciclico)
         avatarUrl: avatarUrls.length ? avatarUrls[index % avatarUrls.length] : undefined,
 
-        preferredSports: u.role === "player" ? [randomElement(["volleyball", "beach_volleyball"])] : [],
+        preferredSports: u.role === "player" ? [randomElement(["volley", "beach volley"])] : [],
         location:
           u.role === "player"
             ? {
@@ -634,7 +634,7 @@ async function seed() {
         struttura: strutture[0]._id,
         startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        sport: "beach_volleyball",
+        sport: "beach volley",
         maxParticipants: 16,
         isPublic: true,
         participants: [players[0]._id, players[1]._id, players[2]._id],
@@ -648,7 +648,7 @@ async function seed() {
         struttura: strutture[1]._id,
         startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000),
-        sport: "volleyball",
+        sport: "volley",
         maxParticipants: 24,
         isPublic: false,
         participants: [players[3]._id, players[4]._id, players[5]._id],
@@ -662,7 +662,7 @@ async function seed() {
         struttura: strutture[2]._id,
         startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        sport: "beach_volleyball",
+        sport: "beach volley",
         isPublic: true,
         participants: [players[6]._id, players[7]._id],
         status: "open",
@@ -675,7 +675,7 @@ async function seed() {
         struttura: strutture[7]._id,
         startDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-        sport: "beach_volleyball",
+        sport: "beach volley",
         maxParticipants: 20,
         isPublic: true,
         participants: [players[8]._id, players[9]._id, players[10]._id],
@@ -700,7 +700,7 @@ async function seed() {
         campiData.push({
           struttura: struttura._id,
           name: `Campo ${isBeach ? "Beach" : "Volley"} ${i}`,
-          sport: isBeach ? "beach_volley" : "volley",
+          sport: isBeach ? "beach volley" : "volley",
           surface: isBeach ? "sand" : isIndoor ? "pvc" : "cement",
           maxPlayers: 4,
           indoor: isIndoor,

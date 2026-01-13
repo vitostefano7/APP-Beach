@@ -314,8 +314,8 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   item.campo.sport === "calcio" ? "football" :
                   item.campo.sport === "tennis" ? "tennisball" :
                   item.campo.sport === "basket" ? "basketball" :
-                  item.campo.sport === "beach_volleyball" ? "sunny" :
-                  item.campo.sport === "volleyball" || item.campo.sport === "volley" ? "basketball" :
+                  item.campo.sport === "beach volley" ? "football" :
+                  item.campo.sport === "volley" ? "tennisball" :
                   "fitness"
                 } 
                 size={12} 

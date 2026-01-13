@@ -46,8 +46,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "d48f6e77-eccb-484e-a8c2-063e0b935942"
       }
-    }
+    },
+    "owner": "vitostefano7"
   }
 }

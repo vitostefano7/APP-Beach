@@ -57,7 +57,7 @@ export default function ProfileScreen() {
 
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
-    console.log("👤 User context aggiornato, avatarUrl:", user.avatarUrl);
+    console.log("👤 User context aggiornato, dati completi:", user);
     if (user.avatarUrl) {
       setAvatarUrl(user.avatarUrl);
     }
@@ -133,6 +133,22 @@ export default function ProfileScreen() {
         setAvatarUrl(json.user.avatarUrl);
       } else {
         console.log("⚠️ Nessun avatarUrl ricevuto dal backend");
+      }
+
+      // ✅ Aggiorna i dati base dell'utente nel context se necessario
+      if (json.user && updateUser) {
+        const userDataToUpdate: any = {};
+        if (json.user.name && json.user.name !== user.name) userDataToUpdate.name = json.user.name;
+        if (json.user.surname && json.user.surname !== user.surname) userDataToUpdate.surname = json.user.surname;
+        if (json.user.username && json.user.username !== user.username) userDataToUpdate.username = json.user.username;
+        if (json.user.email && json.user.email !== user.email) userDataToUpdate.email = json.user.email;
+        if (json.user.avatarUrl && json.user.avatarUrl !== user.avatarUrl) userDataToUpdate.avatarUrl = json.user.avatarUrl;
+        if (json.user.profilePrivacy && json.user.profilePrivacy !== user.profilePrivacy) userDataToUpdate.profilePrivacy = json.user.profilePrivacy;
+
+        if (Object.keys(userDataToUpdate).length > 0) {
+          console.log("🔄 Aggiornando dati utente nel context:", userDataToUpdate);
+          updateUser(userDataToUpdate);
+        }
       }
     } catch (e) {
       console.error("Errore caricamento profilo", e);
@@ -374,13 +390,16 @@ export default function ProfileScreen() {
 
       {/* Header con bottone impostazioni */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profilo</Text>
         <Pressable
           style={styles.settingsButton}
           onPress={() => navigation.navigate("Settings")}
         >
           <Ionicons name="settings-outline" size={24} color="#1a1a1a" />
         </Pressable>
+        <Text style={styles.headerTitle}>
+          {user.name}{user.surname ? ` ${user.surname}` : ''}
+        </Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <AvatarPicker
@@ -426,7 +445,23 @@ export default function ProfileScreen() {
                 ]}
                 onPress={() => navigation.navigate("Conversazione")}
               >
-                <Text style={styles.instagramStatValue}>{unreadCount}</Text>
+                <View style={styles.statWithIcon}>
+                  <Ionicons 
+                    name="chatbubble-ellipses" 
+                    size={16} 
+                    color={unreadCount > 0 ? "#FF5252" : "#666"} 
+                  />
+                  {unreadCount > 0 && (
+                    <View style={styles.unreadIndicator}>
+                      <Text style={styles.unreadIndicatorText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.instagramStatValue, unreadCount > 0 && styles.statValueUnread]}>
+                  {unreadCount}
+                </Text>
                 <Text style={styles.instagramStatLabel}>messaggi</Text>
               </Pressable>
 
@@ -437,6 +472,9 @@ export default function ProfileScreen() {
                 ]}
                 onPress={() => navigation.navigate("FriendsList", { filter: "followers" })}
               >
+                <View style={styles.statWithIcon}>
+                  <Ionicons name="people" size={16} color="#666" />
+                </View>
                 <Text style={styles.instagramStatValue}>{profile.followersCount ?? 0}</Text>
                 <Text style={styles.instagramStatLabel}>follower</Text>
               </Pressable>
@@ -448,6 +486,9 @@ export default function ProfileScreen() {
                 ]}
                 onPress={() => navigation.navigate("FriendsList", { filter: "following" })}
               >
+                <View style={styles.statWithIcon}>
+                  <Ionicons name="person-add" size={16} color="#666" />
+                </View>
                 <Text style={styles.instagramStatValue}>{profile.followingCount ?? 0}</Text>
                 <Text style={styles.instagramStatLabel}>seguiti</Text>
               </Pressable>
@@ -456,7 +497,6 @@ export default function ProfileScreen() {
 
           {/* Nome e bio sotto */}
           <View style={styles.instagramBio}>
-            <Text style={styles.instagramName}>{user.name} {user.surname}</Text>
             {user.username && (
               <Text style={styles.instagramUsername}>@{user.username}</Text>
             )}

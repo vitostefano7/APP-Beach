@@ -31,7 +31,7 @@ export const getStrutture = async (_req: Request, res: Response) => {
 
         const sportsSet = new Set<string>();
         campi.forEach((campo) => {
-          if (campo.sport === 'beach_volley') {
+          if (campo.sport === 'beach volley') {
             sportsSet.add('Beach Volley');
           } else if (campo.sport === 'volley') {
             sportsSet.add('Volley');

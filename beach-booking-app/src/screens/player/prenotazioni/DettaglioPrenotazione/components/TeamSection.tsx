@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import PlayerCardWithTeam from "./DettaglioPrenotazione.components";
 import styles from "../styles/DettaglioPrenotazione.styles";
 import { Player } from "../types/DettaglioPrenotazione.types";
+import { getTeamFormationLabel } from "../../../../../utils/matchSportRules";
 
 // Import componenti gradients
 import { TeamAGradient, TeamBGradient } from "./GradientComponents";
@@ -16,6 +17,7 @@ interface TeamSectionProps {
   onRemovePlayer: (playerId: string) => void;
   onAssignTeam: (playerId: string, team: "A" | "B" | null) => void;
   maxPlayersPerTeam: number;
+  maxPlayers: number; // Aggiunto per calcolare la formazione
   onInviteToTeam: (team: "A" | "B", slotNumber: number) => void;
   matchStatus: string; // Aggiunto per passare lo stato del match
 }
@@ -28,11 +30,15 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   onRemovePlayer,
   onAssignTeam,
   maxPlayersPerTeam,
+  maxPlayers,
   onInviteToTeam,
   matchStatus,
 }) => {
   const teamColor = team === "A" ? "#2196F3" : "#F44336";
   const teamIcon = team === "A" ? "people-circle" : "people";
+  
+  // Calcola l'etichetta della formazione (es. "2v2", "5v5")
+  const formationLabel = getTeamFormationLabel(maxPlayers);
 
   // Crea array di slot (pieni e vuoti)
   const slots = Array(maxPlayersPerTeam).fill(null);
@@ -53,7 +59,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
       {team === "A" ? (
         <TeamAGradient style={styles.teamHeader}>
           <Ionicons name={teamIcon} size={20} color="white" />
-          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team}</Text>
+          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team} ({formationLabel})</Text>
           <View style={styles.teamHeaderRight}>
             <Text style={[styles.teamCount, { color: "white" }]}>
               {players.length}/{maxPlayersPerTeam}
@@ -66,7 +72,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
       ) : (
         <TeamBGradient style={styles.teamHeader}>
           <Ionicons name={teamIcon} size={20} color="white" />
-          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team}</Text>
+          <Text style={[styles.teamTitle, { color: "white" }]}>Team {team} ({formationLabel})</Text>
           <View style={styles.teamHeaderRight}>
             <Text style={[styles.teamCount, { color: "white" }]}>
               {players.length}/{maxPlayersPerTeam}

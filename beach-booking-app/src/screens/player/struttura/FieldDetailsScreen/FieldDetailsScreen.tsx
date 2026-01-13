@@ -76,6 +76,9 @@ export default function FieldDetailsScreen() {
   const { struttura } = route.params ?? {};
   const { token } = useContext(AuthContext);
   const scrollViewRef = useRef<ScrollView>(null);
+  const galleryScrollViewRef = useRef<ScrollView>(null);
+  const contentViewRef = useRef<View>(null);
+  const dayDetailRefs = useRef<Record<string, View>>({});
   const location = struttura?.location;
   const hasLocation = Boolean(location?.lat && location?.lng);
 
@@ -100,6 +103,7 @@ export default function FieldDetailsScreen() {
   const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite' | 'mappa'>('campi');
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [sportFilter, setSportFilter] = useState<string | 'all'>('all');
 
   /* =======================
      INIT
@@ -132,6 +136,30 @@ export default function FieldDetailsScreen() {
         .catch(() => {});
     }
   }, [struttura?._id, token]);
+
+  // Auto-scroll to dayDetail when date is selected
+  useEffect(() => {
+    console.log('useEffect triggered, selectedDate:', selectedDate);
+    Object.keys(selectedDate).forEach(campoId => {
+      if (selectedDate[campoId] && dayDetailRefs.current[campoId] && contentViewRef.current) {
+        // Delay to ensure layout is stable
+        setTimeout(() => {
+          dayDetailRefs.current[campoId].measureLayout(
+            contentViewRef.current as any,
+            (x, y, width, height) => {
+              console.log('measureLayout for campo:', campoId, 'y:', y, 'height:', height);
+              const targetY = Math.max(0, y - 100);
+              console.log('Scrolling to targetY:', targetY);
+              scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+            },
+            (error) => {
+              console.log('measureLayout error:', error);
+            }
+          );
+        }, 150);
+      }
+    });
+  }, [selectedDate]);
 
   /* =======================
      ACTIONS
@@ -305,8 +333,8 @@ export default function FieldDetailsScreen() {
 
   // ✅ Scroll automatico gallery
   useEffect(() => {
-    if (scrollViewRef.current && images.length > 1) {
-      scrollViewRef.current.scrollTo({
+    if (galleryScrollViewRef.current && images.length > 1) {
+      galleryScrollViewRef.current.scrollTo({
         x: currentImageIndex * width,
         animated: true,
       });
@@ -349,6 +377,7 @@ export default function FieldDetailsScreen() {
   return (
     <View style={styles.safe}>
       <ScrollView
+        ref={scrollViewRef}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -358,10 +387,11 @@ export default function FieldDetailsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        <View ref={contentViewRef} collapsable={false}>
         {/* GALLERY CON CAROUSEL */}
         <View style={styles.galleryContainer}>
           <ScrollView
-            ref={scrollViewRef}
+            ref={galleryScrollViewRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -630,6 +660,58 @@ export default function FieldDetailsScreen() {
             <Text style={styles.sectionTitle}>Campi disponibili</Text>
           </View>
 
+          {/* FILTRI SPORT */}
+          {campi.length > 0 && (
+            <View style={styles.sportFiltersContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.sportFiltersScroll}
+              >
+                <Pressable
+                  style={[
+                    styles.sportFilterChip,
+                    sportFilter === 'all' && styles.sportFilterChipActive,
+                  ]}
+                  onPress={() => setSportFilter('all')}
+                >
+                  <Text
+                    style={[
+                      styles.sportFilterText,
+                      sportFilter === 'all' && styles.sportFilterTextActive,
+                    ]}
+                  >
+                    Tutti
+                  </Text>
+                </Pressable>
+                {Array.from(new Set(campi.map(c => c.sport))).map((sport) => (
+                  <Pressable
+                    key={sport}
+                    style={[
+                      styles.sportFilterChip,
+                      sportFilter === sport && styles.sportFilterChipActive,
+                    ]}
+                    onPress={() => setSportFilter(sport)}
+                  >
+                    <Ionicons
+                      name={getSportIcon(sport) as any}
+                      size={14}
+                      color={sportFilter === sport ? 'white' : '#2196F3'}
+                    />
+                    <Text
+                      style={[
+                        styles.sportFilterText,
+                        sportFilter === sport && styles.sportFilterTextActive,
+                      ]}
+                    >
+                      {SPORT_LABELS[sport] || sport}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {campi.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="basketball-outline" size={48} color="#ccc" />
@@ -637,7 +719,9 @@ export default function FieldDetailsScreen() {
             </View>
           )}
 
-          {campi.map((campo) => {
+          {campi
+            .filter(campo => sportFilter === 'all' || campo.sport === sportFilter)
+            .map((campo) => {
             const isExpanded = expandedCampoId === campo._id;
             const currentMonth = currentMonths[campo._id] || new Date();
             const isLoading = loadingCalendars[campo._id];
@@ -834,6 +918,7 @@ export default function FieldDetailsScreen() {
                                     ]}
                                     onPress={() => {
                                       if (isPast) return;
+                                      console.log('Selecting date:', dateStr, 'for campo:', campo._id);
                                       setSelectedDate((prev) => ({
                                         ...prev,
                                         [campo._id]: isSelected ? "" : dateStr,
@@ -886,7 +971,10 @@ export default function FieldDetailsScreen() {
 
                         {/* DAY DETAIL */}
                         {selectedDateStr && selectedDayData && (
-                          <View style={styles.dayDetail}>
+                          <View 
+                            style={styles.dayDetail}
+                            ref={(ref) => { if (ref) dayDetailRefs.current[campo._id] = ref; }}
+                          >
                             <View style={styles.dayDetailHeader}>
                               <View style={styles.dayDetailHeaderLeft}>
                                 <Ionicons
@@ -1568,6 +1656,7 @@ export default function FieldDetailsScreen() {
         )}
 
         <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
     </View>
   );

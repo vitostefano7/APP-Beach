@@ -41,14 +41,7 @@ export default function OwnerHeader({
         <View style={styles.headerInfo}>
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.userName}>{user?.name || "Owner"}</Text>
-          {todayBookingsCount > 0 && (
-            <View style={styles.todayBadge}>
-              <Ionicons name="calendar" size={12} color="#2196F3" />
-              <Text style={styles.todayBadgeText}>
-                {todayBookingsCount} {todayBookingsCount === 1 ? "prenotazione" : "prenotazioni"} oggi
-              </Text>
-            </View>
-          )}
+          
         </View>
       </View>
 

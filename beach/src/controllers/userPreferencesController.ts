@@ -209,7 +209,7 @@ export const getFavoriteStrutture = async (req: AuthRequest, res: Response) => {
 
         const sportsSet = new Set<string>();
         campi.forEach((campo) => {
-          if (campo.sport === 'beach_volley') {
+          if (campo.sport === 'beach volley') {
             sportsSet.add('Beach Volley');
           } else if (campo.sport === 'volley') {
             sportsSet.add('Volley');

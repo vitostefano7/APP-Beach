@@ -361,7 +361,7 @@ export default function OwnerDashboardScreen() {
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Vedi tutte</Text>
-                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
               </Pressable>
             </View>
 
@@ -391,7 +391,7 @@ export default function OwnerDashboardScreen() {
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Prenotazioni</Text>
-                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
               </Pressable>
             </View>
           </View>
@@ -416,7 +416,7 @@ export default function OwnerDashboardScreen() {
             </ScrollView>
           ) : (
             <View style={styles.emptyStateSmall}>
-              <Ionicons name="tennisball-outline" size={32} color="#ccc" />
+              <Ionicons name="tennisball-outline" size={28} color="#ccc" />
               <Text style={styles.emptyStateSmallText}>
                 Nessuna partita programmata
               </Text>
@@ -434,7 +434,7 @@ export default function OwnerDashboardScreen() {
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Gestisci</Text>
-                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
               </Pressable>
             </View>
 
@@ -495,7 +495,7 @@ export default function OwnerDashboardScreen() {
         {strutture.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="business-outline" size={64} color="#2196F3" />
+              <Ionicons name="business-outline" size={54} color="#2196F3" />
             </View>
             <Text style={styles.emptyTitle}>Nessuna Struttura</Text>
             <Text style={styles.emptyText}>
@@ -505,7 +505,7 @@ export default function OwnerDashboardScreen() {
               style={styles.emptyButton}
               onPress={() => navigation.navigate("CreaStruttura")}
             >
-              <Ionicons name="add" size={20} color="white" />
+              <Ionicons name="add" size={18} color="white" />
               <Text style={styles.emptyButtonText}>Aggiungi Struttura</Text>
             </Pressable>
           </View>

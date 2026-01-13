@@ -9,6 +9,7 @@ import {
   Alert,
   FlatList,
   Dimensions,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -721,7 +722,8 @@ export default function HomeScreen() {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: 'white' }]} edges={['top']}>
+        <StatusBar backgroundColor="white" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
           <Text style={styles.loadingText}>Caricamento dashboard...</Text>
@@ -731,7 +733,8 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: 'white' }]} edges={['top']}>
+      <StatusBar backgroundColor="white" barStyle="dark-content" />
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}

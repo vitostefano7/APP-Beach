@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNotifications, Notification } from './hooks/useNotifications';
+import { AuthContext } from '../../../context/AuthContext';
+import API_URL from '../../../config/api';
 import { styles } from '../styles-player/NotificheScreen.styles';
 
 type FilterType = 'all' | 'unread';
 
 const NotificheScreen = () => {
   const navigation = useNavigation<any>();
+  const { token, user } = useContext(AuthContext);
   const {
     notifications,
     unreadCount,
@@ -35,12 +38,14 @@ const NotificheScreen = () => {
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
 
   // Carica notifiche quando la schermata è visibile
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
       fetchUnreadCount();
+      loadPendingInvitesCount();
     }, [filter])
   );
 
@@ -49,10 +54,67 @@ const NotificheScreen = () => {
     await fetchNotifications(isReadFilter);
   };
 
+  const loadPendingInvitesCount = async () => {
+    try {
+      const res = await fetch(`${API_URL}/matches/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const allMatches = await res.json();
+
+        if (!Array.isArray(allMatches)) {
+          console.error("Formato dati inviti non valido");
+          setPendingInvitesCount(0);
+          return;
+        }
+
+        const pendingInvites = allMatches.filter((match: any) => {
+          if (!match || !match.players) return false;
+
+          const myPlayer = match.players?.find((p: any) =>
+            p?.user?._id === user?.id
+          );
+
+          if (!myPlayer) return false;
+
+          const isPendingStatus = myPlayer.status === "pending";
+          const isCreator = match.createdBy?._id === user?.id;
+          const isExpired = isInviteExpired(match);
+
+          return isPendingStatus && !isCreator && !isExpired;
+        });
+
+        setPendingInvitesCount(pendingInvites.length);
+      }
+    } catch (error) {
+      console.error("Errore caricamento conteggio inviti:", error);
+      setPendingInvitesCount(0);
+    }
+  };
+
+  const isInviteExpired = (match: any): boolean => {
+    const booking = match.booking;
+    if (!booking?.date || !booking?.startTime) return false;
+
+    try {
+      const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+      const cutoffTime = new Date(matchDateTime);
+      cutoffTime.setHours(cutoffTime.getHours() - 2);
+
+      const now = new Date();
+      return now > cutoffTime;
+    } catch (error) {
+      console.error("Errore nel calcolo scadenza:", error);
+      return false;
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadNotifications();
     await fetchUnreadCount();
+    await loadPendingInvitesCount();
     setRefreshing(false);
   };
 
@@ -100,7 +162,7 @@ const NotificheScreen = () => {
 
   const handleRejectRequest = async (notification: Notification) => {
     if (!notification.relatedId) return;
-    
+
     Alert.alert(
       'Rifiuta richiesta',
       'Vuoi rifiutare questa richiesta di follow?',
@@ -294,14 +356,36 @@ const NotificheScreen = () => {
             <Ionicons name="arrow-back" size={24} color="#000" />
           </Pressable>
           <Text style={styles.headerTitle}>Notifiche</Text>
-          {unreadCount > 0 && (
+
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            {/* Bottone Inviti */}
             <Pressable
-              style={styles.markAllButton}
-              onPress={handleMarkAllAsRead}
+              style={styles.invitesButtonContainer}
+              onPress={() => navigation.navigate('TuttiInviti')}
             >
-              <Ionicons name="checkmark-done" size={20} color="#2196F3" />
+              <View style={{ position: 'relative' }}>
+                <Ionicons name="mail-outline" size={20} color="#2196F3" />
+                {pendingInvitesCount > 0 && (
+                  <View style={styles.invitesBadge}>
+                    <Text style={styles.invitesBadgeText}>
+                      {pendingInvitesCount > 99 ? '99+' : pendingInvitesCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.invitesButtonText}>Inviti</Text>
             </Pressable>
-          )}
+
+            {/* Bottone Segna tutte come lette */}
+            {unreadCount > 0 && (
+              <Pressable
+                style={styles.markAllButton}
+                onPress={handleMarkAllAsRead}
+              >
+                <Ionicons name="checkmark-done" size={20} color="#2196F3" />
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Filter Tabs */}

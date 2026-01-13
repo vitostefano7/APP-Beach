@@ -47,6 +47,12 @@ interface PeriodOverride {
   prices: DurationPrice;
 }
 
+interface PlayerCountPrice {
+  count: number;
+  label: string;
+  prices: DurationPrice;
+}
+
 interface PricingRules {
   mode: "flat" | "advanced";
   flatPrices: DurationPrice;
@@ -63,9 +69,14 @@ interface PricingRules {
     enabled: boolean;
     periods: PeriodOverride[];
   };
+  playerCountPricing: {
+    enabled: boolean;
+    prices: PlayerCountPrice[];
+  };
 }
 
 const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const PLAYER_COUNTS = [4, 6, 8];
 
 /* =======================
    COMPONENT
@@ -94,6 +105,7 @@ export default function ConfiguraPrezziCampoScreen() {
     timeSlotPricing: { enabled: false, slots: [] },
     dateOverrides: { enabled: false, dates: [] },
     periodOverrides: { enabled: false, periods: [] },
+    playerCountPricing: { enabled: false, prices: [] },
   });
 
   /* =======================
@@ -118,6 +130,7 @@ export default function ConfiguraPrezziCampoScreen() {
         timeSlotPricing: rules.timeSlotPricing || { enabled: false, slots: [] },
         dateOverrides: rules.dateOverrides || { enabled: false, dates: [] },
         periodOverrides: rules.periodOverrides || { enabled: false, periods: [] },
+        playerCountPricing: rules.playerCountPricing || { enabled: false, prices: [] },
       });
     } catch {
       Alert.alert("Errore", "Impossibile caricare i prezzi");
@@ -191,6 +204,97 @@ export default function ConfiguraPrezziCampoScreen() {
         oneHour: prev.basePrices?.oneHour || 20,
         oneHourHalf: prev.basePrices?.oneHourHalf || 28,
         [type]: num,
+      },
+    }));
+  };
+
+  /* =======================
+     HANDLERS - PLAYER COUNT
+  ======================= */
+
+  const togglePlayerCountPricing = () => {
+    setPricing((prev) => ({
+      ...prev,
+      playerCountPricing: {
+        ...prev.playerCountPricing,
+        enabled: !prev.playerCountPricing.enabled,
+      },
+    }));
+  };
+
+  const addPlayerCountPrice = () => {
+    // Trova il primo numero di giocatori non ancora configurato
+    const existingCounts = pricing.playerCountPricing.prices.map(p => p.count);
+    const availableCount = PLAYER_COUNTS.find(c => !existingCounts.includes(c));
+    
+    if (!availableCount) {
+      Alert.alert("Attenzione", "Hai già configurato tutti i numeri di giocatori disponibili");
+      return;
+    }
+
+    const labels: { [key: number]: string } = {
+      4: "4 giocatori (2 vs 2)",
+      6: "6 giocatori (3 vs 3)",
+      8: "8 giocatori (4 vs 4)",
+    };
+
+    setPricing((prev) => ({
+      ...prev,
+      playerCountPricing: {
+        ...prev.playerCountPricing,
+        prices: [
+          ...prev.playerCountPricing.prices,
+          {
+            count: availableCount,
+            label: labels[availableCount],
+            prices: { oneHour: 30, oneHourHalf: 42 },
+          },
+        ],
+      },
+    }));
+  };
+
+  const updatePlayerCountPrice = (index: number, field: string, value: any) => {
+    setPricing((prev) => {
+      const newPrices = [...prev.playerCountPricing.prices];
+      
+      if (field === "count") {
+        newPrices[index] = {
+          ...newPrices[index],
+          count: parseInt(value) || 4,
+        };
+      } else if (field === "label") {
+        newPrices[index] = {
+          ...newPrices[index],
+          label: value,
+        };
+      } else if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
+        const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
+        newPrices[index] = {
+          ...newPrices[index],
+          prices: {
+            ...newPrices[index].prices,
+            [priceField]: parseFloat(value) || 0,
+          },
+        };
+      }
+      
+      return {
+        ...prev,
+        playerCountPricing: {
+          ...prev.playerCountPricing,
+          prices: newPrices,
+        },
+      };
+    });
+  };
+
+  const removePlayerCountPrice = (index: number) => {
+    setPricing((prev) => ({
+      ...prev,
+      playerCountPricing: {
+        ...prev.playerCountPricing,
+        prices: prev.playerCountPricing.prices.filter((_, i) => i !== index),
       },
     }));
   };
@@ -586,11 +690,26 @@ export default function ConfiguraPrezziCampoScreen() {
       }
     }
 
-    // Livello 5: Base price
+    // Livello 5: Player count pricing (solo per beach volley)
+    if (campoSport === "beach volley" && pricing.playerCountPricing.enabled && pricing.playerCountPricing.prices.length > 0) {
+      pricing.playerCountPricing.prices
+        .sort((a, b) => a.count - b.count)
+        .forEach((pc) => {
+          simulations.push({
+            emoji: "👥",
+            title: pc.label,
+            subtitle: `Prezzo per ${pc.count} partecipanti`,
+            oneHour: pc.prices.oneHour,
+            oneHourHalf: pc.prices.oneHourHalf,
+          });
+        });
+    }
+
+    // Livello 6: Base price
     simulations.push({
       emoji: "💵",
       title: "Prezzo Base",
-      subtitle: "Default (quando nessuna regola si applica)",
+      subtitle: "Fallback finale quando nessuna altra regola si applica",
       oneHour: pricing.basePrices.oneHour,
       oneHourHalf: pricing.basePrices.oneHourHalf,
     });
@@ -1020,6 +1139,91 @@ export default function ConfiguraPrezziCampoScreen() {
                 </View>
               )}
             </View>
+
+            {/* PREZZI PER NUMERO GIOCATORI - Solo per beach volley */}
+            {campoSport === "beach volley" && (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>👥 Prezzi per Numero Giocatori</Text>
+                  <Switch
+                    value={pricing.playerCountPricing.enabled}
+                    onValueChange={togglePlayerCountPricing}
+                  />
+                </View>
+                <Text style={styles.cardDescription}>
+                  Prezzi specifici per numero di partecipanti - Si applicano quando nessuna regola di date, periodi o fasce orarie è attiva (priorità appena sopra il prezzo base)
+                </Text>
+
+                {pricing.playerCountPricing.enabled && (
+                  <View style={styles.configContent}>
+                    {pricing.playerCountPricing.prices
+                      .sort((a, b) => a.count - b.count)
+                      .map((playerPrice, index) => {
+                        const actualIndex = pricing.playerCountPricing.prices.indexOf(playerPrice);
+                        return (
+                          <View key={actualIndex} style={styles.playerCountCard}>
+                            <View style={styles.overrideHeader}>
+                              <View style={styles.playerCountSelector}>
+                                <Ionicons name="people" size={20} color="#2196F3" />
+                                <Text style={styles.playerCountText}>
+                                  {playerPrice.count} giocatori
+                                </Text>
+                              </View>
+                              <Pressable onPress={() => removePlayerCountPrice(actualIndex)}>
+                                <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                              </Pressable>
+                            </View>
+
+                            <TextInput
+                              style={styles.playerCountLabelInput}
+                              value={playerPrice.label}
+                              onChangeText={(v) => updatePlayerCountPrice(actualIndex, "label", v)}
+                              placeholder="Descrizione (es. 2 vs 2)"
+                            />
+
+                            <View style={styles.slotPriceRow}>
+                              <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={styles.slotPriceLabel}>1h</Text>
+                                <View style={styles.priceInputContainer}>
+                                  <Text style={styles.euroSign}>€</Text>
+                                  <TextInput
+                                    style={styles.priceInputField}
+                                    value={playerPrice.prices.oneHour.toString()}
+                                    onChangeText={(v) =>
+                                      updatePlayerCountPrice(actualIndex, "prices.oneHour", v)
+                                    }
+                                    keyboardType="decimal-pad"
+                                  />
+                                </View>
+                              </View>
+
+                              <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={styles.slotPriceLabel}>1.5h</Text>
+                                <View style={styles.priceInputContainer}>
+                                  <Text style={styles.euroSign}>€</Text>
+                                  <TextInput
+                                    style={styles.priceInputField}
+                                    value={playerPrice.prices.oneHourHalf.toString()}
+                                    onChangeText={(v) =>
+                                      updatePlayerCountPrice(actualIndex, "prices.oneHourHalf", v)
+                                    }
+                                    keyboardType="decimal-pad"
+                                  />
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+
+                    <Pressable style={styles.addButton} onPress={addPlayerCountPrice}>
+                      <Ionicons name="add-circle" size={20} color="#2196F3" />
+                      <Text style={styles.addButtonText}>Aggiungi configurazione giocatori</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            )}
           </>
         )}
 
@@ -1220,34 +1424,59 @@ export default function ConfiguraPrezziCampoScreen() {
 ======================= */
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8f9fa" },
+  safe: { 
+    flex: 1, 
+    backgroundColor: "#f5f7fa",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e9ecef",
+    padding: 18,
+    backgroundColor: "#ffffff",
     gap: 12,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#667eea",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  headerSubtitle: { fontSize: 14, color: "#666", marginTop: 2 },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: "800", 
+    color: "#1f2937",
+  },
+  headerSubtitle: { 
+    fontSize: 13, 
+    color: "#667eea", 
+    marginTop: 2,
+    fontWeight: "600",
+  },
   container: { padding: 16 },
   card: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 18,
     marginBottom: 16,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: "#e9ecef",
+    borderColor: "#e0e7ff",
   },
   cardHeader: {
     flexDirection: "row",
@@ -1255,165 +1484,233 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
-  cardDescription: { fontSize: 13, color: "#666", marginBottom: 12 },
+  cardTitle: { 
+    fontSize: 17, 
+    fontWeight: "800", 
+    marginBottom: 8, 
+    color: "#1f2937",
+  },
+  cardDescription: { 
+    fontSize: 13, 
+    color: "#6b7280", 
+    marginBottom: 14, 
+    lineHeight: 20,
+    fontWeight: "500",
+  },
   radioOption: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#f8f9fa",
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    marginBottom: 12,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: "#e2e8f0",
   },
   radioOptionActive: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#2196F3",
+    backgroundColor: "#eef2ff",
+    borderColor: "#667eea",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   radioCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#2196F3",
+    borderColor: "#667eea",
     alignItems: "center",
     justifyContent: "center",
   },
   radioCircleInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#2196F3",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#667eea",
   },
-  radioLabel: { fontSize: 15, fontWeight: "600" },
-  radioDescription: { fontSize: 13, color: "#666", marginTop: 2 },
+  radioLabel: { 
+    fontSize: 15, 
+    fontWeight: "700", 
+    color: "#1f2937",
+  },
+  radioDescription: { 
+    fontSize: 12, 
+    color: "#6b7280", 
+    marginTop: 3,
+    fontWeight: "500",
+  },
   priceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
+    backgroundColor: "#f8fafc",
+    padding: 12,
+    borderRadius: 12,
   },
-  priceLabel: { fontSize: 15, fontWeight: "600" },
+  priceLabel: { 
+    fontSize: 15, 
+    fontWeight: "700", 
+    color: "#1f2937",
+  },
   priceInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
     minWidth: 100,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  euroSign: { fontSize: 16, fontWeight: "600", marginRight: 4, color: "#666" },
+  euroSign: { 
+    fontSize: 16, 
+    fontWeight: "800", 
+    marginRight: 6, 
+    color: "#667eea",
+  },
   priceInputField: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     flex: 1,
     textAlign: "right",
+    color: "#1f2937",
   },
   configContent: { marginTop: 12 },
   timeSlotCard: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: "#e0e7ff",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   timeSlotHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e7ff",
   },
   timeSlotLabelInput: {
     fontSize: 15,
     fontWeight: "700",
     flex: 1,
+    color: "#1f2937",
   },
   daysSelector: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-  },
-  daysSelectorText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-    flex: 1,
-  },
-  timeSlotTimeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
-  },
-  timeInputWrapper: { flex: 1 },
-  timeLabel: { fontSize: 12, color: "#666", marginBottom: 4, fontWeight: "600" },
-  timeInput: {
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 8,
-    fontSize: 14,
-    textAlign: "center",
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-    fontWeight: "600",
-  },
-  slotPriceRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  slotPriceLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  overrideCard: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#f0f4ff",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#e9ecef",
+    borderColor: "#c7d2fe",
+  },
+  daysSelectorText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#667eea",
+    flex: 1,
+  },
+  timeSlotTimeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  timeInputWrapper: { flex: 1 },
+  timeLabel: { 
+    fontSize: 11, 
+    color: "#667eea", 
+    marginBottom: 6, 
+    fontWeight: "700",
+  },
+  timeInput: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
+    textAlign: "center",
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    fontWeight: "700",
+    color: "#1f2937",
+  },
+  slotPriceRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  slotPriceLabel: {
+    fontSize: 11,
+    color: "#667eea",
+    marginBottom: 6,
+    fontWeight: "700",
+  },
+  overrideCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: "#fce7f3",
+    shadowColor: "#ec4899",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   overrideHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#fce7f3",
   },
   overrideLabelInput: {
     fontSize: 15,
     fontWeight: "700",
     flex: 1,
+    color: "#1f2937",
   },
   dateInput: {
-    backgroundColor: "white",
-    borderRadius: 8,
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
     padding: 10,
     fontSize: 14,
     textAlign: "center",
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-    fontWeight: "600",
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    fontWeight: "700",
     marginBottom: 12,
+    color: "#1f2937",
   },
   dateInputPressable: {
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -1421,18 +1718,18 @@ const styles = StyleSheet.create({
   },
   dateInputText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
+    fontWeight: "700",
+    color: "#1f2937",
   },
   dateLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
-    fontWeight: "600",
+    fontSize: 11,
+    color: "#667eea",
+    marginBottom: 6,
+    fontWeight: "700",
   },
   periodDatesRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     marginBottom: 12,
   },
   addButton: {
@@ -1440,68 +1737,84 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#2196F3",
-    borderStyle: "dashed",
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: "#667eea",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  addButtonText: { fontSize: 14, fontWeight: "600", color: "#2196F3" },
+  addButtonText: { 
+    fontSize: 14, 
+    fontWeight: "700", 
+    color: "white",
+  },
   simulationCard: {
-    backgroundColor: "#E8F5E9",
-    borderColor: "#4CAF50",
+    backgroundColor: "#f0fdf4",
+    borderWidth: 2,
+    borderColor: "#86efac",
+    shadowColor: "#22c55e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   simulationContent: {
-    gap: 8,
+    gap: 10,
   },
   simulationHeader: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#2E7D32",
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#16a34a",
     marginBottom: 12,
   },
   simulationScenario: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2E7D32",
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#16a34a",
+    marginBottom: 10,
   },
   simRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#C8E6C9",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "white",
+    borderRadius: 10,
+    marginBottom: 6,
   },
   simLabel: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#2E7D32",
+    fontWeight: "700",
+    color: "#15803d",
   },
   simPrice: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1B5E20",
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#166534",
   },
   simCard: {
     backgroundColor: "white",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#C8E6C9",
+    borderWidth: 2,
+    borderColor: "#bbf7d0",
   },
   simCardTitle: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#2E7D32",
+    fontWeight: "800",
+    color: "#16a34a",
     marginBottom: 4,
   },
   simCardSubtitle: {
-    fontSize: 12,
-    color: "#666",
+    fontSize: 11,
+    color: "#6b7280",
     marginBottom: 8,
+    fontWeight: "500",
   },
   simCardPrices: {
     flexDirection: "row",
@@ -1509,76 +1822,144 @@ const styles = StyleSheet.create({
   },
   simCardPrice: {
     fontSize: 15,
-    fontWeight: "700",
-    color: "#1B5E20",
+    fontWeight: "800",
+    color: "#166534",
+  },
+  simulationNote: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginBottom: 10,
+    fontStyle: "italic",
+    fontWeight: "500",
+  },
+  playerCountCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: "#dbeafe",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  playerCountSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  playerCountText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#667eea",
+  },
+  playerCountLabelInput: {
+    fontSize: 14,
+    fontWeight: "600",
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    color: "#1f2937",
   },
   saveButton: {
-    backgroundColor: "#2196F3",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: "#667eea",
+    padding: 18,
+    borderRadius: 16,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   saveButtonDisabled: { opacity: 0.5 },
-  saveButtonText: { color: "white", fontSize: 18, fontWeight: "700" },
+  saveButtonText: { 
+    color: "white", 
+    fontSize: 17, 
+    fontWeight: "900",
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(102, 126, 234, 0.4)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 40,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 22,
+    fontWeight: "900",
     marginBottom: 8,
+    color: "#1f2937",
   },
   modalDescription: {
     fontSize: 14,
-    color: "#666",
+    color: "#6b7280",
     marginBottom: 24,
+    lineHeight: 20,
+    fontWeight: "500",
   },
   daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
     marginBottom: 24,
   },
   dayChip: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#f8fafc",
     borderWidth: 2,
-    borderColor: "#e9ecef",
+    borderColor: "#e2e8f0",
   },
   dayChipSelected: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#2196F3",
+    backgroundColor: "#667eea",
+    borderColor: "#667eea",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   dayChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6b7280",
   },
   dayChipTextSelected: {
-    color: "#2196F3",
+    color: "white",
   },
   modalCloseButton: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#667eea",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   modalCloseText: {
     color: "white",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   calendarMonthSelector: {
     flexDirection: "row",
@@ -1586,28 +1967,39 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
     paddingHorizontal: 8,
+    paddingVertical: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
   },
   calendarMonthBtn: {
     padding: 8,
+    backgroundColor: "white",
+    borderRadius: 10,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   calendarMonthText: {
-    fontSize: 18,
-    fontWeight: "700",
-    textTransform: "capitalize",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#1f2937",
   },
   calendarGrid: {
     marginBottom: 20,
   },
   calendarWeekHeader: {
     flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingHorizontal: 4,
   },
   calendarWeekDay: {
     flex: 1,
     textAlign: "center",
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#999",
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#667eea",
   },
   calendarDays: {
     flexDirection: "row",
@@ -1622,12 +2014,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   calendarDayText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1f2937",
   },
 });

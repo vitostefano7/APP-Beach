@@ -68,7 +68,7 @@ export default function CommunityScreen() {
     console.log('   Numero posts nello state:', posts.length);
     if (posts.length > 0) {
       console.log('   IDs posts:', posts.map(p => p._id));
-      console.log('   Autori posts:', posts.map(p => p.user.name));
+      console.log('   Autori posts:', posts.map(p => p.user?.name || 'Utente sconosciuto'));
     }
     console.log('========================================\n');
   }, [posts]);
@@ -334,25 +334,33 @@ export default function CommunityScreen() {
   );
 
   const renderPost = ({ item }: { item: Post }) => {
+    // Dati utente con fallback per post senza user
+    const userName = item.user?.name || 'Utente sconosciuto';
+    const userAvatarUrl = item.user?.avatarUrl;
+
+    if (!item.user) {
+      console.warn('⚠️ POST SENZA USER:', item._id, '- Mostro con placeholder');
+    }
+
     console.log('🎨 RENDERING POST:', {
       id: item._id,
-      author: item.user.name,
+      author: userName,
       content: item.content.substring(0, 50) + '...',
       hasImage: !!item.image,
-      likes: item.likes.length,
-      comments: item.comments.length
+      likes: item.likes?.length || 0,
+      comments: item.comments?.length || 0
     });
 
     return (
       <View style={styles.postCard}>
         <View style={styles.postHeader}>
           <Avatar
-            avatarUrl={item.user.avatarUrl}
-            name={item.user.name}
+            avatarUrl={userAvatarUrl}
+            name={userName}
             size={40}
           />
           <View style={styles.postHeaderText}>
-            <Text style={styles.postAuthor}>{item.user.name}</Text>
+            <Text style={styles.postAuthor}>{userName}</Text>
             <Text style={styles.postTime}>
               {new Date(item.createdAt).toLocaleDateString('it-IT')}
             </Text>
@@ -375,11 +383,11 @@ export default function CommunityScreen() {
             onPress={() => handleLikePost(item._id)}
           >
             <Ionicons
-              name={item.likes.includes(user?.id || '') ? 'heart' : 'heart-outline'}
+              name={item.likes?.includes(user?.id || '') ? 'heart' : 'heart-outline'}
               size={24}
-              color={item.likes.includes(user?.id || '') ? '#FF5252' : '#666'}
+              color={item.likes?.includes(user?.id || '') ? '#FF5252' : '#666'}
             />
-            <Text style={styles.postActionText}>{item.likes.length}</Text>
+            <Text style={styles.postActionText}>{item.likes?.length || 0}</Text>
           </Pressable>
 
           <Pressable
@@ -387,7 +395,7 @@ export default function CommunityScreen() {
             onPress={() => handleCommentPost(item._id)}
           >
             <Ionicons name="chatbubble-outline" size={22} color="#666" />
-            <Text style={styles.postActionText}>{item.comments.length}</Text>
+            <Text style={styles.postActionText}>{item.comments?.length || 0}</Text>
           </Pressable>
 
           <Pressable style={styles.postAction}>
