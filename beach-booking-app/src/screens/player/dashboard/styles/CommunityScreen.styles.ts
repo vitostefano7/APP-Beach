@@ -45,12 +45,11 @@ export const styles = StyleSheet.create({
   // Tab Bar
   tabBar: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    gap: 12,
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -59,6 +58,7 @@ export const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#f5f5f5',
     gap: 8,
+    minWidth: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -72,6 +72,9 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  tabPressed: {
+    opacity: 0.8,
   },
   tabText: {
     fontSize: 14,

@@ -453,7 +453,7 @@ export const styles = StyleSheet.create({
   matchTimeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "white",
+    color: "blue",
     letterSpacing: 0.4,
   },
   matchInfo: {

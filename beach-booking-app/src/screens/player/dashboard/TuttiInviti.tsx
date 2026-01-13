@@ -610,12 +610,6 @@ const loadAllMatches = async () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Tutti gli Inviti</Text>
-        <Text style={styles.pageSubtitle}>
-          Gestisci le richieste di partecipazione alle partite
-        </Text>
-      </View>
 
       <View style={styles.statsBar}>
         <View style={styles.statItem}>

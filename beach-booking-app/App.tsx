@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 import { UnreadMessagesProvider } from "./src/context/UnreadMessagesContext";
@@ -43,14 +44,16 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <UnreadMessagesProvider>
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        </UnreadMessagesProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AuthProvider>
+          <UnreadMessagesProvider>
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
+          </UnreadMessagesProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

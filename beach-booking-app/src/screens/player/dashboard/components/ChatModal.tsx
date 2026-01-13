@@ -94,6 +94,24 @@ const ChatModal: React.FC<ChatModalProps> = ({ visible, onClose }) => {
     });
   };
 
+  const dragStartY = useRef(0);
+
+  const handleTouchStart = (event: any) => {
+    dragStartY.current = event.nativeEvent.pageY;
+  };
+
+  const handleTouchMove = (event: any) => {
+    // Optional: could add visual feedback here
+  };
+
+  const handleTouchEnd = (event: any) => {
+    const endY = event.nativeEvent.pageY;
+    const dragDistance = endY - dragStartY.current;
+    if (dragDistance > 100) {
+      closeModal();
+    }
+  };
+
   const modalTranslateY = modalSlide.interpolate({
     inputRange: [0, 1],
     outputRange: [300, 0],
@@ -124,25 +142,32 @@ const ChatModal: React.FC<ChatModalProps> = ({ visible, onClose }) => {
             },
           ]}
         >
-          {/* Drag handle */}
-          <View style={styles.dragHandleContainer}>
-            <View style={styles.dragHandle} />
-          </View>
-
-          {/* Header del modal con X e "Messaggi" */}
-          <View style={styles.chatModalHeader}>
-            <Pressable 
-              onPress={closeModal}
-              style={styles.closeButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            <View 
+              style={{ width: '100%' }}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
-              <Ionicons name="close" size={24} color="#666" />
-            </Pressable>
+              {/* Drag handle */}
+              <View style={styles.dragHandleContainer}>
+                <View style={styles.dragHandle} />
+              </View>
 
-            <Text style={styles.chatModalTitle}>Messaggi</Text>
+              {/* Header del modal con X e "Messaggi" */}
+              <View style={styles.chatModalHeader}>
+                <Pressable 
+                  onPress={closeModal}
+                  style={styles.closeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </Pressable>
 
-            <View style={{ width: 40 }} />
-          </View>
+                <Text style={styles.chatModalTitle}>Messaggi</Text>
+
+                <View style={{ width: 40 }} />
+              </View>
+            </View>
 
           {/* Lista conversazioni - senza header duplicato */}
           <ConversationsList onCloseModal={closeModal} />

@@ -289,13 +289,13 @@ export default function CommunityScreen() {
 
       <View style={styles.tabBar}>
         <Pressable
-          style={[styles.tab, activeTab === 'feed' && styles.tabActive]}
+          style={({pressed}) => [styles.tab, activeTab === 'feed' && styles.tabActive, pressed && styles.tabPressed]}
           onPress={() => setActiveTab('feed')}
         >
           <Ionicons
             name="newspaper-outline"
             size={20}
-            color={activeTab === 'feed' ? '#2196F3' : '#999'}
+            color={activeTab === 'feed' ? 'white' : '#999'}
           />
           <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>
             Feed
@@ -303,13 +303,13 @@ export default function CommunityScreen() {
         </Pressable>
 
         <Pressable
-          style={[styles.tab, activeTab === 'events' && styles.tabActive]}
+          style={({pressed}) => [styles.tab, activeTab === 'events' && styles.tabActive, pressed && styles.tabPressed]}
           onPress={() => setActiveTab('events')}
         >
           <Ionicons
             name="calendar-outline"
             size={20}
-            color={activeTab === 'events' ? '#2196F3' : '#999'}
+            color={activeTab === 'events' ? 'white' : '#999'}
           />
           <Text style={[styles.tabText, activeTab === 'events' && styles.tabTextActive]}>
             Eventi
@@ -317,13 +317,13 @@ export default function CommunityScreen() {
         </Pressable>
 
         <Pressable
-          style={[styles.tab, activeTab === 'rankings' && styles.tabActive]}
+          style={({pressed}) => [styles.tab, activeTab === 'rankings' && styles.tabActive, pressed && styles.tabPressed]}
           onPress={() => setActiveTab('rankings')}
         >
           <Ionicons
             name="trophy-outline"
             size={20}
-            color={activeTab === 'rankings' ? '#2196F3' : '#999'}
+            color={activeTab === 'rankings' ? 'white' : '#999'}
           />
           <Text style={[styles.tabText, activeTab === 'rankings' && styles.tabTextActive]}>
             Classifiche
