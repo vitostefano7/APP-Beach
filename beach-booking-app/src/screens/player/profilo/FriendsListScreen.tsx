@@ -21,11 +21,14 @@ type FriendItem = {
   user: {
     _id: string;
     name: string;
+    surname?: string;
     username: string;
     avatarUrl?: string;
   };
   friendshipId: string;
   friendsSince?: string;
+  friendshipStatus?: 'none' | 'pending' | 'accepted';
+  direction?: 'outgoing' | 'incoming';
 };
 
 type FriendsResponse = {
@@ -42,12 +45,14 @@ export default function FriendsListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"followers" | "following">(
-    route.params?.filter ?? "followers"
+    (route.params?.filter === "all" ? "followers" : route.params?.filter) ?? "followers"
   );
 
   useEffect(() => {
-    if (route.params?.filter) {
+    if (route.params?.filter && route.params.filter !== "all") {
       setFilter(route.params.filter);
+    } else if (route.params?.filter === "all") {
+      setFilter("followers");
     }
   }, [route.params?.filter]);
 
@@ -70,7 +75,40 @@ export default function FriendsListScreen() {
       }
 
       const json = (await res.json()) as FriendsResponse;
-      setFriends(json.friends || []);
+      const friendsData = json.friends || [];
+
+      // Per i follower, carica anche lo status di friendship per mostrare il pulsante "Segui"
+      if (filter === "followers") {
+        const friendsWithStatus = await Promise.all(
+          friendsData.map(async (friend) => {
+            try {
+              const statusRes = await fetch(`${API_URL}/friends/status/${friend.user._id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              
+              if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                return {
+                  ...friend,
+                  friendshipStatus: statusData.status,
+                  direction: statusData.direction,
+                };
+              }
+            } catch (error) {
+              console.error("Errore caricamento status friendship:", error);
+            }
+            
+            return {
+              ...friend,
+              friendshipStatus: 'none' as const,
+            };
+          })
+        );
+        
+        setFriends(friendsWithStatus);
+      } else {
+        setFriends(friendsData);
+      }
     } catch (error) {
       console.error("Errore caricamento amici:", error);
       setFriends([]);
@@ -79,6 +117,30 @@ export default function FriendsListScreen() {
       setRefreshing(false);
     }
   }, [token, refreshing, filter]);
+
+  const followUser = useCallback(async (userId: string) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/friends/request`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ recipientId: userId }),
+      });
+
+      if (res.ok) {
+        // Ricarica la lista per aggiornare lo status
+        loadFriends();
+      } else {
+        console.error("Errore nel seguire l'utente");
+      }
+    } catch (error) {
+      console.error("Errore nel seguire l'utente:", error);
+    }
+  }, [token, loadFriends]);
 
   useEffect(() => {
     loadFriends();
@@ -90,6 +152,9 @@ export default function FriendsListScreen() {
   };
 
   const renderItem = ({ item }: { item: FriendItem }) => {
+    const showFollowButton = filter === "followers" && 
+      (!item.friendshipStatus || item.friendshipStatus === 'none' || item.friendshipStatus === 'pending');
+
     return (
       <Pressable
         onPress={() =>
@@ -118,6 +183,22 @@ export default function FriendsListScreen() {
           <Text style={styles.friendName}>{item.user.name}</Text>
           <Text style={styles.friendUsername}>@{item.user.username}</Text>
         </View>
+        {filter === "followers" && (
+          <View style={styles.actionContainer}>
+            {item.friendshipStatus === 'accepted' ? (
+              <Text style={styles.followingText}>Segui già</Text>
+            ) : (
+              <Pressable
+                style={styles.followButton}
+                onPress={() => followUser(item.user._id)}
+              >
+                <Text style={styles.followButtonText}>
+                  {item.friendshipStatus === 'pending' ? 'In attesa' : 'Segui'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </Pressable>
     );
   };
@@ -311,6 +392,32 @@ const styles = StyleSheet.create({
   friendUsername: {
     fontSize: 13,
     color: "#666",
+  },
+  actionContainer: {
+    alignItems: "flex-end",
+  },
+  followingText: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
+  friendRowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  followButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  followButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
   },
   emptyState: {
     flex: 1,

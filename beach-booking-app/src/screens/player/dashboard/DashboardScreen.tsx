@@ -679,25 +679,6 @@ export default function HomeScreen() {
                 index,
               })}
             />
-            
-            {/* Contatore compatto */}
-            {suggestedFriends.length > 1 && (
-              <View style={styles.friendsCarouselFooter}>
-                <View style={styles.carouselIndicators}>
-                  {suggestedFriends.map((_, index) => (
-                    <View
-                      key={`indicator-${index}`}
-                      style={[
-                        styles.carouselIndicator,
-                        index === currentFriendIndex ? 
-                          styles.carouselIndicatorActive : 
-                          styles.carouselIndicatorInactive
-                      ]}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
           </>
         ) : (
           <View style={styles.emptyCarouselContainer}>

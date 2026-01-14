@@ -1088,18 +1088,21 @@ export const styles = StyleSheet.create({
 
   // ==================== CAROUSEL ====================
   carouselSection: {
-    marginBottom: 24,
-    paddingBottom: 12,
+    marginBottom: 16,
+    paddingBottom: 8,
+    overflow: 'visible',
   },
   carouselHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   carouselContent: {
     paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingBottom: 8,
   },
   carouselCard: {
     width: '100%',
@@ -1110,7 +1113,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontWeight: '700',
-    marginTop: 20,
+    marginTop: 16,
     letterSpacing: 0.5,
   },
   friendsCarouselFooter: {

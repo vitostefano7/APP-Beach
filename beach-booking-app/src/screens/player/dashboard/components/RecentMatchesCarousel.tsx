@@ -85,10 +85,6 @@ const RecentMatchesCarousel: React.FC<RecentMatchesCarouselProps> = ({
         onScroll={handleScroll}
         scrollEventThrottle={16}
       />
-
-      <Text style={styles.carouselCounter}>
-        {currentIndex + 1} di {matches.length}
-      </Text>
     </View>
   );
 };

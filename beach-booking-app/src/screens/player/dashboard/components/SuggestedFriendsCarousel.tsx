@@ -68,32 +68,15 @@ export const SuggestedFriendsCarousel: React.FC<SuggestedFriendsCarouselProps> =
           </View>
         </View>
         
-        <View style={styles.carouselControls}>
-          <View style={styles.dotsContainer}>
-            {friends.slice(0, 5).map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentIndex ? styles.activeDot : styles.inactiveDot
-                ]}
-              />
-            ))}
-            {friends.length > 5 && (
-              <Text style={styles.moreDotsText}>+{friends.length - 5}</Text>
-            )}
-          </View>
-          
-          {onViewAll && (
-            <Pressable 
-              style={styles.viewAllButton} 
-              onPress={onViewAll}
-            >
-              <Text style={styles.viewAllText}>Tutti</Text>
-              <Ionicons name="chevron-forward" size={16} color="#2196F3" />
-            </Pressable>
-          )}
-        </View>
+        {onViewAll && (
+          <Pressable 
+            style={styles.viewAllButton} 
+            onPress={onViewAll}
+          >
+            <Text style={styles.viewAllText}>Tutti</Text>
+            <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+          </Pressable>
+        )}
       </View>
 
       <FlatList
@@ -111,10 +94,6 @@ export const SuggestedFriendsCarousel: React.FC<SuggestedFriendsCarouselProps> =
         onScroll={handleScroll}
         scrollEventThrottle={16}
       />
-
-      <Text style={styles.carouselCounter}>
-        {currentIndex + 1} di {friends.length}
-      </Text>
     </View>
   );
 };
