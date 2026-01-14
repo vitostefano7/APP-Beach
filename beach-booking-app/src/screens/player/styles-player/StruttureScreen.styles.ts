@@ -29,10 +29,10 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 16,
-    height: 50,
-    paddingHorizontal: 16,
+    height: 42,
+    paddingHorizontal: 12,
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
 
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: "#333",
     fontWeight: "500",
   },
