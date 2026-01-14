@@ -110,6 +110,42 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * GET /community/posts/:postId
+ * Recupera un singolo post con commenti popolati
+ */
+export const getPost = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId } = req.params;
+
+    console.log('========================================');
+    console.log('📄 GET /community/posts/:postId');
+    console.log('Post ID:', postId);
+    console.log('========================================');
+
+    const post = await Post.findById(postId)
+      .populate("user", "name surname username avatarUrl")
+      .populate("comments.user", "name surname username avatarUrl");
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    console.log('✅ Post trovato:', post._id);
+    console.log('User:', post.user);
+    console.log('Comments:', post.comments?.length || 0);
+
+    res.json({ post });
+  } catch (error: any) {
+    console.error('========================================');
+    console.error("❌ ERRORE recupero post singolo:");
+    console.error('Nome:', error.name);
+    console.error('Messaggio:', error.message);
+    console.error('========================================\n');
+    res.status(500).json({ message: "Errore nel recupero del post" });
+  }
+};
+
+/**
  * POST /community/posts
  * Crea un nuovo post
  */

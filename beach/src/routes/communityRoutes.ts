@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createPost,
   getPosts,
+  getPost,
   deletePost,
   likePost,
   addComment,
@@ -38,6 +39,9 @@ const upload = multer({
 
 // GET /community/posts - Recupera tutti i post
 router.get("/posts", requireAuth, getPosts);
+
+// GET /community/posts/:postId - Recupera singolo post
+router.get("/posts/:postId", requireAuth, getPost);
 
 // POST /community/posts - Crea nuovo post
 router.post("/posts", requireAuth, upload.single("image"), createPost);

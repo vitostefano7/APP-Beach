@@ -251,8 +251,7 @@ export default function CommunityScreen() {
 
   const handleCommentPost = (postId: string) => {
     console.log('💬 Comment post:', postId);
-    // TODO: Navigare a schermata dettaglio post con commenti
-    // navigation.navigate('PostDetail', { postId });
+    navigation.navigate('PostDetail', { postId });
   };
 
   const handleJoinEvent = (eventId: string) => {

@@ -17,6 +17,7 @@ import NotificheScreen from "../screens/player/dashboard/NotificheScreen";
 import CercaPartitaScreen from "../screens/player/dashboard/CercaPartitaScreen";
 import CommunityScreen from "../screens/player/dashboard/CommunityScreen";
 import CreatePostScreen from "../screens/player/dashboard/CreatePostScreen";
+import PostDetailScreen from "../screens/player/dashboard/PostDetailScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -45,6 +46,7 @@ export type DashboardStackParamList = {
   Storico: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
   Community: undefined;
   CreatePost: undefined;
+  PostDetail: { postId: string };
 };
 
 const Stack = createNativeStackNavigator();
@@ -149,6 +151,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen
         name="CreatePost"
         component={CreatePostScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PostDetail"
+        component={PostDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
