@@ -96,7 +96,7 @@ export const StatsCarousel: React.FC<StatsCarouselProps> = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>📊 Le tue statistiche</Text>
-        <Text style={styles.subtitle}>Scorri per vedere tutte</Text>
+        <Text style={styles.subtitle}>Scorri per esplorare i tuoi traguardi</Text>
       </View>
 
       <FlatList
@@ -141,19 +141,28 @@ export const StatsCarousel: React.FC<StatsCarouselProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginVertical: 20,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 24,
+    paddingVertical: 20,
+    marginHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   header: {
     paddingHorizontal: 20,
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#666",
   },
   scrollContent: {

@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { AuthContext } from "../../../context/AuthContext";
 import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
@@ -18,7 +19,7 @@ import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 import { styles } from "../styles-player/ProfileScreen.styles";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
-import { Avatar } from "../../../components/Avatar";
+import { Avatar } from "../../../components/Avatar/Avatar";
 import { useCustomAlert } from "../../../components/CustomAlert";
 import { AvatarPicker } from "../../../components/AvatarPicker";
 import { StatsCarousel } from "./components/StatsCarousel";
@@ -448,19 +449,26 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safe}>
       <AlertComponent />
 
-      {/* Header con bottone impostazioni */}
-      <View style={styles.header}>
-        <Pressable
-          style={styles.settingsButton}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Ionicons name="settings-outline" size={24} color="#1a1a1a" />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {user.name}{user.surname ? ` ${user.surname}` : ''}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      {/* Header con gradiente */}
+      <LinearGradient
+        colors={['#FF6B35', '#F7931E']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.gradientHeader}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle}>
+            Il tuo profilo
+          </Text>
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate("Settings")}
+          >
+            <Ionicons name="settings-outline" size={24} color="#fff" />
+          </Pressable>
+        </View>
+      </LinearGradient>
 
       <AvatarPicker
         visible={showAvatarPicker}
@@ -471,106 +479,115 @@ export default function ProfileScreen() {
         hasPhoto={!!avatarUrl}
       />
       <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={styles.hero}>
-          {/* Layout stile Instagram */}
-          <View style={styles.instagramHeader}>
-            {/* Avatar a sinistra */}
-            <View style={styles.avatarContainer}>
-              <Avatar
-                key={`avatar-${avatarRefreshKey}`}
-                name={user.name}
-                surname={user.surname}
-                avatarUrl={avatarUrl}
-                size="large"
-                onPress={changeAvatar}
-              />
+        {/* Hero Section con Avatar e Info */}
+        <LinearGradient
+          colors={['#FF6B35', '#F7931E']}
+          style={styles.heroGradient}
+        >
+          <View style={styles.heroContent}>
+            {/* Avatar Centrale */}
+            <View style={styles.avatarWrapper}>
+              <View style={styles.avatarContainer}>
+                <Avatar
+                  key={`avatar-${avatarRefreshKey}`}
+                  name={user.name}
+                  surname={user.surname}
+                  avatarUrl={avatarUrl}
+                  size="large"
+                  onPress={changeAvatar}
+                />
 
-              {user.profilePrivacy === 'private' && (
-                <View style={styles.privateBadge}>
-                  <Ionicons name="lock-closed" size={14} color="#666" />
+                {user.profilePrivacy === 'private' && (
+                  <View style={styles.privateBadge}>
+                    <Ionicons name="lock-closed" size={14} color="#666" />
+                  </View>
+                )}
+
+                <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
+                  <Ionicons name="camera" size={14} color="white" />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Nome e Username */}
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>
+                {user.name}{user.surname ? ` ${user.surname}` : ''}
+              </Text>
+              {user.username && (
+                <Text style={styles.userUsername}>@{user.username}</Text>
+              )}
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.statCard,
+              pressed && styles.statCardPressed
+            ]}
+            onPress={() => navigation.navigate("Conversazione")}
+          >
+            <View style={[styles.statIconBox, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="chatbubble-ellipses" size={20} color="#2196F3" />
+              {unreadCount > 0 && (
+                <View style={styles.statBadge}>
+                  <Text style={styles.statBadgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
                 </View>
               )}
-
-              <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
-                <Ionicons name="camera" size={14} color="white" />
-              </Pressable>
             </View>
+            <Text style={styles.statValue}>{unreadCount}</Text>
+            <Text style={styles.statLabel}>Messaggi</Text>
+          </Pressable>
 
-            {/* Stats in orizzontale stile Instagram */}
-            <View style={styles.instagramStats}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.instagramStatItem,
-                  pressed && styles.instagramStatItemPressed
-                ]}
-                onPress={() => navigation.navigate("Conversazione")}
-              >
-                <View style={styles.statWithIcon}>
-                  <Ionicons 
-                    name="chatbubble-ellipses" 
-                    size={16} 
-                    color={unreadCount > 0 ? "#FF5252" : "#666"} 
-                  />
-                  {unreadCount > 0 && (
-                    <View style={styles.unreadIndicator}>
-                      <Text style={styles.unreadIndicatorText}>
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.instagramStatValue, unreadCount > 0 && styles.statValueUnread]}>
-                  {unreadCount}
-                </Text>
-                <Text style={styles.instagramStatLabel}>messaggi</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.instagramStatItem,
-                  pressed && styles.instagramStatItemPressed
-                ]}
-                onPress={() => navigation.navigate("FriendsList", { filter: "followers" })}
-              >
-                <View style={styles.statWithIcon}>
-                  <Ionicons name="people" size={16} color="#666" />
-                </View>
-                <Text style={styles.instagramStatValue}>{profile.followersCount ?? 0}</Text>
-                <Text style={styles.instagramStatLabel}>follower</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.instagramStatItem,
-                  pressed && styles.instagramStatItemPressed
-                ]}
-                onPress={() => navigation.navigate("FriendsList", { filter: "following" })}
-              >
-                <View style={styles.statWithIcon}>
-                  <Ionicons name="person-add" size={16} color="#666" />
-                </View>
-                <Text style={styles.instagramStatValue}>{profile.followingCount ?? 0}</Text>
-                <Text style={styles.instagramStatLabel}>seguiti</Text>
-              </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.statCard,
+              pressed && styles.statCardPressed
+            ]}
+            onPress={() => navigation.navigate("FriendsList", { filter: "followers" })}
+          >
+            <View style={[styles.statIconBox, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="people" size={20} color="#9C27B0" />
             </View>
-          </View>
+            <Text style={styles.statValue}>{profile.followersCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Follower</Text>
+          </Pressable>
 
-          {/* Nome e bio sotto */}
-          <View style={styles.instagramBio}>
-            {user.username && (
-              <Text style={styles.instagramUsername}>@{user.username}</Text>
-            )}
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.statCard,
+              pressed && styles.statCardPressed
+            ]}
+            onPress={() => navigation.navigate("FriendsList", { filter: "following" })}
+          >
+            <View style={[styles.statIconBox, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="person-add" size={20} color="#FF9800" />
+            </View>
+            <Text style={styles.statValue}>{profile.followingCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Seguiti</Text>
+          </Pressable>
         </View>
 
         {profile.favoriteCampo && (
-          <View style={styles.favorite}>
-            <View style={styles.favoriteHeader}>
-              <Ionicons name="heart" size={20} color="#F44336" />
-              <Text style={styles.favoriteTitle}>Campo preferito</Text>
+          <LinearGradient
+            colors={['#FF6B6B', '#EE5A6F']}
+            style={styles.favoriteGradient}
+          >
+            <View style={styles.favoriteContent}>
+              <View style={styles.favoriteIconBox}>
+                <Ionicons name="heart" size={22} color="#fff" />
+              </View>
+              <View style={styles.favoriteInfo}>
+                <Text style={styles.favoriteLabel}>Campo del cuore</Text>
+                <Text style={styles.favoriteName}>{profile.favoriteCampo.name}</Text>
+              </View>
             </View>
-            <Text style={styles.favoriteName}>{profile.favoriteCampo.name}</Text>
-          </View>
+          </LinearGradient>
         )}
 
         {/* Statistiche Carousel */}
@@ -581,12 +598,27 @@ export default function ProfileScreen() {
           loading={statsLoading}
         />
 
-        <Pressable style={styles.logout} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#F44336" />
-          <Text style={styles.logoutText}>Esci dall'account</Text>
+        <Pressable 
+          style={({ pressed }) => [
+            styles.logout,
+            pressed && styles.logoutPressed
+          ]} 
+          onPress={handleLogout}
+        >
+          <View style={styles.logoutIcon}>
+            <Ionicons name="log-out-outline" size={20} color="#F44336" />
+          </View>
+          <View style={styles.logoutContent}>
+            <Text style={styles.logoutText}>Esci dall'account</Text>
+            <Text style={styles.logoutSubtext}>Disconnetti il tuo profilo</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#ccc" />
         </Pressable>
 
-        <Text style={styles.version}>Versione 2.4.0</Text>
+        <View style={styles.versionContainer}>
+          <Ionicons name="information-circle-outline" size={16} color="#999" />
+          <Text style={styles.version}>Versione 2.4.0</Text>
+        </View>
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>

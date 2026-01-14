@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 export type StatsCardType = "performance" | "social" | "venues";
 
@@ -10,211 +11,229 @@ export interface StatsCardProps {
 }
 
 export const StatsCard: React.FC<StatsCardProps> = ({ type, data }) => {
+  const getGradientColors = () => {
+    switch (type) {
+      case "performance":
+        return ["#FF6B35", "#FF8A65"];
+      case "social":
+        return ["#2196F3", "#42A5F5"];
+      case "venues":
+        return ["#9C27B0", "#BA68C8"];
+      default:
+        return ["#FF6B35", "#FF8A65"];
+    }
+  };
+
   const renderPerformanceCard = () => (
-    <View style={styles.cardContent}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="trophy" size={24} color="#FF6B35" />
-        <Text style={styles.cardTitle}>Performance</Text>
-      </View>
-
-      <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{data.matchesPlayed || 0}</Text>
-          <Text style={styles.statLabel}>Partite</Text>
+    <LinearGradient colors={getGradientColors()} style={styles.card}>
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="trophy" size={24} color="#fff" />
+          <Text style={styles.cardTitle}>Performance</Text>
         </View>
 
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: "#4CAF50" }]}>
-            {data.wins || 0}
-          </Text>
-          <Text style={styles.statLabel}>Vittorie</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: "#F44336" }]}>
-            {data.losses || 0}
-          </Text>
-          <Text style={styles.statLabel}>Sconfitte</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: "#FF9800" }]}>
-            {data.winRate || 0}%
-          </Text>
-          <Text style={styles.statLabel}>Win Rate</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.secondaryStats}>
-        <View style={styles.secondaryStatRow}>
-          <Text style={styles.secondaryStatLabel}>Set vinti</Text>
-          <Text style={styles.secondaryStatValue}>{data.setsWon || 0}</Text>
-        </View>
-        <View style={styles.secondaryStatRow}>
-          <Text style={styles.secondaryStatLabel}>Set persi</Text>
-          <Text style={styles.secondaryStatValue}>{data.setsLost || 0}</Text>
-        </View>
-        <View style={styles.secondaryStatRow}>
-          <Text style={styles.secondaryStatLabel}>Punti segnati</Text>
-          <Text style={styles.secondaryStatValue}>{data.totalPointsScored || 0}</Text>
-        </View>
-      </View>
-
-      {data.longestStreak > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.highlightBox}>
-            <Ionicons name="flame" size={20} color="#FF6B35" />
-            <Text style={styles.highlightText}>
-              Streak più lunga: <Text style={styles.highlightValue}>{data.longestStreak}</Text> vittorie
-            </Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{data.matchesPlayed || 0}</Text>
+            <Text style={styles.statLabel}>Partite</Text>
           </View>
-        </>
-      )}
-    </View>
+
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: "#4CAF50" }]}>
+              {data.wins || 0}
+            </Text>
+            <Text style={styles.statLabel}>Vittorie</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: "#F44336" }]}>
+              {data.losses || 0}
+            </Text>
+            <Text style={styles.statLabel}>Sconfitte</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: "#FF9800" }]}>
+              {data.winRate || 0}%
+            </Text>
+            <Text style={styles.statLabel}>Win Rate</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.secondaryStats}>
+          <View style={styles.secondaryStatRow}>
+            <Text style={styles.secondaryStatLabel}>Set vinti</Text>
+            <Text style={styles.secondaryStatValue}>{data.setsWon || 0}</Text>
+          </View>
+          <View style={styles.secondaryStatRow}>
+            <Text style={styles.secondaryStatLabel}>Set persi</Text>
+            <Text style={styles.secondaryStatValue}>{data.setsLost || 0}</Text>
+          </View>
+          <View style={styles.secondaryStatRow}>
+            <Text style={styles.secondaryStatLabel}>Punti segnati</Text>
+            <Text style={styles.secondaryStatValue}>{data.totalPointsScored || 0}</Text>
+          </View>
+        </View>
+
+        {data.longestStreak > 0 && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.highlightBox}>
+              <Ionicons name="flame" size={20} color="#fff" />
+              <Text style={styles.highlightText}>
+                Streak più lunga: <Text style={styles.highlightValue}>{data.longestStreak}</Text> vittorie
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
+    </LinearGradient>
   );
 
   const renderSocialCard = () => (
-    <View style={styles.cardContent}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="people" size={24} color="#2196F3" />
-        <Text style={styles.cardTitle}>Compagni di gioco</Text>
-      </View>
-
-      <View style={styles.statsGrid}>
-        <View style={styles.statItemLarge}>
-          <Text style={[styles.statValue, { color: "#2196F3" }]}>
-            {data.totalPeopleMet || 0}
-          </Text>
-          <Text style={styles.statLabel}>Persone incontrate</Text>
+    <LinearGradient colors={getGradientColors()} style={styles.card}>
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="people" size={24} color="#fff" />
+          <Text style={styles.cardTitle}>Compagni di gioco</Text>
         </View>
-      </View>
 
-      {data.topPlayers && data.topPlayers.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <Text style={styles.sectionTitle}>Giocato più spesso con:</Text>
-          <View style={styles.playersList}>
-            {data.topPlayers.slice(0, 5).map((player: any, index: number) => (
-              <View key={player.userId} style={styles.playerItem}>
-                <View style={styles.playerRank}>
-                  <Text style={styles.playerRankText}>{index + 1}</Text>
-                </View>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.playerName} numberOfLines={1}>
-                    {player.name || player.username || "Giocatore"}
-                  </Text>
-                  <Text style={styles.playerMatches}>
-                    {player.matchCount} {player.matchCount === 1 ? "partita" : "partite"}
-                  </Text>
-                </View>
-              </View>
-            ))}
+        <View style={styles.statsGrid}>
+          <View style={styles.statItemLarge}>
+            <Text style={[styles.statValue, { color: "#fff" }]}>
+              {data.totalPeopleMet || 0}
+            </Text>
+            <Text style={styles.statLabel}>Persone incontrate</Text>
           </View>
-        </>
-      )}
-    </View>
+        </View>
+
+        {data.topPlayers && data.topPlayers.length > 0 && (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionTitle}>Giocato più spesso con:</Text>
+            <View style={styles.playersList}>
+              {data.topPlayers.slice(0, 5).map((player: any, index: number) => (
+                <View key={player.userId} style={styles.playerItem}>
+                  <View style={styles.playerRank}>
+                    <Text style={styles.playerRankText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.playerInfo}>
+                    <Text style={styles.playerName} numberOfLines={1}>
+                      {player.name || player.username || "Giocatore"}
+                    </Text>
+                    <Text style={styles.playerMatches}>
+                      {player.matchCount} {player.matchCount === 1 ? "partita" : "partite"}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+    </LinearGradient>
   );
 
   const renderVenuesCard = () => (
-    <View style={styles.cardContent}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="location" size={24} color="#9C27B0" />
-        <Text style={styles.cardTitle}>Club frequentati</Text>
-      </View>
-
-      <View style={styles.statsGrid}>
-        <View style={styles.statItemLarge}>
-          <Text style={[styles.statValue, { color: "#9C27B0" }]}>
-            {data.totalVenues || 0}
-          </Text>
-          <Text style={styles.statLabel}>Strutture visitate</Text>
+    <LinearGradient colors={getGradientColors()} style={styles.card}>
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="location" size={24} color="#fff" />
+          <Text style={styles.cardTitle}>Club frequentati</Text>
         </View>
-      </View>
 
-      {data.topVenues && data.topVenues.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <Text style={styles.sectionTitle}>Le tue strutture preferite:</Text>
-          <View style={styles.venuesList}>
-            {data.topVenues.slice(0, 5).map((venue: any, index: number) => (
-              <View key={venue._id || index} style={styles.venueItem}>
-                <View style={styles.venueRank}>
-                  <Ionicons name="star" size={14} color="#FFB300" />
-                </View>
-                <View style={styles.venueInfo}>
-                  <Text style={styles.venueName} numberOfLines={1}>
-                    {venue.name}
-                  </Text>
-                  <Text style={styles.venueDetails}>
-                    {venue.visitCount} {venue.visitCount === 1 ? "visita" : "visite"}
-                    {venue.city && ` • ${venue.city}`}
-                  </Text>
-                </View>
-              </View>
-            ))}
+        <View style={styles.statsGrid}>
+          <View style={styles.statItemLarge}>
+            <Text style={[styles.statValue, { color: "#fff" }]}>
+              {data.totalVenues || 0}
+            </Text>
+            <Text style={styles.statLabel}>Strutture visitate</Text>
           </View>
-        </>
-      )}
+        </View>
 
-      {data.lastMatch && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.highlightBox}>
-            <Ionicons name="time" size={20} color="#9C27B0" />
-            <View style={styles.highlightTextContainer}>
-              <Text style={styles.highlightText}>Ultima partita</Text>
-              <Text style={styles.highlightValue}>
-                {new Date(data.lastMatch.date).toLocaleDateString("it-IT")} • {data.lastMatch.campo}
-              </Text>
+        {data.topVenues && data.topVenues.length > 0 && (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionTitle}>Le tue strutture preferite:</Text>
+            <View style={styles.venuesList}>
+              {data.topVenues.slice(0, 5).map((venue: any, index: number) => (
+                <View key={venue._id || index} style={styles.venueItem}>
+                  <View style={styles.venueRank}>
+                    <Ionicons name="star" size={16} color="#FFB300" />
+                  </View>
+                  <View style={styles.venueInfo}>
+                    <Text style={styles.venueName} numberOfLines={1}>
+                      {venue.name}
+                    </Text>
+                    <Text style={styles.venueDetails}>
+                      {venue.visitCount} {venue.visitCount === 1 ? "visita" : "visite"}
+                      {venue.city && ` • ${venue.city}`}
+                    </Text>
+                  </View>
+                </View>
+              ))}
             </View>
+          </>
+        )}
+
+        {data.lastMatch && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.highlightBox}>
+              <Ionicons name="time" size={20} color="#fff" />
+              <View style={styles.highlightTextContainer}>
+                <Text style={styles.highlightText}>Ultima partita</Text>
+                <Text style={styles.highlightValue}>
+                  {new Date(data.lastMatch.date).toLocaleDateString("it-IT")} • {data.lastMatch.campo}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {data.preferredDay && (
+          <View style={[styles.highlightBox, { marginTop: 8 }]}>
+            <Ionicons name="calendar" size={20} color="#fff" />
+            <Text style={styles.highlightText}>
+              Giorno preferito: <Text style={styles.highlightValue}>{data.preferredDay}</Text>
+            </Text>
           </View>
-        </>
-      )}
+        )}
 
-      {data.preferredDay && (
-        <View style={[styles.highlightBox, { marginTop: 8 }]}>
-          <Ionicons name="calendar" size={20} color="#9C27B0" />
-          <Text style={styles.highlightText}>
-            Giorno preferito: <Text style={styles.highlightValue}>{data.preferredDay}</Text>
-          </Text>
-        </View>
-      )}
-
-      {data.matchesThisMonth !== undefined && (
-        <View style={[styles.highlightBox, { marginTop: 8 }]}>
-          <Ionicons name="today" size={20} color="#9C27B0" />
-          <Text style={styles.highlightText}>
-            Questo mese: <Text style={styles.highlightValue}>{data.matchesThisMonth}</Text> {data.matchesThisMonth === 1 ? "partita" : "partite"}
-          </Text>
-        </View>
-      )}
-    </View>
+        {data.matchesThisMonth !== undefined && (
+          <View style={[styles.highlightBox, { marginTop: 8 }]}>
+            <Ionicons name="today" size={20} color="#fff" />
+            <Text style={styles.highlightText}>
+              Questo mese: <Text style={styles.highlightValue}>{data.matchesThisMonth}</Text> {data.matchesThisMonth === 1 ? "partita" : "partite"}
+            </Text>
+          </View>
+        )}
+      </View>
+    </LinearGradient>
   );
 
   return (
-    <View style={styles.card}>
+    <>
       {type === "performance" && renderPerformanceCard()}
       {type === "social" && renderSocialCard()}
       {type === "venues" && renderVenuesCard()}
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 18,
+    padding: 16,
     marginHorizontal: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    minHeight: 300,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+    minHeight: 280,
   },
   cardContent: {
     flex: 1,
@@ -222,104 +241,114 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
-    color: "#1a1a1a",
-    marginLeft: 12,
+    color: "#fff",
+    marginLeft: 10,
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 16,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 6,
   },
   statItem: {
     flex: 1,
     minWidth: "40%",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
   },
   statItemLarge: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 4,
+    color: "#fff",
+    marginBottom: 3,
   },
   statLabel: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
     textAlign: "center",
   },
   divider: {
     height: 1,
-    backgroundColor: "#e0e0e0",
-    marginVertical: 16,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginVertical: 12,
   },
   secondaryStats: {
-    gap: 8,
+    gap: 6,
   },
   secondaryStatRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 7,
   },
   secondaryStatLabel: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
   },
   secondaryStatValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#1a1a1a",
+    color: "#fff",
   },
   highlightBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    padding: 10,
+    borderRadius: 10,
+    gap: 8,
   },
   highlightTextContainer: {
     flex: 1,
   },
   highlightText: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
     flex: 1,
   },
   highlightValue: {
     fontWeight: "700",
-    color: "#1a1a1a",
+    color: "#fff",
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#666",
-    marginBottom: 12,
+    color: "rgba(255,255,255,0.9)",
+    marginBottom: 10,
   },
   playersList: {
-    gap: 10,
+    gap: 8,
   },
   playerItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    padding: 10,
+    borderRadius: 10,
   },
   playerRank: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#2196F3",
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -334,26 +363,29 @@ const styles = StyleSheet.create({
   playerName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1a1a1a",
+    color: "#fff",
     marginBottom: 2,
   },
   playerMatches: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
   },
   venuesList: {
-    gap: 10,
+    gap: 8,
   },
   venueItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    padding: 10,
+    borderRadius: 10,
   },
   venueRank: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -363,11 +395,11 @@ const styles = StyleSheet.create({
   venueName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1a1a1a",
+    color: "#fff",
     marginBottom: 2,
   },
   venueDetails: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
   },
 });
