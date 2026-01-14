@@ -16,6 +16,7 @@ import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
 import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
 import GroupChatScreen from "../screens/owner/Comunicazioni/GroupChatScreen";
 import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
+import OwnerCreatePostScreen from "../screens/owner/OwnerCreatePostScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -98,6 +99,10 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="GroupChat" 
         component={GroupChatScreen} 
+      />
+      <Stack.Screen 
+        name="OwnerCreatePost" 
+        component={OwnerCreatePostScreen} 
       />
     </Stack.Navigator>
   );

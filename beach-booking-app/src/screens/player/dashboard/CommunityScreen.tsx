@@ -26,6 +26,15 @@ type Post = {
     name: string;
     avatarUrl?: string;
   };
+  struttura?: {
+    _id: string;
+    name: string;
+    images: string[];
+    location: {
+      city: string;
+    };
+  };
+  isStrutturaPost: boolean;
   content: string;
   image?: string;
   likes: string[];
@@ -276,13 +285,12 @@ export default function CommunityScreen() {
       <View style={styles.headerTop}>
         <Text style={styles.headerTitle}>Community</Text>
         <Pressable
-          style={styles.createButton}
+          style={styles.searchButton}
           onPress={() => {
-            console.log('➡️  Navigazione a CreatePost');
-            navigation.navigate('CreatePost');
+            navigation.navigate('CercaAmici');
           }}
         >
-          <Ionicons name="add-circle" size={28} color="#2196F3" />
+          <Ionicons name="search" size={24} color="#2196F3" />
         </Pressable>
       </View>
 
@@ -333,17 +341,19 @@ export default function CommunityScreen() {
   );
 
   const renderPost = ({ item }: { item: Post }) => {
-    // Dati utente con fallback per post senza user
-    const userName = item.user?.name || 'Utente sconosciuto';
-    const userAvatarUrl = item.user?.avatarUrl;
+    // Dati utente o struttura
+    const isStruttura = item.isStrutturaPost && item.struttura;
+    const displayName = isStruttura ? item.struttura!.name : (item.user?.name || 'Utente sconosciuto');
+    const displayAvatar = isStruttura ? item.struttura!.images[0] : item.user?.avatarUrl;
 
-    if (!item.user) {
-      console.warn('⚠️ POST SENZA USER:', item._id, '- Mostro con placeholder');
+    if (!item.user && !isStruttura) {
+      console.warn('⚠️ POST SENZA USER E SENZA STRUTTURA:', item._id, '- Mostro con placeholder');
     }
 
     console.log('🎨 RENDERING POST:', {
       id: item._id,
-      author: userName,
+      isStruttura,
+      author: displayName,
       content: item.content.substring(0, 50) + '...',
       hasImage: !!item.image,
       likes: item.likes?.length || 0,
@@ -353,17 +363,40 @@ export default function CommunityScreen() {
     return (
       <View style={styles.postCard}>
         <View style={styles.postHeader}>
-          <Avatar
-            avatarUrl={userAvatarUrl}
-            name={userName}
-            size={40}
-          />
+          {isStruttura ? (
+            <Image
+              source={{ uri: displayAvatar }}
+              style={styles.strutturaAvatar}
+            />
+          ) : (
+            <Avatar
+              avatarUrl={displayAvatar}
+              name={displayName}
+              size={40}
+            />
+          )}
           <View style={styles.postHeaderText}>
-            <Text style={styles.postAuthor}>{userName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {isStruttura && <Ionicons name="business" size={16} color="#2196F3" />}
+              <Text style={styles.postAuthor}>{displayName}</Text>
+            </View>
+            {isStruttura && item.struttura?.location?.city && (
+              <Text style={styles.strutturaLocation}>{item.struttura.location.city}</Text>
+            )}
             <Text style={styles.postTime}>
               {new Date(item.createdAt).toLocaleDateString('it-IT')}
             </Text>
           </View>
+
+          {/* Pulsante Follow per strutture */}
+          {isStruttura && (
+            <Pressable
+              style={styles.followPostButton}
+              onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item.struttura!._id })}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+            </Pressable>
+          )}
         </View>
 
         <Text style={styles.postContent}>{item.content}</Text>
@@ -609,6 +642,17 @@ export default function CommunityScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {renderHeader()}
       {renderContent()}
+      
+      {/* FAB per creare post */}
+      <Pressable
+        style={styles.fab}
+        onPress={() => {
+          console.log('➡️  Navigazione a CreatePost');
+          navigation.navigate('CreatePost');
+        }}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </Pressable>
     </SafeAreaView>
   );
 }

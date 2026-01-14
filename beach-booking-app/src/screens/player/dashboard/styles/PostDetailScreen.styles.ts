@@ -75,6 +75,16 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  strutturaAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  strutturaLocation: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   postTime: {
     fontSize: 12,
     color: '#666',

@@ -10,6 +10,16 @@ import {
   getEvents,
   joinEvent,
   getRankings,
+  followStruttura,
+  unfollowStruttura,
+  getStrutturaFollowers,
+  getStrutturaFollowStatus,
+  getStrutturaDetails,
+  getStrutturaPosts,
+  searchStrutture,
+  followUser,
+  unfollowUser,
+  getUserFollowStatus,
 } from "../controllers/communityController";
 import { requireAuth } from "../middleware/authMiddleware";
 import multer from "multer";
@@ -74,5 +84,43 @@ router.post("/events/:eventId/join", requireAuth, joinEvent);
 
 // GET /community/rankings - Recupera classifiche
 router.get("/rankings", requireAuth, getRankings);
+
+/* =========================
+   STRUTTURA FOLLOW ROUTES
+========================= */
+
+// GET /community/strutture/search - Cerca strutture (DEVE ESSERE PRIMA di :strutturaId)
+router.get("/strutture/search", requireAuth, searchStrutture);
+
+// GET /community/strutture/:strutturaId - Dettagli struttura
+router.get("/strutture/:strutturaId", requireAuth, getStrutturaDetails);
+
+// GET /community/strutture/:strutturaId/posts - Post della struttura
+router.get("/strutture/:strutturaId/posts", requireAuth, getStrutturaPosts);
+
+// POST /community/strutture/:strutturaId/follow - Segui struttura
+router.post("/strutture/:strutturaId/follow", requireAuth, followStruttura);
+
+// DELETE /community/strutture/:strutturaId/follow - Smetti di seguire struttura
+router.delete("/strutture/:strutturaId/follow", requireAuth, unfollowStruttura);
+
+// GET /community/strutture/:strutturaId/followers - Ottieni follower struttura
+router.get("/strutture/:strutturaId/followers", requireAuth, getStrutturaFollowers);
+
+// GET /community/strutture/:strutturaId/follow-status - Verifica se segui la struttura
+router.get("/strutture/:strutturaId/follow-status", requireAuth, getStrutturaFollowStatus);
+
+/* =========================
+   USER FOLLOW ROUTES (Struttura -> User)
+========================= */
+
+// POST /community/users/:userId/follow - Struttura segue utente
+router.post("/users/:userId/follow", requireAuth, followUser);
+
+// DELETE /community/users/:userId/follow - Struttura smette di seguire utente
+router.delete("/users/:userId/follow", requireAuth, unfollowUser);
+
+// GET /community/users/:userId/follow-status - Verifica se struttura segue utente
+router.get("/users/:userId/follow-status", requireAuth, getUserFollowStatus);
 
 export default router;

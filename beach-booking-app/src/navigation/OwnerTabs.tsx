@@ -9,6 +9,7 @@ import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
 import OwnerBookingsScreen from "../screens/owner/prenotazioni/OwnerBookingsScreen";
 import OwnerProfileScreen from "../screens/owner/OwnerProfileScreen";
 import ConversationScreen from "../screens/owner/Comunicazioni/ConversationScreen";
+import OwnerCommunityScreen from "../screens/owner/OwnerCommunityScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -33,6 +34,7 @@ export default function OwnerTabs() {
             Dashboard: "grid",
             Strutture: "business",
             Prenotazioni: "calendar",
+            Community: "people",
             Comunicazioni: "chatbox",
             Profilo: "person",
           };
@@ -72,6 +74,7 @@ export default function OwnerTabs() {
     >
       <Tab.Screen name="Dashboard" component={OwnerDashboardScreen} />
       <Tab.Screen name="Prenotazioni" component={OwnerBookingsScreen} />
+      <Tab.Screen name="Community" component={OwnerCommunityScreen} />
       <Tab.Screen 
         name="Comunicazioni" 
         component={ConversationScreen}

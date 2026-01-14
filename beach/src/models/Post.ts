@@ -13,6 +13,8 @@ export interface IPost extends Document {
   image?: string; // Cloudinary URL
   likes: mongoose.Types.ObjectId[];
   comments: IComment[];
+  struttura?: mongoose.Types.ObjectId; // Ref to Struttura if posted by owner
+  isStrutturaPost: boolean; // True if posted by owner for a struttura
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +63,17 @@ const PostSchema = new Schema<IPost>(
       },
     ],
     comments: [CommentSchema],
+    struttura: {
+      type: Schema.Types.ObjectId,
+      ref: "Struttura",
+      default: null,
+      index: true,
+    },
+    isStrutturaPost: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

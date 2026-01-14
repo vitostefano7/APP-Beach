@@ -48,6 +48,15 @@ type Post = {
     username?: string;
     avatarUrl?: string;
   };
+  struttura?: {
+    _id: string;
+    name: string;
+    images: string[];
+    location: {
+      city: string;
+    };
+  };
+  isStrutturaPost: boolean;
   content: string;
   image?: string;
   likes: string[];
@@ -209,6 +218,10 @@ export default function PostDetailScreen() {
 
   const postUserName = post.user?.name || 'Utente';
   const postFullName = post.user?.surname ? `${postUserName} ${post.user.surname}` : postUserName;
+  
+  const isStruttura = post.isStrutturaPost && post.struttura;
+  const displayName = isStruttura ? post.struttura!.name : postFullName;
+  const displayAvatar = isStruttura ? post.struttura!.images[0] : post.user?.avatarUrl;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -239,13 +252,26 @@ export default function PostDetailScreen() {
           {/* Post */}
           <View style={styles.postCard}>
             <View style={styles.postHeader}>
-              <Avatar
-                avatarUrl={post.user?.avatarUrl}
-                name={postFullName}
-                size={40}
-              />
+              {isStruttura ? (
+                <Image
+                  source={{ uri: displayAvatar }}
+                  style={styles.strutturaAvatar}
+                />
+              ) : (
+                <Avatar
+                  avatarUrl={displayAvatar}
+                  name={displayName}
+                  size={40}
+                />
+              )}
               <View style={styles.postHeaderText}>
-                <Text style={styles.postAuthor}>{postFullName}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {isStruttura && <Ionicons name="business" size={16} color="#2196F3" />}
+                  <Text style={styles.postAuthor}>{displayName}</Text>
+                </View>
+                {isStruttura && post.struttura?.location?.city && (
+                  <Text style={styles.strutturaLocation}>{post.struttura.location.city}</Text>
+                )}
                 <Text style={styles.postTime}>
                   {new Date(post.createdAt).toLocaleDateString('it-IT')}
                 </Text>
