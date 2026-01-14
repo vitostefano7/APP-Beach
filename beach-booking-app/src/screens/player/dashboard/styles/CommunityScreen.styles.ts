@@ -196,6 +196,88 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  // Comments Section
+  commentsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  commentsList: {
+    marginBottom: 16,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212121',
+    marginRight: 8,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#212121',
+    lineHeight: 20,
+  },
+  deleteCommentButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  commentInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginLeft: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    maxHeight: 100,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#212121',
+    maxHeight: 80,
+  },
+  postCommentButton: {
+    marginLeft: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  postCommentButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+
   // Event Card (stile Domani)
   eventCard: {
     backgroundColor: 'white',

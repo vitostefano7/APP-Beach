@@ -5,6 +5,29 @@ import Strutture from "../models/Strutture";
 import Booking from "../models/Booking";
 import Match from "../models/Match";
 import Campo from "../models/Campo";
+import User from "../models/User";
+import Friendship from "../models/Friendship";
+
+// Interfaccia per i suggerimenti owner
+interface OwnerSuggestedUser {
+  user: {
+    _id: mongoose.Types.ObjectId;
+    name: string;
+    username: string;
+    avatarUrl?: string;
+    preferredSports?: string[];
+  };
+  reason: {
+    type: "most_games_played" | "follows_structure" | "vip_user";
+    details: {
+      matchCount?: number;
+      strutturaName?: string;
+      vipLevel?: string;
+    };
+  };
+  score: number;
+  friendshipStatus?: "none" | "pending" | "accepted";
+}
 
 /**
  * CREA STRUTTURA
@@ -292,5 +315,341 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error("❌ [getOwnerMatches] Errore:", err);
     res.status(500).json({ message: "Errore caricamento match" });
+  }
+};
+
+/**
+ * GET OWNER USER SUGGESTIONS
+ * Suggerisce utenti per gli owner basati su:
+ * 1. Utenti che hanno giocato più partite nelle loro strutture
+ * 2. Utenti che seguono le loro strutture
+ * 3. Utenti VIP
+ */
+export const getOwnerUserSuggestions = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerId = new mongoose.Types.ObjectId(req.user!.id);
+    const { limit = 10 } = req.query;
+
+    console.log(`🎯 [getOwnerUserSuggestions] Calcolo suggerimenti per owner: ${ownerId}`);
+
+    // Trova tutte le strutture dell'owner
+    const strutture = await Strutture.find({
+      owner: ownerId,
+      isDeleted: false,
+    }).select("_id name");
+
+    if (strutture.length === 0) {
+      return res.json({
+        success: true,
+        suggestions: [],
+        total: 0,
+        limit: parseInt(limit as string),
+      });
+    }
+
+    const struttureIds = strutture.map(s => s._id);
+    console.log(`🏢 [getOwnerUserSuggestions] Strutture owner: ${struttureIds.length}`);
+
+    // STEP 1: Utenti esclusi (già amici/follow)
+    const excludedUsers = await getExcludedUsersForOwner(ownerId);
+    console.log(`✅ [getOwnerUserSuggestions] Utenti esclusi: ${excludedUsers.length}`);
+
+    // STEP 2: Calcola suggerimenti per ogni categoria
+    const mostGamesSuggestions = await getMostGamesPlayedSuggestions(ownerId, struttureIds, excludedUsers);
+    const followsStructureSuggestions = await getFollowsStructureSuggestions(ownerId, struttureIds, excludedUsers, strutture);
+    const vipSuggestions = await getVipUserSuggestionsForOwner(ownerId, excludedUsers);
+
+    console.log(`📊 Most games suggestions: ${mostGamesSuggestions.length}`);
+    console.log(`📊 Follows structure suggestions: ${followsStructureSuggestions.length}`);
+    console.log(`📊 VIP suggestions: ${vipSuggestions.length}`);
+
+    // STEP 3: Combina e ordina per punteggio
+    let allSuggestions = [
+      ...mostGamesSuggestions,
+      ...followsStructureSuggestions,
+      ...vipSuggestions,
+    ];
+
+    // Rimuovi duplicati (stesso utente)
+    const uniqueSuggestions = allSuggestions.filter((suggestion, index, self) =>
+      index === self.findIndex(s => s.user._id.toString() === suggestion.user._id.toString())
+    );
+
+    // Ordina per punteggio e limita
+    const sortedSuggestions = uniqueSuggestions
+      .sort((a, b) => b.score - a.score)
+      .slice(0, parseInt(limit as string));
+
+    console.log(`✅ [getOwnerUserSuggestions] Suggerimenti finali: ${sortedSuggestions.length}`);
+
+    res.json({
+      success: true,
+      suggestions: sortedSuggestions,
+      total: sortedSuggestions.length,
+      limit: parseInt(limit as string),
+    });
+  } catch (err) {
+    console.error("❌ [getOwnerUserSuggestions] Errore:", err);
+    res.status(500).json({ message: "Errore caricamento suggerimenti" });
+  }
+};
+
+/**
+ * Helper: Utenti da escludere (già amici/follow dell'owner)
+ */
+async function getExcludedUsersForOwner(ownerId: mongoose.Types.ObjectId): Promise<mongoose.Types.ObjectId[]> {
+  const friendships = await Friendship.find({
+    $or: [
+      { requester: ownerId },
+      { recipient: ownerId },
+    ],
+    status: { $in: ["accepted", "pending"] },
+  }).select("requester recipient");
+
+  const excludedUsers = new Set<string>();
+  excludedUsers.add(ownerId.toString()); // Escludi se stesso
+
+  friendships.forEach(friendship => {
+    excludedUsers.add(friendship.requester.toString());
+    excludedUsers.add(friendship.recipient.toString());
+  });
+
+  return Array.from(excludedUsers).map(id => new mongoose.Types.ObjectId(id));
+}
+
+/**
+ * Helper: Utenti che hanno giocato più partite nelle strutture dell'owner
+ */
+async function getMostGamesPlayedSuggestions(
+  ownerId: mongoose.Types.ObjectId,
+  struttureIds: mongoose.Types.ObjectId[],
+  excludedUsers: mongoose.Types.ObjectId[]
+): Promise<OwnerSuggestedUser[]> {
+  try {
+    // Trova tutti i campi delle strutture
+    const campi = await Campo.find({
+      struttura: { $in: struttureIds },
+    }).select("_id");
+
+    const campiIds = campi.map(c => c._id);
+
+    // Conta i match per utente nei campi dell'owner
+    const matchStats = await Match.aggregate([
+      {
+        $match: {
+          booking: {
+            $in: await Booking.find({
+              campo: { $in: campiIds },
+              status: "confirmed",
+            }).distinct("_id"),
+          },
+        },
+      },
+      {
+        $unwind: "$players",
+      },
+      {
+        $group: {
+          _id: "$players.user",
+          matchCount: { $sum: 1 },
+          lastPlayed: { $max: "$createdAt" },
+        },
+      },
+      {
+        $match: {
+          _id: { $nin: excludedUsers },
+        },
+      },
+      {
+        $sort: { matchCount: -1, lastPlayed: -1 },
+      },
+      {
+        $limit: 20,
+      },
+    ]);
+
+    // Popola i dati utente
+    const userIds = matchStats.map(stat => stat._id);
+    const users = await User.find({
+      _id: { $in: userIds },
+      isActive: true,
+    }).select("_id name username avatarUrl preferredSports");
+
+    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+
+    const suggestions: OwnerSuggestedUser[] = [];
+
+    for (const stat of matchStats) {
+      const user = userMap.get(stat._id.toString());
+      if (user) {
+        suggestions.push({
+          user: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            preferredSports: user.preferredSports,
+          },
+          reason: {
+            type: "most_games_played",
+            details: {
+              matchCount: stat.matchCount,
+            },
+          },
+          score: Math.min(stat.matchCount * 10, 100), // Max 100 punti
+          friendshipStatus: "none",
+        });
+      }
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.error("❌ [getMostGamesPlayedSuggestions] Errore:", error);
+    return [];
+  }
+}
+
+/**
+ * Helper: Utenti che seguono le strutture dell'owner
+ */
+async function getFollowsStructureSuggestions(
+  ownerId: mongoose.Types.ObjectId,
+  struttureIds: mongoose.Types.ObjectId[],
+  excludedUsers: mongoose.Types.ObjectId[],
+  strutture: any[]
+): Promise<OwnerSuggestedUser[]> {
+  try {
+    // Per ora, suggeriamo utenti che hanno fatto prenotazioni recenti nelle strutture
+    // In futuro potremmo avere una tabella separata per i "follow" delle strutture
+
+    const recentBookings = await Booking.find({
+      struttura: { $in: struttureIds },
+      status: "confirmed",
+      createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Ultimi 30 giorni
+    })
+      .populate("user", "_id name username avatarUrl preferredSports")
+      .select("user createdAt")
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    const suggestions: OwnerSuggestedUser[] = [];
+    const processedUsers = new Set<string>();
+
+    for (const booking of recentBookings) {
+      const user = (booking as any).user;
+      if (
+        user &&
+        !processedUsers.has(user._id.toString()) &&
+        !excludedUsers.some(excluded => excluded.equals(user._id))
+      ) {
+        processedUsers.add(user._id.toString());
+
+        // Trova il nome della struttura
+        const struttura = strutture.find((s: any) => s._id.equals((booking as any).struttura));
+        const strutturaName = struttura ? struttura.name : "struttura";
+
+        suggestions.push({
+          user: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            preferredSports: user.preferredSports,
+          },
+          reason: {
+            type: "follows_structure",
+            details: {
+              strutturaName,
+            },
+          },
+          score: 50, // Punteggio fisso per ora
+          friendshipStatus: "none",
+        });
+      }
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.error("❌ [getFollowsStructureSuggestions] Errore:", error);
+    return [];
+  }
+}
+
+/**
+ * Helper: Utenti VIP
+ */
+async function getVipUserSuggestionsForOwner(
+  ownerId: mongoose.Types.ObjectId,
+  excludedUsers: mongoose.Types.ObjectId[]
+): Promise<OwnerSuggestedUser[]> {
+  try {
+    // Per ora, consideriamo VIP gli utenti con più prenotazioni totali
+    // In futuro potremmo avere un campo specifico per il VIP status
+
+    const vipUsers = await Booking.aggregate([
+      {
+        $match: {
+          status: "confirmed",
+        },
+      },
+      {
+        $group: {
+          _id: "$user",
+          bookingCount: { $sum: 1 },
+          totalSpent: { $sum: "$price" },
+        },
+      },
+      {
+        $match: {
+          _id: { $nin: excludedUsers },
+          bookingCount: { $gte: 5 }, // Almeno 5 prenotazioni
+        },
+      },
+      {
+        $sort: { bookingCount: -1, totalSpent: -1 },
+      },
+      {
+        $limit: 10,
+      },
+    ]);
+
+    // Popola i dati utente
+    const userIds = vipUsers.map(stat => stat._id);
+    const users = await User.find({
+      _id: { $in: userIds },
+      isActive: true,
+    }).select("_id name username avatarUrl preferredSports");
+
+    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+
+    const suggestions: OwnerSuggestedUser[] = [];
+
+    for (const stat of vipUsers) {
+      const user = userMap.get(stat._id.toString());
+      if (user) {
+        suggestions.push({
+          user: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            preferredSports: user.preferredSports,
+          },
+          reason: {
+            type: "vip_user",
+            details: {
+              vipLevel: stat.bookingCount >= 10 ? "Gold" : "Silver",
+            },
+          },
+          score: Math.min(stat.bookingCount * 5, 80), // Max 80 punti
+          friendshipStatus: "none",
+        });
+      }
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.error("❌ [getVipUserSuggestionsForOwner] Errore:", error);
+    return [];
   }
 };

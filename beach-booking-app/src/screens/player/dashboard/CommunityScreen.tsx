@@ -8,6 +8,8 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,8 +42,18 @@ type Post = {
   likes: string[];
   comments: Array<{
     _id: string;
-    user: { name: string };
+    user: {
+      _id: string;
+      name: string;
+      avatarUrl?: string;
+    };
+    struttura?: {
+      _id: string;
+      name: string;
+      images: string[];
+    };
     text: string;
+    createdAt: string;
   }>;
   createdAt: string;
 };
@@ -69,6 +81,9 @@ export default function CommunityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
+  const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
 
   // Log quando cambia lo state dei posts
   useEffect(() => {
@@ -259,8 +274,98 @@ export default function CommunityScreen() {
   };
 
   const handleCommentPost = (postId: string) => {
-    console.log('💬 Comment post:', postId);
-    navigation.navigate('PostDetail', { postId });
+    console.log('💬 Toggle comments for post:', postId);
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const handlePostComment = async (postId: string) => {
+    const commentText = commentInputs[postId]?.trim();
+    if (!commentText) return;
+
+    setPostingComment(prev => new Set(prev).add(postId));
+
+    try {
+      const response = await fetch(`${API_URL}/community/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: commentText }),
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        console.log('📝 New comment created:', newComment);
+        
+        // Aggiorna lo stato locale
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post._id === postId) {
+              return {
+                ...post,
+                comments: [...post.comments, newComment],
+              };
+            }
+            return post;
+          })
+        );
+
+        // Espandi automaticamente i commenti
+        setExpandedComments(prev => {
+          const newSet = new Set(prev);
+          newSet.add(postId);
+          return newSet;
+        });
+
+        // Pulisci input
+        setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      }
+    } catch (error) {
+      console.error('Errore pubblicazione commento:', error);
+    } finally {
+      setPostingComment(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/community/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Aggiorna lo stato locale
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post._id === postId) {
+              return {
+                ...post,
+                comments: post.comments.filter(comment => comment._id !== commentId),
+              };
+            }
+            return post;
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Errore eliminazione commento:', error);
+    }
   };
 
   const handleJoinEvent = (eventId: string) => {
@@ -434,6 +539,104 @@ export default function CommunityScreen() {
             <Ionicons name="share-social-outline" size={22} color="#666" />
           </Pressable>
         </View>
+
+        {/* Sezione commenti espansa */}
+        {expandedComments.has(item._id) && (
+          <View style={styles.commentsSection}>
+            {/* Lista commenti esistenti */}
+            {item.comments && item.comments.length > 0 && (
+              <View style={styles.commentsList}>
+                {item.comments.map((comment: any) => {
+                  // Determina se il commento è fatto da una struttura
+                  const isStructureComment = !!comment.struttura;
+                  const commentStructure = comment.struttura;
+                  
+                  const displayName = isStructureComment && commentStructure
+                    ? commentStructure.name
+                    : (comment.user?.name || 'Utente');
+                  const displayAvatar = isStructureComment && commentStructure
+                    ? commentStructure.images?.[0]
+                    : comment.user?.avatarUrl;
+
+                  return (
+                    <View key={`comment-${comment._id}`} style={styles.commentItem}>
+                      {isStructureComment && commentStructure ? (
+                        <Image
+                          source={{ uri: displayAvatar }}
+                          style={styles.commentAvatar}
+                        />
+                      ) : (
+                        <Avatar
+                          avatarUrl={displayAvatar}
+                          name={displayName}
+                          size={32}
+                        />
+                      )}
+                      <View style={styles.commentContent}>
+                        <View style={styles.commentHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            {isStructureComment && commentStructure && (
+                              <Ionicons name="business" size={14} color="#2196F3" />
+                            )}
+                            <Text style={styles.commentAuthor}>{displayName}</Text>
+                          </View>
+                          <Text style={styles.commentTime}>
+                            {new Date(comment.createdAt).toLocaleDateString('it-IT')}
+                          </Text>
+                        </View>
+                        <Text style={styles.commentText}>{comment.text}</Text>
+                      </View>
+                      {/* Pulsante elimina se è il proprietario del commento */}
+                      {comment.user?._id === user?.id && (
+                        <Pressable
+                          style={styles.deleteCommentButton}
+                          onPress={() => handleDeleteComment(item._id, comment._id)}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#999" />
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Input per nuovo commento */}
+            <View style={styles.commentInputContainer}>
+              <Avatar
+                avatarUrl={user?.avatarUrl}
+                name={user?.name || 'Tu'}
+                size={32}
+              />
+              <View style={styles.commentInputWrapper}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Scrivi un commento..."
+                  value={commentInputs[item._id] || ''}
+                  onChangeText={(text) =>
+                    setCommentInputs(prev => ({ ...prev, [item._id]: text }))
+                  }
+                  multiline
+                  maxLength={500}
+                />
+                <Pressable
+                  style={[
+                    styles.postCommentButton,
+                    (!commentInputs[item._id]?.trim() || postingComment.has(item._id)) && styles.postCommentButtonDisabled
+                  ]}
+                  onPress={() => handlePostComment(item._id)}
+                  disabled={!commentInputs[item._id]?.trim() || postingComment.has(item._id)}
+                >
+                  {postingComment.has(item._id) ? (
+                    <ActivityIndicator size="small" color="#2196F3" />
+                  ) : (
+                    <Ionicons name="send" size={18} color="white" />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     );
   };

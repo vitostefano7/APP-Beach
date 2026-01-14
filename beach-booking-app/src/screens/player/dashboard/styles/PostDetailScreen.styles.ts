@@ -275,6 +275,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 16,
   },
+  strutturaCommentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   commentContent: {
     flex: 1,
     marginLeft: 12,

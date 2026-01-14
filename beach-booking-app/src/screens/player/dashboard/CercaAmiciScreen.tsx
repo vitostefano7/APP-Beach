@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../../../context/AuthContext';
 import API_URL from '../../../config/api';
 import { useSuggestedFriends } from './hooks/useSuggestedFriends';
+import { useOwnerSuggestedUsers } from './hooks/useOwnerSuggestedUsers';
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import { StyleSheet } from 'react-native';
 import Avatar from '../../../components/Avatar/Avatar';
@@ -61,12 +62,15 @@ export default function CercaAmiciScreen() {
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Hook per amici suggeriti
+  // Hook per amici suggeriti (diverso per owner e player)
+  const isOwner = user?.role === 'owner';
   const {
     suggestions: suggestedFriends,
     loading: suggestionsLoading,
     sendFriendRequest,
-  } = useSuggestedFriends({ limit: 10 });
+  } = isOwner
+    ? useOwnerSuggestedUsers({ limit: 10 })
+    : useSuggestedFriends({ limit: 10 });
 
   // Load recent searches on mount
   useEffect(() => {
@@ -566,7 +570,9 @@ export default function CercaAmiciScreen() {
             {!hasSearched && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Persone che potresti conoscere</Text>
+                  <Text style={styles.sectionTitle}>
+                    {isOwner ? 'Utenti da contattare' : 'Persone che potresti conoscere'}
+                  </Text>
                   {suggestedFriends && suggestedFriends.length > 0 && (
                     <View style={styles.countBadge}>
                       <Text style={styles.countText}>{suggestedFriends.length}</Text>

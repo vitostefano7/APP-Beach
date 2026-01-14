@@ -60,12 +60,14 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const sort = (req.query.sort as string) || "recent";
     const filter = (req.query.filter as string) || "all"; // all, following, users, strutture
+    const strutturaId = req.query.strutturaId as string; // ID della struttura selezionata
 
     console.log('Parametri query:');
     console.log('  limit:', limit);
     console.log('  offset:', offset);
     console.log('  sort:', sort);
     console.log('  filter:', filter);
+    console.log('  strutturaId:', strutturaId);
 
     let sortQuery: any = { createdAt: -1 }; // Default: più recenti
 
@@ -75,8 +77,31 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
 
     let queryFilter: any = {};
 
+    // Se è specificato strutturaId, filtra per quella struttura e i suoi following
+    if (strutturaId) {
+      console.log('🏢 Filtro per struttura:', strutturaId);
+      
+      // Trova le strutture seguite da questa struttura
+      const followedStrutture = await StrutturaFollower.find({
+        user: strutturaId, // La struttura che sta guardando
+        status: "active",
+      }).select("struttura");
+
+      const followedStrutturaIds = followedStrutture.map((f) => f.struttura.toString());
+      console.log('  Strutture seguite:', followedStrutturaIds.length);
+
+      // Includi anche la struttura stessa
+      const allStrutturaIds = [strutturaId, ...followedStrutturaIds];
+      console.log('  Totale strutture da mostrare:', allStrutturaIds.length);
+
+      // Mostra solo post delle strutture seguite + la struttura stessa
+      queryFilter = {
+        isStrutturaPost: true,
+        struttura: { $in: allStrutturaIds },
+      };
+    }
     // Se l'utente vuole vedere solo i post degli utenti/strutture seguiti
-    if (filter === "following" && req.user?.id) {
+    else if (filter === "following" && req.user?.id) {
       // Trova utenti seguiti
       const followedUsers = await Friendship.find({
         requester: req.user.id,
@@ -117,6 +142,7 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
       .populate("user", "name surname username avatarUrl")
       .populate("struttura", "name images location")
       .populate("comments.user", "name surname username avatarUrl")
+      .populate("comments.struttura", "name images location")
       .lean();
 
     console.log('Posts trovati:', posts.length);
@@ -173,7 +199,8 @@ export const getPost = async (req: AuthRequest, res: Response) => {
     const post = await Post.findById(postId)
       .populate("user", "name surname username avatarUrl")
       .populate("struttura", "name images location")
-      .populate("comments.user", "name surname username avatarUrl");
+      .populate("comments.user", "name surname username avatarUrl")
+      .populate("comments.struttura", "name images location");
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -403,8 +430,15 @@ export const likePost = async (req: AuthRequest, res: Response) => {
 export const addComment = async (req: AuthRequest, res: Response) => {
   try {
     const { postId } = req.params;
-    const { text } = req.body;
+    const { text, strutturaId } = req.body;
     const userId = req.user?.id;
+
+    console.log('💬 [addComment] Request:', {
+      postId,
+      userId,
+      strutturaId,
+      text: text?.substring(0, 50)
+    });
 
     // Validazione
     if (!text || text.trim().length === 0) {
@@ -421,25 +455,38 @@ export const addComment = async (req: AuthRequest, res: Response) => {
     }
 
     // Aggiungi commento
-    post.comments.push({
+    const commentData: any = {
       _id: new (require("mongoose").Types.ObjectId)(),
       user: userId as any,
       text: text.trim(),
       createdAt: new Date(),
-    });
+    };
 
+    // Se è specificato strutturaId, aggiungi la struttura al commento
+    if (strutturaId) {
+      commentData.struttura = strutturaId;
+      console.log('🏢 Adding struttura to comment:', strutturaId);
+    }
+
+    post.comments.push(commentData);
     await post.save();
 
     // Popola l'ultimo commento per response
     await post.populate("comments.user", "name surname username avatarUrl");
+    await post.populate("comments.struttura", "name images location");
     const newComment = post.comments[post.comments.length - 1];
 
-    res.status(201).json({
-      message: "Comment added",
-      comment: newComment,
+    console.log('✅ Comment added:', {
+      commentId: newComment._id,
+      hasUser: !!newComment.user,
+      hasStruttura: !!newComment.struttura,
+      createdAt: newComment.createdAt
     });
+
+    // Restituisci direttamente il commento (non wrapped in object)
+    res.status(201).json(newComment);
   } catch (error) {
-    console.error("Errore aggiunta commento:", error);
+    console.error("❌ Errore aggiunta commento:", error);
     res.status(500).json({ message: "Errore nell'aggiunta del commento" });
   }
 };

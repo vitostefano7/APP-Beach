@@ -17,6 +17,10 @@ import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmagi
 import GroupChatScreen from "../screens/owner/Comunicazioni/GroupChatScreen";
 import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
 import OwnerCreatePostScreen from "../screens/owner/OwnerCreatePostScreen";
+import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen";
+import OwnerCercaAmiciScreen from "../screens/owner/OwnerCercaAmiciScreen";
+import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
+import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -27,6 +31,7 @@ export type OwnerRootStackParamList = {
   ModificaStruttura: { strutturaId: string };
   DettaglioCampo: { campoId: string };
   ModificaCampo: { campoId: string };
+  OwnerCercaAmiciScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<OwnerRootStackParamList>();
@@ -103,6 +108,22 @@ export default function OwnerRootStack() {
       <Stack.Screen 
         name="OwnerCreatePost" 
         component={OwnerCreatePostScreen} 
+      />
+      <Stack.Screen 
+        name="CercaAmiciScreen" 
+        component={CercaAmiciScreen} 
+      />
+      <Stack.Screen 
+        name="OwnerCercaAmiciScreen" 
+        component={OwnerCercaAmiciScreen} 
+      />
+      <Stack.Screen 
+        name="UserProfile"
+        component={UserProfileScreen} 
+      />
+      <Stack.Screen 
+        name="StrutturaDetailScreen"
+        component={StrutturaDetailScreen} 
       />
     </Stack.Navigator>
   );

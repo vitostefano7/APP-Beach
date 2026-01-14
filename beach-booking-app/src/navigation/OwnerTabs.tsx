@@ -31,11 +31,11 @@ export default function OwnerTabs() {
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
           const icons: any = {
-            Dashboard: "grid",
+            Home: "grid",
             Strutture: "business",
             Prenotazioni: "calendar",
             Community: "people",
-            Comunicazioni: "chatbox",
+            Messaggi: "chatbox",
             Profilo: "person",
           };
           return (
@@ -72,11 +72,11 @@ export default function OwnerTabs() {
         }
       }}
     >
-      <Tab.Screen name="Dashboard" component={OwnerDashboardScreen} />
+      <Tab.Screen name="Home" component={OwnerDashboardScreen} />
       <Tab.Screen name="Prenotazioni" component={OwnerBookingsScreen} />
       <Tab.Screen name="Community" component={OwnerCommunityScreen} />
       <Tab.Screen 
-        name="Comunicazioni" 
+        name="Messaggi" 
         component={ConversationScreen}
         options={{
           // Temporaneamente rimosso badge per test

@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IComment {
   _id: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
+  struttura?: mongoose.Types.ObjectId; // Ref to Struttura if commented by owner for a struttura
   text: string;
   createdAt: Date;
 }
@@ -25,6 +26,11 @@ const CommentSchema = new Schema<IComment>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    struttura: {
+      type: Schema.Types.ObjectId,
+      ref: "Struttura",
+      default: null,
     },
     text: {
       type: String,

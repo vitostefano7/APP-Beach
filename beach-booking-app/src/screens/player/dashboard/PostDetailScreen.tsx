@@ -35,6 +35,11 @@ type Comment = {
     username?: string;
     avatarUrl?: string;
   };
+  struttura?: {
+    _id: string;
+    name: string;
+    images: string[];
+  };
   text: string;
   createdAt: string;
 };
@@ -172,20 +177,44 @@ export default function PostDetailScreen() {
   };
 
   const renderComment = ({ item }: { item: Comment }) => {
-    const commentUserName = item.user?.name || 'Utente';
-    const fullName = item.user?.surname ? `${commentUserName} ${item.user.surname}` : commentUserName;
+    // Determina se il commento è fatto da una struttura
+    const isStructureComment = !!item.struttura;
+    const commentStructure = item.struttura;
+    
+    const displayName = isStructureComment && commentStructure
+      ? commentStructure.name
+      : (() => {
+          const userName = item.user?.name || 'Utente';
+          return item.user?.surname ? `${userName} ${item.user.surname}` : userName;
+        })();
+    
+    const displayAvatar = isStructureComment && commentStructure
+      ? commentStructure.images?.[0]
+      : item.user?.avatarUrl;
 
     return (
       <View style={styles.commentItem}>
-        <Avatar
-          avatarUrl={item.user?.avatarUrl}
-          name={fullName}
-          size={32}
-        />
+        {isStructureComment && commentStructure ? (
+          <Image
+            source={{ uri: displayAvatar }}
+            style={styles.strutturaCommentAvatar}
+          />
+        ) : (
+          <Avatar
+            avatarUrl={displayAvatar}
+            name={displayName}
+            size={32}
+          />
+        )}
         <View style={styles.commentContent}>
           <View style={styles.commentBubble}>
             <View style={styles.commentMeta}>
-              <Text style={styles.commentAuthor}>{fullName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {isStructureComment && commentStructure && (
+                  <Ionicons name="business" size={14} color="#2196F3" />
+                )}
+                <Text style={styles.commentAuthor}>{displayName}</Text>
+              </View>
               <Text style={styles.commentTime}>{new Date(item.createdAt).toLocaleDateString('it-IT')}</Text>
             </View>
             <Text style={styles.commentText}>{item.text}</Text>

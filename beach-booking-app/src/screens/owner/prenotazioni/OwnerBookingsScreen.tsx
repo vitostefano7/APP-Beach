@@ -14,6 +14,7 @@ import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { Calendar } from "react-native-calendars";
 import API_URL from "../../../config/api";
 
 /* =========================
@@ -281,12 +282,14 @@ export default function OwnerBookingsScreen() {
   const [filterUsername, setFilterUsername] = useState("");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
   const [filterCampo, setFilterCampo] = useState(route.params?.filterCampoId || "");
+  const [filterDate, setFilterDate] = useState("");
   
   const [strutture, setStrutture] = useState<Array<{ _id: string; name: string }>>([]);
   const [campi, setCampi] = useState<Array<{ _id: string; name: string; strutturaId: string }>>([]);
   
   const [showStrutturaModal, setShowStrutturaModal] = useState(false);
   const [showCampoModal, setShowCampoModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   /* =========================
      LOAD DATA
@@ -381,6 +384,9 @@ export default function OwnerBookingsScreen() {
       // Filter by campo
       if (filterCampo && b.campo?._id !== filterCampo) return false;
       
+      // Filter by date
+      if (filterDate && b.date !== filterDate) return false;
+      
       return true;
     }).length;
   };
@@ -403,6 +409,9 @@ export default function OwnerBookingsScreen() {
     
     // Filter by campo
     if (filterCampo && b.campo?._id !== filterCampo) return false;
+    
+    // Filter by date
+    if (filterDate && b.date !== filterDate) return false;
     
     return true;
   });
@@ -427,9 +436,10 @@ export default function OwnerBookingsScreen() {
     setFilterUsername("");
     setFilterStruttura("");
     setFilterCampo("");
+    setFilterDate("");
   };
 
-  const hasActiveFilters = filterUsername || filterStruttura || filterCampo;
+  const hasActiveFilters = filterUsername || filterStruttura || filterCampo || filterDate;
 
   /* =========================
      RENDER
@@ -553,6 +563,25 @@ export default function OwnerBookingsScreen() {
           style={styles.filtersScroll}
           contentContainerStyle={styles.filtersScrollContent}
         >
+          <Pressable
+            style={[styles.filterChip, filterDate && styles.filterChipActive]}
+            onPress={() => setShowCalendarModal(true)}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={filterDate ? "white" : "#666"}
+            />
+            <Text style={[styles.filterChipText, filterDate && styles.filterChipTextActive]}>
+              {filterDate
+                ? new Date(filterDate + "T12:00:00").toLocaleDateString("it-IT", {
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "Data"}
+            </Text>
+          </Pressable>
+
           <Pressable
             style={[styles.filterChip, filterStruttura && styles.filterChipActive]}
             onPress={() => setShowStrutturaModal(true)}
@@ -754,6 +783,55 @@ export default function OwnerBookingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* CALENDAR MODAL */}
+      <Modal visible={showCalendarModal} animationType="slide" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCalendarModal(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleziona Data</Text>
+              <Pressable onPress={() => setShowCalendarModal(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color="#999" />
+              </Pressable>
+            </View>
+
+            <Calendar
+              onDayPress={(day) => {
+                setFilterDate(day.dateString);
+                setShowCalendarModal(false);
+              }}
+              markedDates={{
+                [filterDate]: {
+                  selected: true,
+                  selectedColor: "#2196F3",
+                },
+              }}
+              theme={{
+                selectedDayBackgroundColor: "#2196F3",
+                todayTextColor: "#2196F3",
+                arrowColor: "#2196F3",
+                monthTextColor: "#333",
+                textMonthFontSize: 18,
+                textDayFontSize: 16,
+                textDayHeaderFontSize: 14,
+              }}
+              style={styles.calendar}
+            />
+
+            {filterDate && (
+              <Pressable
+                style={styles.clearDateButton}
+                onPress={() => {
+                  setFilterDate("");
+                  setShowCalendarModal(false);
+                }}
+              >
+                <Text style={styles.clearDateText}>Rimuovi filtro data</Text>
+              </Pressable>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -824,14 +902,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "white",
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e9ecef",
-    gap: 10,
+    gap: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -848,21 +926,21 @@ const styles = StyleSheet.create({
   // FILTER TABS
   filterTabsWrapper: {
     paddingHorizontal: 16,
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 8,
+    gap: 6,
   },
   filterTabsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
   },
   filterTab: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     backgroundColor: "white",
     borderWidth: 1.5,
     borderColor: "#E0E0E0",
@@ -876,7 +954,7 @@ const styles = StyleSheet.create({
     borderColor: "#4CAF50",
   },
   filterTabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#666",
   },
@@ -907,31 +985,31 @@ const styles = StyleSheet.create({
   filtersScroll: {
     flexGrow: 0,
     flexShrink: 0,
-    height: 52,
-    marginBottom: 12,
+    height: 40,
+    marginBottom: 8,
   },
   filtersScrollContent: {
     paddingHorizontal: 16,
-    gap: 8,
+    gap: 6,
     alignItems: "flex-start",
   },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "white",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: "#e9ecef",
-    gap: 6,
+    gap: 4,
   },
   filterChipActive: {
     backgroundColor: "#2196F3",
     borderColor: "#2196F3",
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#666",
   },
@@ -942,15 +1020,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFEBEE",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: "#E53935",
-    gap: 6,
+    gap: 4,
   },
   filterChipResetText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     color: "#E53935",
   },
@@ -1204,5 +1282,22 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     color: "#2196F3",
     fontWeight: "800",
+  },
+  calendar: {
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  clearDateButton: {
+    alignSelf: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  clearDateText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
   },
 });
