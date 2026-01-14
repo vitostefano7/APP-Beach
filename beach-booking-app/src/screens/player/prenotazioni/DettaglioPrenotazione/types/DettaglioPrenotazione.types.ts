@@ -42,6 +42,7 @@ export interface BookingDetails {
     name: string;
     sport: string;
     struttura: {
+      _id: string;
       name: string;
       location: {
         city: string;

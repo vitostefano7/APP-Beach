@@ -53,10 +53,55 @@ import {
 } from "./DettaglioPrenotazione/components/GradientComponents";
 
 export default function DettaglioPrenotazioneScreen() {
+  console.log('🚀 [DettaglioPrenotazione] Componente inizializzato');
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { bookingId, openScoreModal } = route.params;
+  console.log('🔍 [DettaglioPrenotazione] Route object:', route);
+  const { bookingId, openScoreModal } = route?.params || {};
+
+  // Funzione helper per ottenere ID utente sicuro
+  const getUserId = (user: any) => {
+    const id = user?.id || user?._id || user?.userId;
+    console.log('🔍 [DettaglioPrenotazione] getUserId result:', { id, fromField: user?.id ? 'id' : user?._id ? '_id' : user?.userId ? 'userId' : 'none' });
+    return id;
+  };
+
+  console.log('🔍 [DettaglioPrenotazione] User object completo:', JSON.stringify(user, null, 2));
+
+  if (!route || !bookingId) {
+    console.error('❌ [DettaglioPrenotazione] Route o bookingId mancante');
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#F44336" />
+          <Text style={styles.errorText}>Errore di navigazione: parametri mancanti</Text>
+          <AnimatedButton style={styles.retryButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.retryButtonText}>Torna indietro</Text>
+          </AnimatedButton>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  console.log('Auth check:', { token: token ? 'present' : 'missing', user: user ? { id: getUserId(user), name: user.name } : 'undefined' });
+
+  if (!user) {
+    console.log('❌ [DettaglioPrenotazione] Utente non loggato, mostrando schermata login');
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="person-circle-outline" size={64} color="#F44336" />
+          <Text style={styles.errorText}>Effettua il login per vedere i dettagli della prenotazione</Text>
+          <AnimatedButton style={styles.retryButton} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.retryButtonText}>Vai al Login</Text>
+          </AnimatedButton>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  console.log('✅ [DettaglioPrenotazione] Utente loggato, procedendo con caricamento');
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<BookingDetails | null>(null);
@@ -118,6 +163,24 @@ export default function DettaglioPrenotazioneScreen() {
 
       const data = await res.json();
       console.log('✅ [DettaglioPrenotazione] Booking caricato:', data._id);
+      console.log('📋 [DettaglioPrenotazione] Info partita:', {
+        id: data._id,
+        date: data.date,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        campo: data.campo?.name,
+        struttura: data.campo?.struttura?.name,
+        sport: data.campo?.sport,
+        price: data.price,
+        status: data.status,
+        hasMatch: data.hasMatch,
+        matchId: data.matchId,
+        matchStatus: data.match?.status,
+        maxPlayers: data.match?.maxPlayers,
+        playersCount: data.match?.players?.length,
+        createdBy: data.match?.createdBy?.username
+      });
+      console.log('🔍 [DettaglioPrenotazione] Dettagli completi booking:', JSON.stringify(data, null, 2));
       setBooking(data);
     } catch (error: any) {
       console.error('Errore nel caricamento:', error);
@@ -126,6 +189,7 @@ export default function DettaglioPrenotazioneScreen() {
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } finally {
+      console.log('🏁 [DettaglioPrenotazione] loadBooking completato');
       setLoading(false);
     }
   };
@@ -237,13 +301,13 @@ export default function DettaglioPrenotazioneScreen() {
   const canCancelBooking = () => {
     if (!booking || !user) return false;
     // Solo il creatore della prenotazione può cancellarla
-    const bookingUserId = typeof booking.user === 'string' ? booking.user : booking.user?._id;
-    const isBookingCreator = bookingUserId === user.id;
+    const bookingUserId = booking.match?.createdBy?._id;
+    const isBookingCreator = bookingUserId === getUserId(user);
     // Solo se la partita non è ancora iniziata
     console.log('canCancelBooking check:', {
       isBookingCreator,
       bookingUserId,
-      userId: user.id,
+      userId: getUserId(user),
       isMatchInProgress: isMatchInProgress(),
       isMatchPassed: isMatchPassed(),
       bookingStatus: booking.status
@@ -675,12 +739,23 @@ export default function DettaglioPrenotazioneScreen() {
   }
 
   // SOSTITUISCI QUESTE VARIABILI NELLA PARTE INIZIALE DEL COMPONENTE:
-const isCreator = booking.match?.createdBy?._id === user?.id;
-const currentUserPlayer = booking.match?.players?.find(p => p.user._id === user?.id);
+const isCreator = booking.match?.createdBy?._id === getUserId(user);
+const currentUserPlayer = booking.match?.players?.find(p => p.user._id === getUserId(user));
 const isPendingInvite = currentUserPlayer?.status === "pending";
 const isDeclined = currentUserPlayer?.status === "declined";
 const isConfirmed = currentUserPlayer?.status === "confirmed";
 const isInMatch = !!currentUserPlayer;
+
+console.log('🔍 [DettaglioPrenotazione] Variabili calcolate:', {
+  isCreator,
+  currentUserPlayer: currentUserPlayer ? { status: currentUserPlayer.status, team: currentUserPlayer.team } : null,
+  isPendingInvite,
+  isDeclined,
+  isConfirmed,
+  isInMatch,
+  userId: getUserId(user),
+  createdById: booking.match?.createdBy?._id
+});
 
 const maxPlayersPerTeam = booking.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
 const teamAPlayers = booking.match?.players.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
@@ -728,6 +803,15 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
     }
     return match.status;
   };
+
+  console.log('User status check:', {
+    isCreator,
+    currentUserPlayer: currentUserPlayer?.status,
+    isPendingInvite,
+    isDeclined,
+    isConfirmed,
+    isInMatch
+  });
 
   const renderMatchSection = () => {
   // IL MATCH ESISTE SEMPRE - NON SERVE CONTROLLO
@@ -946,7 +1030,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                       <PlayerCardWithTeam
                         player={player}
                         isCreator={isCreator}
-                        currentUserId={user?.id}
+                        currentUserId={getUserId(user)}
                         onRemove={() => player && handleRemovePlayer(player.user._id)}
                         onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
                         onLeave={handleLeaveMatch}
@@ -991,7 +1075,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                       <PlayerCardWithTeam
                         player={player}
                         isCreator={isCreator}
-                        currentUserId={user?.id}
+                        currentUserId={getUserId(user)}
                         onRemove={() => player && handleRemovePlayer(player.user._id)}
                         onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
                         onLeave={handleLeaveMatch}
@@ -1024,7 +1108,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   <PlayerCardWithTeam
                     player={player}
                     isCreator={isCreator}
-                    currentUserId={user?.id}
+                    currentUserId={getUserId(user)}
                     onRemove={() => handleRemovePlayer(player.user._id)}
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     matchStatus={getMatchStatus()}
@@ -1047,7 +1131,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   <PlayerCardWithTeam
                     player={player}
                     isCreator={isCreator}
-                    currentUserId={user?.id}
+                    currentUserId={getUserId(user)}
                     onRemove={() => handleRemovePlayer(player.user._id)}
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     isPending={true}

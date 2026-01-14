@@ -75,6 +75,14 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   // 3. Non è il creatore del match
   // 4. Il match non è completato o cancellato
   const canLeave = isCurrentUser && isConfirmed && !isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
+  
+  console.log('canLeave check:', {
+    isCurrentUser,
+    isConfirmed,
+    isCreator,
+    matchStatus,
+    canLeave
+  });
 
   const getButtonColor = () => {
     if (currentTeam === "A") return "#2196F3";
