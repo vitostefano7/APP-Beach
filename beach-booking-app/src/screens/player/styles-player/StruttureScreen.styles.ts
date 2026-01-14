@@ -473,7 +473,7 @@ export const styles = StyleSheet.create({
 
   mapControlButtonPrimary: {
     flexDirection: "row",
-    bottom: 570,
+    bottom: 650,
     alignItems: "center",
     gap: 8,
     paddingVertical: 14,

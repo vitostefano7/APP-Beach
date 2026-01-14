@@ -833,8 +833,8 @@ export default function StruttureScreen() {
                       const newRegion: Region = {
                         latitude: marker.coordinate.latitude,
                         longitude: marker.coordinate.longitude,
-                        latitudeDelta: region.latitudeDelta * 0.35,
-                        longitudeDelta: region.longitudeDelta * 0.35,
+                        latitudeDelta: region.latitudeDelta * 0.25,
+                        longitudeDelta: region.longitudeDelta * 0.25,
                       };
                       mapRef.current?.animateToRegion(newRegion, 500);
                     } else {
