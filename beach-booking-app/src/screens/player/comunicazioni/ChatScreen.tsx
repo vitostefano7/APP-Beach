@@ -40,7 +40,7 @@ export default function ChatScreen() {
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const { conversationId, strutturaName, struttura } = route.params;
+  const { conversationId, strutturaName, struttura, isUserChat, otherUser } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -267,13 +267,21 @@ export default function ChatScreen() {
             onPress={() => {
               if (struttura) {
                 navigation.navigate("FieldDetails", { struttura });
+              } else if (isUserChat && otherUser) {
+                navigation.navigate("ProfiloUtente", { userId: otherUser._id });
               }
             }}
-            disabled={!struttura}
+            disabled={!struttura && !isUserChat}
           >
             <Avatar
               name={strutturaName}
-              avatarUrl={struttura?.images?.[0] ? resolveImageUrl(struttura.images[0]) : undefined}
+              avatarUrl={
+                isUserChat && otherUser?.avatarUrl
+                  ? otherUser.avatarUrl
+                  : struttura?.images?.[0]
+                  ? resolveImageUrl(struttura.images[0])
+                  : undefined
+              }
               size={44}
               backgroundColor="#E3F2FD"
               textColor="#2196F3"
@@ -282,10 +290,14 @@ export default function ChatScreen() {
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {strutturaName}
               </Text>
-              <View style={styles.onlineIndicator}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.onlineText}>Online</Text>
-              </View>
+              {isUserChat ? (
+                <Text style={styles.onlineText}>Tocca per vedere il profilo</Text>
+              ) : (
+                <View style={styles.onlineIndicator}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.onlineText}>Online</Text>
+                </View>
+              )}
             </View>
           </Pressable>
         </View>

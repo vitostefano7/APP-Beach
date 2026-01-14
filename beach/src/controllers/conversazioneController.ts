@@ -377,8 +377,8 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       });
     } else if (conversation.type === 'group') {
       // Per gruppi: azzera unreadCount per questo user
-      const unreadCountMap = conversation.unreadCount || new Map();
-      unreadCountMap.set(userId, 0);
+      const unreadCountMap = conversation.unreadCount || {};
+      unreadCountMap[userId] = 0;
       
       await Conversation.findByIdAndUpdate(conversationId, {
         unreadCount: unreadCountMap,
@@ -513,13 +513,13 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       }
     } else if (conversation.type === 'group') {
       // Chat di gruppo - incrementa per tutti gli altri partecipanti
-      const unreadCountMap = conversation.unreadCount || new Map();
+      const unreadCountMap = conversation.unreadCount || {};
       
       conversation.participants.forEach((participantId: any) => {
         const pId = participantId.toString();
         if (pId !== userId) {
-          const current = unreadCountMap.get(pId) || 0;
-          unreadCountMap.set(pId, current + 1);
+          const current = unreadCountMap[pId] || 0;
+          unreadCountMap[pId] = current + 1;
         }
       });
       
@@ -658,17 +658,18 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
         `Partita ${new Date(booking.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })} - ${booking.startTime}` :
         'Chat di Gruppo';
 
-      conversation = await Conversation.create({
+      const newConv = await Conversation.create({
         type: 'group',
         match: matchId,
         participants,
         groupName,
         lastMessage: '',
         lastMessageAt: new Date(),
-        unreadCount: new Map(),
-      });
+        unreadCount: {},
+      } as any);
 
-      conversation = await Conversation.findById(conversation._id)
+      const createdConv: any = Array.isArray(newConv) ? newConv[0] : newConv;
+      conversation = await Conversation.findById(createdConv._id)
         .populate('participants', 'name email')
         .populate({
           path: 'match',
@@ -687,6 +688,74 @@ export const getOrCreateGroupConversation = async (req: AuthRequest, res: Respon
     res.json(conversation);
   } catch (error) {
     console.error('Errore get/create conversazione gruppo:', error);
+    res.status(500).json({ message: 'Errore server' });
+  }
+};
+
+/**
+ * GET /api/conversations/direct/:userId
+ * Ottieni o crea conversazione diretta tra l'utente loggato e un altro utente
+ */
+export const getOrCreateDirectConversationWithUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const currentUserId = req.user?.id;
+    const { userId } = req.params;
+
+    console.log('💬 [Direct Chat] Request from:', currentUserId, 'to:', userId);
+
+    if (!currentUserId) {
+      return res.status(401).json({ message: 'Non autorizzato' });
+    }
+
+    if (currentUserId === userId) {
+      console.log('⚠️ [Direct Chat] User trying to chat with themselves');
+      return res.status(400).json({ message: 'Non puoi chattare con te stesso' });
+    }
+
+    // Verifica che l'utente target esista
+    const targetUser = await User.findById(userId);
+    console.log('👤 [Direct Chat] Target user found:', !!targetUser, targetUser?.name);
+    
+    if (!targetUser) {
+      console.log('❌ [Direct Chat] Target user not found:', userId);
+      return res.status(404).json({ message: 'Utente non trovato' });
+    }
+
+    // Trova conversazione esistente tra i due utenti (group con esattamente 2 participants)
+    let conversation = await Conversation.findOne({
+      type: 'group',
+      participants: { $all: [currentUserId, userId], $size: 2 },
+      match: { $exists: false } // Non è una chat di match
+    })
+      .populate('participants', 'name email avatarUrl')
+      .sort({ lastMessageAt: -1 });
+
+    console.log('🔍 [Direct Chat] Existing conversation found:', !!conversation);
+
+    // Se non esiste, creala
+    if (!conversation) {
+      console.log('➕ [Direct Chat] Creating new conversation');
+      const groupName = `Chat con ${targetUser.name}`;
+      const newConversation = await Conversation.create({
+        type: 'group',
+        participants: [currentUserId, userId],
+        groupName,
+        lastMessage: '',
+        lastMessageAt: new Date(),
+        unreadCount: {},
+      } as any);
+
+      const createdConv: any = Array.isArray(newConversation) ? newConversation[0] : newConversation;
+      console.log('✅ [Direct Chat] New conversation created:', createdConv._id);
+      
+      conversation = await Conversation.findById(createdConv._id)
+        .populate('participants', 'name email avatarUrl');
+    }
+
+    console.log('✅ [Direct Chat] Returning conversation:', conversation?._id);
+    res.json(conversation);
+  } catch (error) {
+    console.error('Errore get/create conversazione diretta:', error);
     res.status(500).json({ message: 'Errore server' });
   }
 };

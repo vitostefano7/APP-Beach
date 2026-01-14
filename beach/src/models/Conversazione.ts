@@ -19,7 +19,7 @@ export interface IConversation extends Document {
   // Unread gestito come oggetto per supportare sia direct che group
   unreadByUser: number;   // Mantenuto per retrocompatibilità chat dirette
   unreadByOwner: number;  // Mantenuto per retrocompatibilità chat dirette
-  unreadCount: Map<string, number>;  // Per chat di gruppo: userId -> count
+  unreadCount: { [key: string]: number };  // Per chat di gruppo: userId -> count
   
   createdAt: Date;
   updatedAt: Date;
@@ -91,11 +91,10 @@ const ConversationSchema: Schema = new Schema(
       default: 0,
     },
     
-    // Unread per gruppi - Map di userId -> count
+    // Unread per gruppi - Oggetto di userId -> count
     unreadCount: {
-      type: Map,
-      of: Number,
-      default: new Map(),
+      type: Object,
+      default: {},
     },
   },
   {

@@ -193,6 +193,23 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
+  chatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#2196F3",
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  chatButtonText: {
+    fontSize: 16,
+    color: "#2196F3",
+    fontWeight: "600",
+  },
   privateBadge: {
     position: 'absolute',
     bottom: 0,

@@ -6,6 +6,7 @@ import {
   getOrCreateConversation,
   getOrCreateConversationWithUser,
   getOrCreateGroupConversation,
+  getOrCreateDirectConversationWithUser,
   getMessages,
   sendMessage,
   getUnreadCount,
@@ -27,6 +28,9 @@ router.get('/user/:userId', requireAuth, getOrCreateConversationWithUser);
 
 // Ottieni/crea conversazione di gruppo per un match
 router.get('/match/:matchId', requireAuth, getOrCreateGroupConversation);
+
+// Ottieni/crea conversazione diretta con un altro utente
+router.get('/direct/:userId', requireAuth, getOrCreateDirectConversationWithUser);
 
 // Messaggi di una conversazione
 router.get('/:conversationId/messages', requireAuth, getMessages);

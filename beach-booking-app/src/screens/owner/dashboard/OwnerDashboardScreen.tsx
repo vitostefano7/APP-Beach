@@ -290,9 +290,47 @@ export default function OwnerDashboardScreen() {
     }
   };
 
-  const handleChatUser = (bookingId: string) => {
-    // Navigazione a chat con utente della prenotazione
-    console.log("💬 Chat per booking:", bookingId);
+  const handleChatUser = async (bookingId: string) => {
+    try {
+      console.log("💬 [OwnerDashboard] Apertura chat per booking:", bookingId);
+
+      // Ottieni i dettagli completi della prenotazione per avere l'userId
+      const res = await fetch(`${API_URL}/bookings/owner/${bookingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        console.error("❌ [OwnerDashboard] Errore caricamento prenotazione:", res.status);
+        return;
+      }
+
+      const bookingDetails = await res.json();
+      console.log("✅ [OwnerDashboard] Dettagli prenotazione ricevuti");
+
+      // Crea conversazione con l'utente
+      const chatRes = await fetch(`${API_URL}/api/conversations/user/${bookingDetails.user._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!chatRes.ok) {
+        console.error("❌ [OwnerDashboard] Errore creazione conversazione:", chatRes.status);
+        return;
+      }
+
+      const conversation = await chatRes.json();
+      console.log("✅ [OwnerDashboard] Conversazione creata:", conversation._id);
+
+      // Naviga alla chat
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: bookingDetails.campo.struttura.name,
+        userName: bookingDetails.user.name,
+        userId: bookingDetails.user._id,
+        struttura: bookingDetails.campo.struttura,
+      });
+    } catch (error) {
+      console.error("❌ [OwnerDashboard] Errore apertura chat:", error);
+    }
   };
 
   if (loading) {

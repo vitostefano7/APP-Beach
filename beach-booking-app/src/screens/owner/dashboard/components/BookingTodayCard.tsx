@@ -63,6 +63,7 @@ export default function BookingTodayCard({
     : booking.userName;
 
   const getSportIcon = (sport: string) => {
+    if (!sport) return "football";
     if (sport.toLowerCase().includes("volley")) return "basketball";
     return "football";
   };

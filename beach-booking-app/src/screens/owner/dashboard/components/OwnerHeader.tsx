@@ -35,7 +35,6 @@ export default function OwnerHeader({
             size={56}
             fallbackIcon="person"
           />
-          <View style={styles.statusDot} />
         </View>
 
         <View style={styles.headerInfo}>

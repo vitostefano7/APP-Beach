@@ -209,6 +209,45 @@ export default function UserProfileScreen() {
     }
   };
 
+  const handleChat = async () => {
+    if (!token || !userId || !data) return;
+
+    try {
+      console.log("💬 [UserProfile] Starting chat with:", userId);
+      const res = await fetch(`${API_URL}/api/conversations/direct/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const conversation = await res.json();
+        console.log("✅ [UserProfile] Conversation obtained:", conversation._id);
+        
+        // Usa direttamente i dati del profilo che stiamo visitando
+        const displayName = data.user.surname 
+          ? `${data.user.name} ${data.user.surname}`
+          : data.user.name;
+        
+        console.log("👤 [UserProfile] Chatting with:", displayName);
+        
+        // Navigate to ChatScreen (usato per chat 1-a-1)
+        navigation.navigate("Chat", {
+          conversationId: conversation._id,
+          strutturaName: displayName,
+          isUserChat: true,
+          otherUser: {
+            _id: data.user._id,
+            name: displayName,
+            avatarUrl: data.user.avatarUrl,
+          }
+        });
+      } else {
+        console.error("❌ [UserProfile] Failed to get conversation:", res.status);
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception starting chat:", error);
+    }
+  };
+
   const handleBack = () => {
     const backTo = route.params?.backTo;
     if (backTo) {
@@ -419,6 +458,14 @@ export default function UserProfileScreen() {
               )}
             </Pressable>
           ) : null}
+
+          {/* Chat Button - Only if following OR profile is public */}
+          {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public') && (
+            <Pressable style={styles.chatButton} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+              <Text style={styles.chatButtonText}>Chat</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Posts Section - Only if not private or if friend */}
