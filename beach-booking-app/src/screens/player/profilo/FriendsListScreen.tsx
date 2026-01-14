@@ -171,7 +171,10 @@ export default function FriendsListScreen() {
           data={friends}
           keyExtractor={(item) => item.friendshipId || item.user._id}
           renderItem={renderItem}
-          contentContainerStyle={friends.length === 0 ? styles.emptyList : styles.list}
+          contentContainerStyle={[
+            { paddingBottom: 100 },
+            friends.length === 0 ? styles.emptyList : styles.list
+          ]}
           refreshing={refreshing}
           onRefresh={onRefresh}
           ListEmptyComponent={

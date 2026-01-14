@@ -109,10 +109,11 @@ ConversationSchema.index({ type: 1, user: 1, struttura: 1 }, {
   partialFilterExpression: { type: 'direct' }
 });
 
-// Per chat di gruppo: unique su match (un solo gruppo per match)
+// Per chat di gruppo match: unique su match (un solo gruppo per match)
+// Usa partialFilterExpression per applicare l'indice solo quando match esiste
 ConversationSchema.index({ type: 1, match: 1 }, { 
   unique: true,
-  partialFilterExpression: { type: 'group' }
+  partialFilterExpression: { type: 'group', match: { $exists: true } }
 });
 
 // Indici per ricerca veloce
