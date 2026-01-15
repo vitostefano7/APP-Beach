@@ -328,17 +328,38 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
 export const getOwnerUserSuggestions = async (req: AuthRequest, res: Response) => {
   try {
     const ownerId = new mongoose.Types.ObjectId(req.user!.id);
-    const { limit = 10 } = req.query;
+    const { limit = 10, strutturaId } = req.query;
 
-    console.log(`🎯 [getOwnerUserSuggestions] Calcolo suggerimenti per owner: ${ownerId}`);
+    console.log(`🎯 [getOwnerUserSuggestions] Calcolo suggerimenti per owner: ${ownerId}, strutturaId: ${strutturaId}`);
 
-    // Trova tutte le strutture dell'owner
-    const strutture = await Strutture.find({
-      owner: ownerId,
-      isDeleted: false,
-    }).select("_id name");
+    let strutture: any[];
+    let struttureIds: mongoose.Types.ObjectId[];
 
-    if (strutture.length === 0) {
+    if (strutturaId) {
+      // Valida che la struttura appartenga all'owner
+      const struttura = await Strutture.findOne({
+        _id: new mongoose.Types.ObjectId(strutturaId as string),
+        owner: ownerId,
+        isDeleted: false,
+      }).select("_id name");
+
+      if (!struttura) {
+        return res.status(403).json({ message: "Access denied to this structure" });
+      }
+
+      strutture = [struttura];
+      struttureIds = [struttura._id];
+    } else {
+      // Trova tutte le strutture dell'owner
+      strutture = await Strutture.find({
+        owner: ownerId,
+        isDeleted: false,
+      }).select("_id name");
+
+      struttureIds = strutture.map(s => s._id);
+    }
+
+    if (struttureIds.length === 0) {
       return res.json({
         success: true,
         suggestions: [],
@@ -347,8 +368,7 @@ export const getOwnerUserSuggestions = async (req: AuthRequest, res: Response) =
       });
     }
 
-    const struttureIds = strutture.map(s => s._id);
-    console.log(`🏢 [getOwnerUserSuggestions] Strutture owner: ${struttureIds.length}`);
+    console.log(`🏢 [getOwnerUserSuggestions] Strutture filtrate: ${struttureIds.length}`);
 
     // STEP 1: Utenti esclusi (già amici/follow)
     const excludedUsers = await getExcludedUsersForOwner(ownerId);

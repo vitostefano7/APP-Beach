@@ -26,11 +26,13 @@ interface OwnerSuggestedUser {
 interface UseOwnerSuggestedUsersProps {
   limit?: number;
   autoLoad?: boolean;
+  strutturaId?: string;
 }
 
 export const useOwnerSuggestedUsers = ({
   limit = 10,
-  autoLoad = true
+  autoLoad = true,
+  strutturaId
 }: UseOwnerSuggestedUsersProps = {}) => {
   const { token, user } = useContext(AuthContext);
 
@@ -50,7 +52,12 @@ export const useOwnerSuggestedUsers = ({
 
       console.log("Fetching owner user suggestions...");
 
-      const response = await fetch(`${API_URL}/owner/user-suggestions?limit=${limit}`, {
+      const queryParams = new URLSearchParams({ limit: limit.toString() });
+      if (strutturaId) {
+        queryParams.append('strutturaId', strutturaId);
+      }
+
+      const response = await fetch(`${API_URL}/owner/user-suggestions?${queryParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -76,7 +83,7 @@ export const useOwnerSuggestedUsers = ({
     } finally {
       setLoading(false);
     }
-  }, [token, user?.role, limit]);
+  }, [token, user?.role, limit, strutturaId]);
 
   const sendFriendRequest = useCallback(async (userId: string): Promise<boolean> => {
     if (!token) {

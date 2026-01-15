@@ -79,7 +79,7 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
 
     // Se è specificato strutturaId, filtra per quella struttura e i suoi following
     if (strutturaId) {
-      console.log('🏢 Filtro per struttura:', strutturaId);
+      console.log('?Y?N Filtro per struttura:', strutturaId);
       
       // Trova le strutture seguite da questa struttura
       const followedStrutture = await StrutturaFollower.find({
@@ -94,13 +94,23 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
       const allStrutturaIds = [strutturaId, ...followedStrutturaIds];
       console.log('  Totale strutture da mostrare:', allStrutturaIds.length);
 
-      // Mostra solo post delle strutture seguite + la struttura stessa
+      // Trova gli utenti seguiti da questa struttura
+      const followedUsers = await UserFollower.find({
+        struttura: strutturaId,
+        status: "active",
+      }).select("user");
+
+      const followedUserIds = followedUsers.map((f) => f.user.toString());
+      console.log('  Utenti seguiti:', followedUserIds.length);
+
+      // Mostra post di strutture seguite + struttura stessa + utenti seguiti
       queryFilter = {
-        isStrutturaPost: true,
-        struttura: { $in: allStrutturaIds },
+        $or: [
+          { struttura: { $in: allStrutturaIds }, isStrutturaPost: true },
+          { user: { $in: followedUserIds }, isStrutturaPost: false },
+        ],
       };
     }
-    // Se l'utente vuole vedere solo i post degli utenti/strutture seguiti
     else if (filter === "following" && req.user?.id) {
       // Trova utenti seguiti
       const followedUsers = await Friendship.find({

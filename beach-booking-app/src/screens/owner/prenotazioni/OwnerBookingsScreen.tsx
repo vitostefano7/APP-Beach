@@ -10,7 +10,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -282,7 +282,7 @@ export default function OwnerBookingsScreen() {
   const [filterUsername, setFilterUsername] = useState("");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
   const [filterCampo, setFilterCampo] = useState(route.params?.filterCampoId || "");
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDate, setFilterDate] = useState(route.params?.filterDate || "");
   
   const [strutture, setStrutture] = useState<Array<{ _id: string; name: string }>>([]);
   const [campi, setCampi] = useState<Array<{ _id: string; name: string; strutturaId: string }>>([]);
@@ -290,6 +290,13 @@ export default function OwnerBookingsScreen() {
   const [showStrutturaModal, setShowStrutturaModal] = useState(false);
   const [showCampoModal, setShowCampoModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+
+  // Quando viene passato un filterDate, imposta il filtro su "all"
+  useEffect(() => {
+    if (route.params?.filterDate) {
+      setFilter("all");
+    }
+  }, [route.params?.filterDate]);
 
   /* =========================
      LOAD DATA

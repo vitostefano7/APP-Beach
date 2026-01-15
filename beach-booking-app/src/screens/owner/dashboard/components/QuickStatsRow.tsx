@@ -7,6 +7,7 @@ interface QuickStatsRowProps {
   activeStrutture: number;
   totalStrutture: number;
   todayBookings: number;
+  ongoingBookings: number;
   monthRevenue: number;
   onStatsPress: (type: "strutture" | "bookings" | "revenue") => void;
 }
@@ -15,6 +16,7 @@ export default function QuickStatsRow({
   activeStrutture,
   totalStrutture,
   todayBookings,
+  ongoingBookings,
   monthRevenue,
   onStatsPress,
 }: QuickStatsRowProps) {
@@ -36,23 +38,25 @@ export default function QuickStatsRow({
       </Pressable>
 
       <Pressable
-        style={[styles.statCard, todayBookings > 0 && styles.statCardHighlight]}
+        style={[styles.statCard, ongoingBookings > 0 && styles.statCardHighlight]}
         onPress={() => onStatsPress("bookings")}
       >
         <View
           style={[
             styles.statIcon,
-            { backgroundColor: todayBookings > 0 ? "#E8F5E9" : "#F5F5F5" },
+            { backgroundColor: ongoingBookings > 0 ? "#E8F5E9" : "#F5F5F5" },
           ]}
         >
           <Ionicons
             name="calendar"
             size={20}
-            color={todayBookings > 0 ? "#4CAF50" : "#999"}
+            color={ongoingBookings > 0 ? "#4CAF50" : "#999"}
           />
         </View>
         <View style={styles.statContent}>
-          <Text style={styles.statValue}>{todayBookings}</Text>
+          <Text style={styles.statValue}>
+            {todayBookings > 0 ? `${todayBookings}/${todayBookings}` : "0/0"}
+          </Text>
           <Text style={styles.statLabel}>Oggi</Text>
         </View>
       </Pressable>

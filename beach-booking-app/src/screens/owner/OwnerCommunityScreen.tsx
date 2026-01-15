@@ -230,20 +230,12 @@ export default function OwnerCommunityScreen() {
       
       console.log('🔍 Total posts received:', allPosts.length);
       
-      // Filtra solo i posts delle strutture
-      const strutturaPosts = allPosts.filter((post: Post) => {
-        const isStruttura = post.isStrutturaPost === true;
-        if (isStruttura) {
-          console.log('🏢 Struttura post found:', post._id, post.struttura?.name);
-        }
-        return isStruttura;
-      });
-      
-      console.log('✅ Filtered struttura posts:', strutturaPosts.length);
+      const visiblePosts = allPosts;
+      console.log('?o. Visible posts:', visiblePosts.length);
       
       // Ripopola i commenti struttura dal backend (se hanno strutturaId)
       const newStructureComments = new Set<string>();
-      strutturaPosts.forEach(post => {
+      visiblePosts.forEach(post => {
         post.comments?.forEach(comment => {
           if (comment.struttura) {
             newStructureComments.add(comment._id);
@@ -251,9 +243,9 @@ export default function OwnerCommunityScreen() {
         });
       });
       setStructureComments(newStructureComments);
-      console.log('📋 Repopulated structure comments:', newStructureComments.size);
+      console.log('?Y"< Repopulated structure comments:', newStructureComments.size);
       
-      setPosts(strutturaPosts);
+      setPosts(visiblePosts);
       
     } catch (error: any) {
       console.error('💥 Exception in loadPosts:');

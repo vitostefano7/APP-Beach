@@ -19,6 +19,9 @@ import Friendship from "./models/Friendship";
 import Conversation from "./models/Conversazione";
 import Message from "./models/Message";
 import Notification from "./models/Notification";
+import StrutturaFollower from "./models/StrutturaFollower";
+import UserFollower from "./models/UserFollower";
+import Post from "./models/Post";
 
 /* =========================
    CONFIG
@@ -191,6 +194,9 @@ async function seed() {
 
     /* -------- CLEAN -------- */
     await Promise.all([
+      Post.deleteMany({}),
+      UserFollower.deleteMany({}),
+      StrutturaFollower.deleteMany({}),
       Message.deleteMany({}),
       Conversation.deleteMany({}),
       Notification.deleteMany({}),
@@ -623,6 +629,210 @@ async function seed() {
       const totImagesAssigned = strutture.reduce((acc: number, s: any) => acc + s.images.length, 0);
       console.log(`   📸 ${totImagesAssigned} immagini assegnate alle strutture (2-4 per struttura)`);
     }
+
+    /* -------- STRUTTURA FOLLOWERS -------- */
+    const strutturaFollowers: any[] = [];
+
+    // Utenti seguono strutture (players seguono varie strutture)
+    players.forEach((player: any, idx: number) => {
+      // Ogni player segue 1-3 strutture random
+      const numToFollow = randomInt(1, 3);
+      const shuffled = [...strutture].sort(() => 0.5 - Math.random());
+      
+      for (let i = 0; i < numToFollow && i < shuffled.length; i++) {
+        strutturaFollowers.push({
+          user: player._id,
+          struttura: (shuffled[i] as any)._id,
+          status: "active",
+          createdAt: new Date(Date.now() - randomInt(1, 60) * 24 * 60 * 60 * 1000),
+        });
+      }
+    });
+
+    // Mario segue specificamente le prime 3 strutture per i test
+    strutturaFollowers.push(
+      {
+        user: players[0]._id,
+        struttura: strutture[0]._id,
+        status: "active",
+        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      },
+      {
+        user: players[0]._id,
+        struttura: strutture[1]._id,
+        status: "active",
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      }
+    );
+
+    await StrutturaFollower.insertMany(strutturaFollowers);
+    console.log(`✅ Creati ${strutturaFollowers.length} StrutturaFollower (utenti seguono strutture)`);
+
+    /* -------- USER FOLLOWERS -------- */
+    const userFollowers: any[] = [];
+
+    // Strutture seguono utenti che hanno giocato nelle loro strutture
+    // Per ogni struttura, segui 3-5 player random
+    strutture.forEach((struttura: any) => {
+      const numToFollow = randomInt(3, 5);
+      const shuffled = [...players].sort(() => 0.5 - Math.random());
+      
+      for (let i = 0; i < numToFollow && i < shuffled.length; i++) {
+        userFollowers.push({
+          struttura: struttura._id,
+          user: (shuffled[i] as any)._id,
+          status: "active",
+          createdAt: new Date(Date.now() - randomInt(1, 45) * 24 * 60 * 60 * 1000),
+        });
+      }
+    });
+
+    // Prima struttura segue specificamente Mario, Giulia e Luca per i test
+    userFollowers.push(
+      {
+        struttura: strutture[0]._id,
+        user: players[0]._id, // Mario
+        status: "active",
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        struttura: strutture[0]._id,
+        user: players[1]._id, // Giulia
+        status: "active",
+        createdAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+      }
+    );
+
+    await UserFollower.insertMany(userFollowers);
+    console.log(`✅ Creati ${userFollowers.length} UserFollower (strutture seguono utenti)`);
+
+    /* -------- POSTS -------- */
+    const posts: any[] = [];
+
+    // POST UTENTI (15 post)
+    const postContents = [
+      "Che bella partita oggi! 🏐",
+      "Cerco compagni per una partita domani sera",
+      "Qualcuno disponibile per un 2v2?",
+      "Miglior campo dove ho giocato! 🔥",
+      "Chi viene a giocare questo weekend?",
+      "Alla ricerca di un team per il torneo",
+      "Fantastica serata di beach volley!",
+      "Qualcuno per una partita veloce?",
+      "Ho bisogno di migliorare il mio servizio, consigli?",
+      "Beach volley sotto le stelle ⭐",
+      "Partita epica oggi!",
+      "Chi è pronto per l'estate? 🏖️",
+      "Nuovo record personale!",
+      "Grazie a tutti per la bella partita!",
+      "Non vedo l'ora di giocare ancora!",
+    ];
+
+    for (let i = 0; i < 15; i++) {
+      const author = randomElement(players as any[]);
+      const content = randomElement(postContents);
+      const likesCount = randomInt(0, 15);
+      const likesUsers = new Set<string>();
+      
+      while (likesUsers.size < likesCount) {
+        const randomPlayer = randomElement(players as any[]);
+        likesUsers.add(randomPlayer._id.toString());
+      }
+
+      const commentsCount = randomInt(0, 5);
+      const comments: any[] = [];
+      
+      for (let c = 0; c < commentsCount; c++) {
+        const commenter = randomElement(players as any[]);
+        comments.push({
+          _id: new mongoose.Types.ObjectId(),
+          user: commenter._id,
+          text: randomElement([
+            "Grande!",
+            "Ci sono!",
+            "Quando?",
+            "Ottima idea!",
+            "Conta su di me",
+            "Sono d'accordo",
+            "Bellissimo!",
+          ]),
+          createdAt: new Date(Date.now() - randomInt(1, 10) * 60 * 60 * 1000),
+        });
+      }
+
+      posts.push({
+        user: author._id,
+        content,
+        likes: Array.from(likesUsers),
+        comments,
+        isStrutturaPost: false,
+        createdAt: new Date(Date.now() - randomInt(1, 20) * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // POST STRUTTURE (10 post)
+    const strutturaPostContents = [
+      "Nuovi orari disponibili per il weekend! 🎉",
+      "Torneo questo sabato, iscriviti ora!",
+      "Offerta speciale: sconto 20% su prenotazioni serali",
+      "I nostri campi sono pronti per voi! ☀️",
+      "Grazie a tutti per il vostro supporto!",
+      "Evento speciale in programma!",
+      "Nuova illuminazione LED installata!",
+      "Happy hour: prezzi ridotti dalle 18 alle 20",
+      "Weekend di beach volley: chi viene?",
+      "La stagione è iniziata alla grande!",
+    ];
+
+    for (let i = 0; i < 10; i++) {
+      const struttura = randomElement(strutture as any[]);
+      const content = randomElement(strutturaPostContents);
+      const likesCount = randomInt(5, 25);
+      const likesUsers = new Set<string>();
+      
+      while (likesUsers.size < likesCount) {
+        const randomPlayer = randomElement(players as any[]);
+        likesUsers.add(randomPlayer._id.toString());
+      }
+
+      const commentsCount = randomInt(0, 8);
+      const comments: any[] = [];
+      
+      for (let c = 0; c < commentsCount; c++) {
+        const commenter = randomElement(players as any[]);
+        const isStrutturaComment = Math.random() > 0.7; // 30% commenti dalla struttura
+        
+        comments.push({
+          _id: new mongoose.Types.ObjectId(),
+          user: commenter._id,
+          struttura: isStrutturaComment ? struttura._id : undefined,
+          text: randomElement([
+            "Ottimo!",
+            "Ci sarò!",
+            "Interessante",
+            "Grazie per l'info",
+            "Perfetto!",
+            "Come posso prenotare?",
+            "Fantastico!",
+            "Quando inizia?",
+          ]),
+          createdAt: new Date(Date.now() - randomInt(1, 15) * 60 * 60 * 1000),
+        });
+      }
+
+      posts.push({
+        user: struttura.owner,
+        content,
+        struttura: struttura._id,
+        isStrutturaPost: true,
+        likes: Array.from(likesUsers),
+        comments,
+        createdAt: new Date(Date.now() - randomInt(1, 15) * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    const savedPosts = await Post.insertMany(posts);
+    console.log(`✅ Creati ${savedPosts.length} post (${posts.filter(p => !p.isStrutturaPost).length} utenti, ${posts.filter(p => p.isStrutturaPost).length} strutture)`);
 
     /* -------- EVENTS (4) -------- */
     const eventsData = [
@@ -1269,6 +1479,9 @@ async function seed() {
     console.log("=".repeat(50));
     console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
     console.log(`🤝 Amicizie: ${friendships.length}`);
+    console.log(`👁️ StrutturaFollower: ${strutturaFollowers.length}`);
+    console.log(`👁️ UserFollower: ${userFollowers.length}`);
+    console.log(`📱 Post Community: ${savedPosts.length}`);
     console.log(`🏟️ Strutture: ${strutture.length}`);
     console.log(`⚽ Campi: ${campi.length}`);
     console.log(`📅 Giorni calendario: ${calendarDocs.length}`);
