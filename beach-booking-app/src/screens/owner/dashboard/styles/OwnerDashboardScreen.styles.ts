@@ -556,6 +556,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 14,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
+    marginBottom: 8,
   },
   matchSportBadgeFloating: {
     position: "absolute",

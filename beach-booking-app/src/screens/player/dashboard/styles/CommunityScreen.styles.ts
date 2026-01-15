@@ -117,7 +117,7 @@ export const styles = StyleSheet.create({
   // List Content
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 400, // Sarà dinamico in base alla tastiera
   },
 
   // Post Card
