@@ -121,8 +121,8 @@ export default function GroupChatScreen() {
   }, []);
 
   const loadMatchInfo = async () => {
-    // Se abbiamo già i dati nei params, usali
-    if (headerInfo && headerInfo.strutturaName) {
+    // Se abbiamo già i dati nei params E participantsCount è valido (>0), usali
+    if (headerInfo && headerInfo.strutturaName && headerInfo.participantsCount > 0) {
       console.log("📋 Uso headerInfo dai params:", headerInfo);
       setBookingInfo({
         bookingId: headerInfo.bookingId || paramBookingId,
@@ -130,7 +130,7 @@ export default function GroupChatScreen() {
         date: headerInfo.date,
         startTime: headerInfo.startTime,
         endTime: headerInfo.endTime,
-        participantsCount: headerInfo.participantsCount || 0,
+        participantsCount: headerInfo.participantsCount,
       });
       return;
     }
@@ -148,6 +148,7 @@ export default function GroupChatScreen() {
     try {
       // Se abbiamo matchId, carica direttamente il match
       if (matchId) {
+        console.log("🔍 Caricamento match dall'API perché participantsCount è 0 o mancante");
         const matchRes = await fetch(`${API_URL}/matches/${matchId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });

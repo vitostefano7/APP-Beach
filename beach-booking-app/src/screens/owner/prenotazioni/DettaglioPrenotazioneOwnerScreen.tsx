@@ -246,43 +246,11 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   if (!booking) return null;
 
   const isCancelled = booking.status === "cancelled";
-  const isMatchPassed = () => {
-    const now = new Date();
-    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
-    return now > matchEndTime;
-  };
-  const isMatchInProgress = () => {
-    const now = new Date();
-    const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
-    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
-    return now >= matchDateTime && now <= matchEndTime;
-  };
-  const getMatchStatusInfo = () => {
-    const match = booking.match;
-    if (!match) return { color: "#999", text: "Nessun Match", icon: "help-circle" as const };
-
-    const confirmedCount = match.players?.filter(p => p.status === "confirmed").length || 0;
-    const pendingCount = match.players?.filter(p => p.status === "pending").length || 0;
-
-    // Verifica se il match è in corso
-    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
-      return { color: "#FF9800", text: "In Corso", icon: "play-circle" as const };
-    }
-
-    switch (match.status) {
-      case "completed":
-        return { color: "#4CAF50", text: "Completato", icon: "checkmark-circle" as const };
-      case "cancelled":
-        return { color: "#F44336", text: "Cancellato", icon: "close-circle" as const };
-      case "full":
-        return { color: "#FF9800", text: "Completo", icon: "people" as const };
-      case "open":
-        return { color: "#2196F3", text: "Aperto", icon: "radio-button-on" as const };
-      default:
-        return { color: "#999", text: match.status, icon: "help-circle" as const };
-    }
-  };
-  const canInsertResult = !isCancelled && isMatchPassed() && !booking.match;
+  const bookingDate = new Date(booking.date + "T00:00:00");
+  const today = new Date(new Date().setHours(0, 0, 0, 0));
+  const isUpcoming = bookingDate >= today;
+  const isPast = bookingDate < today;
+  const canInsertResult = !isCancelled && isPast && !booking.match;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -330,7 +298,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             }}>
               <Ionicons 
                 name={booking.status === 'confirmed' 
-                  ? (isMatchPassed() ? 'checkmark-done-circle' : (isMatchInProgress() ? 'play-circle' : 'time')) 
+                  ? (isPast ? 'checkmark-done-circle' : 'time') 
                   : 'close-circle'
                 } 
                 size={18} 
@@ -342,9 +310,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 color: booking.status === 'confirmed' ? '#2E7D32' : '#C62828'
               }}>
                 {booking.status === 'confirmed' ? (
-                  isMatchPassed() ? 'Conclusa' :
-                  isMatchInProgress() ? 'In Corso' :
-                  'Prenotata'
+                  isPast ? 'Conclusa' : 'In corso'
                 ) : 'Cancellata'}
               </Text>
             </View>
@@ -475,25 +441,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 hasScore: !!booking.match.sets,
                 scoreOnly: !booking.match.players && !!booking.match.sets
               })}
-              
-              {/* Card Dettagli Match */}
-              <AnimatedCard delay={250}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="football" size={20} color="#2196F3" />
-                  <Text style={styles.cardTitle}>Dettagli Match</Text>
-                </View>
-                <View style={styles.matchStatusContainer}>
-                  {(() => {
-                    const statusInfo = getMatchStatusInfo();
-                    return (
-                      <View style={[styles.matchStatusBadge, { backgroundColor: statusInfo.color + '20' }]}>
-                        <Ionicons name={statusInfo.icon} size={18} color={statusInfo.color} />
-                        <Text style={[styles.matchStatusText, { color: statusInfo.color }]}>{statusInfo.text}</Text>
-                      </View>
-                    );
-                  })()}
-                </View>
-              </AnimatedCard>
               
               {/* MATCH SECTION CON GIOCATORI */}
               {booking.match.players && (
@@ -691,8 +638,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             </AnimatedButton>
           ) : null}
 
-          {!isCancelled && !isMatchPassed() && !isMatchInProgress() && (
-            <FadeInView delay={400} style={{ marginTop: 24 }}>
+          {!isCancelled && isUpcoming && (
+            <FadeInView delay={400}>
               <AnimatedButton style={styles.cancelButton} onPress={handleCancel}>
                 <Ionicons name="trash-outline" size={20} color="white" />
                 <Text style={styles.cancelButtonText}>Annulla Prenotazione</Text>

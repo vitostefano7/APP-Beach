@@ -1264,21 +1264,4 @@ export const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-
-  matchStatusContainer: {
-    alignItems: 'flex-start',
-    marginTop: 8,
-  },
-  matchStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  matchStatusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
 });

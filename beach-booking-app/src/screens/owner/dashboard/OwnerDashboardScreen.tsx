@@ -347,18 +347,9 @@ export default function OwnerDashboardScreen() {
   const activeStrutture = strutture.filter(s => s.isActive).length;
   const upcomingBookings = todayBookings.filter(b => {
     const now = new Date();
-    const bookingEnd = new Date(`${b.date}T${b.endTime}`);
-    // Includi prenotazioni future e quelle in corso (non ancora terminate)
-    return bookingEnd > now;
+    const bookingTime = new Date(`${b.date}T${b.startTime}`);
+    return bookingTime > now;
   });
-
-  // Calcola prenotazioni in corso
-  const now = new Date();
-  const ongoingBookingsCount = todayBookings.filter(b => {
-    const bookingStart = new Date(`${b.date}T${b.startTime}`);
-    const bookingEnd = new Date(`${b.date}T${b.endTime}`);
-    return now >= bookingStart && now <= bookingEnd;
-  }).length;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -388,13 +379,10 @@ export default function OwnerDashboardScreen() {
           activeStrutture={activeStrutture}
           totalStrutture={strutture.length}
           todayBookings={todayBookings.length}
-          ongoingBookings={ongoingBookingsCount}
           monthRevenue={monthRevenue}
           onStatsPress={(type) => {
             if (type === "bookings") {
-              // Naviga a OwnerBookings filtrato per oggi
-              const today = new Date().toISOString().split("T")[0];
-              navigation.navigate("OwnerBookings", { filterDate: today });
+              navigation.navigate("OwnerBookings");
             } else if (type === "strutture") {
               navigation.navigate("Strutture");
             }
@@ -415,41 +403,35 @@ export default function OwnerDashboardScreen() {
               </Pressable>
             </View>
 
-            {upcomingBookings.slice(0, 3).map((booking) => {
-              const now = new Date();
-              const bookingStart = new Date(`${booking.date}T${booking.startTime}`);
-              const bookingEnd = new Date(`${booking.date}T${booking.endTime}`);
-              const isOngoing = now >= bookingStart && now <= bookingEnd;
-              
-              return (
-                <BookingTodayCard
-                  key={booking._id}
-                  booking={booking}
-                  isOngoing={isOngoing}
-                  onPress={() =>
-                    navigation.navigate("OwnerDettaglioPrenotazione", {
-                      bookingId: booking._id,
-                    })
-                  }
-                  onCall={() => handleCallUser(booking.userPhone)}
-                  onChat={() => handleChatUser(booking._id)}
-                />
-              );
-            })}
+            {upcomingBookings.slice(0, 3).map((booking) => (
+              <BookingTodayCard
+                key={booking._id}
+                booking={booking}
+                onPress={() =>
+                  navigation.navigate("OwnerDettaglioPrenotazione", {
+                    bookingId: booking._id,
+                  })
+                }
+                onCall={() => handleCallUser(booking.userPhone)}
+                onChat={() => handleChatUser(booking._id)}
+              />
+            ))}
           </View>
         )}
 
         {/* Partite in Corso / Prossime */}
-        <View style={[styles.section, { marginBottom: 5 }]}>
+        <View style={[styles.section, { marginBottom: 24 }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Partite in Programma</Text>
-            <Pressable
-              onPress={() => navigation.navigate("OwnerBookings")}
-              style={styles.sectionLink}
-            >
-              <Text style={styles.sectionLinkText}>Prenotazioni</Text>
-              <Ionicons name="chevron-forward" size={14} color="#2196F3" />
-            </Pressable>
+            <View style={styles.sectionTitle}>
+                <Pressable
+                onPress={() => navigation.navigate("OwnerBookings")}
+                style={styles.sectionLink}
+              >
+                <Text style={styles.sectionLinkText}>Prenotazioni</Text>
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+              </Pressable>
+            </View>
           </View>
 
           {upcomingMatches.length > 0 ? (

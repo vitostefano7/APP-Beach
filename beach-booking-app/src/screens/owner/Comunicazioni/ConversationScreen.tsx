@@ -354,7 +354,7 @@ export default function OwnerConversationsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Comunicazioni</Text>
+        <Text style={styles.headerTitle}>Messaggi</Text>
 
         <View style={styles.filterContainer}>
           <Pressable

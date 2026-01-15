@@ -22,7 +22,6 @@ interface Booking {
 
 interface BookingTodayCardProps {
   booking: Booking;
-  isOngoing?: boolean;
   onPress: () => void;
   onCall: () => void;
   onChat: () => void;
@@ -30,7 +29,6 @@ interface BookingTodayCardProps {
 
 export default function BookingTodayCard({
   booking,
-  isOngoing = false,
   onPress,
   onCall,
   onChat,
@@ -71,16 +69,7 @@ export default function BookingTodayCard({
   };
 
   return (
-    <Pressable 
-      style={[
-        styles.bookingCard,
-        isOngoing && {
-          borderLeftWidth: 4,
-          borderLeftColor: "#4CAF50",
-        }
-      ]} 
-      onPress={onPress}
-    >
+    <Pressable style={styles.bookingCard} onPress={onPress}>
       <View style={styles.bookingHeader}>
         <View style={styles.bookingTimeWrapper}>
           <Text style={styles.bookingTime}>

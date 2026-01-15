@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -60,24 +59,18 @@ export default function OwnerCercaAmiciScreen() {
   const [recentSearches, setRecentSearches] = useState<SearchResult[]>([]);
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
-  const [userStructures, setUserStructures] = useState<Struttura[]>([]);
-  const [loadingStructures, setLoadingStructures] = useState(false);
-  const [structureModalVisible, setStructureModalVisible] = useState(false);
-  const [selectedStructure, setSelectedStructure] = useState<Struttura | null>(null);
-  const [localSuggestedUsers, setLocalSuggestedUsers] = useState<any[]>([]);
-
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Hook per utenti suggeriti per owner
   const {
     suggestions: suggestedUsers,
     loading: suggestionsLoading,
-  } = useOwnerSuggestedUsers({ limit: 10, strutturaId: selectedStructure?._id });
+    sendFriendRequest,
+  } = useOwnerSuggestedUsers({ limit: 10 });
 
-  // Load recent searches and structures on mount
+  // Load recent searches on mount
   useEffect(() => {
     loadRecentSearches();
-    loadUserStructures();
   }, []);
 
   const loadRecentSearches = async () => {
@@ -127,42 +120,6 @@ export default function OwnerCercaAmiciScreen() {
       console.error('Errore refresh ricerche recenti:', error);
     }
   };
-
-  const loadUserStructures = async () => {
-    console.log('🏢 [OwnerCercaAmici] Loading user structures...');
-    try {
-      setLoadingStructures(true);
-      const response = await fetch(`${API_URL}/strutture/owner/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Strutture caricate:', data.length);
-        setUserStructures(data);
-      } else {
-        console.error('❌ Errore caricamento strutture:', response.status);
-        setUserStructures([]);
-      }
-    } catch (error) {
-      console.error('💥 Errore caricamento strutture:', error);
-      setUserStructures([]);
-    } finally {
-      setLoadingStructures(false);
-    }
-  };
-
-  useEffect(() => {
-    if (userStructures.length > 0 && !selectedStructure) {
-      setSelectedStructure(userStructures[0]);
-    }
-  }, [userStructures]);
-
-  useEffect(() => {
-    setLocalSuggestedUsers(suggestedUsers);
-  }, [suggestedUsers]);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -238,40 +195,7 @@ export default function OwnerCercaAmiciScreen() {
   };
 
   const handleSendFriendRequest = async (userId: string) => {
-    if (!token) {
-      console.error("Token non disponibile");
-      return false;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/friends/request`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          receiverId: userId,
-          strutturaId: selectedStructure?._id,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Errore invio richiesta amicizia:', errorData);
-        return false;
-      }
-
-      // Aggiorna lo stato locale per gli utenti suggeriti
-      setLocalSuggestedUsers(prev => prev.map(s => 
-        s.user._id === userId ? { ...s, friendshipStatus: 'pending' } : s
-      ));
-
-      return true;
-    } catch (err) {
-      console.error('Errore invio richiesta amicizia:', err);
-      return false;
-    }
+    await sendFriendRequest(userId);
   };
 
   const handleFollowStruttura = async (strutturaId: string) => {
@@ -284,11 +208,7 @@ export default function OwnerCercaAmiciScreen() {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          strutturaId: selectedStructure?._id,
-        }),
       });
 
       if (response.ok) {
@@ -349,16 +269,16 @@ export default function OwnerCercaAmiciScreen() {
     let reasonText = '';
     switch (reason.type) {
       case 'most_games_played':
-        reasonText = `Ha giocato ${reason.details.matchCount} partite in questa struttura`;
+        reasonText = `Ha giocato ${reason.details.matchCount} partite`;
         break;
       case 'follows_structure':
-        reasonText = `Segue questa struttura`;
+        reasonText = `Segue ${reason.details.strutturaName || 'la struttura'}`;
         break;
       case 'vip_user':
-        reasonText = `VIP: ha giocato molte partite`;
+        reasonText = `Utente ${reason.details.vipLevel || 'VIP'}`;
         break;
       default:
-        reasonText = 'altro';
+        reasonText = 'Suggerito per te';
     }
 
     return (
@@ -389,7 +309,7 @@ export default function OwnerCercaAmiciScreen() {
         >
           <Text style={styles.friendRequestText}>
             {item.friendshipStatus === 'pending' ? 'In attesa' :
-             item.friendshipStatus === 'accepted' ? 'Amici' : 'Segui'}
+             item.friendshipStatus === 'accepted' ? 'Amici' : 'Aggiungi'}
           </Text>
         </Pressable>
       </Pressable>
@@ -462,8 +382,7 @@ export default function OwnerCercaAmiciScreen() {
   );
 
   return (
-    <>
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -472,28 +391,7 @@ export default function OwnerCercaAmiciScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Cerca Amici</Text>
-          {userStructures.length > 0 && (
-            <Pressable
-              style={styles.structureSelector}
-              onPress={() => setStructureModalVisible(true)}
-            >
-              {selectedStructure && (
-                <>
-                  <Image
-                    source={{ uri: selectedStructure.images[0] }}
-                    style={styles.selectedStructureAvatar}
-                  />
-                  <Text style={styles.selectedStructureName} numberOfLines={1}>
-                    {selectedStructure.name}
-                  </Text>
-                </>
-              )}
-              <Ionicons name="chevron-down" size={16} color="#666" />
-            </Pressable>
-          )}
-        </View>
+        <Text style={styles.headerTitle}>Cerca Amici</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -524,18 +422,17 @@ export default function OwnerCercaAmiciScreen() {
       </View>
 
       {/* Suggested Users Carousel - only when not searching */}
-      {!searchQuery && localSuggestedUsers.length > 0 && (
+      {!searchQuery && suggestedUsers.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Suggerimenti per te</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Suggerimenti per te</Text>
           <FlatList
-            data={localSuggestedUsers}
+            data={suggestedUsers}
             keyExtractor={(item) => item.user._id}
             renderItem={renderSuggestedUser}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.suggestionsList}
+            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
           />
         </View>
       )}
@@ -543,9 +440,7 @@ export default function OwnerCercaAmiciScreen() {
       {/* Recent Searches - only when not searching */}
       {!searchQuery && recentSearches.length > 0 && (
         <View style={styles.recentSearchesContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Ricerche recenti</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Ricerche recenti</Text>
           <FlatList
             data={recentSearches}
             keyExtractor={(item) => item._id}
@@ -578,129 +473,50 @@ export default function OwnerCercaAmiciScreen() {
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
-
-    <Modal
-      visible={structureModalVisible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setStructureModalVisible(false)}
-    >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cambia struttura</Text>
-              <Pressable
-                onPress={() => setStructureModalVisible(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </Pressable>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Seleziona con quale struttura operare
-            </Text>
-
-            <FlatList
-              data={userStructures}
-              keyExtractor={(item) => item._id}
-              renderItem={({ item }) => {
-                const isSelected = selectedStructure?._id === item._id;
-                return (
-                  <Pressable
-                    style={[
-                      styles.structureOption,
-                      isSelected && styles.structureOptionSelected
-                    ]}
-                    onPress={() => {
-                      console.log('🏢 Structure changed to:', item.name);
-                      setSelectedStructure(item);
-                      setStructureModalVisible(false);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: item.images[0] }}
-                      style={styles.structureOptionImage}
-                    />
-                    <View style={styles.structureOptionInfo}>
-                      <Text style={styles.structureOptionName}>{item.name}</Text>
-                      <Text style={styles.structureOptionLocation}>
-                        {item.location.city}
-                      </Text>
-                    </View>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
-                    )}
-                  </Pressable>
-                );
-              }}
-              contentContainerStyle={styles.structuresList}
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
-        </View>
-      </Modal>
-    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  headerCenter: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  structureSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  selectedStructureAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginRight: 8,
-  },
-  selectedStructureName: {
-    fontSize: 14,
-    color: '#666',
-    flex: 1,
+    fontWeight: '600',
+    color: '#212121',
   },
   searchContainer: {
     backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e0e0e0',
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    borderRadius: 25,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginBottom: 12,
   },
   searchIcon: {
@@ -709,59 +525,49 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: '#333',
   },
   listContent: {
     paddingBottom: 20,
   },
   recentSearchesContainer: {
-    marginTop: 16,
-    marginBottom: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 20,
+    marginHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 12,
   },
   recentSearchesList: {
-    paddingRight: 16,
+    paddingRight: 20,
   },
   recentSearchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
     backgroundColor: 'white',
+    padding: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
     marginRight: 12,
     minWidth: 200,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   recentSearchInfo: {
     flex: 1,
     marginLeft: 12,
   },
   recentSearchName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212121',
   },
   recentSearchUsername: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
   },
   suggestionCard: {
@@ -779,16 +585,16 @@ const styles = StyleSheet.create({
   suggestionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     marginBottom: 12,
   },
   suggestionInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   suggestionName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: '600',
+    color: '#212121',
   },
   suggestionUsername: {
     fontSize: 14,
@@ -830,36 +636,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   suggestionsContainer: {
-    marginTop: 16,
-    marginBottom: 1,
+    marginTop: 20,
+    paddingHorizontal: 20,
   },
   suggestionsList: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
   },
   suggestionCardCarousel: {
     backgroundColor: 'white',
-    width: screenWidth * 0.75,
-    padding: 12,
+    width: screenWidth * 0.8,
+    padding: 16,
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    marginRight: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginRight: 12,
   },
   userCard: {
     backgroundColor: 'white',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: 12,
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -879,19 +684,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212121',
   },
   cardUsername: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#666',
     marginTop: 2,
   },
   followButtonSmall: {
     backgroundColor: '#2196F3',
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 20,
     alignSelf: 'flex-start',
   },
@@ -902,73 +707,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-  },
-  structuresList: {
-    paddingBottom: 20,
-  },
-  structureOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    marginBottom: 8,
-  },
-  structureOptionSelected: {
-    backgroundColor: '#e3f2fd',
-    borderWidth: 1,
-    borderColor: '#2196F3',
-  },
-  structureOptionImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  structureOptionInfo: {
-    flex: 1,
-  },
-  structureOptionName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  structureOptionLocation: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
   },
 });
