@@ -464,6 +464,7 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     const users = await User.find({
       username: { $regex: q.toLowerCase(), $options: "i" },
       isActive: true,
+      role: { $ne: 'owner' }, // Escludi owner dalla ricerca
     })
       .select("username name surname avatarUrl preferredSports")
       .limit(20);

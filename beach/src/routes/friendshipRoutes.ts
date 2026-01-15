@@ -67,4 +67,11 @@ router.get("/status/:userId", (req, res) => friendshipController.getFriendshipSt
 // Statistiche amicizie
 router.get("/stats", (req, res) => friendshipController.getFriendshipStats(req as AuthRequest, res));
 
+/**
+ * RICERCA UTENTI
+ */
+
+// Cerca utenti per username
+router.get("/search", (req, res) => friendshipController.searchUsers(req as AuthRequest, res));
+
 export default router;

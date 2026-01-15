@@ -67,7 +67,7 @@ export default function StrutturaQuickCard({
           <View style={styles.strutturaBookingsBadge}>
             <Ionicons name="calendar" size={12} color="#2196F3" />
             <Text style={styles.strutturaBookingsText}>
-              {todayBookingsCount} {todayBookingsCount === 1 ? "prenotazione" : "prenotazioni"}
+              {todayBookingsCount} {todayBookingsCount === 1 ? "prenotazione oggi" : "prenotazioni oggi"}
             </Text>
           </View>
         )}

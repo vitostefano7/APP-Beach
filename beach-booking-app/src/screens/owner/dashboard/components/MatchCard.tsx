@@ -263,29 +263,6 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
               {isPublic ? "Pubblica" : "Privata"}
             </Text>
           </View>
-          
-          <View style={styles.matchStatusIndicator}>
-            <View
-              style={[
-                styles.matchStatusDot,
-                {
-                  backgroundColor:
-                    status === "completed"
-                      ? "#4CAF50"
-                      : status === "cancelled"
-                      ? "#f44336"
-                      : "#FF9800",
-                },
-              ]}
-            />
-            <Text style={styles.matchStatusLabel}>
-              {status === "completed"
-                ? "Completata"
-                : status === "cancelled"
-                ? "Annullata"
-                : "Programmata"}
-            </Text>
-          </View>
         </View>
       </View>
     </Pressable>

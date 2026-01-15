@@ -321,6 +321,7 @@ export const styles = StyleSheet.create({
   ========================= */
   horizontalScroll: {
     paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 8,
   },
 
@@ -491,6 +492,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 20,
     marginRight: 8,
+    marginBottom: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -500,7 +502,9 @@ export const styles = StyleSheet.create({
   },
   matchGradientHeader: {
     padding: 9,
-    paddingBottom: 0,
+    paddingBottom: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   matchDateTimeRow: {
     flexDirection: "row",
@@ -556,6 +560,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 14,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
+    marginBottom: 8,
   },
   matchSportBadgeFloating: {
     position: "absolute",

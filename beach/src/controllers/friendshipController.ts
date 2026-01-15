@@ -1567,4 +1567,113 @@ export const friendshipController = {
 
     return result.length > 0 ? result[0].uniqueUsers : 0;
   },
+
+  /**
+   * 12. CERCA UTENTI PER USERNAME
+   * GET /api/friends/search?q=username
+   */
+  async searchUsers(req: AuthRequest, res: Response) {
+    try {
+      console.log("🔍 [searchUsers] User:", req.user?.id);
+      
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "Non autenticato" });
+      }
+
+      const userId = new Types.ObjectId(req.user.id);
+      const query = (req.query.q as string) || "";
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      console.log("Query ricerca:", query);
+
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({ error: "Query must be at least 2 characters" });
+      }
+
+      // Trova utenti bloccati
+      const blockedRelations = await Friendship.find({
+        $or: [
+          { requester: userId, status: "blocked" },
+          { recipient: userId, status: "blocked" },
+        ],
+      }).select("requester recipient");
+
+      const blockedUserIds = blockedRelations
+        .map((rel) => {
+          if (rel.requester.equals(userId)) return rel.recipient;
+          return rel.requester;
+        })
+        .map((id) => id.toString());
+
+      console.log("Utenti bloccati:", blockedUserIds.length);
+
+      // Cerca utenti per username o nome (escludi owner)
+      const searchQuery = {
+        _id: { $ne: userId, $nin: blockedUserIds },
+        isActive: true,
+        role: { $ne: 'owner' }, // Escludi owner dalla ricerca
+        $or: [
+          { username: { $regex: query, $options: "i" } },
+          { name: { $regex: query, $options: "i" } },
+          { surname: { $regex: query, $options: "i" } },
+        ],
+      };
+
+      console.log("Query MongoDB:", JSON.stringify(searchQuery, null, 2));
+
+      const users = await User.find(searchQuery)
+        .select("name surname username avatarUrl preferredSports location")
+        .sort({ username: 1 })
+        .skip(offset)
+        .limit(limit)
+        .lean();
+
+      console.log("Utenti trovati dalla query:", users.length);
+      if (users.length > 0) {
+        console.log("Primo utente:", {
+          id: users[0]._id,
+          name: users[0].name,
+          username: users[0].username,
+        });
+      }
+
+      // Verifica friendship status con ciascun utente
+      const userIds = users.map((u) => u._id);
+      const friendships = await Friendship.find({
+        requester: userId,
+        recipient: { $in: userIds },
+      }).select("recipient status");
+
+      const friendshipMap = new Map(
+        friendships.map((f) => [f.recipient.toString(), f.status])
+      );
+
+      const usersWithStatus = users.map((user) => ({
+        ...user,
+        friendshipStatus: friendshipMap.get(user._id.toString()) || "none",
+      }));
+
+      const total = await User.countDocuments({
+        _id: { $ne: userId, $nin: blockedUserIds },
+        isActive: true,
+        $or: [
+          { username: { $regex: query, $options: "i" } },
+          { name: { $regex: query, $options: "i" } },
+          { surname: { $regex: query, $options: "i" } },
+        ],
+      });
+
+      console.log("✅ Utenti trovati:", usersWithStatus.length);
+
+      res.json({
+        users: usersWithStatus,
+        total,
+        hasMore: offset + limit < total,
+      });
+    } catch (error) {
+      console.error("❌ [searchUsers] Errore:", error);
+      res.status(500).json({ error: "Errore nella ricerca utenti" });
+    }
+  },
 };

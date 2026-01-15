@@ -7,6 +7,7 @@ import {
   Pressable,
   ActivityIndicator,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../../../context/AuthContext';
 import API_URL from '../../../config/api';
 import { useSuggestedFriends } from './hooks/useSuggestedFriends';
+import { useOwnerSuggestedUsers } from './hooks/useOwnerSuggestedUsers';
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import { StyleSheet } from 'react-native';
 import Avatar from '../../../components/Avatar/Avatar';
@@ -33,6 +35,18 @@ interface SearchResult {
   mutualFriendsCount?: number;
 }
 
+interface Struttura {
+  _id: string;
+  name: string;
+  description?: string;
+  images: string[];
+  location: {
+    address: string;
+    city: string;
+  };
+  isFollowing?: boolean;
+}
+
 export default function CercaAmiciScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
@@ -42,15 +56,21 @@ export default function CercaAmiciScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<SearchResult[]>([]);
+  const [searchType, setSearchType] = useState<'users' | 'strutture'>('users');
+  const [struttureResults, setStruttureResults] = useState<Struttura[]>([]);
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Hook per amici suggeriti
+  // Hook per amici suggeriti (diverso per owner e player)
+  const isOwner = user?.role === 'owner';
   const {
     suggestions: suggestedFriends,
     loading: suggestionsLoading,
     sendFriendRequest,
-  } = useSuggestedFriends({ limit: 10 });
+  } = isOwner
+    ? useOwnerSuggestedUsers({ limit: 10 })
+    : useSuggestedFriends({ limit: 10 });
 
   // Load recent searches on mount
   useEffect(() => {
@@ -174,30 +194,74 @@ export default function CercaAmiciScreen() {
       setSearchLoading(true);
       setHasSearched(true);
 
-      console.log('🔍 Searching for:', query);
-      const response = await fetch(
-        `${API_URL}/users/search?q=${encodeURIComponent(query)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      if (searchType === 'users') {
+        console.log('🔍 Searching for users:', query);
+        const response = await fetch(
+          `${API_URL}/users/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        console.log('Response status:', response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Search results:', data);
+          setSearchResults(data.users || data || []);
+        } else {
+          const errorText = await response.text();
+          console.error('Errore ricerca:', response.status, errorText);
+          setSearchResults([]);
         }
-      );
-
-      console.log('Response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Search results:', data);
-        setSearchResults(data.users || data || []);
       } else {
-        const errorText = await response.text();
-        console.error('Errore ricerca:', response.status, errorText);
-        setSearchResults([]);
+        console.log('🔍 Searching for strutture:', query);
+        const response = await fetch(
+          `${API_URL}/community/strutture/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          // Per ogni struttura, verifica se è già seguita
+          const struttureWithFollowStatus = await Promise.all(
+            data.strutture.map(async (struttura: Struttura) => {
+              try {
+                const statusResponse = await fetch(
+                  `${API_URL}/community/strutture/${struttura._id}/follow-status`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
+                );
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.json();
+                  return { ...struttura, isFollowing: statusData.isFollowing };
+                }
+              } catch (error) {
+                console.error('Errore verifica follow status:', error);
+              }
+              return { ...struttura, isFollowing: false };
+            })
+          );
+          setStruttureResults(struttureWithFollowStatus);
+        } else {
+          const errorText = await response.text();
+          console.error('Errore ricerca strutture:', response.status, errorText);
+          setStruttureResults([]);
+        }
       }
     } catch (error) {
-      console.error('Errore ricerca utenti:', error);
+      console.error('Errore ricerca:', error);
       setSearchResults([]);
+      setStruttureResults([]);
     } finally {
       setSearchLoading(false);
     }
@@ -230,6 +294,70 @@ export default function CercaAmiciScreen() {
     navigation.navigate('ProfiloUtente', {
       userId: friendId,
     });
+  };
+
+  const handleFollowStruttura = async (strutturaId: string) => {
+    try {
+      setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
+
+      const response = await fetch(`${API_URL}/community/strutture/${strutturaId}/follow`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setStruttureResults((prev) =>
+          prev.map((s) =>
+            s._id === strutturaId ? { ...s, isFollowing: true } : s
+          )
+        );
+      } else {
+        const error = await response.json();
+        console.error('Errore follow struttura:', error);
+      }
+    } catch (error) {
+      console.error('Errore follow struttura:', error);
+    } finally {
+      setFollowingInProgress((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(strutturaId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleUnfollowStruttura = async (strutturaId: string) => {
+    try {
+      setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
+
+      const response = await fetch(`${API_URL}/community/strutture/${strutturaId}/follow`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setStruttureResults((prev) =>
+          prev.map((s) =>
+            s._id === strutturaId ? { ...s, isFollowing: false } : s
+          )
+        );
+      } else {
+        const error = await response.json();
+        console.error('Errore unfollow struttura:', error);
+      }
+    } catch (error) {
+      console.error('Errore unfollow struttura:', error);
+    } finally {
+      setFollowingInProgress((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(strutturaId);
+        return newSet;
+      });
+    }
   };
 
   const renderSearchResult = ({ item }: { item: SearchResult }) => {
@@ -294,6 +422,73 @@ export default function CercaAmiciScreen() {
     );
   };
 
+  const renderStrutturaResult = ({ item }: { item: Struttura }) => {
+    const isProcessing = followingInProgress.has(item._id);
+
+    return (
+      <Pressable
+        style={styles.strutturaCard}
+        onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item._id })}
+      >
+        <View style={styles.strutturaLeft}>
+          {item.images[0] ? (
+            <Image
+              source={{ uri: item.images[0] }}
+              style={styles.strutturaImage}
+            />
+          ) : (
+            <View style={styles.strutturaImagePlaceholder}>
+              <Ionicons name="business" size={30} color="#2196F3" />
+            </View>
+          )}
+
+          <View style={styles.strutturaInfo}>
+            <Text style={styles.strutturaName} numberOfLines={1}>{item.name}</Text>
+            <View style={styles.strutturaLocation}>
+              <Ionicons name="location" size={12} color="#666" />
+              <Text style={styles.strutturaLocationText} numberOfLines={1}>
+                {item.location.city}
+              </Text>
+            </View>
+            {item.description && (
+              <Text style={styles.strutturaDescription} numberOfLines={1}>
+                {item.description}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.strutturaRight}>
+          {item.isFollowing ? (
+            <Pressable
+              style={styles.followingButton}
+              onPress={() => handleUnfollowStruttura(item._id)}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color="#4CAF50" />
+              ) : (
+                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+              )}
+            </Pressable>
+          ) : (
+            <Pressable
+              style={styles.followStrutturaButton}
+              onPress={() => handleFollowStruttura(item._id)}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="add-circle" size={20} color="#fff" />
+              )}
+            </Pressable>
+          )}
+        </View>
+      </Pressable>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header with integrated search */}
@@ -309,18 +504,62 @@ export default function CercaAmiciScreen() {
           <Ionicons name="search" size={20} color="#999" />
           <TextInput
             style={styles.headerSearchInput}
-            placeholder="Cerca amici..."
+            placeholder={searchType === 'users' ? 'Cerca amici...' : 'Cerca strutture...'}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
+            <Pressable onPress={() => {
+              setSearchQuery('');
+              setSearchResults([]);
+              setStruttureResults([]);
+              setHasSearched(false);
+            }}>
               <Ionicons name="close-circle" size={20} color="#999" />
             </Pressable>
           )}
         </View>
+      </View>
+
+      {/* Tab Switcher */}
+      <View style={styles.tabSwitcher}>
+        <Pressable
+          style={[styles.tabButton, searchType === 'users' && styles.tabButtonActive]}
+          onPress={() => {
+            setSearchType('users');
+            setSearchQuery('');
+            setHasSearched(false);
+          }}
+        >
+          <Ionicons
+            name="people"
+            size={20}
+            color={searchType === 'users' ? '#2196F3' : '#999'}
+          />
+          <Text style={[styles.tabButtonText, searchType === 'users' && styles.tabButtonTextActive]}>
+            Utenti
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.tabButton, searchType === 'strutture' && styles.tabButtonActive]}
+          onPress={() => {
+            setSearchType('strutture');
+            setSearchQuery('');
+            setHasSearched(false);
+          }}
+        >
+          <Ionicons
+            name="business"
+            size={20}
+            color={searchType === 'strutture' ? '#2196F3' : '#999'}
+          />
+          <Text style={[styles.tabButtonText, searchType === 'strutture' && styles.tabButtonTextActive]}>
+            Strutture
+          </Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -331,7 +570,9 @@ export default function CercaAmiciScreen() {
             {!hasSearched && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Persone che potresti conoscere</Text>
+                  <Text style={styles.sectionTitle}>
+                    {isOwner ? 'Utenti da contattare' : 'Persone che potresti conoscere'}
+                  </Text>
                   {suggestedFriends && suggestedFriends.length > 0 && (
                     <View style={styles.countBadge}>
                       <Text style={styles.countText}>{suggestedFriends.length}</Text>
@@ -380,8 +621,8 @@ export default function CercaAmiciScreen() {
               </View>
             )}
 
-            {/* Recent Searches - Show only when not searching */}
-            {!hasSearched && recentSearches.length > 0 && (
+            {/* Recent Searches - Show only when not searching and users tab */}
+            {!hasSearched && searchType === 'users' && recentSearches.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Visti di recente</Text>
@@ -437,7 +678,9 @@ export default function CercaAmiciScreen() {
                   <Text style={styles.sectionTitle}>
                     {searchLoading
                       ? 'Ricerca in corso...'
-                      : `Risultati (${searchResults.length})`}
+                      : searchType === 'users'
+                      ? `Risultati (${searchResults.length})`
+                      : `Risultati (${struttureResults.length})`}
                   </Text>
                 </View>
 
@@ -446,22 +689,42 @@ export default function CercaAmiciScreen() {
                     <ActivityIndicator size="large" color="#2196F3" />
                     <Text style={styles.loadingText}>Cercando...</Text>
                   </View>
-                ) : searchResults.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Ionicons name="search-outline" size={64} color="#ccc" />
-                    <Text style={styles.emptyTitle}>Nessun risultato</Text>
-                    <Text style={styles.emptyText}>
-                      Prova a cercare con un nome o username diverso
-                    </Text>
-                  </View>
+                ) : searchType === 'users' ? (
+                  searchResults.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="search-outline" size={64} color="#ccc" />
+                      <Text style={styles.emptyTitle}>Nessun risultato</Text>
+                      <Text style={styles.emptyText}>
+                        Prova a cercare con un nome o username diverso
+                      </Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={searchResults}
+                      renderItem={renderSearchResult}
+                      keyExtractor={(item) => item._id}
+                      scrollEnabled={false}
+                      contentContainerStyle={{ paddingHorizontal: 16 }}
+                    />
+                  )
                 ) : (
-                  <FlatList
-                    data={searchResults}
-                    renderItem={renderSearchResult}
-                    keyExtractor={(item) => item._id}
-                    scrollEnabled={false}
-                    contentContainerStyle={{ paddingHorizontal: 16 }}
-                  />
+                  struttureResults.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="business-outline" size={64} color="#ccc" />
+                      <Text style={styles.emptyTitle}>Nessuna struttura trovata</Text>
+                      <Text style={styles.emptyText}>
+                        Prova a cercare con un nome o città diversa
+                      </Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={struttureResults}
+                      renderItem={renderStrutturaResult}
+                      keyExtractor={(item) => item._id}
+                      scrollEnabled={false}
+                      contentContainerStyle={{ paddingHorizontal: 16 }}
+                    />
+                  )
                 )}
               </View>
             )}
@@ -737,5 +1000,112 @@ const styles = StyleSheet.create({
   },
   recentUserSportIcon: {
     fontSize: 12,
+  },
+  tabSwitcher: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 12,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+  },
+  tabButtonActive: {
+    backgroundColor: '#E3F2FD',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+  },
+  tabButtonTextActive: {
+    color: '#2196F3',
+  },
+  strutturaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  strutturaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  strutturaImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#e0e0e0',
+  },
+  strutturaImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  strutturaInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  strutturaName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#212121',
+  },
+  strutturaLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  strutturaLocationText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  strutturaDescription: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  strutturaRight: {
+    marginLeft: 8,
+  },
+  followStrutturaButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followingButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e8f5e9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

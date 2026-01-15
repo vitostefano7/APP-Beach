@@ -53,8 +53,11 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   
   // Estrai metriche dalla struttura corretta del backend
   const matchCount = friend.reason?.details?.matchCount || 0;
-  const commonFriends = friend.commonFriends || 0;
+  const commonFriends = friend.reason?.details?.mutualFriendsCount || friend.commonFriends || 0;
   const sameVenues = friend.sameVenues || 0;
+  const gamesCount = friend.reason?.details?.gamesCount || 0;
+  const strutturaName = friend.reason?.details?.strutturaName;
+  const vipLevel = friend.reason?.details?.vipLevel;
   const score = friend.score || 0;
   
   console.log(`📊 Stats for ${friendName}:`, { matchCount, commonFriends, sameVenues, score, reason: friend.reason });
@@ -98,6 +101,18 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         color = '#9C27B0';
         icon = 'location';
         text = 'Stesso centro';
+      } else if (reasonType === 'most_games') {
+        color = '#4CAF50';
+        icon = 'game-controller';
+        text = 'Giocatore frequente';
+      } else if (reasonType === 'follows_structure') {
+        color = '#FF5722';
+        icon = 'heart';
+        text = 'Segue struttura';
+      } else if (reasonType === 'vip_user') {
+        color = '#FFD700';
+        icon = 'star';
+        text = 'Utente VIP';
       }
     } 
     // Gestisci la struttura stringa legacy
@@ -172,13 +187,37 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
               </Text>
             </View>
           )}
+          {gamesCount > 0 && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="game-controller-outline" size={12} color="#4CAF50" />
+              <Text style={styles.friendStatText}>
+                {gamesCount} {gamesCount === 1 ? 'partita' : 'partite'} nella tua struttura
+              </Text>
+            </View>
+          )}
+          {strutturaName && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="heart-outline" size={12} color="#FF5722" />
+              <Text style={styles.friendStatText} numberOfLines={1}>
+                Segue {strutturaName}
+              </Text>
+            </View>
+          )}
+          {vipLevel && (
+            <View style={styles.friendStatItem}>
+              <Ionicons name="star-outline" size={12} color="#FFD700" />
+              <Text style={styles.friendStatText}>
+                VIP {vipLevel}
+              </Text>
+            </View>
+          )}
           {commonFriends > 0 && (
             <View style={styles.friendStatItem}>
               <Ionicons name="people-outline" size={12} color="#FF9800" />
               <Text style={styles.friendStatText}>{commonFriends} {commonFriends === 1 ? 'amico' : 'amici'}</Text>
             </View>
           )}
-          {sameVenues > 0 && matchCount === 0 && commonFriends === 0 && (
+          {sameVenues > 0 && matchCount === 0 && commonFriends === 0 && gamesCount === 0 && !strutturaName && !vipLevel && (
             <View style={styles.friendStatItem}>
               <Ionicons name="location-outline" size={12} color="#9C27B0" />
               <Text style={styles.friendStatText}>{sameVenues} {sameVenues === 1 ? 'centro' : 'centri'}</Text>

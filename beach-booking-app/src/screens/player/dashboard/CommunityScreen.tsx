@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,11 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,13 +31,32 @@ type Post = {
     name: string;
     avatarUrl?: string;
   };
+  struttura?: {
+    _id: string;
+    name: string;
+    images: string[];
+    location: {
+      city: string;
+    };
+  };
+  isStrutturaPost: boolean;
   content: string;
   image?: string;
   likes: string[];
   comments: Array<{
     _id: string;
-    user: { name: string };
+    user: {
+      _id: string;
+      name: string;
+      avatarUrl?: string;
+    };
+    struttura?: {
+      _id: string;
+      name: string;
+      images: string[];
+    };
     text: string;
+    createdAt: string;
   }>;
   createdAt: string;
 };
@@ -60,6 +84,33 @@ export default function CommunityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
+  const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
+  const flatListRef = useRef<FlatList>(null);
+  // Track which post we are currently replying to (for the global input)
+  const [replyingToPostId, setReplyingToPostId] = useState<string | null>(null);
+  const replyInputRef = useRef<TextInput>(null);
+  const tabBarOffset = 20;
+
+  // Focus the global input when replyingToPostId changes
+  useEffect(() => {
+    if (replyingToPostId && replyInputRef.current) {
+      replyInputRef.current.focus();
+    }
+  }, [replyingToPostId]);
+
+  // Close the comment bar when the keyboard hides and there's no text
+  useEffect(() => {
+    const eventName = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const subscription = Keyboard.addListener(eventName, () => {
+      if (replyingToPostId && !commentInputs[replyingToPostId]?.trim()) {
+        setReplyingToPostId(null);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [replyingToPostId, commentInputs]);
 
   // Log quando cambia lo state dei posts
   useEffect(() => {
@@ -250,9 +301,110 @@ export default function CommunityScreen() {
   };
 
   const handleCommentPost = (postId: string) => {
-    console.log('💬 Comment post:', postId);
-    // TODO: Navigare a schermata dettaglio post con commenti
-    // navigation.navigate('PostDetail', { postId });
+    const isSamePost = expandedComments.has(postId);
+
+    if (isSamePost) {
+      setExpandedComments(new Set());
+      setReplyingToPostId(null);
+      return;
+    }
+
+    setExpandedComments(new Set([postId]));
+    setReplyingToPostId(postId);
+
+    setTimeout(() => {
+      const postIndex = posts.findIndex(p => p._id === postId);
+      console.log('Scrolling to post index:', postIndex);
+      if (postIndex !== -1 && flatListRef.current) {
+        flatListRef.current.scrollToIndex({
+          index: postIndex,
+          animated: true,
+          viewPosition: 0.1,
+        });
+      }
+    }, 100);
+  };
+
+  const handlePostComment = async (postId: string) => {
+    const commentText = commentInputs[postId]?.trim();
+    if (!commentText) return;
+
+    setPostingComment(prev => new Set(prev).add(postId));
+
+    try {
+      const response = await fetch(`${API_URL}/community/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: commentText }),
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        console.log('📝 New comment created:', newComment);
+        
+        // Aggiorna lo stato locale
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post._id === postId) {
+              return {
+                ...post,
+                comments: [...post.comments, newComment],
+              };
+            }
+            return post;
+          })
+        );
+
+        // Espandi automaticamente i commenti
+        setExpandedComments(prev => {
+          const newSet = new Set(prev);
+          newSet.add(postId);
+          return newSet;
+        });
+
+        // Pulisci input
+        setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      }
+    } catch (error) {
+      console.error('Errore pubblicazione commento:', error);
+    } finally {
+      setPostingComment(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/community/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Aggiorna lo stato locale
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post._id === postId) {
+              return {
+                ...post,
+                comments: post.comments.filter(comment => comment._id !== commentId),
+              };
+            }
+            return post;
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Errore eliminazione commento:', error);
+    }
   };
 
   const handleJoinEvent = (eventId: string) => {
@@ -277,13 +429,12 @@ export default function CommunityScreen() {
       <View style={styles.headerTop}>
         <Text style={styles.headerTitle}>Community</Text>
         <Pressable
-          style={styles.createButton}
+          style={styles.searchButton}
           onPress={() => {
-            console.log('➡️  Navigazione a CreatePost');
-            navigation.navigate('CreatePost');
+            navigation.navigate('CercaAmici');
           }}
         >
-          <Ionicons name="add-circle" size={28} color="#2196F3" />
+          <Ionicons name="search" size={24} color="#2196F3" />
         </Pressable>
       </View>
 
@@ -334,17 +485,19 @@ export default function CommunityScreen() {
   );
 
   const renderPost = ({ item }: { item: Post }) => {
-    // Dati utente con fallback per post senza user
-    const userName = item.user?.name || 'Utente sconosciuto';
-    const userAvatarUrl = item.user?.avatarUrl;
+    // Dati utente o struttura
+    const isStruttura = item.isStrutturaPost && item.struttura;
+    const displayName = isStruttura ? item.struttura!.name : (item.user?.name || 'Utente sconosciuto');
+    const displayAvatar = isStruttura ? item.struttura!.images[0] : item.user?.avatarUrl;
 
-    if (!item.user) {
-      console.warn('⚠️ POST SENZA USER:', item._id, '- Mostro con placeholder');
+    if (!item.user && !isStruttura) {
+      console.warn('⚠️ POST SENZA USER E SENZA STRUTTURA:', item._id, '- Mostro con placeholder');
     }
 
     console.log('🎨 RENDERING POST:', {
       id: item._id,
-      author: userName,
+      isStruttura,
+      author: displayName,
       content: item.content.substring(0, 50) + '...',
       hasImage: !!item.image,
       likes: item.likes?.length || 0,
@@ -354,17 +507,40 @@ export default function CommunityScreen() {
     return (
       <View style={styles.postCard}>
         <View style={styles.postHeader}>
-          <Avatar
-            avatarUrl={userAvatarUrl}
-            name={userName}
-            size={40}
-          />
+          {isStruttura ? (
+            <Image
+              source={{ uri: displayAvatar }}
+              style={styles.strutturaAvatar}
+            />
+          ) : (
+            <Avatar
+              avatarUrl={displayAvatar}
+              name={displayName}
+              size={40}
+            />
+          )}
           <View style={styles.postHeaderText}>
-            <Text style={styles.postAuthor}>{userName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {isStruttura && <Ionicons name="business" size={16} color="#2196F3" />}
+              <Text style={styles.postAuthor}>{displayName}</Text>
+            </View>
+            {isStruttura && item.struttura?.location?.city && (
+              <Text style={styles.strutturaLocation}>{item.struttura.location.city}</Text>
+            )}
             <Text style={styles.postTime}>
               {new Date(item.createdAt).toLocaleDateString('it-IT')}
             </Text>
           </View>
+
+          {/* Pulsante Follow per strutture */}
+          {isStruttura && (
+            <Pressable
+              style={styles.followPostButton}
+              onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item.struttura!._id })}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+            </Pressable>
+          )}
         </View>
 
         <Text style={styles.postContent}>{item.content}</Text>
@@ -402,6 +578,95 @@ export default function CommunityScreen() {
             <Ionicons name="share-social-outline" size={22} color="#666" />
           </Pressable>
         </View>
+
+        {/* Sezione commenti espansa */}
+        {expandedComments.has(item._id) && (
+          <View style={styles.commentsSection}>
+            {/* Lista commenti esistenti */}
+            {item.comments && item.comments.length > 0 && (
+              <View style={styles.commentsList}>
+                {item.comments.map((comment: any) => {
+                  // Determina se il commento è fatto da una struttura
+                  const isStructureComment = !!comment.struttura;
+                  const commentStructure = comment.struttura;
+                  
+                  const displayName = isStructureComment && commentStructure
+                    ? commentStructure.name
+                    : (comment.user?.name || 'Utente');
+                  const displayAvatar = isStructureComment && commentStructure
+                    ? commentStructure.images?.[0]
+                    : comment.user?.avatarUrl;
+
+                  return (
+                    <View key={`comment-${comment._id}`} style={styles.commentItem}>
+                      {isStructureComment && commentStructure ? (
+                        <Image
+                          source={{ uri: displayAvatar }}
+                          style={styles.commentAvatar}
+                        />
+                      ) : (
+                        <Avatar
+                          avatarUrl={displayAvatar}
+                          name={displayName}
+                          size={32}
+                        />
+                      )}
+                      <View style={styles.commentContent}>
+                        <View style={styles.commentHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            {isStructureComment && commentStructure && (
+                              <Ionicons name="business" size={14} color="#2196F3" />
+                            )}
+                            <Text style={styles.commentAuthor}>{displayName}</Text>
+                          </View>
+                          <Text style={styles.commentTime}>
+                            {new Date(comment.createdAt).toLocaleDateString('it-IT')}
+                          </Text>
+                        </View>
+                        <Text style={styles.commentText}>{comment.text}</Text>
+                      </View>
+                      {/* Pulsante elimina se è il proprietario del commento */}
+                      {comment.user?._id === user?.id && (
+                        <Pressable
+                          style={styles.deleteCommentButton}
+                          onPress={() => handleDeleteComment(item._id, comment._id)}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#999" />
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Placeholder per input commento (apre la tastiera globale) */}
+            <Pressable 
+              style={styles.commentInputContainer}
+              onPress={() => {
+                if (replyingToPostId === item._id) {
+                  replyInputRef.current?.focus();
+                }
+              }}
+            >
+              <Avatar
+                avatarUrl={user?.avatarUrl}
+                name={user?.name || 'Tu'}
+                size={32}
+              />
+              <View style={styles.commentInputWrapper}>
+                <View style={[styles.commentInput, { justifyContent: 'center' }]}>
+                  <Text style={{ color: '#999' }}>
+                    {commentInputs[item._id] ? commentInputs[item._id] : "Scrivi un commento..."}
+                  </Text>
+                </View>
+                <View style={[styles.postCommentButton, styles.postCommentButtonDisabled]}>
+                  <Ionicons name="send" size={18} color="white" />
+                </View>
+              </View>
+            </Pressable>
+          </View>
+        )}
       </View>
     );
   };
@@ -544,13 +809,32 @@ export default function CommunityScreen() {
         console.log('   → Mostro FlatList con', posts.length, 'posts');
         return (
           <FlatList
+            ref={flatListRef}
             data={posts}
             renderItem={renderPost}
             keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: 120 }
+            ]}
             showsVerticalScrollIndicator={false}
             refreshing={refreshing}
             onRefresh={onRefresh}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
+            onScrollToIndexFailed={(info) => {
+              // Gestisci errore scroll to index - fallback a scrollToOffset
+              console.log('⚠️ Scroll to index failed:', info);
+              const wait = new Promise(resolve => setTimeout(resolve, 500));
+              wait.then(() => {
+                flatListRef.current?.scrollToIndex({ 
+                  index: info.index, 
+                  animated: true,
+                  viewPosition: 0
+                });
+              });
+            }}
           />
         );
       } else {
@@ -608,8 +892,117 @@ export default function CommunityScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {renderHeader()}
-      {renderContent()}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={{ flex: 1 }}>
+          {renderHeader()}
+          <View style={{ flex: 1 }}>
+            {renderContent()}
+          </View>
+
+          {/* FAB per creare post (nascosto se stiamo commentando) */}
+          {!replyingToPostId && (
+            <Pressable
+              style={styles.fab}
+              onPress={() => {
+                console.log('Navigazione a CreatePost');
+                navigation.navigate('CreatePost');
+              }}
+            >
+              <Ionicons name="add" size={28} color="white" />
+            </Pressable>
+          )}
+
+          {/* Global Input Bar per i commenti */}
+          {replyingToPostId && (
+            <View
+              style={{
+                marginTop: 'auto',
+                marginBottom: tabBarOffset,
+                backgroundColor: 'white',
+                borderTopWidth: 1,
+                borderTopColor: '#eee',
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: -2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 3.84,
+                elevation: 5,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 10,
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    setExpandedComments(new Set());
+                    setReplyingToPostId(null);
+                  }}
+                  style={{ padding: 10, marginRight: 5 }}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </Pressable>
+
+                <TextInput
+                  ref={replyInputRef}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 20,
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    maxHeight: 100,
+                    fontSize: 15,
+                    color: '#333',
+                  }}
+                  placeholder="Scrivi un commento..."
+                  value={commentInputs[replyingToPostId] || ''}
+                  onChangeText={(text) =>
+                    setCommentInputs(prev => ({ ...prev, [replyingToPostId]: text }))
+                  }
+                  multiline
+                  maxLength={500}
+                />
+
+                <Pressable
+                  style={[
+                    {
+                      marginLeft: 10,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: '#2196F3',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                    (!commentInputs[replyingToPostId]?.trim() || postingComment.has(replyingToPostId)) && { backgroundColor: '#ccc' },
+                  ]}
+                  onPress={() => {
+                    handlePostComment(replyingToPostId);
+                    setReplyingToPostId(null);
+                    Keyboard.dismiss();
+                  }}
+                  disabled={!commentInputs[replyingToPostId]?.trim() || postingComment.has(replyingToPostId)}
+                >
+                  {postingComment.has(replyingToPostId) ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons name="send" size={20} color="white" />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

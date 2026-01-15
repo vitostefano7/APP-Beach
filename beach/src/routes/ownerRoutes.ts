@@ -7,6 +7,7 @@ import {
   updateStruttura,
   getOwnerBookings,
   getOwnerMatches,
+  getOwnerUserSuggestions,
 } from "../controllers/ownerController";
 
 const router = express.Router();
@@ -18,5 +19,6 @@ router.get("/strutture", getMyStrutture);
 router.put("/strutture/:id", updateStruttura);
 router.get("/bookings", getOwnerBookings);
 router.get("/matches", getOwnerMatches);
+router.get("/user-suggestions", getOwnerUserSuggestions);
 
 export default router;

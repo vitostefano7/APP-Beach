@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IComment {
   _id: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
+  struttura?: mongoose.Types.ObjectId; // Ref to Struttura if commented by owner for a struttura
   text: string;
   createdAt: Date;
 }
@@ -13,6 +14,8 @@ export interface IPost extends Document {
   image?: string; // Cloudinary URL
   likes: mongoose.Types.ObjectId[];
   comments: IComment[];
+  struttura?: mongoose.Types.ObjectId; // Ref to Struttura if posted by owner
+  isStrutturaPost: boolean; // True if posted by owner for a struttura
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +26,11 @@ const CommentSchema = new Schema<IComment>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    struttura: {
+      type: Schema.Types.ObjectId,
+      ref: "Struttura",
+      default: null,
     },
     text: {
       type: String,
@@ -61,6 +69,17 @@ const PostSchema = new Schema<IPost>(
       },
     ],
     comments: [CommentSchema],
+    struttura: {
+      type: Schema.Types.ObjectId,
+      ref: "Struttura",
+      default: null,
+      index: true,
+    },
+    isStrutturaPost: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

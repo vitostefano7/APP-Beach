@@ -38,8 +38,37 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#212121',
   },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
   createButton: {
     padding: 4,
+  },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 90,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 
   // Tab Bar
@@ -88,7 +117,7 @@ export const styles = StyleSheet.create({
   // List Content
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 400, // Sarà dinamico in base alla tastiera
   },
 
   // Post Card
@@ -114,11 +143,23 @@ export const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
+  followPostButton: {
+    padding: 8,
+  },
   postAuthor: {
     fontSize: 16,
     fontWeight: '600',
     color: '#212121',
     marginBottom: 2,
+  },
+  strutturaAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  strutturaLocation: {
+    fontSize: 12,
+    color: '#666',
   },
   postTime: {
     fontSize: 12,
@@ -153,6 +194,88 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+  },
+
+  // Comments Section
+  commentsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  commentsList: {
+    marginBottom: 16,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212121',
+    marginRight: 8,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#212121',
+    lineHeight: 20,
+  },
+  deleteCommentButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  commentInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginLeft: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    maxHeight: 100,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#212121',
+    maxHeight: 80,
+  },
+  postCommentButton: {
+    marginLeft: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  postCommentButtonDisabled: {
+    backgroundColor: '#ccc',
   },
 
   // Event Card (stile Domani)
@@ -407,4 +530,122 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-});
+
+  // Strutture Tab
+  struttureContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  searchSection: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#212121',
+  },
+  searchButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#e0e0e0',
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  struttureList: {
+    padding: 16,
+  },
+  strutturaCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  strutturaImage: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#e0e0e0',
+  },
+  strutturaContent: {
+    padding: 16,
+  },
+  strutturaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  strutturaName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212121',
+    flex: 1,
+  },
+  strutturaLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  strutturaLocationText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  strutturaDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  followStrutturaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#2196F3',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  followStrutturaButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  followingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#e8f5e9',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  followingButtonText: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: '600',
+  },});
