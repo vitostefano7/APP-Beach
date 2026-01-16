@@ -589,7 +589,7 @@ export default function OwnerCommunityScreen() {
                 />
               )}
               <View style={styles.commentInputWrapper}>
-                <View style={[styles.commentInput, { justifyContent: 'center' }]}>
+                <View style={[styles.commentInput, { justifyContent: 'flex-start' }]}>
                   <Text style={{ color: '#999' }}>
                     {commentInputs[item._id] ? commentInputs[item._id] : 'Scrivi un commento...'}
                   </Text>
@@ -745,6 +745,7 @@ export default function OwnerCommunityScreen() {
 
             <TextInput
               ref={replyInputRef}
+              autoFocus={true}
               style={{
                 flex: 1,
                 backgroundColor: '#f5f5f5',
@@ -938,14 +939,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   listContent: {
+    paddingTop: 16,
     paddingBottom: 100,
   },
   postCard: {
     backgroundColor: 'white',
     padding: 16,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    marginBottom: 12,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   postHeader: {
     flexDirection: 'row',
@@ -1073,7 +1080,7 @@ const styles = StyleSheet.create({
   },
   commentInputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   commentInputAvatar: {
     width: 32,

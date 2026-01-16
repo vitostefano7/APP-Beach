@@ -116,21 +116,23 @@ export const styles = StyleSheet.create({
 
   // List Content
   listContent: {
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
     paddingBottom: 400, // Sarà dinamico in base alla tastiera
   },
 
   // Post Card
   postCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    marginHorizontal: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
     borderColor: '#f0f0f0',
   },
@@ -246,7 +248,7 @@ export const styles = StyleSheet.create({
   },
   commentInputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   commentInputWrapper: {
     flex: 1,

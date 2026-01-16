@@ -655,7 +655,7 @@ export default function CommunityScreen() {
                 size={32}
               />
               <View style={styles.commentInputWrapper}>
-                <View style={[styles.commentInput, { justifyContent: 'center' }]}>
+                <View style={[styles.commentInput, { justifyContent: 'flex-start' }]}>
                   <Text style={{ color: '#999' }}>
                     {commentInputs[item._id] ? commentInputs[item._id] : "Scrivi un commento..."}
                   </Text>
@@ -953,6 +953,7 @@ export default function CommunityScreen() {
 
                 <TextInput
                   ref={replyInputRef}
+                  autoFocus={true}
                   style={{
                     flex: 1,
                     backgroundColor: '#f5f5f5',
