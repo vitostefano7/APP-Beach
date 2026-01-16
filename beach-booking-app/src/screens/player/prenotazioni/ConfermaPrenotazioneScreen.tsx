@@ -9,7 +9,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,28 +26,70 @@ export default function ConfermaPrenotazioneScreen() {
     campoId,
     campoName,
     strutturaName,
-    sport,
+    sport: rawSport,
     date,
     startTime,
     duration: durationNumber = 1, // 1 o 1.5 (ore)
     price,
+    struttura,
   } = route.params;
+
+  // Normalizza lo sport ("beach volley" -> "beach_volley")
+  const sport = rawSport.replace(/ /g, "_");
 
   const [loading, setLoading] = useState(false);
   const [bookingType, setBookingType] = useState<"public" | "private">("public");
+  const [paymentMode, setPaymentMode] = useState<"full" | "split">(() => {
+    // Per entrambi gli sport, se la struttura permette split, default a split
+    return (struttura?.isCostSplittingEnabled === true) ? "split" : "full";
+  });
   const [maxPlayers, setMaxPlayers] = useState<number | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Determina le opzioni disponibili per lo sport
   const sportRules = sport === "beach_volley" || sport === "volley" 
-    ? getMaxPlayersRulesForSport(sport as "beach_volley" | "volley")
+    ? getMaxPlayersRulesForSport(sport === "beach_volley" ? "beach volley" : sport as "volley")
     : null;
 
+  // DEBUG
+  console.log("🔍 ConfermaPrenotazione DEBUG:");
+  console.log("  rawSport:", rawSport);
+  console.log("  sport (normalized):", sport);
+  console.log("  sportRules:", sportRules);
+  console.log("  maxPlayers:", maxPlayers);
+  console.log("  struttura:", struttura);
+  console.log("  canSplitCosts:", canSplitCosts);
+
   // Imposta il default al primo caricamento
-  if (maxPlayers === null && sportRules) {
-    setMaxPlayers(sportRules.fixed || sportRules.allowedValues[sportRules.allowedValues.length - 1]);
-  }
+  useEffect(() => {
+    if (maxPlayers === null && sportRules) {
+      const defaultValue = sportRules.fixed || sportRules.allowedValues[sportRules.allowedValues.length - 1];
+      console.log("⚙️ Setting default maxPlayers:", defaultValue);
+      setMaxPlayers(defaultValue);
+    }
+  }, [sportRules]);
+
+  // Se la struttura non permette lo split dei costi, le partite pubbliche non sono disponibili
+  const canSplitCosts = struttura?.isCostSplittingEnabled === true;
+
+  // Se la struttura non permette split, forziamo il tipo "private"
+  useEffect(() => {
+    if (!canSplitCosts && bookingType === "public") {
+      setBookingType("private");
+    }
+    // se la struttura non permette split, forziamo il pagamento "full"
+    if (!canSplitCosts && paymentMode === "split") {
+      setPaymentMode("full");
+    }
+  }, [canSplitCosts]);
+
+  // Forza il pagamento "split" per partite pubbliche
+  useEffect(() => {
+    if (bookingType === 'public') {
+      setPaymentMode('split');
+    }
+  }, [bookingType]);
 
   // Converte il numero in formato API ("1h" o "1.5h")
   const duration = durationNumber === 1.5 ? "1.5h" : "1h";
@@ -81,6 +123,14 @@ export default function ConfermaPrenotazioneScreen() {
     });
   };
 
+  // Split/payment helpers
+  const isVolley = sport === "volley";
+  const isBeachVolley = sport === "beach_volley";
+  const splitCount = isVolley ? 10 : (isBeachVolley ? maxPlayers : null);
+  const isSplitSelected = paymentMode === "split" && canSplitCosts;
+  const numericPrice = Number(price) || 0;
+  const unitPrice = isSplitSelected && splitCount ? numericPrice / splitCount : null;
+
   const handleConfirm = async () => {
     try {
       setLoading(true);
@@ -98,7 +148,14 @@ export default function ConfermaPrenotazioneScreen() {
           startTime,
           duration, // "1h" o "1.5h"
           bookingType,
-          maxPlayers: maxPlayers || undefined, // Invia maxPlayers se selezionato
+          paymentMode,
+          // beach_volley: sempre invia maxPlayers scelto; volley: 10 se split, altrimenti 10 di default
+          numberOfPeople:
+            sport === "beach_volley"
+              ? maxPlayers || undefined
+              : sport === "volley"
+              ? 10
+              : maxPlayers || undefined,
         }),
       });
 
@@ -146,8 +203,10 @@ export default function ConfermaPrenotazioneScreen() {
               style={[
                 styles.bookingTypeOption,
                 bookingType === "public" && styles.bookingTypeOptionSelected,
+                !canSplitCosts && { opacity: 0.5 },
               ]}
-              onPress={() => setBookingType("public")}
+              onPress={() => canSplitCosts && setBookingType("public")}
+              disabled={!canSplitCosts}
             >
               <Ionicons
                 name={bookingType === "public" ? "radio-button-on" : "radio-button-off"}
@@ -164,6 +223,11 @@ export default function ConfermaPrenotazioneScreen() {
                 <Text style={styles.bookingTypeDescription}>
                   Altri giocatori possono trovare e unirsi alla tua partita
                 </Text>
+                {!canSplitCosts && (
+                  <Text style={{ color: "#d00", marginTop: 6 }}>
+                    La struttura non permette la divisione del prezzo. Le partite pubbliche non sono disponibili.
+                  </Text>
+                )}
               </View>
             </Pressable>
 
@@ -250,18 +314,24 @@ export default function ConfermaPrenotazioneScreen() {
           </View>
         </View>
 
-        {/* Selezione numero giocatori per Beach Volley */}
+        {/* Selezione numero giocatori per Beach Volley - SEMPRE obbligatoria */}
         {sport === "beach_volley" && sportRules && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>👥 Numero Giocatori</Text>
+            <Text style={styles.cardTitle}>👥 Numero Giocatori *</Text>
             <Text style={styles.cardSubtitle}>
-              Scegli la formazione per la partita
+              Scegli quante persone parteciperanno alla partita
             </Text>
+            {canSplitCosts && (
+              <Text style={[styles.cardSubtitle, { color: "#FF9800", marginTop: 4 }]}>
+                💡 Puoi scegliere di dividere il prezzo tra i giocatori
+              </Text>
+            )}
             
             <View style={styles.maxPlayersContainer}>
               {sportRules.allowedValues.map((players) => {
                 const formation = getTeamFormationLabel(players);
                 const isSelected = maxPlayers === players;
+                const pricePerPlayer = canSplitCosts ? (numericPrice / players).toFixed(2) : null;
                 
                 return (
                   <Pressable
@@ -291,10 +361,15 @@ export default function ConfermaPrenotazioneScreen() {
                       ]}>
                         {formation}
                       </Text>
+                      {canSplitCosts && pricePerPlayer && (
+                        <Text style={[
+                          styles.maxPlayersPrice,
+                          isSelected && styles.maxPlayersPriceSelected,
+                        ]}>
+                          €{pricePerPlayer}/gioc.
+                        </Text>
+                      )}
                     </View>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
-                    )}
                   </Pressable>
                 );
               })}
@@ -304,17 +379,89 @@ export default function ConfermaPrenotazioneScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>💰 Pagamento</Text>
-          
+
+          {/* Opzione intero / diviso per sport che supportano split */}
+          {(sport === "volley" || sport === "beach_volley") && bookingType === 'private' && canSplitCosts && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.cardSubtitle}>Scegli tipo pagamento</Text>
+
+              <View style={[styles.bookingTypeContainer, { marginTop: 8 }]}> 
+                <Pressable
+                  style={[
+                    styles.bookingTypeOption,
+                    paymentMode === "full" && styles.bookingTypeOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMode("full")}
+                >
+                  <Ionicons
+                    name={paymentMode === "full" ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={paymentMode === "full" ? "#2196F3" : "#999"}
+                  />
+                  <View style={styles.bookingTypeContent}>
+                    <Text style={[styles.bookingTypeTitle, paymentMode === "full" && styles.bookingTypeTitleSelected]}>Paga tutta la partita</Text>
+                    <Text style={styles.bookingTypeDescription}>Paghi l'intero importo della prenotazione</Text>
+                  </View>
+                </Pressable>
+
+                <View style={styles.bookingTypeSeparator} />
+
+                <Pressable
+                  style={[
+                    styles.bookingTypeOption,
+                    paymentMode === "split" && styles.bookingTypeOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMode("split")}
+                >
+                  <Ionicons
+                    name={paymentMode === "split" ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={paymentMode === "split" ? "#2196F3" : "#999"}
+                  />
+                  <View style={styles.bookingTypeContent}>
+                    <Text style={[styles.bookingTypeTitle, paymentMode === "split" && styles.bookingTypeTitleSelected]}>Paga la tua quota</Text>
+                    <Text style={styles.bookingTypeDescription}>Ogni giocatore paga la sua quota</Text>
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Per partite pubbliche, mostra solo "Paga la tua quota" */}
+          {bookingType === 'public' && (sport === "volley" || sport === "beach_volley") && canSplitCosts && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.cardSubtitle}>Tipo pagamento</Text>
+
+              <View style={[styles.bookingTypeContainer, { marginTop: 8 }]}>
+                <View style={[styles.bookingTypeOption, styles.bookingTypeOptionSelected]}>
+                  <Ionicons name="radio-button-on" size={20} color="#2196F3" />
+                  <View style={styles.bookingTypeContent}>
+                    <Text style={[styles.bookingTypeTitle, styles.bookingTypeTitleSelected]}>Paga la tua quota</Text>
+                    <Text style={styles.bookingTypeDescription}>Ogni giocatore paga la sua quota</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Prezzo</Text>
-            <Text style={styles.priceValue}>€{price}</Text>
+            <Text style={styles.priceLabel}>
+              {isSplitSelected ? "Prezzo (per giocatore)" : "Prezzo"}
+            </Text>
+            <Text style={styles.priceValue}>
+              {isSplitSelected ? `€${unitPrice?.toFixed(2)}` : `€${price}`}
+            </Text>
           </View>
 
           <View style={styles.separator} />
 
           <View style={styles.priceRow}>
             <Text style={styles.totalLabel}>Totale da pagare</Text>
-            <Text style={styles.totalValue}>€{price}</Text>
+            <Text style={styles.totalValue}>
+              {isSplitSelected && unitPrice
+                ? `€${unitPrice.toFixed(2)}`
+                : `€${numericPrice.toFixed(2)}`}
+            </Text>
           </View>
 
           <Text style={styles.paymentNote}>
@@ -427,7 +574,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -560,19 +707,22 @@ const styles = StyleSheet.create({
   },
 
   maxPlayersContainer: {
-    gap: 12,
-    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 8,
   },
 
   maxPlayersOption: {
-    flexDirection: "row",
+    flex: 1,
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
     borderColor: "#E0E0E0",
     backgroundColor: "#FAFAFA",
+    marginHorizontal: 4,
   },
 
   maxPlayersOptionSelected: {
@@ -582,11 +732,10 @@ const styles = StyleSheet.create({
 
   maxPlayersContent: {
     alignItems: "center",
-    gap: 4,
   },
 
   maxPlayersNumber: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: "800",
     color: "#212121",
   },
@@ -596,9 +745,10 @@ const styles = StyleSheet.create({
   },
 
   maxPlayersLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#666",
     fontWeight: "500",
+    marginTop: 2,
   },
 
   maxPlayersLabelSelected: {
@@ -606,13 +756,24 @@ const styles = StyleSheet.create({
   },
 
   maxPlayersFormation: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "600",
     color: "#999",
-    marginTop: 4,
+    marginTop: 1,
   },
 
   maxPlayersFormationSelected: {
+    color: "#2196F3",
+  },
+
+  maxPlayersPrice: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4CAF50",
+    marginTop: 1,
+  },
+
+  maxPlayersPriceSelected: {
     color: "#2196F3",
   },
 

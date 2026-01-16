@@ -408,8 +408,14 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
         {/* FOOTER */}
         <View style={styles.cardFooter}>
           <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Totale</Text>
-            <Text style={styles.price}>€{item.price}</Text>
+            <Text style={styles.priceLabel}>
+              {item.paymentMode === 'split' ? 'Quota' : 'Totale'}
+            </Text>
+            <Text style={styles.price}>
+              €{item.paymentMode === 'split' 
+                ? ((item.price / (item.players?.length || item.numberOfPeople || 1)).toFixed(2))
+                : item.price.toFixed(2)}
+            </Text>
           </View>
 
           {canInsertResult ? (

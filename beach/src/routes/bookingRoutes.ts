@@ -3,6 +3,7 @@ import {
   createBooking,
   getMyBookings,
   getBookingById,
+   addPaymentToBooking,
   cancelBooking,
   getOwnerBookings,
   getBookingsByCampo,
@@ -24,6 +25,12 @@ const router = express.Router();
  * POST /bookings
  */
 router.post("/", requireAuth, createBooking);
+
+/**
+ * Aggiungi pagamento a prenotazione
+ * POST /bookings/:id/payments
+ */
+router.post("/:id/payments", requireAuth, addPaymentToBooking);
 
 /**
  * Le mie prenotazioni

@@ -234,7 +234,7 @@ export const createStruttura = async (
   res: Response
 ) => {
   try {
-    const { name, description, location, amenities, openingHours } = req.body;
+    const { name, description, location, amenities, openingHours, isCostSplittingEnabled } = req.body;
 
     if (!name || !location?.city) {
       return res.status(400).json({ 
@@ -264,6 +264,7 @@ export const createStruttura = async (
       isActive: true,
       isFeatured: false,
       isDeleted: false,
+      isCostSplittingEnabled: !!isCostSplittingEnabled,
     });
 
     await struttura.save();
@@ -309,7 +310,7 @@ export const updateStruttura = async (
 
     console.log("✅ Struttura trovata:", struttura.name);
 
-    const { name, description, location, amenities, openingHours, isActive, forceUpdate } = req.body;
+    const { name, description, location, amenities, openingHours, isActive, forceUpdate, isCostSplittingEnabled } = req.body;
 
     // ✅ Se cambiano gli orari di apertura, controlla l'impatto sui campi e prenotazioni
     if (openingHours && !forceUpdate) {
@@ -407,6 +408,11 @@ export const updateStruttura = async (
       }
       
       console.log("✅ Nessuna prenotazione impattata, procedo con l'aggiornamento");
+    }
+
+    // Aggiorna flag isCostSplittingEnabled se specificato
+    if (typeof isCostSplittingEnabled !== "undefined") {
+      struttura.isCostSplittingEnabled = !!isCostSplittingEnabled;
     }
 
     if (name) struttura.name = name;

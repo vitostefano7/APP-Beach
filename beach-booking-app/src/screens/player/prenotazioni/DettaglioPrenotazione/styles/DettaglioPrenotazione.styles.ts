@@ -2382,6 +2382,11 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "500",
   },
+  teamModalOptionCost: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+  },
 });
 
 export default styles;

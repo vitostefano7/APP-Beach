@@ -33,6 +33,7 @@ interface TeamSelectionModalProps {
   matchStatus?: string;
   maxPlayersPerTeam: number;
   maxPlayers: number; // Aggiunto per calcolare la formazione
+  costPerPlayer?: number; // Costo per giocatore se applicabile
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
@@ -44,7 +45,9 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   matchStatus,
   maxPlayersPerTeam,
   maxPlayers,
+  costPerPlayer,
 }) => {
+  console.log('🎯 [TeamSelectionModal] Props:', { costPerPlayer, visible });
   const isTeamAFull = teamA.current >= maxPlayersPerTeam;
   const isTeamBFull = teamB.current >= maxPlayersPerTeam;
   const matchLocked = matchStatus === 'completed' || matchStatus === 'cancelled';
@@ -96,6 +99,11 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                         <Text style={[styles.teamModalOptionCount, { color: 'rgba(255,255,255,0.8)' }]}>
                           {teamA.current}/{maxPlayersPerTeam} giocatori
                         </Text>
+                        {costPerPlayer && (
+                          <Text style={[styles.teamModalOptionCost, { color: 'rgba(255,255,255,0.9)' }]}>
+                            Costo: €{costPerPlayer.toFixed(2)}
+                          </Text>
+                        )}
                       </View>
                     </View>
                     {isTeamAFull ? (
@@ -130,6 +138,11 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                         <Text style={[styles.teamModalOptionCount, { color: 'rgba(255,255,255,0.8)' }]}>
                           {teamB.current}/{maxPlayersPerTeam} giocatori
                         </Text>
+                        {costPerPlayer && (
+                          <Text style={[styles.teamModalOptionCost, { color: 'rgba(255,255,255,0.9)' }]}>
+                            Costo: €{costPerPlayer.toFixed(2)}
+                          </Text>
+                        )}
                       </View>
                     </View>
                     {isTeamBFull ? (

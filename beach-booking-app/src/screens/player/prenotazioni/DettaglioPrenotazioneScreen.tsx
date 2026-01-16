@@ -1336,7 +1336,6 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           </View>
         </AnimatedCard>
 
-        {/* NUOVA CARD DETTAGLI - USA BookingDetailsCard */}
         <AnimatedCard delay={150}>
           <BookingDetailsCard
             date={booking.date}
@@ -1346,6 +1345,29 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             price={booking.price}
             createdAt={booking.createdAt}
             isPublic={booking.match?.isPublic}
+            displayPrice={
+              (() => {
+                if (booking.paymentMode === 'full') {
+                  // Pagamento full: prezzo fisso
+                  return undefined;
+                }
+                // Pagamento split
+                const splitCount = booking.numberOfPeople || booking.match?.maxPlayers || 1;
+                const quota = booking.price / splitCount;
+                const confirmedCount = confirmedPlayers.length;
+                const remainingPrice = booking.price - (confirmedCount * quota);
+                console.log('💰 Prezzo calc:', {
+                  paymentMode: booking.paymentMode,
+                  totalPrice: booking.price,
+                  splitCount,
+                  quota,
+                  confirmedCount,
+                  remainingPrice,
+                  isCreator
+                });
+                return isCreator ? remainingPrice : quota;
+              })()
+            }
           />
         </AnimatedCard>
 
@@ -1501,6 +1523,22 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
         matchStatus={booking?.match?.status}
         maxPlayersPerTeam={maxPlayersPerTeam}
         maxPlayers={booking?.match?.maxPlayers || 4}
+        costPerPlayer={
+          (() => {
+            const cost = booking?.match?.isPublic && !isCreator
+              ? booking.price / booking.match.maxPlayers
+              : undefined;
+            console.log('🧮 [TeamSelectionModal] costPerPlayer calc:', {
+              isPublic: booking?.match?.isPublic,
+              isCreator,
+              isCostSplittingEnabled: booking?.campo?.struttura?.isCostSplittingEnabled,
+              price: booking?.price,
+              maxPlayers: booking?.match?.maxPlayers,
+              cost
+            });
+            return cost;
+          })()
+        }
       />
 
       {/* Score Modal */}

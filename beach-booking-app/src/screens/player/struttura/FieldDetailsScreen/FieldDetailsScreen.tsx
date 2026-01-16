@@ -733,6 +733,17 @@ export default function FieldDetailsScreen() {
               ? getDayData(calendar, new Date(selectedDateStr + "T12:00:00"))
               : null;
 
+            // Helpers for split pricing (used in duration cards, slot labels and button)
+            const isVolleyCampo = campo.sport === "beach_volley" || campo.sport === "volley";
+            const canSplitCampo = struttura?.isCostSplittingEnabled === true;
+            const playerPricingCampo = (campo as any).pricingRules?.playerCountPricing;
+            const getUnitPrice = (count: number, dur: number) => {
+              if (!playerPricingCampo || !playerPricingCampo.prices) return null;
+              const m = playerPricingCampo.prices.find((p: any) => p.count === count);
+              if (!m) return null;
+              return dur === 1 ? m.prices.oneHour : m.prices.oneHourHalf;
+            };
+
             return (
               <View key={campo._id} style={styles.campoCard}>
                 {/* CAMPO HEADER */}
@@ -778,6 +789,13 @@ export default function FieldDetailsScreen() {
                             {getPriceLabel(campo, 1)}/ora
                           </Text>
                         </View>
+                        {/* Split payment indicator */}
+                        {canSplitCampo && (
+                          <View style={styles.detailItem}>
+                            <Ionicons name="wallet" size={14} color="#FF9800" />
+                            <Text style={styles.detailText}>Split Payment</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
 
@@ -1054,6 +1072,17 @@ export default function FieldDetailsScreen() {
                                             slots1h
                                           );
 
+                                        const isVolleyCard = campo.sport === "beach_volley" || campo.sport === "volley";
+                                        const canSplitCard = struttura?.isCostSplittingEnabled === true;
+                                        const playerPricingCard = (campo as any).pricingRules?.playerCountPricing;
+                                        const unitPrice1h =
+                                          isVolleyCard && canSplitCard && playerPricingCard?.enabled
+                                            ? (() => {
+                                                const m = playerPricingCard.prices?.find((p: any) => p.count === 4);
+                                                return m ? m.prices.oneHour : null;
+                                              })()
+                                            : null;
+
                                         return (
                                           <Pressable
                                             style={styles.durationCard}
@@ -1096,9 +1125,11 @@ export default function FieldDetailsScreen() {
                                                   styles.durationCardPriceAmount
                                                 }
                                               >
-                                                {slots1h.length > 0
-                                                  ? priceLabel1h
-                                                  : "Non disponibile"}
+                                                {slots1h.length > 0 ? (
+                                                  unitPrice1h != null ? `€${unitPrice1h.toFixed(2)} / gioc.` : priceLabel1h
+                                                ) : (
+                                                  "Non disponibile"
+                                                )}
                                               </Text>
                                             </View>
                                             <View
@@ -1181,9 +1212,23 @@ export default function FieldDetailsScreen() {
                                                   styles.durationCardPriceAmount
                                                 }
                                               >
-                                                {slots15h.length > 0
-                                                  ? priceLabel15h
-                                                  : "Non disponibile"}
+                                                {slots15h.length > 0 ? (
+                                                  (() => {
+                                                    const isVolleyCard = campo.sport === "beach_volley" || campo.sport === "volley";
+                                                    const canSplitCard = struttura?.isCostSplittingEnabled === true;
+                                                    const playerPricingCard = (campo as any).pricingRules?.playerCountPricing;
+                                                    const unit = isVolleyCard && canSplitCard && playerPricingCard?.enabled
+                                                      ? (() => {
+                                                          const m = playerPricingCard.prices?.find((p: any) => p.count === 4);
+                                                          return m ? m.prices.oneHourHalf : null;
+                                                        })()
+                                                      : null;
+
+                                                    return unit != null ? `€${unit.toFixed(2)} / gioc.` : priceLabel15h;
+                                                  })()
+                                                ) : (
+                                                  "Non disponibile"
+                                                )}
                                               </Text>
                                             </View>
                                             <View
@@ -1355,6 +1400,18 @@ export default function FieldDetailsScreen() {
                                                   slot.time
                                                 );
 
+                                              // Determine if we should show per-player price (volley + struttura allows split)
+                                              const isVolley = campo.sport === "beach_volley" || campo.sport === "volley";
+                                              const canSplit = struttura?.isCostSplittingEnabled === true;
+                                              const playerPricing = (campo as any).pricingRules?.playerCountPricing;
+
+                                              const getUnitPriceForCount = (count: number, dur: number) => {
+                                                if (!playerPricing || !playerPricing.prices) return null;
+                                                const match = playerPricing.prices.find((p: any) => p.count === count);
+                                                if (!match) return null;
+                                                return dur === 1 ? match.prices.oneHour : match.prices.oneHourHalf;
+                                              };
+
                                               return (
                                                 <Pressable
                                                   key={`${selectedDateStr}-${slot.time}-${i}`}
@@ -1422,25 +1479,85 @@ export default function FieldDetailsScreen() {
                                                       styles.slotPriceContainer
                                                     }
                                                   >
-                                                    <Text
-                                                      style={[
-                                                        styles.slotPrice,
-                                                        isSlotSelected &&
-                                                          styles.slotPriceSelected,
-                                                      ]}
-                                                    >
-                                                      €{slotPrice.toFixed(2)}
-                                                    </Text>
-                                                    {pricingLabel && (
-                                                      <Text
-                                                        style={[
-                                                          styles.slotPricingLabel,
-                                                          isSlotSelected &&
-                                                            styles.slotPricingLabelSelected,
-                                                        ]}
-                                                      >
-                                                        {pricingLabel}
-                                                      </Text>
+                                                    {isVolley && canSplit && playerPricing?.enabled ? (
+                                                      (() => {
+                                                        const unit = getUnitPriceForCount(4, selectedDuration[campo._id]);
+                                                        if (unit != null) {
+                                                          return (
+                                                            <>
+                                                              <Text
+                                                                style={[
+                                                                  styles.slotPrice,
+                                                                  isSlotSelected &&
+                                                                    styles.slotPriceSelected,
+                                                                ]}
+                                                              >
+                                                                €{unit.toFixed(2)} / gioc.
+                                                              </Text>
+                                                              {pricingLabel && (
+                                                                <Text
+                                                                  style={[
+                                                                    styles.slotPricingLabel,
+                                                                    isSlotSelected &&
+                                                                      styles.slotPricingLabelSelected,
+                                                                  ]}
+                                                                >
+                                                                  {pricingLabel}
+                                                                </Text>
+                                                              )}
+                                                            </>
+                                                          );
+                                                        }
+
+                                                        // fallback to full price
+                                                        return (
+                                                          <>
+                                                            <Text
+                                                              style={[
+                                                                styles.slotPrice,
+                                                                isSlotSelected &&
+                                                                  styles.slotPriceSelected,
+                                                              ]}
+                                                            >
+                                                              €{slotPrice.toFixed(2)}
+                                                            </Text>
+                                                            {pricingLabel && (
+                                                              <Text
+                                                                style={[
+                                                                  styles.slotPricingLabel,
+                                                                  isSlotSelected &&
+                                                                    styles.slotPricingLabelSelected,
+                                                                ]}
+                                                              >
+                                                                {pricingLabel}
+                                                              </Text>
+                                                            )}
+                                                          </>
+                                                        );
+                                                      })()
+                                                    ) : (
+                                                      <>
+                                                        <Text
+                                                          style={[
+                                                            styles.slotPrice,
+                                                            isSlotSelected &&
+                                                              styles.slotPriceSelected,
+                                                          ]}
+                                                        >
+                                                          €{slotPrice.toFixed(2)}
+                                                        </Text>
+                                                        {pricingLabel && (
+                                                          <Text
+                                                            style={[
+                                                              styles.slotPricingLabel,
+                                                              isSlotSelected &&
+                                                                styles.slotPricingLabelSelected,
+                                                            ]}
+                                                          >
+                                                            {pricingLabel}
+                                                          </Text>
+                                                        )}
+                                                      </>
                                                     )}
                                                   </View>
                                                 </Pressable>
@@ -1487,6 +1604,7 @@ export default function FieldDetailsScreen() {
                                                     campoName: campo.name,
                                                     strutturaName:
                                                       struttura.name,
+                                                    struttura: struttura,
                                                     sport: campo.sport,
                                                     date: selectedDateStr,
                                                     startTime:
@@ -1532,13 +1650,19 @@ export default function FieldDetailsScreen() {
                                               <Text
                                                 style={styles.prenotaBtnPrice}
                                               >
-                                                €
-                                                {calculatePrice(
-                                                  campo,
-                                                  selectedDuration[campo._id],
-                                                  selectedDateStr,
-                                                  selectedSlot[campo._id]
-                                                ).toFixed(2)}
+                                                {(() => {
+                                                  const total = calculatePrice(
+                                                    campo,
+                                                    selectedDuration[campo._id],
+                                                    selectedDateStr,
+                                                    selectedSlot[campo._id]
+                                                  );
+                                                  if (isVolleyCampo && canSplitCampo && playerPricingCampo?.enabled) {
+                                                    const unit = getUnitPrice(4, selectedDuration[campo._id]);
+                                                    if (unit != null) return `€${unit.toFixed(2)} / gioc.`;
+                                                  }
+                                                  return `€${total.toFixed(2)}`;
+                                                })()}
                                               </Text>
                                             </Pressable>
                                           )}

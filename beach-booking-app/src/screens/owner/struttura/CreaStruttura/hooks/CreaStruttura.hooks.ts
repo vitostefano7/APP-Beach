@@ -24,6 +24,7 @@ export function useCreaStruttura() {
   const [city, setCity] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [isCostSplittingEnabled, setIsCostSplittingEnabled] = useState(false);
 
   /* =====================
      AUTOCOMPLETE
@@ -295,6 +296,8 @@ export function useCreaStruttura() {
     setEditingDateIndex,
     setEditingPeriodIndex,
     setSelectedMonth,
+    setIsCostSplittingEnabled,
+    isCostSplittingEnabled,
 
     /* handlers orari */
     toggleDayClosed,
