@@ -5,6 +5,7 @@ import Booking from "../models/Booking";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { getDefaultMaxPlayersForSport, validateMaxPlayersForSport } from "../utils/matchSportRules";
+import { createNotification } from "../utils/notificationHelper";
 
 // Tipo per user popolato
 interface PopulatedUser {
@@ -238,7 +239,37 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
     const { team } = req.body;
     const userId = req.user!.id;
 
-    const match = await Match.findById(matchId).populate('booking');
+    console.log("🎯 [JOIN MATCH] Richiesta join per match:", matchId, "da user:", userId);
+
+    const match = await Match.findById(matchId).populate({
+      path: 'booking',
+      populate: [
+        {
+          path: 'struttura',
+          select: 'owner name'
+        },
+        {
+          path: 'campo',
+          select: 'name sport struttura',
+          populate: {
+            path: 'struttura',
+            select: 'name'
+          }
+        }
+      ]
+    }) as any;
+
+    console.log("🔍 [DEBUG] Match popolato - struttura:", {
+      matchId: match?._id,
+      bookingStruttura: match?.booking?.struttura,
+      strutturaName: (match?.booking as any)?.struttura?.name,
+      strutturaOwner: (match?.booking as any)?.struttura?.owner,
+      campoStruttura: (match?.booking as any)?.campo?.struttura,
+      campoStrutturaName: (match?.booking as any)?.campo?.struttura?.name
+    });
+
+    // Ottieni i dati dell'utente che si unisce
+    const joiningUser = await User.findById(userId).select('name surname username');
     if (!match) {
       return res.status(404).json({ message: "Match non trovato" });
     }
@@ -249,7 +280,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
     }
 
     // Verifica che il booking sia pubblico
-    const booking = match.booking as any;
+    const booking = (match as any).booking;
     if (booking && booking.bookingType === "private") {
       return res.status(403).json({ message: "Prenotazione privata - solo su invito" });
     }
@@ -261,7 +292,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
 
     // Già presente?
     const alreadyJoined = match.players.some(
-      (p) => p.user.toString() === userId
+      (p: any) => p.user.toString() === userId
     );
     if (alreadyJoined) {
       return res.status(400).json({ message: "Già nel match" });
@@ -292,6 +323,93 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
 
     await match.save();
     await match.populate("players.user", "username name surname avatarUrl");
+
+    console.log("✅ [JOIN MATCH] Join completato per match:", matchId, "nuovo totale giocatori:", match.players.length);
+    
+    // Debug struttura
+    console.log("🔍 [DEBUG] Booking struttura info:", {
+      bookingId: booking?._id,
+      strutturaId: booking?.struttura,
+      strutturaName: booking?.struttura?.name,
+      strutturaOwner: booking?.struttura?.owner,
+      campoName: booking?.campo?.name,
+      campoSport: booking?.campo?.sport
+    });
+
+    // 📢 Notifiche per join match
+    try {
+      const creatorId = match.createdBy;
+      const strutturaOwner = booking?.struttura?.owner;
+      const userFullName = joiningUser ? `${joiningUser.name} ${joiningUser.surname}` : 'Un giocatore';
+      
+      console.log("🔍 [NOTIFICA] Controllo destinatari - Creatore:", creatorId, "Proprietario struttura:", strutturaOwner, "User che si unisce:", userId);
+      
+      // Notifica al creatore del match (se diverso dal giocatore che si unisce)
+      if (creatorId && creatorId.toString() !== userId) {
+        console.log("📝 [NOTIFICA] Creazione notifica per creatore match:", creatorId);
+        
+        console.log("📋 [NOTIFICA] Dettagli notifica creatore:", JSON.stringify({
+          recipientId: creatorId,
+          senderId: userId,
+          type: "match_join",
+          title: `Nuovo giocatore: ${userFullName}`,
+          message: `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          relatedId: booking?._id,
+          relatedModel: "Booking"
+        }, null, 2));
+        
+        await createNotification(
+          new mongoose.Types.ObjectId(creatorId),
+          new mongoose.Types.ObjectId(userId),
+          "match_join",
+          `Nuovo giocatore: ${userFullName}`,
+          `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
+          "Booking" // Cambiamo il relatedModel a Booking
+        );
+        console.log("✅ [NOTIFICA] Notifica inviata al creatore del match");
+      }
+      
+      // Notifica al proprietario della struttura (se diverso dal creatore e dal giocatore)
+      if (strutturaOwner && strutturaOwner.toString() !== userId && strutturaOwner.toString() !== creatorId?.toString()) {
+        console.log("📝 [NOTIFICA] Creazione notifica per proprietario struttura:", strutturaOwner);
+        
+        const notificationData = {
+          recipientId: strutturaOwner,
+          senderId: userId,
+          type: "match_join",
+          title: `Nuovo giocatore: ${userFullName}`,
+          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          relatedId: booking?._id,
+          relatedModel: "Booking"
+        };
+        console.log("📋 [NOTIFICA] Dettagli notifica proprietario:", JSON.stringify({
+          recipientId: strutturaOwner,
+          senderId: userId,
+          type: "match_join",
+          title: `Nuovo giocatore: ${userFullName}`,
+          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          relatedId: booking?._id,
+          relatedModel: "Booking"
+        }, null, 2));
+        
+        await createNotification(
+          new mongoose.Types.ObjectId(strutturaOwner),
+          new mongoose.Types.ObjectId(userId),
+          "match_join",
+          `Nuovo giocatore: ${userFullName}`,
+          `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
+          "Booking" // Cambiamo il relatedModel a Booking
+        );
+        console.log("✅ [NOTIFICA] Notifica inviata al proprietario della struttura");
+      } else {
+        console.log("⚠️ [NOTIFICA] Proprietario struttura non notificato - stesso del creatore o del giocatore");
+      }
+    } catch (notificationError) {
+      console.error("❌ [NOTIFICA] Errore creazione notifiche join:", notificationError);
+      // Non fallire il join per un errore di notifica
+    }
 
     res.json(match);
   } catch (err) {

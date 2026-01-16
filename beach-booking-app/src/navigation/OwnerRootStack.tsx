@@ -21,6 +21,7 @@ import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen";
 import OwnerCercaAmiciScreen from "../screens/owner/OwnerCercaAmiciScreen";
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
+import OwnerNotificheScreen from "../screens/owner/dashboard/OwnerNotificheScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -32,6 +33,7 @@ export type OwnerRootStackParamList = {
   DettaglioCampo: { campoId: string };
   ModificaCampo: { campoId: string };
   OwnerCercaAmiciScreen: undefined;
+  OwnerNotifiche: undefined;
 };
 
 const Stack = createNativeStackNavigator<OwnerRootStackParamList>();
@@ -40,6 +42,10 @@ export default function OwnerRootStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="OwnerTabs" component={OwnerTabs} />
+      <Stack.Screen
+        name="OwnerNotifiche"
+        component={OwnerNotificheScreen}
+      />
       <Stack.Screen
         name="StrutturaDashboard"
         component={StrutturaDashboardScreen}

@@ -7,6 +7,7 @@ import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
 import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
+import { createNotification } from "../utils/notificationHelper";
 
 /* =====================================================
    PLAYER
@@ -226,6 +227,34 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     await calendarDay.save();
 
     console.log("✅ Prenotazione creata:", booking._id);
+
+    // 📢 Crea notifica per il proprietario della struttura
+    try {
+      console.log("🔍 [NOTIFICA] Controllo proprietario struttura...");
+      const strutturaOwner = struttura.owner;
+      console.log("🔍 [NOTIFICA] Proprietario struttura:", strutturaOwner);
+      
+      if (strutturaOwner) {
+        console.log("📝 [NOTIFICA] Creazione notifica per:", strutturaOwner);
+        console.log("📝 [NOTIFICA] Dettagli: campo =", campo.name, ", date =", date, ", startTime =", startTime);
+        
+        await createNotification(
+          new mongoose.Types.ObjectId(strutturaOwner),
+          new mongoose.Types.ObjectId(user.id),
+          "new_booking",
+          "Nuova prenotazione confermata",
+          `Prenotazione per ${campo.name} il ${date} alle ${startTime}`,
+          new mongoose.Types.ObjectId(booking._id),
+          "Booking"
+        );
+        console.log("✅ [NOTIFICA] Notifica creata con successo per il proprietario:", strutturaOwner);
+      } else {
+        console.log("⚠️ [NOTIFICA] Nessun proprietario trovato per la struttura:", struttura._id);
+      }
+    } catch (notificationError) {
+      console.error("❌ [NOTIFICA] Errore creazione notifica:", notificationError);
+      // Non fallire la prenotazione per un errore di notifica
+    }
 
     // 🆕 Determina maxPlayers basandosi sul tipo di sport del campo
     const sportType = campo.sport as "beach volley" | "volley";

@@ -1078,6 +1078,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         onInviteToSlot={() => handleInviteToTeam("A", slotNumber)}
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
+                        isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
                       />
                     </FadeInView>
                   );
@@ -1123,6 +1124,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         onInviteToSlot={() => handleInviteToTeam("B", slotNumber)}
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
+                        isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
                       />
                     </FadeInView>
                   );
@@ -1151,6 +1153,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     onRemove={() => handleRemovePlayer(player.user._id)}
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     matchStatus={getMatchStatus()}
+                    isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
                   />
                 </SlideInView>
               ))}
@@ -1175,6 +1178,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     isPending={true}
                     matchStatus={getMatchStatus()}
+                    isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
                   />
                 </SlideInView>
               ))}
