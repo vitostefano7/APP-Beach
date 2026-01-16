@@ -759,12 +759,10 @@ export default function FieldDetailsScreen() {
                             {SURFACE_LABELS[campo.surface] || campo.surface}
                           </Text>
                         </View>
-                        {campo.indoor && (
-                          <View style={styles.indoorBadge}>
-                            <Ionicons name="business" size={10} color="#666" />
-                            <Text style={styles.indoorText}>Indoor</Text>
-                          </View>
-                        )}
+                        <View style={styles.indoorBadge}>
+                          <Ionicons name={campo.indoor ? "business" : "sunny"} size={10} color="#666" />
+                          <Text style={styles.indoorText}>{campo.indoor ? "Indoor" : "Outdoor"}</Text>
+                        </View>
                       </View>
 
                       <View style={styles.campoDetailsRow}>

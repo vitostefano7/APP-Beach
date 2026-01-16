@@ -6,6 +6,7 @@ import UserPreferences from "../models/UserPreferences";
 import Booking from "../models/Booking";
 import Match from "../models/Match";
 import Campo from "../models/Campo";
+import Friendship from "../models/Friendship";
 import { AuthRequest } from "../middleware/authMiddleware";
 import fs from "fs";
 import path from "path";
@@ -1222,6 +1223,114 @@ export const getUserPosts = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("❌ getUserPosts error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /users/:userId/friends
+ * Ottiene la lista degli amici di un utente (solo se profilo pubblico o sei amico)
+ */
+export const getUserFriends = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user!.id;
+    const { limit = 100, skip = 0, type } = req.query;
+
+    console.log("👥 getUserFriends chiamato");
+    console.log("   - currentUser:", currentUserId);
+    console.log("   - userId richiesto:", userId);
+    console.log("   - type:", type);
+
+    // Verifica che l'utente target esista
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      console.log("❌ Utente non trovato:", userId);
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Controlla se il profilo è privato
+    const isPrivate = targetUser.profilePrivacy === 'private';
+
+    // Se privato, verifica se sei amico
+    if (isPrivate) {
+      const friendship = await Friendship.findOne({
+        $or: [
+          { requester: currentUserId, recipient: userId, status: "accepted" },
+          { requester: userId, recipient: currentUserId, status: "accepted" },
+        ],
+      });
+
+      if (!friendship) {
+        console.log("❌ Accesso negato: profilo privato e non sei amico");
+        return res.status(403).json({ message: "Questo profilo è privato" });
+      }
+    }
+
+    // Ora carica gli amici usando la logica simile a getFriends
+    const userObjectId = new Types.ObjectId(userId);
+
+    let query: any;
+    const listType = typeof type === "string" ? type : undefined;
+
+    if (listType === "followers") {
+      query = { recipient: userObjectId, status: "accepted" };
+    } else if (listType === "following") {
+      query = { requester: userObjectId, status: "accepted" };
+    } else {
+      query = {
+        $or: [
+          { requester: userObjectId, status: "accepted" },
+          { recipient: userObjectId, status: "accepted" },
+        ],
+      };
+    }
+
+    const friendships = await Friendship.find(query)
+      .populate([
+        { path: "requester", select: "name surname username avatarUrl profilePrivacy" },
+        { path: "recipient", select: "name surname username avatarUrl profilePrivacy" },
+      ])
+      .sort({ acceptedAt: -1 })
+      .skip(parseInt(skip as string))
+      .limit(parseInt(limit as string));
+
+    // Trasforma in formato lista amici
+    const friends = friendships.map(friendship => {
+      const friend = (friendship.requester as any)._id.equals(userObjectId) 
+        ? friendship.recipient as any
+        : friendship.requester as any;
+      
+      return {
+        user: {
+          _id: friend._id,
+          name: friend.name,
+          surname: friend.surname,
+          username: friend.username,
+          avatarUrl: friend.avatarUrl,
+          profilePrivacy: friend.profilePrivacy,
+        },
+        friendshipId: friendship._id,
+        friendsSince: friendship.acceptedAt,
+      };
+    });
+
+    // Conta totale
+    const total = await Friendship.countDocuments(query);
+
+    console.log("✅ Amici trovati:", friends.length);
+
+    res.json({
+      friends,
+      total,
+      limit: parseInt(limit as string),
+      skip: parseInt(skip as string),
+    });
+  } catch (err) {
+    console.error("❌ getUserFriends error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

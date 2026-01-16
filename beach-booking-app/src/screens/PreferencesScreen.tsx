@@ -304,7 +304,15 @@ export default function PreferencesScreen({ navigation }: any) {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
           <Text style={styles.headerTitle}>Preferenze</Text>
-          <View style={{ width: 40 }} />
+          <Pressable
+            style={styles.headerSaveButton}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.headerSaveButtonText}>
+              {saving ? "..." : "Salva"}
+            </Text>
+          </Pressable>
         </View>
 
         <ScrollView
@@ -558,20 +566,6 @@ export default function PreferencesScreen({ navigation }: any) {
           </Text>
         </View>
         </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Pressable
-            style={styles.saveButton}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            <Text style={styles.saveButtonText}>
-              {saving ? "Salvataggio..." : "Salva modifiche"}
-            </Text>
-            <Ionicons name="checkmark" size={20} color="white" />
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
 
       <Modal
@@ -670,9 +664,9 @@ const styles = StyleSheet.create({
   },
 
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#f8f9fa",
     alignItems: "center",
     justifyContent: "center",
@@ -682,6 +676,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: "#1a1a1a",
+  },
+
+  headerSaveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#2979ff",
+  },
+
+  headerSaveButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
   },
 
   container: {
@@ -716,7 +723,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
     color: "#1a1a1a",
   },
@@ -725,7 +732,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -736,42 +743,42 @@ const styles = StyleSheet.create({
   },
 
   settingLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 4,
   },
 
   settingDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   privacyLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 8,
   },
 
   privacyDescription: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
-    lineHeight: 18,
+    lineHeight: 16,
     marginBottom: 12,
   },
 
   privacyOptions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
 
   privacyOption: {
     flex: 1,
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 16,
+    gap: 6,
+    paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: "#f8f9fa",
     borderWidth: 2,
@@ -784,7 +791,7 @@ const styles = StyleSheet.create({
   },
 
   privacyOptionText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#666",
   },
@@ -799,7 +806,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 8,
@@ -812,14 +819,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#e9ecef",
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 12,
   },
 
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: "#1a1a1a",
     fontWeight: "500",
   },
@@ -843,8 +850,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#e9ecef",
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
 
   sportChipActive: {
@@ -853,7 +860,7 @@ const styles = StyleSheet.create({
   },
 
   sportText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: "#666",
   },
@@ -864,14 +871,14 @@ const styles = StyleSheet.create({
   },
 
   timeSlotsGrid: {
-    gap: 12,
+    gap: 10,
   },
 
   timeSlotCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    padding: 16,
+    gap: 12,
+    padding: 12,
     borderRadius: 12,
     backgroundColor: "#f8f9fa",
     borderWidth: 2,
@@ -884,7 +891,7 @@ const styles = StyleSheet.create({
   },
 
   timeSlotText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#666",
   },

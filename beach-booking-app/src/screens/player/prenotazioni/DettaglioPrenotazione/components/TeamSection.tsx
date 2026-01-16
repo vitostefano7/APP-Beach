@@ -35,7 +35,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   matchStatus,
 }) => {
   const teamColor = team === "A" ? "#2196F3" : "#F44336";
-  const teamIcon = team === "A" ? "people-circle" : "people";
+  const teamIcon = team === "A" ? "people-circle" : "people-circle";
   
   // Calcola l'etichetta della formazione (es. "2v2", "5v5")
   const formationLabel = getTeamFormationLabel(maxPlayers);

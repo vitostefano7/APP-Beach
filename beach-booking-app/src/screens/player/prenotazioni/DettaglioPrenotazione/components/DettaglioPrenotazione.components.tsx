@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, Alert } from "react-native";
+import React, { useState, Fragment } from "react";
+import { View, Text, Pressable, Alert, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
@@ -42,6 +42,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   const navigation = useNavigation<any>();
   const [leaving, setLeaving] = useState(false);
   const [showTeamChangeModal, setShowTeamChangeModal] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
 
   const isCurrentUser = player?.user?._id === currentUserId;
   const isConfirmed = player?.status === "confirmed";
@@ -101,28 +102,19 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
   const handleLeaveMatch = () => {
     if (!onLeave) return;
-    
-    Alert.alert(
-      "Abbandona il match",
-      "Sei sicuro di voler abbandonare questo match?",
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: "Abbandona",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLeaving(true);
-              await onLeave();
-            } catch (error) {
-              Alert.alert("Errore", "Impossibile abbandonare il match");
-            } finally {
-              setLeaving(false);
-            }
-          }
-        }
-      ]
-    );
+    setShowLeaveConfirmModal(true);
+  };
+
+  const confirmLeaveMatch = async () => {
+    try {
+      setLeaving(true);
+      setShowLeaveConfirmModal(false);
+      await onLeave();
+    } catch (error) {
+      Alert.alert("Errore", "Impossibile abbandonare il match");
+    } finally {
+      setLeaving(false);
+    }
   };
 
   // Se è uno slot vuoto
@@ -159,120 +151,168 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   }
 
   return (
-    <View style={[
-      styles.playerCard, 
-      isPending && styles.playerCardPending,
-      isCurrentUser && styles.currentUserCard,
-      isDeclined && styles.declinedUserCard
-    ]}>
-      {/* Pulsante Abbandona per l'utente corrente */}
-      {canLeave && (
-        <Pressable 
-          style={styles.leaveButton}
-          onPress={handleLeaveMatch}
-          disabled={leaving}
-        >
-          {leaving ? (
-            <Ionicons name="ellipsis-horizontal" size={14} color="#FFF" />
-          ) : (
-            <Ionicons name="exit-outline" size={14} color="#FFF" />
+    <Fragment>
+      <View style={[
+        styles.playerCard, 
+        isPending && styles.playerCardPending,
+        isCurrentUser && styles.currentUserCard,
+        isDeclined && styles.declinedUserCard
+      ]}>
+        {/* LEFT */}
+        <View style={styles.playerLeft}>
+          <Pressable onPress={() => openUserProfile(player.user?._id)}>
+            <Avatar
+              name={player.user?.name}
+              surname={player.user?.surname}
+              avatarUrl={player.user?.avatarUrl}
+              size={48}
+              teamColor={currentTeam || 'none'}
+            />
+          </Pressable>
+
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerName}>
+              {player.user?.name && player.user?.surname 
+                ? `${player.user.name} ${player.user.surname}`
+                : player.user?.name || "Giocatore"}
+              {isCurrentUser && (
+                <Text style={styles.currentUserIndicator}> (Tu)</Text>
+              )}
+            </Text>
+            <Text style={styles.playerUsername}>
+              @{player.user?.username || "unknown"}
+            </Text>
+          </View>
+        </View>
+
+        {/* RIGHT */}
+        <View style={styles.playerRight}>
+          {/* Status Icon - Solo per altri giocatori */}
+          {!isCurrentUser && (
+            <View
+              style={[
+                styles.playerStatusIcon,
+                isConfirmed
+                  ? styles.playerStatusConfirmed
+                  : isPending
+                  ? styles.playerStatusPending
+                  : styles.playerStatusDeclined,
+              ]}
+            >
+              <Ionicons
+                name={
+                  isConfirmed ? "checkmark-circle" : 
+                  isPending ? "time" : 
+                  "close-circle"
+                }
+                size={18}
+                color={
+                  isConfirmed ? "#4CAF50" : 
+                  isPending ? "#FF9800" : 
+                  "#F44336"
+                }
+              />
+            </View>
           )}
-        </Pressable>
-      )}
 
-      {/* LEFT */}
-      <View style={styles.playerLeft}>
-        <Pressable onPress={() => openUserProfile(player.user?._id)}>
-          <Avatar
-            name={player.user?.name}
-            surname={player.user?.surname}
-            avatarUrl={player.user?.avatarUrl}
-            size={48}
-            teamColor={currentTeam || 'none'}
-          />
-        </Pressable>
+          {canChangeTeam && (
+            <Pressable
+              style={styles.dragIndicator}
+              onPress={() => setShowTeamChangeModal(true)}
+              hitSlop={10}
+            >
+              <Ionicons
+                name="swap-horizontal"
+                size={20}
+                color={getButtonColor()}
+              />
+            </Pressable>
+          )}
 
-        <View style={styles.playerInfo}>
-          <Text style={styles.playerName}>
-            {player.user?.name && player.user?.surname 
-              ? `${player.user.name} ${player.user.surname}`
-              : player.user?.name || "Giocatore"}
-            {isCurrentUser && (
-              <Text style={styles.currentUserIndicator}> (Tu)</Text>
-            )}
-          </Text>
-          <Text style={styles.playerUsername}>
-            @{player.user?.username || "unknown"}
-          </Text>
-        </View>
-      </View>
+          {canLeave && (
+            <Pressable 
+              style={styles.leaveButtonInline}
+              onPress={handleLeaveMatch}
+              disabled={leaving}
+            >
+              {leaving ? (
+                <Ionicons name="ellipsis-horizontal" size={20} color="#F44336" />
+              ) : (
+                <Ionicons name="exit-outline" size={20} color="#F44336" />
+              )}
+            </Pressable>
+          )}
 
-      {/* RIGHT */}
-      <View style={styles.playerRight}>
-        {/* Status Icon - Compatto */}
-        <View
-          style={[
-            styles.playerStatusIcon,
-            isConfirmed
-              ? styles.playerStatusConfirmed
-              : isPending
-              ? styles.playerStatusPending
-              : styles.playerStatusDeclined,
-          ]}
-        >
-          <Ionicons
-            name={
-              isConfirmed ? "checkmark-circle" : 
-              isPending ? "time" : 
-              "close-circle"
-            }
-            size={18}
-            color={
-              isConfirmed ? "#4CAF50" : 
-              isPending ? "#FF9800" : 
-              "#F44336"
-            }
-          />
+          {canRemove && (
+            <Pressable
+              style={styles.removeButton}
+              onPress={onRemove}
+              hitSlop={10}
+            >
+              <Ionicons
+                name="close-circle"
+                size={22}
+                color="#F44336"
+              />
+            </Pressable>
+          )}
         </View>
 
-        {canChangeTeam && (
-          <Pressable
-            style={styles.dragIndicator}
-            onPress={() => setShowTeamChangeModal(true)}
-            hitSlop={10}
-          >
-            <Ionicons
-              name="swap-horizontal"
-              size={20}
-              color={getButtonColor()}
-            />
-          </Pressable>
-        )}
-
-        {canRemove && (
-          <Pressable
-            style={styles.removeButton}
-            onPress={onRemove}
-            hitSlop={10}
-          >
-            <Ionicons
-              name="close-circle"
-              size={22}
-              color="#F44336"
-            />
-          </Pressable>
-        )}
+        {/* Team Change Modal */}
+        <TeamChangeModal
+          visible={showTeamChangeModal}
+          onClose={() => setShowTeamChangeModal(false)}
+          onSelectTeam={handleTeamChange}
+          currentTeam={currentTeam}
+          isCreator={isCreator}
+        />
       </View>
 
-      {/* Team Change Modal */}
-      <TeamChangeModal
-        visible={showTeamChangeModal}
-        onClose={() => setShowTeamChangeModal(false)}
-        onSelectTeam={handleTeamChange}
-        currentTeam={currentTeam}
-        isCreator={isCreator}
-      />
-    </View>
+      {/* Leave Confirm Modal */}
+      <Modal
+        visible={showLeaveConfirmModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLeaveConfirmModal(false)}
+      >
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.leaveConfirmModal}>
+            <View style={styles.leaveConfirmHeader}>
+              <Ionicons name="exit-outline" size={48} color="#F44336" />
+              <Text style={styles.leaveConfirmTitle}>Abbandona Match</Text>
+            </View>
+            
+            <Text style={styles.leaveConfirmMessage}>
+              Sei sicuro di voler abbandonare questo match? Questa azione non può essere annullata.
+            </Text>
+            
+            <View style={styles.leaveConfirmActions}>
+              <Pressable
+                style={styles.leaveConfirmCancelButton}
+                onPress={() => setShowLeaveConfirmModal(false)}
+              >
+                <Text style={styles.leaveConfirmCancelText}>Annulla</Text>
+              </Pressable>
+              
+              <Pressable
+                style={styles.leaveConfirmConfirmButton}
+                onPress={confirmLeaveMatch}
+                disabled={leaving}
+              >
+                {leaving ? (
+                  <Ionicons name="ellipsis-horizontal" size={20} color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="exit-outline" size={20} color="white" />
+                    <Text style={styles.leaveConfirmConfirmText}>Abbandona</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </Fragment>
   );
 };
 

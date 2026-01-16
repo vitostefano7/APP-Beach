@@ -5,7 +5,6 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
-  Alert,
   Modal,
   TextInput,
   Linking,
@@ -122,11 +121,25 @@ export default function DettaglioPrenotazioneScreen() {
   const [teamSelectionMode, setTeamSelectionMode] = useState<"join" | "invite">("join");
   const suppressInvitePress = useRef(false);
 
+  // Funzione helper per mostrare alert personalizzato
+  const showCustomAlert = (title: string, message: string, buttons: Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}> = [{text: 'OK'}]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(buttons);
+    setCustomAlertVisible(true);
+  };
+
+  // Stati per il modal personalizzato
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState("");
+  const [customAlertMessage, setCustomAlertMessage] = useState("");
+  const [customAlertButtons, setCustomAlertButtons] = useState<Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}>>([]);
+
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
       setError('ID prenotazione non valido');
       setLoading(false);
-      Alert.alert('Errore', 'ID prenotazione non valido', [
+      showCustomAlert('Errore', 'ID prenotazione non valido', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
       return;
@@ -185,7 +198,7 @@ export default function DettaglioPrenotazioneScreen() {
     } catch (error: any) {
       console.error('Errore nel caricamento:', error);
       setError(error.message);
-      Alert.alert('Errore', error.message || 'Impossibile caricare la prenotazione', [
+      showCustomAlert('Errore', error.message || 'Impossibile caricare la prenotazione', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } finally {
@@ -320,7 +333,7 @@ export default function DettaglioPrenotazioneScreen() {
 
     try {
       await submitMatchScore(booking.matchId, winner, sets, token);
-      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
+      showCustomAlert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
       setScoreModalVisible(false);
       loadBooking();
     } catch (error: any) {
@@ -331,7 +344,7 @@ export default function DettaglioPrenotazioneScreen() {
   const handleCancelBooking = async () => {
     if (!booking) return;
 
-    Alert.alert(
+    showCustomAlert(
       "Annulla Prenotazione",
       "Sei sicuro di voler annullare questa prenotazione? Questa azione non può essere annullata.",
       [
@@ -354,11 +367,11 @@ export default function DettaglioPrenotazioneScreen() {
                 throw new Error(error.message || "Errore durante la cancellazione");
               }
 
-              Alert.alert("Prenotazione Annullata", "La prenotazione è stata annullata con successo.", [
+              showCustomAlert("Prenotazione Annullata", "La prenotazione è stata annullata con successo.", [
                 { text: "OK", onPress: () => navigation.goBack() }
               ]);
             } catch (error: any) {
-              Alert.alert("Errore", error.message || "Impossibile annullare la prenotazione");
+              showCustomAlert("Errore", error.message || "Impossibile annullare la prenotazione");
             } finally {
               setCancellingBooking(false);
             }
@@ -399,7 +412,7 @@ export default function DettaglioPrenotazioneScreen() {
         },
       });
     } catch (error: any) {
-      Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
+      showCustomAlert("Errore", error.message || "Impossibile aprire la chat di gruppo");
     } finally {
       setLoadingGroupChat(false);
     }
@@ -424,8 +437,17 @@ export default function DettaglioPrenotazioneScreen() {
         struttura: booking.campo.struttura,
       });
     } catch (error: any) {
-      Alert.alert("Errore", error.message || "Impossibile aprire la chat. Riprova più tardi.");
+      showCustomAlert("Errore", error.message || "Impossibile aprire la chat. Riprova più tardi.");
     }
+  };
+
+  const handleOpenStrutturaDetails = () => {
+    if (!booking?.campo?.struttura?._id) {
+      showCustomAlert("Errore", "Struttura non disponibile");
+      return;
+    }
+
+    navigation.navigate("DettaglioStruttura", { struttura: booking.campo.struttura });
   };
 
   const handleAssignTeam = async (playerId: string, team: "A" | "B" | null) => {
@@ -515,7 +537,7 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore invito");
       }
 
-      Alert.alert("✅ Invito inviato!", "L'utente è stato invitato al match");
+      showCustomAlert("✅ Invito inviato!", "L'utente è stato invitato al match");
       setInviteModalVisible(false);
       setSearchQuery("");
       setSearchResults([]);
@@ -523,7 +545,7 @@ export default function DettaglioPrenotazioneScreen() {
       setInviteToSlot(null);
       loadBooking();
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
+      showCustomAlert("Errore", error.message);
     }
   };
 
@@ -559,12 +581,12 @@ export default function DettaglioPrenotazioneScreen() {
       loadBooking();
       
       if (response === "accept") {
-        Alert.alert("✅ Invito accettato!", "Ti sei unito al match con successo");
+        showCustomAlert("✅ Invito accettato!", "Ti sei unito al match con successo");
       } else {
-        Alert.alert("Invito rifiutato", "Hai rifiutato l'invito al match");
+        showCustomAlert("Invito rifiutato", "Hai rifiutato l'invito al match");
       }
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
+      showCustomAlert("Errore", error.message);
     } finally {
       setAcceptingInvite(false);
     }
@@ -582,7 +604,7 @@ export default function DettaglioPrenotazioneScreen() {
   const handleRemovePlayer = async (playerId: string) => {
     if (!booking?.matchId) return;
 
-    Alert.alert(
+    showCustomAlert(
       "Rimuovi giocatore",
       "Sei sicuro di voler rimuovere questo giocatore dal match?",
       [
@@ -604,7 +626,7 @@ export default function DettaglioPrenotazioneScreen() {
 
               loadBooking();
             } catch (error: any) {
-              Alert.alert("Errore", error.message);
+              showCustomAlert("Errore", error.message);
             }
           }
         }
@@ -616,7 +638,7 @@ export default function DettaglioPrenotazioneScreen() {
     if (!booking?.matchId) return;
 
     if (!isRegistrationOpen()) {
-      Alert.alert(
+      showCustomAlert(
         "Registrazione chiusa",
         "La deadline per le registrazioni è passata. Non è più possibile unirsi al match."
       );
@@ -644,10 +666,10 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore nell'unione al match");
       }
 
-      Alert.alert("✅ Match unito!", "Ti sei unito al match con successo");
+      showCustomAlert("✅ Match unito!", "Ti sei unito al match con successo");
       loadBooking();
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
+      showCustomAlert("Errore", error.message);
     }
   };
 
@@ -666,10 +688,10 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore nell'abbandonare il match");
       }
 
-      Alert.alert("Match abbandonato", "Hai lasciato il match");
+      showCustomAlert("Match abbandonato", "Hai lasciato il match");
       loadBooking();
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
+      showCustomAlert("Errore", error.message);
     } finally {
       setLeavingMatch(false);
     }
@@ -677,14 +699,14 @@ export default function DettaglioPrenotazioneScreen() {
 
   const handleInviteToTeam = (team: "A" | "B", slotNumber: number) => {
     if (isMatchInProgress()) {
-      Alert.alert(
+      showCustomAlert(
         "Match in corso",
         "Non è possibile invitare giocatori durante il match. Attendi la fine della partita."
       );
       return;
     }
     if (!isRegistrationOpen()) {
-      Alert.alert(
+      showCustomAlert(
         "Registrazione chiusa",
         "La deadline per le registrazioni è passata. Non è più possibile invitare giocatori."
       );
@@ -703,7 +725,7 @@ export default function DettaglioPrenotazioneScreen() {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     
     Linking.openURL(url).catch(err => {
-      Alert.alert("Errore", "Impossibile aprire Google Maps");
+      showCustomAlert("Errore", "Impossibile aprire Google Maps");
       console.error("Errore apertura Maps:", err);
     });
   };
@@ -782,7 +804,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
 
     switch (match.status) {
       case "completed":
-        return { color: "#4CAF50", text: "Completato", icon: "checkmark-circle" as const };
+        return { color: "#4CAF50", text: "Concluso", icon: "checkmark-circle" as const };
       case "cancelled":
         return { color: "#F44336", text: "Cancellato", icon: "close-circle" as const };
       case "full":
@@ -797,10 +819,17 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
   const getMatchStatus = () => {
     const match = booking.match;
     if (!match) return "draft";
+
     // Se il match è in corso, ritorna 'in_progress'
     if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
       return "in_progress";
     }
+
+    // Se il match è passato e ha un punteggio, consideralo completato
+    if (isMatchPassed() && match.score && match.score.sets.length > 0) {
+      return "completed";
+    }
+
     return match.status;
   };
 
@@ -984,10 +1013,20 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
       )}
 
       {/* Score Actions */}
-      {canSubmitScore && (!match.score || match.score.sets.length === 0) && confirmedPlayers.length >= 2 && (
+      {canSubmitScore && (!match.score || match.score.sets.length === 0) && (
         <FadeInView delay={700}>
           <View style={styles.scoreActionsContainer}>
-            <AnimatedButton onPress={() => setScoreModalVisible(true)}>
+            <AnimatedButton onPress={() => {
+              if (unassignedPlayers.length > 0) {
+                showCustomAlert(
+                  "Giocatori non assegnati",
+                  "Prima di inserire il risultato, tutti i giocatori devono essere assegnati a un team.",
+                  [{ text: "OK" }]
+                );
+                return;
+              }
+              setScoreModalVisible(true);
+            }}>
               <WinnerGradient style={styles.submitScoreButton}>
                 <Ionicons name="trophy" size={20} color="#FFF" />
                 <Text style={styles.submitScoreButtonText}>Inserisci Risultato</Text>
@@ -1204,7 +1243,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             <View style={styles.fieldInfoList}>
               {/* Struttura */}
               <FadeInView delay={200}>
-                <View style={styles.fieldInfoRow}>
+                <Pressable style={styles.fieldInfoRow} onPress={handleOpenStrutturaDetails}>
                   <View style={styles.fieldIconCircle}>
                     <Ionicons name="business" size={18} color="#2196F3" />
                   </View>
@@ -1219,7 +1258,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                   >
                     <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
                   </Pressable>
-                </View>
+                </Pressable>
               </FadeInView>
 
               <View style={styles.fieldInfoDivider} />
@@ -1476,6 +1515,49 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           teamBPlayers={teamBConfirmed}
         />
       )}
+
+      {/* Custom Alert Modal */}
+      <Modal
+        visible={customAlertVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setCustomAlertVisible(false)}
+      >
+        <View style={styles.centeredModalOverlay}>
+          <ScaleInView style={styles.customAlertModal}>
+            <View style={styles.customAlertHeader}>
+              <Text style={styles.customAlertTitle}>{customAlertTitle}</Text>
+            </View>
+            <View style={styles.customAlertContent}>
+              <Text style={styles.customAlertMessage}>{customAlertMessage}</Text>
+            </View>
+            <View style={styles.customAlertButtons}>
+              {customAlertButtons.map((button, index) => (
+                <Pressable
+                  key={index}
+                  style={[
+                    styles.customAlertButton,
+                    button.style === 'destructive' && styles.customAlertButtonDestructive,
+                    button.style === 'cancel' && styles.customAlertButtonCancel,
+                  ]}
+                  onPress={() => {
+                    setCustomAlertVisible(false);
+                    button.onPress?.();
+                  }}
+                >
+                  <Text style={[
+                    styles.customAlertButtonText,
+                    button.style === 'destructive' && styles.customAlertButtonTextDestructive,
+                    button.style === 'cancel' && styles.customAlertButtonTextCancel,
+                  ]}>
+                    {button.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScaleInView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

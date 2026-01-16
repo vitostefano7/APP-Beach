@@ -542,6 +542,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.statValue}>{unreadCount}</Text>
             <Text style={styles.statLabel}>Messaggi</Text>
+            <Text style={styles.statLabel}>da leggere</Text>
           </Pressable>
 
           <Pressable

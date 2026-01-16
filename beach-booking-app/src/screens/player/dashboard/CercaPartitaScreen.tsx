@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar } from "react-native-calendars";
 import * as Location from "expo-location";
 
@@ -103,9 +104,27 @@ const getSportIcon = (sport?: string) => {
   }
 };
 
+const getDuration = (startTime?: string, endTime?: string) => {
+  if (!startTime || !endTime) return null;
+  try {
+    const start = new Date(`1970-01-01T${startTime}`);
+    const end = new Date(`1970-01-01T${endTime}`);
+    const diffMs = end.getTime() - start.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours % 1 === 0) {
+      return `${diffHours}h`;
+    } else {
+      return `${diffHours.toFixed(1)}h`;
+    }
+  } catch {
+    return null;
+  }
+};
+
 export default function CercaPartitaScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -649,6 +668,14 @@ export default function CercaPartitaScreen() {
           <Text style={styles.infoText}>
             {item.booking?.startTime || "--:--"}
           </Text>
+          {item.booking?.endTime && (
+            <>
+              <Ionicons name="hourglass-outline" size={16} color="#666" style={styles.infoIcon} />
+              <Text style={styles.infoText}>
+                {getDuration(item.booking.startTime, item.booking.endTime)}
+              </Text>
+            </>
+          )}
         </View>
         <View style={styles.infoRow}>
           <Ionicons name={getSportIcon(item.booking?.campo?.sport)} size={16} color="#666" />
@@ -779,7 +806,7 @@ export default function CercaPartitaScreen() {
             data={filteredMatches}
             keyExtractor={(item) => item._id}
             renderItem={renderMatchCard}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 24 }]}
             ListHeaderComponent={
               <>
                 {isCityEditing && (

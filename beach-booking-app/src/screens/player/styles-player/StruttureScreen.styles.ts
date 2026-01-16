@@ -176,6 +176,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    marginHorizontal: -16,
   },
 
   resultsRow: {
@@ -225,7 +226,7 @@ export const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 0,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
 
   card: {
@@ -850,13 +851,13 @@ export const styles = StyleSheet.create({
   optionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
 
   option: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: "#f8f9fa",
     borderWidth: 1.5,
     borderColor: "#e9ecef",
@@ -868,7 +869,7 @@ export const styles = StyleSheet.create({
   },
 
   optionText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#495057",
   },
@@ -910,16 +911,16 @@ export const styles = StyleSheet.create({
   },
 
   timeSlots: {
-    gap: 10,
+    gap: 8,
   },
 
   timeSlot: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 16,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     backgroundColor: "#f8f9fa",
     borderWidth: 1.5,
     borderColor: "#e9ecef",
@@ -931,7 +932,7 @@ export const styles = StyleSheet.create({
   },
 
   timeSlotText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#495057",
   },
@@ -1072,10 +1073,10 @@ export const styles = StyleSheet.create({
   datePickerButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     backgroundColor: "#f8f9fa",
-    padding: 14,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "#e9ecef",
   },
@@ -1087,7 +1088,7 @@ export const styles = StyleSheet.create({
 
   datePickerText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#495057",
   },

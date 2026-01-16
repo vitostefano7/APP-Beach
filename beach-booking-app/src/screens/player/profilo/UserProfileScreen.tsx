@@ -88,6 +88,20 @@ export default function UserProfileScreen() {
     loadUserPosts();
   }, [userId]);
 
+  // Gestisci il back personalizzato per swipe e pulsante
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Solo per azioni di back (POP), usa la logica custom
+      if (e.data.action.type === 'POP') {
+        e.preventDefault();
+        handleBack();
+      }
+      // Per altre azioni (es. navigazione tab), lascia procedere normalmente
+    });
+
+    return unsubscribe;
+  }, [navigation, route.params?.backTo]);
+
   const loadUserProfile = async () => {
     if (!token || !userId) return;
 

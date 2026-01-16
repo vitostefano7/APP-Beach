@@ -24,6 +24,7 @@ type FriendItem = {
     surname?: string;
     username: string;
     avatarUrl?: string;
+    profilePrivacy?: 'public' | 'private';
   };
   friendshipId: string;
   friendsSince?: string;
@@ -39,7 +40,10 @@ type FriendsResponse = {
 export default function FriendsListScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<ProfileStackParamList, "FriendsList">>();
-  const { token } = useContext(AuthContext);
+  const { token, user: currentUser } = useContext(AuthContext);
+
+  const targetUserId = route.params?.userId;
+  const isViewingOwnFriends = !targetUserId || targetUserId === currentUser?.id;
 
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,8 @@ export default function FriendsListScreen() {
   const [filter, setFilter] = useState<"followers" | "following">(
     (route.params?.filter === "all" ? "followers" : route.params?.filter) ?? "followers"
   );
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (route.params?.filter && route.params.filter !== "all") {
@@ -63,51 +69,56 @@ export default function FriendsListScreen() {
       if (!refreshing) {
         setLoading(true);
       }
-      const query = `limit=100&skip=0&type=${filter}`;
-      const res = await fetch(`${API_URL}/friends?${query}`, {
+      const queryParams = new URLSearchParams({
+        limit: '100',
+        skip: '0',
+        type: filter,
+      });
+      if (targetUserId) {
+        queryParams.append('userId', targetUserId);
+      }
+      const query = queryParams.toString();
+      const endpoint = targetUserId && targetUserId !== currentUser?.id 
+        ? `${API_URL}/users/${targetUserId}/friends?${query}`
+        : `${API_URL}/friends?${query}`;
+      const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
-        console.log("Errore caricamento amici:", res.status);
+        if (res.status === 404) {
+          setErrorMessage("Questa lista non è disponibile per profili privati.");
+        } else {
+          console.log("Errore caricamento amici:", res.status);
+        }
         setFriends([]);
         return;
       }
 
+      setErrorMessage(null);
       const json = (await res.json()) as FriendsResponse;
       const friendsData = json.friends || [];
 
-      // Per i follower, carica anche lo status di friendship per mostrare il pulsante "Segui"
-      if (filter === "followers") {
-        const friendsWithStatus = await Promise.all(
-          friendsData.map(async (friend) => {
-            try {
-              const statusRes = await fetch(`${API_URL}/friends/status/${friend.user._id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              
-              if (statusRes.ok) {
-                const statusData = await statusRes.json();
-                return {
-                  ...friend,
-                  friendshipStatus: statusData.status,
-                  direction: statusData.direction,
-                };
-              }
-            } catch (error) {
-              console.error("Errore caricamento status friendship:", error);
-            }
-            
-            return {
-              ...friend,
-              friendshipStatus: 'none' as const,
-            };
-          })
-        );
+      // Per i follower, carica anche i following per verificare se sono amici (solo se stiamo vedendo i nostri amici)
+      if (filter === "followers" && isViewingOwnFriends) {
+        const followingRes = await fetch(`${API_URL}/friends?type=following&limit=1000&skip=0`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         
-        setFriends(friendsWithStatus);
+        if (followingRes.ok) {
+          const followingJson = await followingRes.json();
+          const followingIdsSet: Set<string> = new Set(followingJson.friends.map((f: any) => f.user._id as string));
+          setFollowingIds(followingIdsSet);
+        } else {
+          setFollowingIds(new Set());
+        }
+        
+        setFriends(friendsData);
       } else {
         setFriends(friendsData);
+        if (!isViewingOwnFriends) {
+          setFollowingIds(new Set()); // Non necessario per amici altrui
+        }
       }
     } catch (error) {
       console.error("Errore caricamento amici:", error);
@@ -116,7 +127,7 @@ export default function FriendsListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, refreshing, filter]);
+  }, [token, refreshing, filter, targetUserId, isViewingOwnFriends]);
 
   const followUser = useCallback(async (userId: string) => {
     if (!token) return;
@@ -152,8 +163,7 @@ export default function FriendsListScreen() {
   };
 
   const renderItem = ({ item }: { item: FriendItem }) => {
-    const showFollowButton = filter === "followers" && 
-      (!item.friendshipStatus || item.friendshipStatus === 'none' || item.friendshipStatus === 'pending');
+    const isFollowing = followingIds.has(item.user._id);
 
     return (
       <Pressable
@@ -165,7 +175,7 @@ export default function FriendsListScreen() {
               backTo: {
                 tab: "Profilo",
                 screen: "FriendsList",
-                params: { filter },
+                params: { filter, ...(targetUserId && { userId: targetUserId }) },
               },
             },
           })
@@ -180,21 +190,26 @@ export default function FriendsListScreen() {
           fallbackIcon="person"
         />
         <View style={styles.friendInfo}>
-          <Text style={styles.friendName}>{item.user.name}</Text>
+          <View style={styles.nameContainer}>
+            <Text style={styles.friendName}>
+              {item.user.name} {item.user.surname || ''}
+            </Text>
+            {item.user.profilePrivacy === 'private' && (
+              <Ionicons name="lock-closed" size={14} color="#666" style={styles.privateIcon} />
+            )}
+          </View>
           <Text style={styles.friendUsername}>@{item.user.username}</Text>
         </View>
-        {filter === "followers" && (
+        {filter === "followers" && isViewingOwnFriends && (
           <View style={styles.actionContainer}>
-            {item.friendshipStatus === 'accepted' ? (
+            {isFollowing ? (
               <Text style={styles.followingText}>Segui già</Text>
             ) : (
               <Pressable
                 style={styles.followButton}
                 onPress={() => followUser(item.user._id)}
               >
-                <Text style={styles.followButtonText}>
-                  {item.friendshipStatus === 'pending' ? 'In attesa' : 'Segui'}
-                </Text>
+                <Text style={styles.followButtonText}>Segui</Text>
               </Pressable>
             )}
           </View>
@@ -209,7 +224,9 @@ export default function FriendsListScreen() {
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
-        <Text style={styles.headerTitle}>Amici</Text>
+        <Text style={styles.headerTitle}>
+          {isViewingOwnFriends ? "Account Seguiti & Follower" : "Account Seguiti & Follower"}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -246,6 +263,12 @@ export default function FriendsListScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
           <Text style={styles.loadingText}>Caricamento lista...</Text>
+        </View>
+      ) : errorMessage ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="information-circle-outline" size={48} color="#ccc" />
+          <Text style={styles.errorTitle}>Lista non disponibile</Text>
+          <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       ) : (
         <FlatList
@@ -384,10 +407,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   friendName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#1a1a1a",
+  },
+  privateIcon: {
+    marginLeft: 4,
   },
   friendUsername: {
     fontSize: 13,
@@ -432,6 +463,23 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   emptyText: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    gap: 10,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+  },
+  errorText: {
     fontSize: 13,
     color: "#999",
     textAlign: "center",

@@ -5,6 +5,7 @@ import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import GroupChatScreen from "../screens/player/comunicazioni/GroupChatScreen";
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
+import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen/FieldDetailsScreen";
 
 
 const Stack = createNativeStackNavigator();
@@ -37,7 +38,7 @@ export default function BookingsStack() {
         component={GroupChatScreen}
       />
       <Stack.Screen name="ProfiloUtente" component={UserProfileScreen} />
-      
+      <Stack.Screen name="DettaglioStruttura" component={FieldDetailsScreen} />
     </Stack.Navigator>
   );
 }

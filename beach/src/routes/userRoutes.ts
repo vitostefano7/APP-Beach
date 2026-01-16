@@ -21,6 +21,7 @@ import {
   getUserStats,
   getPerformanceStats,
   getUserPosts,
+  getUserFriends,
 } from "../controllers/profileController";
 
 import { uploadAvatar as uploadMiddleware } from "../middleware/uploadProfiloImages";
@@ -83,6 +84,7 @@ router.post("/me/change-password", requireAuth, changePassword);
  */
 router.get("/:userId/public-profile", requireAuth, getUserPublicProfileById);
 router.get("/:userId/posts", requireAuth, getUserPosts);
+router.get("/:userId/friends", requireAuth, getUserFriends);
 router.get("/:username/profile", requireAuth, getUserPublicProfile);
 router.get("/:username/matches", requireAuth, getUserMatches);
 

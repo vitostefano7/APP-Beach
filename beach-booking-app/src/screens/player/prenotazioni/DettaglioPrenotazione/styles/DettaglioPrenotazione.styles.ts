@@ -1305,6 +1305,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFEBEE",
   },
 
+  // Leave Button Inline
+  leaveButtonInline: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFEBEE",
+  },
+
   // Empty Slot (MIGLIORATO)
   emptySlotContent: {
     flexDirection: "row",
@@ -1370,6 +1380,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
+  },
+  centeredModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     backgroundColor: "white",
@@ -1607,6 +1623,81 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#666",
+  },
+
+  // Leave Confirm Modal
+  leaveConfirmModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginVertical: 40,
+    padding: 24,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  leaveConfirmHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  leaveConfirmTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    marginTop: 12,
+    letterSpacing: -0.5,
+  },
+  leaveConfirmMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  leaveConfirmActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  leaveConfirmCancelButton: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  leaveConfirmCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+  leaveConfirmConfirmButton: {
+    flex: 1,
+    backgroundColor: "#F44336",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  leaveConfirmConfirmText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
   },
 
   // ==================== SCORE DISPLAY ====================
@@ -2213,6 +2304,82 @@ const styles = StyleSheet.create({
   joinMatchCTASubtitle: {
     fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
+  },
+
+  // ==================== CUSTOM ALERT MODAL ====================
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  customAlertModal: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginHorizontal: 32,
+    maxWidth: 320,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  customAlertHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    alignItems: "center",
+  },
+  customAlertTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    textAlign: "center",
+  },
+  customAlertContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  customAlertMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  customAlertButtons: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  customAlertButton: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customAlertButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+  customAlertButtonDestructive: {
+    // Stesso stile base
+  },
+  customAlertButtonTextDestructive: {
+    color: "#F44336",
+  },
+  customAlertButtonCancel: {
+    // Stesso stile base
+  },
+  customAlertButtonTextCancel: {
+    color: "#666",
     fontWeight: "500",
   },
 });

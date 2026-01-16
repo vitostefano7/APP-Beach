@@ -531,8 +531,8 @@ export const friendshipController = {
       // Senza ricerca, query normale
       const friendships = await Friendship.find(query)
         .populate([
-          { path: "requester", select: "name username avatarUrl" },
-          { path: "recipient", select: "name username avatarUrl" },
+          { path: "requester", select: "name surname username avatarUrl profilePrivacy" },
+          { path: "recipient", select: "name surname username avatarUrl profilePrivacy" },
         ])
         .sort({ acceptedAt: -1 })
         .skip(parseInt(skip as string))

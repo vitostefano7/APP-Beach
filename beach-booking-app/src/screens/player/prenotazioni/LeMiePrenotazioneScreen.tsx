@@ -6,7 +6,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
-  Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
@@ -14,6 +14,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
+import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
 
 /* =========================
    TYPES
@@ -73,6 +74,20 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const initialFilter = route?.params?.initialFilter || "upcoming";
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">(initialFilter);
 
+  // Stati per il modal personalizzato
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState("");
+  const [customAlertMessage, setCustomAlertMessage] = useState("");
+  const [customAlertButtons, setCustomAlertButtons] = useState<Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}>>([]);
+
+  // Funzione helper per mostrare alert personalizzato
+  const showCustomAlert = (title: string, message: string, buttons: Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}> = [{text: 'OK'}]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(buttons);
+    setCustomAlertVisible(true);
+  };
+
   /* =========================
      LOAD BOOKINGS
   ========================= */
@@ -103,7 +118,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       setBookings(data);
       setLoading(false);
     } catch {
-      Alert.alert("Errore", "Impossibile caricare le prenotazioni");
+      showCustomAlert("Errore", "Impossibile caricare le prenotazioni");
       setLoading(false);
     } finally {
       setRefreshing(false);
@@ -402,6 +417,15 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
               style={styles.resultBtn}
               onPress={(e) => {
                 e.stopPropagation();
+                // Controlla se i partecipanti sono completi
+                if (item.maxPlayers && item.players && item.players.length !== item.maxPlayers) {
+                  showCustomAlert(
+                    "Partecipanti non completi",
+                    "Assicurati che i team siano completi prima di inserire il risultato.",
+                    [{ text: "OK" }]
+                  );
+                  return;
+                }
                 navigation.navigate("DettaglioPrenotazione", {
                   bookingId: item._id,
                   openScoreModal: true,
@@ -432,84 +456,126 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
      RENDER
   ========================= */
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
-          <Text style={styles.headerSubtitle}>
-            {filter === "upcoming" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione futura" : "prenotazioni future"}`}
-            {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione conclusa" : "prenotazioni passate"}`}
-            {filter === "all" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione totale" : "prenotazioni totali"}`}
-          </Text>
-        </View>
-        <Pressable onPress={loadBookings} style={styles.refreshBtn}>
-          <Ionicons name="refresh" size={22} color="#2196F3" />
-        </Pressable>
-      </View>
-
-      {/* FILTERS */}
-      <View style={styles.filters}>
-        {[
-          { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
-          { key: "past", label: "Concluse", icon: "time-outline" },
-          { key: "all", label: "Tutte", icon: "list-outline" },
-        ].map((f) => (
-          <Pressable
-            key={f.key}
-            style={[
-              styles.filterBtn,
-              filter === f.key && styles.filterBtnActive,
-            ]}
-            onPress={() => setFilter(f.key as any)}
-          >
-            <Ionicons 
-              name={f.icon as any} 
-              size={16} 
-              color={filter === f.key ? "white" : "#666"} 
-            />
-            <Text
-              style={[
-                styles.filterText,
-                filter === f.key && styles.filterTextActive,
-              ]}
-            >
-              {f.label}
+    <View style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safe}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
+            <Text style={styles.headerSubtitle}>
+              {filter === "upcoming" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione futura" : "prenotazioni future"}`}
+              {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione conclusa" : "prenotazioni passate"}`}
+              {filter === "all" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione totale" : "prenotazioni totali"}`}
             </Text>
-          </Pressable>
-        ))}
-      </View>
+          </View>
+        </View>
 
-      {/* LIST */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Caricamento...</Text>
+        {/* FILTERS */}
+        <View style={styles.filters}>
+          {[
+            { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
+            { key: "past", label: "Concluse", icon: "time-outline" },
+            { key: "all", label: "Tutte", icon: "list-outline" },
+          ].map((f) => (
+            <Pressable
+              key={f.key}
+              style={[
+                styles.filterBtn,
+                filter === f.key && styles.filterBtnActive,
+              ]}
+              onPress={() => setFilter(f.key as any)}
+            >
+              <Ionicons 
+                name={f.icon as any} 
+                size={16} 
+                color={filter === f.key ? "white" : "#666"} 
+              />
+              <Text
+                style={[
+                  styles.filterText,
+                  filter === f.key && styles.filterTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      ) : sortedBookings.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
-          <Text style={styles.emptySubtitle}>
-            {filter === "upcoming" 
-              ? "Non hai prenotazioni future" 
-              : filter === "past"
-              ? "Non hai prenotazioni passate"
-              : "Non hai ancora effettuato prenotazioni"}
-          </Text>
+
+        {/* LIST */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2196F3" />
+            <Text style={styles.loadingText}>Caricamento...</Text>
+          </View>
+        ) : sortedBookings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
+            <Text style={styles.emptySubtitle}>
+              {filter === "upcoming" 
+                ? "Non hai prenotazioni future" 
+                : filter === "past"
+                ? "Non hai prenotazioni passate"
+                : "Non hai ancora effettuato prenotazioni"}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={sortedBookings}
+            keyExtractor={(item) => item._id}
+            renderItem={renderBookingCard}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={loadBookings}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </SafeAreaView>
+
+      {/* Custom Alert Modal */}
+      <Modal
+        visible={customAlertVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setCustomAlertVisible(false)}
+      >
+        <View style={styles.centeredModalOverlay}>
+          <ScaleInView style={styles.customAlertModal}>
+            <View style={styles.customAlertHeader}>
+              <Text style={styles.customAlertTitle}>{customAlertTitle}</Text>
+            </View>
+            <View style={styles.customAlertContent}>
+              <Text style={styles.customAlertMessage}>{customAlertMessage}</Text>
+            </View>
+            <View style={styles.customAlertButtons}>
+              {customAlertButtons.map((button, index) => (
+                <Pressable
+                  key={index}
+                  style={[
+                    styles.customAlertButton,
+                    button.style === 'destructive' && styles.customAlertButtonDestructive,
+                    button.style === 'cancel' && styles.customAlertButtonCancel,
+                  ]}
+                  onPress={() => {
+                    setCustomAlertVisible(false);
+                    button.onPress?.();
+                  }}
+                >
+                  <Text style={[
+                    styles.customAlertButtonText,
+                    button.style === 'destructive' && styles.customAlertButtonTextDestructive,
+                    button.style === 'cancel' && styles.customAlertButtonTextCancel,
+                  ]}>
+                    {button.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScaleInView>
         </View>
-      ) : (
-        <FlatList
-          data={sortedBookings}
-          keyExtractor={(item) => item._id}
-          renderItem={renderBookingCard}
-          contentContainerStyle={styles.listContent}
-          refreshing={refreshing}
-          onRefresh={loadBookings}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </SafeAreaView>
+      </Modal>
+    </View>
   );
 }
 
@@ -1029,5 +1095,75 @@ const styles = StyleSheet.create({
   avatarText: {
     color: "white",
     fontWeight: "800",
+  },
+
+  // ==================== CUSTOM ALERT MODAL ====================
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  customAlertModal: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginHorizontal: 32,
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  customAlertHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    alignItems: "center",
+  },
+  customAlertTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    textAlign: "center",
+  },
+  customAlertContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  customAlertMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  customAlertButtons: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  customAlertButton: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customAlertButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2196F3",
+  },
+  customAlertButtonDestructive: {
+    // Stesso stile base
+  },
+  customAlertButtonTextDestructive: {
+    color: "#F44336",
+  },
+  customAlertButtonCancel: {
+    // Stesso stile base
+  },
+  customAlertButtonTextCancel: {
+    color: "#666",
+    fontWeight: "500",
   },
 });
