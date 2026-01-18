@@ -92,20 +92,6 @@ export default function UserProfileScreen() {
     loadUserPosts();
   }, [userId]);
 
-  // Gestisci il back personalizzato per swipe e pulsante
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      // Solo per azioni di back (POP), usa la logica custom
-      if (e.data.action.type === 'POP') {
-        e.preventDefault();
-        handleBack();
-      }
-      // Per altre azioni (es. navigazione tab), lascia procedere normalmente
-    });
-
-    return unsubscribe;
-  }, [navigation, route.params?.backTo]);
-
   const loadUserProfile = async () => {
     if (!token || !userId) return;
 
@@ -266,20 +252,6 @@ export default function UserProfileScreen() {
     }
   };
 
-  const handleBack = () => {
-    const backTo = route.params?.backTo;
-    if (backTo) {
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.navigate(backTo.tab as never, {
-          screen: backTo.screen,
-          params: backTo.params,
-        } as never);
-        return;
-      }
-    }
-    navigation.goBack();
-  };
 
   const handleLike = async (postId: string) => {
     if (!token) return;
@@ -358,7 +330,7 @@ export default function UserProfileScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
           <Text style={styles.headerTitle}>Profilo</Text>
@@ -375,7 +347,7 @@ export default function UserProfileScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
           <Text style={styles.headerTitle}>Profilo</Text>
@@ -402,7 +374,7 @@ export default function UserProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable onPress={handleBack} style={styles.backButton}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         <Text style={styles.headerTitle}>Profilo</Text>
@@ -484,13 +456,7 @@ export default function UserProfileScreen() {
               <Pressable
                 style={styles.statsCard}
                 onPress={() => {
-                  const parent = navigation.getParent();
-                  if (parent) {
-                    parent.navigate("Profilo" as never, {
-                      screen: "FriendsList",
-                      params: { userId, filter: "all" },
-                    } as never);
-                  }
+                  navigation.navigate("FriendsList", { userId, filter: "all" } as never);
                 }}
               >
                 <View style={styles.statsCardHeader}>

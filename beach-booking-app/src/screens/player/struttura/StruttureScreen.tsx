@@ -43,11 +43,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function StruttureScreen() {
+export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boolean }) {
   const navigation = useNavigation<any>();
   const mapRef = useRef<MapView | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const { token } = useContext(AuthContext);
+  const preferencesRef = useRef<UserPreferences | null>(null);
+  const isLoadingStruttureRef = useRef(false);
+  const lastRegionRef = useRef<Region | null>(null);
+  
+  // Costante per l'altezza del tab bar
+  const TAB_BAR_HEIGHT = 65;
+  
+  console.log('🔍 StruttureScreen - isTabMode:', isTabMode);
 
   const [strutture, setStrutture] = useState<Struttura[]>([]);
   const [favoriteStrutture, setFavoriteStrutture] = useState<Struttura[]>([]);
@@ -89,6 +97,26 @@ export default function StruttureScreen() {
 
   // ✅ State per carousel immagini
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
+
+  const handleRegionChangeComplete = useCallback((nextRegion: Region) => {
+    const last = lastRegionRef.current;
+    if (
+      last &&
+      Math.abs(last.latitude - nextRegion.latitude) < 0.0001 &&
+      Math.abs(last.longitude - nextRegion.longitude) < 0.0001 &&
+      Math.abs(last.latitudeDelta - nextRegion.latitudeDelta) < 0.0001 &&
+      Math.abs(last.longitudeDelta - nextRegion.longitudeDelta) < 0.0001
+    ) {
+      return;
+    }
+
+    lastRegionRef.current = nextRegion;
+    setRegion(nextRegion);
+  }, []);
 
   useEffect(() => {
     const preferredCity = preferences?.preferredLocation?.city;
@@ -148,18 +176,7 @@ export default function StruttureScreen() {
   //   };
   // }, [filteredStrutture]);
 
-  useFocusEffect(
-    useCallback(() => {
-      console.log('🎯 useFocusEffect triggered, token:', !!token);
-      // Ricarica sempre le preferenze quando si torna alla schermata
-      loadPreferences();
-      // Carica sempre le strutture
-      loadStrutture();
-      return () => {};
-    }, [token])
-  );
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     console.log('⚙️ Caricamento preferenze...');
     if (!token) {
       console.log('❌ Nessun token disponibile');
@@ -179,12 +196,14 @@ export default function StruttureScreen() {
         setPreferencesLoaded(true);
 
         if (prefs.preferredLocation) {
-          setRegion({
+          const newRegion = {
             latitude: prefs.preferredLocation.lat,
             longitude: prefs.preferredLocation.lng,
             latitudeDelta: 0.5,
             longitudeDelta: 0.5,
-          });
+          };
+          lastRegionRef.current = newRegion;
+          setRegion(newRegion);
         }
       } else {
         console.log('❌ Errore caricamento preferenze:', res.statusText);
@@ -192,23 +211,11 @@ export default function StruttureScreen() {
     } catch (error) {
       console.error("Errore caricamento preferenze:", error);
     }
-  };
+  }, [token]);
 
-  const formatDate = (date: Date | null) => {
-    if (!date) return null;
-    return date.toISOString().split('T')[0];
-  };
-
-  useEffect(() => {
-    console.log('🔄 Vista cambiata a:', viewMode);
-    if (viewMode === "list") {
-      console.log('📱 Vista lista: FAB filtri visibile a bottom 14');
-    } else {
-      console.log('🗺️ Vista mappa: Pulsante Lista visibile a top 30, FAB geolocalizzazione a bottom 75');
-    }
-  }, [viewMode]);
-
-  const loadStrutture = async () => {
+  const loadStrutture = useCallback(async () => {
+    if (isLoadingStruttureRef.current) return;
+    isLoadingStruttureRef.current = true;
     console.log('🏗️ Iniziando caricamento strutture...');
     try {
       // Costruisci URL con parametri di query per filtri data/fascia oraria
@@ -237,14 +244,14 @@ export default function StruttureScreen() {
       console.log('📦 Dati ricevuti:', data.length, 'strutture');
 
       const filterCity = filters.city;
-      const prefCity = preferences?.preferredLocation?.city;
+      const prefCity = preferencesRef.current?.preferredLocation?.city;
       
       console.log("=== DEBUG STRUTTURE ===");
       console.log("📍 Totale strutture caricate:", data.length);
       console.log("🏙️ Filtro città attivo:", filterCity);
       console.log("⭐ Città preferita:", prefCity);
       console.log("🚫 User cleared city:", userClearedCity);
-      console.log("📍 Preferenze location:", preferences?.preferredLocation);
+      console.log("📍 Preferenze location:", preferencesRef.current?.preferredLocation);
       
       if (userClearedCity) {
         console.log("🎯 CASO: Utente ha rimosso il filtro città");
@@ -305,12 +312,12 @@ export default function StruttureScreen() {
           setActiveRadius(null);
         }
       }
-      else if (preferences?.preferredLocation && filterCity) {
+      else if (preferencesRef.current?.preferredLocation && filterCity) {
         console.log("🎯 CASO: Filtro per città preferita con coordinate");
         const city = filterCity;
-        const radius = preferences.preferredLocation.radius || 30;
-        const prefLat = preferences.preferredLocation.lat;
-        const prefLng = preferences.preferredLocation.lng;
+        const radius = preferencesRef.current.preferredLocation.radius || 30;
+        const prefLat = preferencesRef.current.preferredLocation.lat;
+        const prefLng = preferencesRef.current.preferredLocation.lng;
         
         console.log("   Centro preferenze:", { lat: prefLat, lng: prefLng, radius });
         
@@ -336,20 +343,49 @@ export default function StruttureScreen() {
         setActiveRadius(radius);
       }
 
-      if (preferences?.favoriteStrutture) {
+      if (preferencesRef.current?.favoriteStrutture) {
         data = data.map((s) => ({
           ...s,
-          isFavorite: preferences.favoriteStrutture.includes(s._id),
+          isFavorite: preferencesRef.current.favoriteStrutture.includes(s._id),
         }));
       }
 
       setStrutture(data);
     } catch (error) {
       console.error("Errore caricamento strutture:", error);
+    } finally {
+      isLoadingStruttureRef.current = false;
     }
+  }, [filters, userClearedCity]);
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return null;
+    return date.toISOString().split('T')[0];
   };
 
-  const loadFavorites = async () => {
+  useEffect(() => {
+    console.log('🔄 Vista cambiata a:', viewMode);
+    if (viewMode === "list") {
+      console.log('📱 Vista lista: FAB filtri visibile a bottom 14');
+    } else {
+      console.log('🗺️ Vista mappa: Pulsante Lista visibile a top 30, FAB geolocalizzazione a bottom 75');
+    }
+  }, [viewMode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🎯 useFocusEffect triggered, token:', !!token);
+      loadPreferences();
+      return () => {};
+    }, [token, loadPreferences])
+  );
+
+  useEffect(() => {
+    if (!token) return;
+    loadStrutture();
+  }, [token, loadStrutture]);
+
+  const loadFavorites = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/users/preferences/favorites`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -362,7 +398,7 @@ export default function StruttureScreen() {
     } catch (error) {
       console.error("Errore caricamento preferiti:", error);
     }
-  };
+  }, [token]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -419,6 +455,7 @@ export default function StruttureScreen() {
         longitudeDelta: 0.05,
       };
 
+      lastRegionRef.current = newRegion;
       setRegion(newRegion);
       mapRef.current?.animateToRegion(newRegion, 500);
     } catch (error) {
@@ -852,7 +889,7 @@ export default function StruttureScreen() {
               ref={mapRef}
               style={styles.map}
               region={region}
-              onRegionChangeComplete={setRegion}
+              onRegionChangeComplete={handleRegionChangeComplete}
               showsUserLocation
             >
               {markers.map((marker) => (
@@ -865,8 +902,8 @@ export default function StruttureScreen() {
                       const newRegion: Region = {
                         latitude: marker.coordinate.latitude,
                         longitude: marker.coordinate.longitude,
-                        latitudeDelta: region.latitudeDelta * 0.25,
-                        longitudeDelta: region.longitudeDelta * 0.25,
+                        latitudeDelta: region.latitudeDelta * 0.15,
+                        longitudeDelta: region.longitudeDelta * 0.15,
                       };
                       mapRef.current?.animateToRegion(newRegion, 500);
                     } else {
@@ -894,7 +931,10 @@ export default function StruttureScreen() {
 
             {/* Pulsante geolocalizzazione in vista mappa */}
             <Pressable 
-              style={styles.geolocationFab} 
+              style={[
+                styles.geolocationFab,
+                isTabMode && { bottom: 75 + TAB_BAR_HEIGHT }
+              ]}
               onPress={() => {
                 console.log('🗺️ Pulsante geolocalizzazione premuto - posizione: bottom 75, right 15');
                 centerOnUser();
@@ -1003,7 +1043,8 @@ export default function StruttureScreen() {
       <Pressable 
         style={[
           styles.fab,
-          viewMode === "list" && styles.fabList
+          viewMode === "list" && styles.fabList,
+          isTabMode && { bottom: (viewMode === "list" ? 14 : 20) + TAB_BAR_HEIGHT }
         ]} 
         onPress={() => {
           console.log('🔍 Pulsante filtri premuto - posizione: bottom', viewMode === "list" ? 14 : 20, ', right 15');

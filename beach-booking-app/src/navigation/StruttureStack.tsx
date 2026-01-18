@@ -8,15 +8,19 @@ import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
 const Stack = createNativeStackNavigator();
 
-export default function StruttureStack() {
+export default function StruttureStack({ isTabMode = false }: { isTabMode?: boolean }) {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       <Stack.Screen
         name="Strutture"
-        component={StruttureScreen}
         options={{headerShown: false}}
-
-      />
+      >
+        {(props) => <StruttureScreen {...props} isTabMode={isTabMode} />}
+      </Stack.Screen>
       
       <Stack.Screen name="FriendsList" component={FriendsListScreen} />
       <Stack.Screen 

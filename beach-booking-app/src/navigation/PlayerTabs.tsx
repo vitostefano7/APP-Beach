@@ -58,43 +58,57 @@ export default function PlayerTabs() {
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: "#2979ff",
-        tabBarInactiveTintColor: "#999",
-        tabBarStyle: {
+      screenOptions={({ route }) => {
+        const baseStyle = {
           height: 65,
           paddingBottom: 10,
           paddingTop: 6,
           backgroundColor: "white",
-          position: 'absolute',
+          position: 'absolute' as const,
           bottom: 0,
           left: 0,
           right: 0,
-        },
-        tabBarItemStyle: {
-          height: 65, // Forza altezza fissa per ogni tab
-        },
+        };
+        
+        const customStyle = getTabBarStyle(route);
+        
+        return {
+          headerShown: false,
+          tabBarActiveTintColor: "#2979ff",
+          tabBarInactiveTintColor: "#999",
+          tabBarStyle: customStyle?.display === "none" ? customStyle : baseStyle,
+          tabBarItemStyle: {
+            height: 65,
+          },
         animation: 'none', // Disabilita animazioni
         tabBarIcon: ({ color, size, focused }) => {
-          // Rimuovi logging pesante che causa re-render
+          console.log(`🎨 TabBarIcon render - route: ${route.name}, focused: ${focused}, color: ${color}`);
           let iconName: any;
-          if (route.name === "Dashboard")
-            iconName = focused ? "home" : "home-outline";
-          if (route.name === "StruttureTab")
-            iconName = focused ? "business" : "business-outline";
-          if (route.name === "Prenotazioni")
-            iconName = focused ? "calendar" : "calendar-outline";
-          if (route.name === "Profilo")
-            iconName = focused ? "person" : "person-outline";
+          // Usa sempre le icone filled per garantire altezza uniforme
+          if (route.name === "Dashboard") iconName = "home";
+          if (route.name === "StruttureTab") iconName = "business";
+          if (route.name === "Prenotazioni") iconName = "calendar";
+          if (route.name === "Profilo") iconName = "person";
 
           return (
-            <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name={iconName} size={22} color={color} />
+            <View 
+              style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}
+              onLayout={(e) => {
+                const { x, y, width, height } = e.nativeEvent.layout;
+                console.log(`📐 ${route.name} icon layout - x: ${x.toFixed(2)}, y: ${y.toFixed(2)}, width: ${width}, height: ${height}, focused: ${focused}`);
+              }}
+            >
+              <Ionicons 
+                name={iconName} 
+                size={22} 
+                color={color}
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           );
         },
-      })}
+      };
+      }}
       screenListeners={{
         tabPress: (e) => {
           console.log('🎯 TAB PRESSED:', e.target?.split('-')[0]);
@@ -114,12 +128,11 @@ export default function PlayerTabs() {
       />
       <Tab.Screen 
         name="StruttureTab" 
-        component={StruttureStack} 
-        options={({ route }) => ({
+        children={() => <StruttureStack isTabMode={true} />}
+        options={{
           tabBarLabel: "Strutture",
           tabBarLabelStyle: { fontSize: 12 },
-          tabBarStyle: getTabBarStyle(route),
-        })}
+        }}
       />
       <Tab.Screen 
         name="Prenotazioni" 

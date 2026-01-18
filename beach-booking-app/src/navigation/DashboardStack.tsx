@@ -19,6 +19,7 @@ import CommunityScreen from "../screens/player/dashboard/CommunityScreen";
 import CreatePostScreen from "../screens/player/dashboard/CreatePostScreen";
 import PostDetailScreen from "../screens/player/dashboard/PostDetailScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
+import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -36,12 +37,8 @@ export type DashboardStackParamList = {
   CercaAmici: undefined;
   ProfiloUtente: {
     userId: string;
-    backTo?: {
-      tab: "Profilo";
-      screen: "FriendsList";
-      params?: { filter?: "followers" | "following" };
-    };
   };
+  FriendsList: { userId?: string; filter?: "followers" | "following" | "all" } | undefined;
   Notifiche: undefined;
   CercaPartita: undefined;
   Storico: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
@@ -128,6 +125,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen 
         name="ProfiloUtente" 
         component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FriendsList"
+        component={FriendsListScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen 

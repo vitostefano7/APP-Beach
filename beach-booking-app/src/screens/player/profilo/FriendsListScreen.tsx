@@ -168,16 +168,8 @@ export default function FriendsListScreen() {
     return (
       <Pressable
         onPress={() =>
-          navigation.navigate("Dashboard", {
-            screen: "ProfiloUtente",
-            params: {
-              userId: item.user._id,
-              backTo: {
-                tab: "Profilo",
-                screen: "FriendsList",
-                params: { filter, ...(targetUserId && { userId: targetUserId }) },
-              },
-            },
+          navigation.navigate("ProfiloUtente", {
+            userId: item.user._id,
           })
         }
         style={({ pressed }) => [styles.friendRow, pressed && styles.friendRowPressed]}
