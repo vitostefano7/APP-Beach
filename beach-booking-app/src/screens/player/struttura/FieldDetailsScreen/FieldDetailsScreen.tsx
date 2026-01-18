@@ -97,10 +97,10 @@ export default function FieldDetailsScreen() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // ✅ Dropdown orari apertura
-  const [openingHoursExpanded, setOpeningHoursExpanded] = useState(false);
+  const [openingHoursExpanded, setOpeningHoursExpanded] = useState(true);
   
   // ✅ Navigation chips
-  const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite' | 'mappa'>('campi');
+  const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite'>('campi');
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [sportFilter, setSportFilter] = useState<string | 'all'>('all');
@@ -108,6 +108,10 @@ export default function FieldDetailsScreen() {
   /* =======================
      INIT
   ======================= */
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (!struttura?._id) return;
@@ -318,29 +322,6 @@ export default function FieldDetailsScreen() {
     [struttura?.images]
   );
 
-  // ✅ Carousel automatico
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) =>
-        prevIndex === images.length - 1 ? 0 : prevIndex + 1
-      );
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [images]);
-
-  // ✅ Scroll automatico gallery
-  useEffect(() => {
-    if (galleryScrollViewRef.current && images.length > 1) {
-      galleryScrollViewRef.current.scrollTo({
-        x: currentImageIndex * width,
-        animated: true,
-      });
-    }
-  }, [currentImageIndex, images.length]);
-
   // ✅ Fetch open matches when switching to partite chip
   useEffect(() => {
     if (activeChip === 'partite' && openMatches.length === 0 && !loadingMatches) {
@@ -429,6 +410,14 @@ export default function FieldDetailsScreen() {
             </View>
           )}
 
+          {/* Bottone indietro */}
+          <Pressable
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </Pressable>
+
           {/* Bottone preferiti */}
           {token && (
             <Pressable
@@ -450,32 +439,17 @@ export default function FieldDetailsScreen() {
 
         {/* INFO SECTION */}
         <View style={styles.infoSection}>
-          <Text style={styles.title}>{struttura.name}</Text>
-
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={18} color="#F44336" />
-            <Text style={styles.address}>
-              {location?.address && location?.city
-                ? `${location.address}, ${location.city}`
-                : "Indirizzo non disponibile"}
-            </Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.title}>{struttura.name}</Text>
+            {token && (
+              <Pressable style={styles.chatButtonCompact} onPress={startChat}>
+                <Ionicons name="chatbubble-outline" size={24} color="#2196F3" />
+              </Pressable>
+            )}
           </View>
-
-          {struttura.description && (
-            <Text style={styles.description}>{struttura.description}</Text>
-          )}
         </View>
 
-        {/* CHAT BUTTON */}
-        {token && (
-          <View style={styles.chatSection}>
-            <Pressable style={styles.chatButton} onPress={startChat}>
-              <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
-              <Text style={styles.chatButtonText}>Contatta la struttura</Text>
-              <Ionicons name="arrow-forward" size={16} color="#2196F3" />
-            </Pressable>
-          </View>
-        )}
+
 
         {/* NAVIGATION CHIPS */}
         <View style={styles.chipsContainer}>
@@ -549,99 +523,124 @@ export default function FieldDetailsScreen() {
                 Partite Aperte
               </Text>
             </Pressable>
-
-            <Pressable
-              style={[
-                styles.chip,
-                activeChip === 'mappa' && styles.chipActive,
-              ]}
-              onPress={() => setActiveChip('mappa')}
-            >
-              <Ionicons
-                name="map"
-                size={16}
-                color={activeChip === 'mappa' ? 'white' : '#2196F3'}
-              />
-              <Text
-                style={[
-                  styles.chipText,
-                  activeChip === 'mappa' && styles.chipTextActive,
-                ]}
-              >
-                Mappa
-              </Text>
-            </Pressable>
           </ScrollView>
         </View>
 
         {/* INFORMAZIONI SECTION */}
         {activeChip === 'info' && (
-          <>
-            {/* OPENING HOURS */}
-            {struttura.openingHours && Object.keys(struttura.openingHours).length > 0 && (
-          <View style={styles.section}>
-            <Pressable 
-              style={styles.dropdownHeader}
-              onPress={() => setOpeningHoursExpanded(!openingHoursExpanded)}
+          <View style={styles.infoCardsContainer}>
+            {/* BASIC INFO - NAME */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🏢 Nome struttura</Text>
+              <Text style={styles.title}>{struttura.name}</Text>
+            </View>
+
+            {/* MAP */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📍 Indirizzo</Text>
+          <Text style={styles.address}>
+                {location?.address && location?.city
+                  ? `${location.address}, ${location.city}`
+                  : "Indirizzo non disponibile"}
+              </Text>
+
+          {hasLocation ? (
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location!.lat,
+                longitude: location!.lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
             >
-              <View style={styles.sectionHeader}>
-                <Ionicons name="time" size={20} color="#FF9800" />
-                <Text style={styles.sectionTitle}>Orari di apertura</Text>
-              </View>
-              <Ionicons 
-                name={openingHoursExpanded ? "chevron-up" : "chevron-down"} 
-                size={24} 
-                color="#666" 
+              <Marker
+                coordinate={{
+                  latitude: location!.lat,
+                  longitude: location!.lng,
+                }}
+                title={struttura.name}
               />
-            </Pressable>
+            </MapView>
+          ) : (
+            <Text style={styles.emptyText}>Posizione non disponibile</Text>
+          )}
 
-            {openingHoursExpanded && (
-              <View style={styles.openingHoursContainer}>
-                {DAYS_OF_WEEK.map(({ key, label }) => {
-                  const dayHours = struttura.openingHours[key];
-                  if (!dayHours) return null;
-                  const isClosed = dayHours.closed === true;
+          <Pressable style={styles.openMapsBtn} disabled={!hasLocation}>
+            <Ionicons name="navigate" size={20} color="#2196F3" />
+            <Text style={styles.openMapsBtnText}>Apri in Google Maps</Text>
+          </Pressable>
+        </View>
 
-                  // Gli orari sono dentro un array "slots"
-                  const slots = dayHours.slots || [];
-                  const hasSlots = slots.length > 0;
-
-                  return (
-                    <View key={key} style={styles.openingHourRow}>
-                      <Text style={styles.dayName}>{label}</Text>
-                      {isClosed || !hasSlots ? (
-                        <Text style={styles.closedLabel}>Chiuso</Text>
-                      ) : (
-                        <View style={styles.slotsContainer}>
-                          {slots.map((slot: any, index: number) => (
-                            <Text key={index} style={styles.hoursLabel}>
-                              {slot.open} - {slot.close}
-                            </Text>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
+            {/* BASIC INFO - DESCRIPTION */}
+            {struttura.description && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📝 Descrizione</Text>
+                <Text style={styles.description}>{struttura.description}</Text>
               </View>
             )}
-          </View>
-        )}
+
+            {/* OPENING HOURS */}
+            <View style={styles.card}>
+              <Pressable 
+                style={styles.dropdownHeader}
+                onPress={() => setOpeningHoursExpanded(!openingHoursExpanded)}
+              >
+                <Text style={styles.cardTitle}>🕒 Orari di apertura</Text>
+                <Ionicons 
+                  name={openingHoursExpanded ? "chevron-up" : "chevron-down"} 
+                  size={24} 
+                  color="#666" 
+                />
+              </Pressable>
+
+              {openingHoursExpanded && (
+                <View style={styles.openingHoursContainer}>
+                  {struttura.openingHours ? (
+                    DAYS_OF_WEEK.map(({ key, label }) => {
+                      const dayHours = struttura.openingHours[key];
+                      if (!dayHours) return null;
+                      const isClosed = dayHours.closed === true;
+
+                      // Gli orari sono dentro un array "slots"
+                      const slots = dayHours.slots || [];
+                      const hasSlots = slots.length > 0;
+
+                      return (
+                        <View key={key} style={styles.openingHourRow}>
+                          <Text style={styles.dayName}>{label}</Text>
+                          {isClosed || !hasSlots ? (
+                            <Text style={styles.closedLabel}>Chiuso</Text>
+                          ) : (
+                            <View style={styles.slotsContainer}>
+                              {slots.map((slot: any, index: number) => (
+                                <Text key={index} style={styles.hoursLabel}>
+                                  {slot.open} - {slot.close}
+                                </Text>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={styles.emptyText}>Orari non disponibili</Text>
+                  )}
+                </View>
+              )}
+            </View>
 
         {/* AMENITIES */}
         {activeAmenities.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-              <Text style={styles.sectionTitle}>Servizi disponibili</Text>
-            </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>✅ Servizi disponibili</Text>
 
             <View style={styles.amenitiesGrid}>
               {getAmenitiesDisplay(activeAmenities).map(
                 ({ key, label, icon }) => (
                   <View key={key} style={styles.amenityCard}>
                     <View style={styles.amenityIcon}>
-                      <Ionicons name={icon as any} size={20} color="#2196F3" />
+                      <Ionicons name={icon as any} size={16} color="#2196F3" />
                     </View>
                     <Text style={styles.amenityLabel}>{label}</Text>
                   </View>
@@ -650,7 +649,9 @@ export default function FieldDetailsScreen() {
             </View>
           </View>
         )}
-          </>
+
+        
+          </View>
         )}
 
         {/* CAMPI DISPONIBILI */}
@@ -777,12 +778,6 @@ export default function FieldDetailsScreen() {
                       </View>
 
                       <View style={styles.campoDetailsRow}>
-                        <View style={styles.detailItem}>
-                          <Ionicons name="people" size={14} color="#666" />
-                          <Text style={styles.detailText}>
-                            Max {campo.maxPlayers}
-                          </Text>
-                        </View>
                         <View style={styles.detailItem}>
                           <Ionicons name="cash" size={14} color="#4CAF50" />
                           <Text style={styles.priceText}>
@@ -1728,43 +1723,6 @@ export default function FieldDetailsScreen() {
               />
             )}
           </View>
-        )}
-
-        {/* MAP */}
-        {activeChip === 'mappa' && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="map" size={20} color="#F44336" />
-            <Text style={styles.sectionTitle}>Come raggiungerci</Text>
-          </View>
-
-          {hasLocation ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location!.lat,
-                longitude: location!.lng,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
-                coordinate={{
-                  latitude: location!.lat,
-                  longitude: location!.lng,
-                }}
-                title={struttura.name}
-              />
-            </MapView>
-          ) : (
-            <Text style={styles.emptyText}>Posizione non disponibile</Text>
-          )}
-
-          <Pressable style={styles.openMapsBtn} disabled={!hasLocation}>
-            <Ionicons name="navigate" size={20} color="#2196F3" />
-            <Text style={styles.openMapsBtnText}>Apri in Google Maps</Text>
-          </Pressable>
-        </View>
         )}
 
         <View style={{ height: 40 }} />

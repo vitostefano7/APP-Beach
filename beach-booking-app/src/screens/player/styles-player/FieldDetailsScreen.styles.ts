@@ -6,6 +6,7 @@ export const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#f8f9fa",
+    paddingTop: 40,
   },
   center: {
     flex: 1,
@@ -23,11 +24,11 @@ export const styles = StyleSheet.create({
     position: "relative",
   },
   gallery: {
-    height: 300,
+    height: 250,
   },
   galleryImage: {
     width: width,
-    height: 300,
+    height: 250,
     backgroundColor: "#e9ecef",
   },
 
@@ -90,11 +91,28 @@ export const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  chatButtonCompact: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(33, 150, 243, 0.2)",
+  },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#1a1a1a",
-    marginBottom: 8,
+    lineHeight: 28,
+    flex: 1,
   },
   locationRow: {
     flexDirection: "row",
@@ -103,16 +121,16 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   address: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#666",
     fontWeight: "500",
     flex: 1,
+    lineHeight: 22,
   },
   description: {
-    fontSize: 13,
-    color: "#333",
-    lineHeight: 20,
-    marginTop: 8,
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 22,
   },
 
   chatSection: {
@@ -147,8 +165,35 @@ export const styles = StyleSheet.create({
 
   section: {
     padding: 16,
-    marginTop: 8,
+    marginTop: -16,
   },
+
+  infoCardsContainer: {
+    paddingHorizontal: 24,
+  },
+
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -166,42 +211,28 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "white",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
 
   // OPENING HOURS
   openingHoursContainer: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    marginTop: 8,
+    gap: 2,
   },
   openingHourRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    marginBottom: 6,
   },
   dayName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#333",
+    color: "#1a1a1a",
     flex: 1,
   },
   slotsContainer: {
@@ -209,32 +240,33 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   hoursLabel: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     color: "#4CAF50",
   },
   closedLabel: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     color: "#F44336",
   },
 
   amenitiesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 10,
   },
   amenityCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "white",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    gap: 10,
+    backgroundColor: "#f8f9fa",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e9ecef",
-    minWidth: "45%",
+    borderColor: "rgba(0,0,0,0.06)",
+    flex: 1,
+    minWidth: "49%",
   },
   amenityIcon: {
     width: 32,
@@ -245,9 +277,10 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
   amenityLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#333",
+    color: "#1a1a1a",
+    flex: 1,
   },
 
   emptyState: {
@@ -835,24 +868,25 @@ export const styles = StyleSheet.create({
   },
 
   map: {
-    height: 220,
-    borderRadius: 12,
-    marginBottom: 12,
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: "hidden",
   },
   openMapsBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "white",
-    paddingVertical: 14,
+    backgroundColor: "#E3F2FD",
+    paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#2196F3",
+    borderWidth: 1,
+    borderColor: "rgba(33, 150, 243, 0.2)",
   },
   openMapsBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     color: "#2196F3",
   },
 
@@ -860,6 +894,7 @@ export const styles = StyleSheet.create({
   chipsContainer: {
     backgroundColor: "white",
     paddingVertical: 12,
+    marginTop: 16,
     marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",

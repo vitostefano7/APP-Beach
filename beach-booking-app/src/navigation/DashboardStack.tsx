@@ -165,6 +165,11 @@ export default function DashboardStack() { // ✅ Nome corretto
         component={StrutturaDetailScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="DettaglioStruttura"
+        component={FieldDetailsScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
