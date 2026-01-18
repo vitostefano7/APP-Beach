@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar } from "react-native-calendars";
@@ -678,7 +678,11 @@ export default function CercaPartitaScreen() {
           )}
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name={getSportIcon(item.booking?.campo?.sport)} size={16} color="#666" />
+          {(item.booking?.campo?.sport === 'beach_volley' || item.booking?.campo?.sport === 'volley' || item.booking?.campo?.sport === 'beach_volleyball' || item.booking?.campo?.sport === 'volleyball') ? (
+            <FontAwesome5 name="volleyball-ball" size={16} color="#666" />
+          ) : (
+            <Ionicons name={getSportIcon(item.booking?.campo?.sport)} size={16} color="#666" />
+          )}
           <Text style={styles.infoText}>
             {getSportLabel(item.booking?.campo?.sport)}
           </Text>

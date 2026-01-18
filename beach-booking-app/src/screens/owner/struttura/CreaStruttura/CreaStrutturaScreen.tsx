@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useContext } from "react";
 
@@ -1005,8 +1005,8 @@ export default function CreaStrutturaScreen() {
                 ]}
                 onPress={() => s.updateCampo(campo.id, "sport", "beach_volley")}
               >
-                <Ionicons
-                  name="sunny"
+                <FontAwesome5
+                  name="volleyball-ball"
                   size={20}
                   color={campo.sport === "beach_volley" ? "#2196F3" : "#666"}
                 />
@@ -1027,8 +1027,8 @@ export default function CreaStrutturaScreen() {
                 ]}
                 onPress={() => s.updateCampo(campo.id, "sport", "volley")}
               >
-                <Ionicons
-                  name="basketball"
+                <FontAwesome5
+                  name="volleyball-ball"
                   size={20}
                   color={campo.sport === "volley" ? "#2196F3" : "#666"}
                 />

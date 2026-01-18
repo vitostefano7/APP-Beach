@@ -1208,7 +1208,7 @@ export const getUserPosts = async (req: AuthRequest, res: Response) => {
       .skip(offset)
       .limit(limit)
       .populate("user", "name surname avatarUrl")
-      .populate("comments.user", "name avatarUrl")
+      .populate("comments.user", "name surname avatarUrl")
       .lean();
 
     const total = await Post.countDocuments({ user: userId });

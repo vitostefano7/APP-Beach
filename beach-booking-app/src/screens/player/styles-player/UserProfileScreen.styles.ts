@@ -239,7 +239,6 @@ export const styles = StyleSheet.create({
   // Posts Section
   postsSection: {
     marginTop: 8,
-    marginHorizontal: 16,
     marginBottom: 16,
   },
   postsSectionHeader: {
@@ -248,9 +247,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    backgroundColor: 'transparent',
   },
   postsSectionTitle: {
     fontSize: 18,
@@ -259,10 +256,17 @@ export const styles = StyleSheet.create({
   },
   postCard: {
     backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+    marginHorizontal: 16,
     padding: 16,
-    marginTop: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   postHeader: {
     flexDirection: 'row',
@@ -274,9 +278,9 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   postAuthor: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#212121',
   },
   postTime: {
     fontSize: 12,
@@ -285,20 +289,23 @@ export const styles = StyleSheet.create({
   },
   postContent: {
     fontSize: 15,
-    color: '#1a1a1a',
+    color: '#424242',
     lineHeight: 22,
     marginBottom: 12,
   },
   postImage: {
     width: '100%',
-    height: 250,
-    borderRadius: 12,
+    height: 200,
+    borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: '#f0f0f0',
   },
   postStats: {
     flexDirection: 'row',
-    gap: 20,
+    alignItems: 'center',
+    gap: 24,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   postStat: {
     flexDirection: 'row',
@@ -308,13 +315,16 @@ export const styles = StyleSheet.create({
   postStatText: {
     fontSize: 14,
     color: '#666',
+    fontWeight: '500',
   },
   emptyPosts: {
     backgroundColor: 'white',
     padding: 48,
     alignItems: 'center',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   emptyPostsText: {
     fontSize: 14,

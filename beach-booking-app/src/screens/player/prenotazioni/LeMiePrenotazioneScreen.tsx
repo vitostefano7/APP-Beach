@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
 
@@ -324,18 +324,20 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             <View style={styles.sportBadge}>
-              <Ionicons 
-                name={
-                  item.campo.sport === "calcio" ? "football" :
-                  item.campo.sport === "tennis" ? "tennisball" :
-                  item.campo.sport === "basket" ? "basketball" :
-                  item.campo.sport === "beach volley" ? "football" :
-                  item.campo.sport === "volley" ? "tennisball" :
-                  "fitness"
-                } 
-                size={12} 
-                color="#2196F3" 
-              />
+              {(item.campo.sport === "beach volley" || item.campo.sport === "volley") ? (
+                <FontAwesome5 name="volleyball-ball" size={12} color="#2196F3" />
+              ) : (
+                <Ionicons 
+                  name={
+                    item.campo.sport === "calcio" ? "football" :
+                    item.campo.sport === "tennis" ? "tennisball" :
+                    item.campo.sport === "basket" ? "basketball" :
+                    "fitness"
+                  } 
+                  size={12} 
+                  color="#2196F3" 
+                />
+              )}
               <Text style={styles.sportText}>{item.campo.sport}</Text>
             </View>
           </View>
@@ -363,7 +365,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
         </View>
 
         {/* TEAMS */}
-        {item.players && item.players.length > 0 && (
+        {item.matchSummary && item.players && item.players.length > 0 && (
           <View style={styles.teamsContainer}>
             <View style={styles.teamsRow}>
               <TeamSection players={item.players} team="A" />

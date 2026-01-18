@@ -14,7 +14,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
@@ -120,6 +120,11 @@ export default function DettaglioPrenotazioneScreen() {
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
   const [teamSelectionMode, setTeamSelectionMode] = useState<"join" | "invite">("join");
   const suppressInvitePress = useRef(false);
+
+  // Stati per il modal di bilanciamento team
+  const [balancingModalVisible, setBalancingModalVisible] = useState(false);
+  const [playerToAssign, setPlayerToAssign] = useState<string | null>(null);
+  const [targetTeam, setTargetTeam] = useState<"A" | "B" | null>(null);
 
   // Funzione helper per mostrare alert personalizzato
   const showCustomAlert = (title: string, message: string, buttons: Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}> = [{text: 'OK'}]) => {
@@ -453,8 +458,26 @@ export default function DettaglioPrenotazioneScreen() {
   const handleAssignTeam = async (playerId: string, team: "A" | "B" | null) => {
     if (!booking?.matchId) return;
 
+    // Calcola i conteggi attuali dei team
+    const teamACount = booking.match?.players?.filter(p => p.team === "A").length || 0;
+    const teamBCount = booking.match?.players?.filter(p => p.team === "B").length || 0;
+    const maxPlayersPerTeam = booking.match?.maxPlayersPerTeam || 2;
+
+    // Se il team target è pieno (ma non sovraffollato), mostra il modal di bilanciamento
+    if (team && ((team === "A" && teamACount >= maxPlayersPerTeam) || (team === "B" && teamBCount >= maxPlayersPerTeam))) {
+      setPlayerToAssign(playerId);
+      setTargetTeam(team);
+      setBalancingModalVisible(true);
+      return;
+    }
+
+    // Procedi con l'assegnazione normale
+    await performTeamAssignment(playerId, team);
+  };
+
+  const performTeamAssignment = async (playerId: string, team: "A" | "B" | null) => {
     try {
-      const res = await fetch(`${API_URL}/matches/${booking.matchId}/players/${playerId}/team`, {
+      const res = await fetch(`${API_URL}/matches/${booking!.matchId}/players/${playerId}/team`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -465,19 +488,31 @@ export default function DettaglioPrenotazioneScreen() {
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Errore assegnazione team");
+        // Gestione specifica per team sovraffollato
+        if (error.overcrowdedTeam) {
+          Alert.alert(
+            "Team Sovraffollato",
+            `${error.message}\n\nTeam ${error.overcrowdedTeam}: ${error.currentCount}/${error.maxAllowed} giocatori`,
+            [
+              { text: "OK", style: "default" }
+            ]
+          );
+        } else {
+          Alert.alert("Errore", error.message || "Errore assegnazione team");
+        }
+        return;
       }
 
       // Aggiorna solo lo stato locale senza ricaricare tutto
       setBooking(prevBooking => {
         if (!prevBooking) return prevBooking;
-        
+
         return {
           ...prevBooking,
           match: prevBooking.match ? {
             ...prevBooking.match,
-            players: prevBooking.match.players.map(p => 
-              p.user._id === playerId 
+            players: prevBooking.match.players.map(p =>
+              p.user._id === playerId
                 ? { ...p, team }
                 : p
             )
@@ -486,6 +521,26 @@ export default function DettaglioPrenotazioneScreen() {
       });
     } catch (error: any) {
       Alert.alert("Errore", error.message || "Impossibile assegnare il giocatore");
+    }
+  };
+
+  const handlePlayerToMoveSelection = async (playerToMoveId: string) => {
+    if (!playerToAssign || !targetTeam || !booking?.matchId) return;
+
+    try {
+      // Prima sposta il giocatore selezionato al team opposto
+      const oppositeTeam = targetTeam === "A" ? "B" : "A";
+      await performTeamAssignment(playerToMoveId, oppositeTeam);
+
+      // Poi assegna il giocatore originale al team target
+      await performTeamAssignment(playerToAssign, targetTeam);
+
+      // Chiudi il modal
+      setBalancingModalVisible(false);
+      setPlayerToAssign(null);
+      setTargetTeam(null);
+    } catch (error) {
+      console.error("Errore durante il bilanciamento:", error);
     }
   };
 
@@ -783,6 +838,8 @@ const maxPlayersPerTeam = booking.match ? Math.floor(booking.match.maxPlayers / 
 const teamAPlayers = booking.match?.players.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
 const teamBPlayers = booking.match?.players.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
 
+console.log(`🎯 [DettaglioPrenotazione] Conteggio team aggiornato: Team A: ${teamAPlayers}/${maxPlayersPerTeam}, Team B: ${teamBPlayers}/${maxPlayersPerTeam}`);
+
 const confirmedPlayers = booking.match?.players.filter(p => p.status === "confirmed") || [];
 const pendingPlayers = booking.match?.players.filter(p => p.status === "pending") || [];
 const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
@@ -1079,6 +1136,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
                         isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                        teamACount={teamAPlayers}
+                        teamBCount={teamBPlayers}
+                        maxPlayersPerTeam={maxPlayersPerTeam}
                       />
                     </FadeInView>
                   );
@@ -1125,6 +1185,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
                         isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                        teamACount={teamAPlayers}
+                        teamBCount={teamBPlayers}
+                        maxPlayersPerTeam={maxPlayersPerTeam}
                       />
                     </FadeInView>
                   );
@@ -1154,6 +1217,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     matchStatus={getMatchStatus()}
                     isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                    teamACount={teamAPlayers}
+                    teamBCount={teamBPlayers}
+                    maxPlayersPerTeam={maxPlayersPerTeam}
                   />
                 </SlideInView>
               ))}
@@ -1179,6 +1245,9 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     isPending={true}
                     matchStatus={getMatchStatus()}
                     isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                    teamACount={teamAPlayers}
+                    teamBCount={teamBPlayers}
+                    maxPlayersPerTeam={maxPlayersPerTeam}
                   />
                 </SlideInView>
               ))}
@@ -1272,16 +1341,19 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                 <FadeInView delay={300} style={styles.sportCampoColumn}>
                   <View style={styles.sportCampoBox}>
                     <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                      <Ionicons 
-                        name={
-                          booking.campo.sport === 'calcio' ? 'football' :
-                          booking.campo.sport === 'tennis' ? 'tennisball' :
-                          booking.campo.sport === 'basket' ? 'basketball' :
-                          booking.campo.sport === 'beach_volley' ? 'trophy' : 'fitness'
-                        } 
-                        size={18} 
-                        color="#FF9800" 
-                      />
+                      {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'volley') ? (
+                        <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />
+                      ) : (
+                        <Ionicons 
+                          name={
+                            booking.campo.sport === 'calcio' ? 'football' :
+                            booking.campo.sport === 'tennis' ? 'tennisball' :
+                            booking.campo.sport === 'basket' ? 'basketball' : 'fitness'
+                          } 
+                          size={18} 
+                          color="#FF9800" 
+                        />
+                      )}
                     </View>
                     <View style={styles.fieldInfoContent}>
                       <Text style={styles.fieldInfoLabel}>SPORT</Text>
@@ -1557,6 +1629,82 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
           teamBPlayers={teamBConfirmed}
         />
       )}
+
+      {/* Team Balancing Modal */}
+      <Modal
+        visible={balancingModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          setBalancingModalVisible(false);
+          setPlayerToAssign(null);
+          setTargetTeam(null);
+        }}
+      >
+        <View style={styles.centeredModalOverlay}>
+          <ScaleInView style={styles.balancingModal}>
+            {/* Header con colore del team */}
+            <View style={[
+              styles.balancingModalHeader,
+              targetTeam === "A" ? styles.teamAHeader : styles.teamBHeader
+            ]}>
+              <Ionicons
+                name="swap-horizontal"
+                size={24}
+                color="white"
+              />
+              <Text style={styles.balancingModalTitle}>Sposta un giocatore</Text>
+            </View>
+
+            <View style={styles.balancingModalContent}>
+              <Text style={styles.balancingModalMessage}>
+                Team {targetTeam} è pieno. Scegli chi spostare al Team {targetTeam === "A" ? "B" : "A"}:
+              </Text>
+
+              <ScrollView style={styles.playersList} showsVerticalScrollIndicator={false}>
+                {booking?.match?.players
+                  ?.filter(p => p.team === targetTeam)
+                  .map(player => (
+                    <Pressable
+                      key={player.user._id}
+                      style={[
+                        styles.playerToMoveOption,
+                        { borderLeftColor: targetTeam === "A" ? "#2196F3" : "#F44336" }
+                      ]}
+                      onPress={() => handlePlayerToMoveSelection(player.user._id)}
+                    >
+                      <View style={styles.playerToMoveInfo}>
+                        <Image
+                          source={{ uri: resolveAvatarUrl(player.user.avatar) }}
+                          style={styles.playerToMoveAvatar}
+                        />
+                        <Text style={styles.playerToMoveName}>
+                          {player.user.name} {player.user.surname}
+                        </Text>
+                      </View>
+                      <View style={styles.playerToMoveArrow}>
+                        <Ionicons name="arrow-forward" size={20} color="#007AFF" />
+                      </View>
+                    </Pressable>
+                  ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.balancingModalButtons}>
+              <Pressable
+                style={styles.balancingCancelButton}
+                onPress={() => {
+                  setBalancingModalVisible(false);
+                  setPlayerToAssign(null);
+                  setTargetTeam(null);
+                }}
+              >
+                <Text style={styles.balancingCancelButtonText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </ScaleInView>
+        </View>
+      </Modal>
 
       {/* Custom Alert Modal */}
       <Modal

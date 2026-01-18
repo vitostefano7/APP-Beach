@@ -2391,6 +2391,109 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
   },
+
+  // ==================== TEAM BALANCING MODAL ====================
+  balancingModal: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginHorizontal: 20,
+    maxHeight: "70%",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  balancingModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  teamAHeader: {
+    backgroundColor: "#2196F3",
+  },
+  teamBHeader: {
+    backgroundColor: "#F44336",
+  },
+  balancingModalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "white",
+    marginLeft: 8,
+  },
+  balancingModalContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  balancingModalMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  playersList: {
+    maxHeight: 200,
+  },
+  playerToMoveOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 8,
+    borderLeftWidth: 4,
+  },
+  playerToMoveInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  playerToMoveAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  playerToMoveName: {
+    fontSize: 16,
+    color: "#1a1a1a",
+    fontWeight: "500",
+  },
+  playerToMoveArrow: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  balancingModalButtons: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  balancingCancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+    minWidth: 100,
+    alignItems: "center",
+  },
+  balancingCancelButtonText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
 });
 
 export default styles;

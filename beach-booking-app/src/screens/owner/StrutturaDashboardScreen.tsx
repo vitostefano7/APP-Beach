@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
 import { resolveImageUrl } from "../../utils/imageUtils";
@@ -377,11 +377,15 @@ export default function StrutturaDashboardScreen() {
               <View key={campo._id} style={styles.campoCard}>
                 <View style={styles.campoHeader}>
                   <View style={styles.sportIcon}>
-                    <Ionicons
-                      name={campo.sport === "beach_volley" ? "basketball" : "tennisball"}
-                      size={18}
-                      color="#2196F3"
-                    />
+                    {(campo.sport === "beach_volley" || campo.sport === "volley") ? (
+                      <FontAwesome5 name="volleyball-ball" size={18} color="#2196F3" />
+                    ) : (
+                      <Ionicons
+                        name="tennisball"
+                        size={18}
+                        color="#2196F3"
+                      />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.campoName}>{campo.name}</Text>

@@ -9,6 +9,9 @@ interface TeamChangeModalProps {
   onSelectTeam: (team: "A" | "B" | null) => void;
   currentTeam?: "A" | "B" | null;
   isCreator: boolean;
+  teamACount?: number;
+  teamBCount?: number;
+  maxPlayersPerTeam?: number;
 }
 
 const TeamChangeModal: React.FC<TeamChangeModalProps> = ({
@@ -17,11 +20,22 @@ const TeamChangeModal: React.FC<TeamChangeModalProps> = ({
   onSelectTeam,
   currentTeam,
   isCreator,
+  teamACount = 0,
+  teamBCount = 0,
+  maxPlayersPerTeam = 2,
 }) => {
+  console.log(`🎯 [TeamChangeModal] Aperto con parametri: visible=${visible}, teamACount=${teamACount}, teamBCount=${teamBCount}, maxPlayersPerTeam=${maxPlayersPerTeam}, currentTeam=${currentTeam}`);
+
   const handleSelect = (team: "A" | "B" | null) => {
+    console.log(`🎯 [TeamChangeModal] Selezione team: ${team} (da ${currentTeam})`);
     onSelectTeam(team);
     onClose();
   };
+
+  const isTeamAFull = teamACount >= maxPlayersPerTeam;
+  const isTeamBFull = teamBCount >= maxPlayersPerTeam;
+  const isTeamAOvercrowded = teamACount > maxPlayersPerTeam;
+  const isTeamBOvercrowded = teamBCount > maxPlayersPerTeam;
 
   return (
     <Modal
@@ -55,7 +69,17 @@ const TeamChangeModal: React.FC<TeamChangeModalProps> = ({
                 <View style={styles.teamIconContainer}>
                   <Ionicons name="shield" size={32} color="white" />
                 </View>
-                <Text style={styles.teamLabel}>Team A</Text>
+                <View style={styles.teamInfo}>
+                  <Text style={styles.teamLabel}>Team A</Text>
+                  <Text style={styles.teamCount}>
+                    {teamACount}/{maxPlayersPerTeam} giocatori
+                  </Text>
+                  {isTeamAOvercrowded && (
+                    <Text style={styles.overcrowdedTeamWarning}>
+                      🚨 SOVRAFFOLLATO - {teamACount - maxPlayersPerTeam} extra
+                    </Text>
+                  )}
+                </View>
                 {currentTeam === "A" && (
                   <View style={styles.checkmark}>
                     <Ionicons name="checkmark-circle" size={24} color="white" />
@@ -81,7 +105,17 @@ const TeamChangeModal: React.FC<TeamChangeModalProps> = ({
                 <View style={styles.teamIconContainer}>
                   <Ionicons name="shield" size={32} color="white" />
                 </View>
-                <Text style={styles.teamLabel}>Team B</Text>
+                <View style={styles.teamInfo}>
+                  <Text style={styles.teamLabel}>Team B</Text>
+                  <Text style={styles.teamCount}>
+                    {teamBCount}/{maxPlayersPerTeam} giocatori
+                  </Text>
+                  {isTeamBOvercrowded && (
+                    <Text style={styles.overcrowdedTeamWarning}>
+                      🚨 SOVRAFFOLLATO - {teamBCount - maxPlayersPerTeam} extra
+                    </Text>
+                  )}
+                </View>
                 {currentTeam === "B" && (
                   <View style={styles.checkmark}>
                     <Ionicons name="checkmark-circle" size={24} color="white" />
@@ -164,6 +198,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     position: "relative",
+    minHeight: 80,
   },
   selectedTeam: {
     borderWidth: 3,
@@ -218,6 +253,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#666",
     letterSpacing: -0.2,
+  },
+  teamInfo: {
+    flex: 1,
+  },
+  teamCount: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 2,
+  },
+  fullTeamWarning: {
+    fontSize: 12,
+    color: "#FFD700",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  overcrowdedTeamWarning: {
+    fontSize: 12,
+    color: "#FF4444",
+    fontWeight: "700",
+    marginTop: 2,
   },
 });
 

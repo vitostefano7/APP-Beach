@@ -23,6 +23,9 @@ interface PlayerCardWithTeamProps {
   maxSlotsPerTeam?: number;
   matchStatus?: string; // Aggiunto per controllare se il match è ancora modificabile
   isOrganizer?: boolean; // Aggiunto per indicare se il giocatore è l'organizzatore
+  teamACount?: number;
+  teamBCount?: number;
+  maxPlayersPerTeam?: number;
 }
 
 const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
@@ -40,6 +43,9 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   maxSlotsPerTeam,
   matchStatus = "open", // Valore di default
   isOrganizer = false, // Valore di default
+  teamACount = 0,
+  teamBCount = 0,
+  maxPlayersPerTeam = 2,
 }) => {
   const navigation = useNavigation<any>();
   const [leaving, setLeaving] = useState(false);
@@ -270,6 +276,9 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           onSelectTeam={handleTeamChange}
           currentTeam={currentTeam}
           isCreator={isCreator}
+          teamACount={teamACount}
+          teamBCount={teamBCount}
+          maxPlayersPerTeam={maxPlayersPerTeam}
         />
       </View>
 

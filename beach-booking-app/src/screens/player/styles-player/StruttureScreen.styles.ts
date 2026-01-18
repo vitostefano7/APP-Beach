@@ -177,6 +177,7 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
     marginHorizontal: -16,
+    marginBottom: 8,
   },
 
   resultsRow: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Avatar from '../../../../components/Avatar/Avatar';
 import { styles } from '../styles';
 
@@ -27,9 +27,9 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
   const getSportIcon = (sport: string) => {
     switch (sport) {
       case 'beach_volleyball':
-        return 'sunny';
+        return 'volleyball-ball';
       case 'volleyball':
-        return 'basketball';
+        return 'volleyball-ball';
       case 'padel':
         return 'tennisball';
       case 'tennis':
@@ -87,7 +87,11 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
           </Text>
         </View>
         <View style={styles.openMatchInfoRow}>
-          <Ionicons name={getSportIcon(match.booking?.sport || 'beach_volleyball')} size={14} color="#2196F3" />
+          {(match.booking?.sport === 'beach_volleyball' || match.booking?.sport === 'volleyball') ? (
+            <FontAwesome5 name="volleyball-ball" size={14} color="#2196F3" />
+          ) : (
+            <Ionicons name={getSportIcon(match.booking?.sport || 'beach_volleyball')} size={14} color="#2196F3" />
+          )}
           <Text style={[styles.openMatchInfoText, { color: '#2196F3', fontWeight: '600' }]}>
             {formatSportName(match.booking?.sport || 'beach_volleyball')}
           </Text>

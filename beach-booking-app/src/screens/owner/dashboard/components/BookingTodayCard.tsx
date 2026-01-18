@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import React from "react";
 import { styles } from "../styles/OwnerDashboardScreen.styles";
 
@@ -96,7 +96,11 @@ export default function BookingTodayCard({
           </View>
 
           <View style={styles.bookingRow}>
-            <Ionicons name={getSportIcon(booking.campo.sport)} size={16} color="#666" />
+            {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'volley' || booking.campo.sport === 'beach_volleyball' || booking.campo.sport === 'volleyball') ? (
+              <FontAwesome5 name="volleyball-ball" size={16} color="#666" />
+            ) : (
+              <Ionicons name={getSportIcon(booking.campo.sport)} size={16} color="#666" />
+            )}
             <Text style={styles.bookingText}>{booking.campo.name}</Text>
           </View>
         </View>

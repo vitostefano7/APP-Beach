@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useContext, useEffect, useState } from "react";
@@ -57,7 +58,7 @@ type Post = {
   likes: string[];
   comments: Array<{
     _id: string;
-    user: { name: string };
+    user: { name: string; surname?: string; lastName?: string; avatarUrl?: string };
     text: string;
   }>;
   createdAt: string;
@@ -74,6 +75,9 @@ export default function UserProfileScreen() {
   const [sendingRequest, setSendingRequest] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [visibleComments, setVisibleComments] = useState<Record<string, boolean>>({});
+  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
+  const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
 
   // Ricarica il profilo quando la schermata viene focalizzata
   useFocusEffect(
@@ -277,6 +281,79 @@ export default function UserProfileScreen() {
     navigation.goBack();
   };
 
+  const handleLike = async (postId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: p.likes.includes(currentUser?.id || '') ? p.likes.filter(id => id !== currentUser?.id) : [...p.likes, currentUser?.id || ''] } : p));
+      }
+    } catch (error) {
+      console.error("Error liking post:", error);
+    }
+  };
+
+  const toggleComments = (postId: string) => {
+    setVisibleComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const handlePostComment = async (postId: string) => {
+    const commentText = commentInputs[postId]?.trim();
+    if (!commentText) return;
+
+    setPostingComment(prev => new Set(prev).add(postId));
+
+    try {
+      const response = await fetch(`${API_URL}/community/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: commentText }),
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        console.log('📝 New comment created:', newComment);
+        
+        // Aggiorna lo stato locale
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post._id === postId) {
+              return {
+                ...post,
+                comments: [...post.comments, newComment],
+              };
+            }
+            return post;
+          })
+        );
+
+        // Espandi automaticamente i commenti
+        setVisibleComments(prev => {
+          const newSet = { ...prev };
+          newSet[postId] = true;
+          return newSet;
+        });
+
+        // Pulisci input
+        setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      }
+    } catch (error) {
+      console.error('Errore pubblicazione commento:', error);
+    } finally {
+      setPostingComment(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    }
+  }; 
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -332,7 +409,10 @@ export default function UserProfileScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
@@ -449,37 +529,40 @@ export default function UserProfileScreen() {
               <Ionicons name="time-outline" size={20} color="#FF9800" />
               <Text style={styles.pendingBadgeText}>Richiesta inviata</Text>
             </View>
-          ) : isFriend ? (
-            <View style={styles.friendBadge}>
-              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-              <Text style={styles.friendBadgeText}>Segui già</Text>
-            </View>
-          ) : canSendRequest ? (
-            <Pressable
-              style={[styles.addFriendButton, sendingRequest && styles.addFriendButtonDisabled]}
-              onPress={handleSendFriendRequest}
-              disabled={sendingRequest}
-            >
-              {sendingRequest ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="person-add" size={20} color="#fff" />
-                  <Text style={styles.addFriendButtonText}>
-                    {data.user.profilePrivacy === 'private' ? 'Richiedi di seguire' : 'Segui'}
-                  </Text>
-                </>
-              )}
-            </Pressable>
           ) : null}
 
-          {/* Chat Button - Only if following OR profile is public */}
-          {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public') && (
-            <Pressable style={styles.chatButton} onPress={handleChat}>
-              <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
-              <Text style={styles.chatButtonText}>Chat</Text>
-            </Pressable>
-          )}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 10 }}>
+            {canSendRequest && (
+              <Pressable
+                style={{ backgroundColor: sendingRequest ? '#ccc' : '#2196F3', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                onPress={handleSendFriendRequest}
+                disabled={sendingRequest}
+              >
+                {sendingRequest ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="person-add" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>
+                      {data.user.profilePrivacy === 'private' ? 'Richiedi di seguire' : 'Segui'}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+            {isFriend && (
+              <View style={{ backgroundColor: '#E8F5E9', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                <Text style={{ color: '#4CAF50', fontWeight: 'bold', marginLeft: 5 }}>Segui già</Text>
+              </View>
+            )}
+            {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public') && (
+              <Pressable style={{ backgroundColor: '#2196F3', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }} onPress={handleChat}>
+                <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>Chat</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Posts Section - Only if not private or if friend */}
@@ -518,15 +601,92 @@ export default function UserProfileScreen() {
                   )}
 
                   <View style={styles.postStats}>
-                    <View style={styles.postStat}>
-                      <Ionicons name="heart-outline" size={18} color="#666" />
+                    <Pressable style={styles.postStat} onPress={() => handleLike(post._id)}>
+                      <Ionicons name={post.likes.includes(currentUser?.id || '') ? "heart" : "heart-outline"} size={18} color={post.likes.includes(currentUser?.id || '') ? "#E91E63" : "#666"} />
                       <Text style={styles.postStatText}>{post.likes.length}</Text>
-                    </View>
-                    <View style={styles.postStat}>
-                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
-                      <Text style={styles.postStatText}>{post.comments.length}</Text>
-                    </View>
+                    </Pressable>
+                    <Pressable style={styles.postStat} onPress={() => toggleComments(post._id)}>
+                      <Ionicons name="chatbubble-outline" size={16} color={visibleComments[post._id] ? '#2196F3' : '#666'} />
+                      <Text style={[styles.postStatText, { color: visibleComments[post._id] ? '#2196F3' : '#666' }]}>{post.comments.length}</Text>
+                    </Pressable>
                   </View>
+
+                  {visibleComments[post._id] && (
+                    <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 }}>
+                      {post.comments.length > 0 && (
+                        <View style={{ marginBottom: 10 }}>
+                          {post.comments.map(comment => (
+                            <View key={comment._id} style={{ flexDirection: 'row', marginBottom: 10 }}>
+                              <Avatar
+                                avatarUrl={comment.user.avatarUrl}
+                                name={comment.user.name}
+                                surname={comment.user.surname || comment.user.lastName}
+                                size={28}
+                              />
+                              <View style={{ marginLeft: 8, flex: 1 }}>
+                                <Text style={{ fontWeight: 'bold' }}>
+                                  {comment.user.surname || comment.user.lastName
+                                    ? `${comment.user.name} ${comment.user.surname || comment.user.lastName}`
+                                    : comment.user.name}
+                                </Text>
+                                <Text>{comment.text}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Comment Input - Only if friend */}
+                      {isFriend && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8 }}>
+                          <Avatar
+                            avatarUrl={currentUser?.avatarUrl}
+                            name={currentUser?.name || 'Tu'}
+                            size={32}
+                          />
+                          <View style={{ flex: 1, marginLeft: 8, flexDirection: 'row', alignItems: 'center' }}>
+                            <TextInput
+                              style={{
+                                flex: 1,
+                                backgroundColor: '#f5f5f5',
+                                borderRadius: 20,
+                                paddingHorizontal: 15,
+                                paddingVertical: 8,
+                                fontSize: 14,
+                                color: '#333',
+                              }}
+                              placeholder="Scrivi un commento..."
+                              value={commentInputs[post._id] || ''}
+                              onChangeText={(text) =>
+                                setCommentInputs(prev => ({ ...prev, [post._id]: text }))
+                              }
+                              multiline
+                              maxLength={500}
+                            />
+                            <Pressable
+                              style={{
+                                marginLeft: 8,
+                                width: 32,
+                                height: 32,
+                                borderRadius: 16,
+                                backgroundColor: commentInputs[post._id]?.trim() && !postingComment.has(post._id) ? '#2196F3' : '#ccc',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              onPress={() => handlePostComment(post._id)}
+                              disabled={!commentInputs[post._id]?.trim() || postingComment.has(post._id)}
+                            >
+                              {postingComment.has(post._id) ? (
+                                <ActivityIndicator size="small" color="white" />
+                              ) : (
+                                <Ionicons name="send" size={16} color="white" />
+                              )}
+                            </Pressable>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               ))
             ) : !loadingPosts ? (

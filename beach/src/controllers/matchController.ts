@@ -976,8 +976,71 @@ export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Solo giocatori confermati possono essere assegnati" });
     }
 
+    // Calcola la capacità massima per squadra
+    const maxPlayersPerTeam = Math.floor(match.maxPlayers / 2);
+
+    // Conta giocatori confermati per squadra
+    const teamAPlayers = match.players.filter(p => p.status === "confirmed" && p.team === "A").length;
+    const teamBPlayers = match.players.filter(p => p.status === "confirmed" && p.team === "B").length;
+    const unassignedPlayers = match.players.filter(p => p.status === "confirmed" && !p.team).length;
+
+    console.log(`🔍 [assignPlayerTeam] Stato iniziale team per match ${matchId}:`);
+    console.log(`   Team A: ${teamAPlayers}/${maxPlayersPerTeam} giocatori`);
+    console.log(`   Team B: ${teamBPlayers}/${maxPlayersPerTeam} giocatori`);
+    console.log(`   Non assegnati: ${unassignedPlayers} giocatori`);
+    console.log(`   Assegnazione richiesta: player ${playerId} → Team ${team || 'null'}`);
+
+    // Validazione: nessun team deve superare il limite massimo
+    if (teamAPlayers > maxPlayersPerTeam || teamBPlayers > maxPlayersPerTeam) {
+      const overcrowdedTeam = teamAPlayers > maxPlayersPerTeam ? "A" : "B";
+      const availableTeam = overcrowdedTeam === "A" ? "B" : "A";
+      console.log(`🚨 [assignPlayerTeam] ERRORE: Team ${overcrowdedTeam} sovraffollato (${teamAPlayers > maxPlayersPerTeam ? teamAPlayers : teamBPlayers}/${maxPlayersPerTeam})`);
+      return res.status(400).json({
+        message: `Team ${overcrowdedTeam} ha troppi giocatori. Sposta manualmente un giocatore dal Team ${overcrowdedTeam} al Team ${availableTeam} o rimuovilo prima di continuare.`,
+        overcrowdedTeam,
+        availableTeam,
+        currentCount: teamAPlayers > maxPlayersPerTeam ? teamAPlayers : teamBPlayers,
+        maxAllowed: maxPlayersPerTeam
+      });
+    }
+
+    // Se il team target è già pieno, bilancia spostando un giocatore dal team pieno al team con meno giocatori
+    if (team && ((team === "A" && teamAPlayers >= maxPlayersPerTeam) || (team === "B" && teamBPlayers >= maxPlayersPerTeam))) {
+      const targetTeam = team;
+      const otherTeam = team === "A" ? "B" : "A";
+      const targetTeamPlayers = match.players.filter(p => p.status === "confirmed" && p.team === targetTeam);
+
+      const targetTeamCount = targetTeam === "A" ? teamAPlayers : teamBPlayers;
+      const otherTeamCount = otherTeam === "A" ? teamAPlayers : teamBPlayers;
+
+      console.log(`⚖️ [assignPlayerTeam] Bilanciamento necessario: ${targetTeam}(${targetTeamCount}/${maxPlayersPerTeam}) pieno, ${otherTeam}(${otherTeamCount}/${maxPlayersPerTeam}) ha spazio`);
+
+      if (targetTeamPlayers.length > 0) {
+        // Sposta il primo giocatore del team pieno al team con spazio
+        const playerToMove = targetTeamPlayers[0];
+        playerToMove.team = otherTeam;
+        console.log(`🚀 [assignPlayerTeam] Spostamento bilanciato: ${playerToMove.user} da Team ${targetTeam} a Team ${otherTeam}`);
+      } else {
+        console.log(`❌ [assignPlayerTeam] Impossibile bilanciare: nessun giocatore nel team ${targetTeam} da spostare`);
+        return res.status(400).json({ message: `Impossibile assegnare al Team ${team}: squadra piena e nessun giocatore da spostare` });
+      }
+    }
+
     // Assegna il team
     player.team = team as any;
+    console.log(`✅ [assignPlayerTeam] Assegnazione completata: player ${playerId} → Team ${team || 'null'}`);
+
+    // Ricalcola i conteggi finali
+    const finalTeamAPlayers = match.players.filter(p => p.status === "confirmed" && p.team === "A").length;
+    const finalTeamBPlayers = match.players.filter(p => p.status === "confirmed" && p.team === "B").length;
+    const finalUnassignedPlayers = match.players.filter(p => p.status === "confirmed" && !p.team).length;
+
+    console.log(`📊 [assignPlayerTeam] Stato finale team:`);
+    console.log(`   Team A: ${finalTeamAPlayers}/${maxPlayersPerTeam} giocatori`);
+    console.log(`   Team B: ${finalTeamBPlayers}/${maxPlayersPerTeam} giocatori`);
+    console.log(`   Non assegnati: ${finalUnassignedPlayers} giocatori`);
+    console.log(`   Totale confermati: ${finalTeamAPlayers + finalTeamBPlayers + finalUnassignedPlayers}`);
+
     await match.save();
 
     const populatedMatch = await Match.findById(matchId)
