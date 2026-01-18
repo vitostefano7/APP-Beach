@@ -131,13 +131,22 @@ export function filterStrutture(
   filters: FilterState,
   query: string
 ): Struttura[] {
-  return strutture.filter((s) => {
+  console.log('🔍 FILTRI ATTIVI:', filters);
+  console.log('📊 Strutture totali:', strutture.length);
+  
+  const filtered = strutture.filter((s) => {
     // Filtro indoor/outdoor
-    if (filters.indoor !== null && s.indoor !== filters.indoor) return false;
+    if (filters.indoor !== null && s.indoor !== filters.indoor) {
+      console.log('❌ Filtro indoor fallito per:', s.name, 'indoor:', s.indoor, 'filtro:', filters.indoor);
+      return false;
+    }
 
     // Filtro sport
     if (filters.sport) {
-      if (!s.sports || !s.sports.includes(filters.sport)) return false;
+      if (!s.sports || !s.sports.includes(filters.sport)) {
+        console.log('❌ Filtro sport fallito per:', s.name, 'sports:', s.sports, 'filtro:', filters.sport);
+        return false;
+      }
     }
 
     // Filtro ricerca testuale
@@ -146,23 +155,36 @@ export function filterStrutture(
       !`${s.name} ${s.location.city}`
         .toLowerCase()
         .includes(query.toLowerCase())
-    )
+    ) {
+      console.log('❌ Filtro query fallito per:', s.name, s.location.city, 'query:', query);
       return false;
+    }
 
     // Filtro città
     if (filters.city) {
-      if (!s.location.city.toLowerCase().includes(filters.city.toLowerCase()))
+      if (!s.location.city.toLowerCase().includes(filters.city.toLowerCase())) {
+        console.log('❌ Filtro città fallito per:', s.name, s.location.city, 'filtro:', filters.city);
         return false;
+      }
     }
 
     // Filtro split payment
-    if (filters.splitPayment !== null && s.isCostSplittingEnabled !== filters.splitPayment) return false;
+    if (filters.splitPayment !== null && s.isCostSplittingEnabled !== filters.splitPayment) {
+      console.log('❌ Filtro split payment fallito per:', s.name, 'split:', s.isCostSplittingEnabled, 'filtro:', filters.splitPayment);
+      return false;
+    }
 
     // Filtro partite aperte
-    if (filters.openGames !== null && s.hasOpenGames !== filters.openGames) return false;
+    if (filters.openGames !== null && s.hasOpenGames !== filters.openGames) {
+      console.log('❌ Filtro open games fallito per:', s.name, 'openGames:', s.hasOpenGames, 'filtro:', filters.openGames);
+      return false;
+    }
 
     return true;
   });
+  
+  console.log('✅ Strutture filtrate:', filtered.length);
+  return filtered;
 }
 
 export function countActiveFilters(filters: FilterState): number {

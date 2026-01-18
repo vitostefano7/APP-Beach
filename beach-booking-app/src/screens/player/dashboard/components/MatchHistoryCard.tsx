@@ -204,11 +204,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               {match.score?.sets && match.score.sets.length > 0 && (
                 <View style={styles.matchSetsContainer}>
-                  {match.score.sets.map((set: any, idx: number) => (
-                    <Text key={idx} style={styles.matchSetScore}>
-                      {myPlayer?.team === 'A' ? `${set.teamA}-${set.teamB}` : `${set.teamB}-${set.teamA}`}
-                    </Text>
-                  ))}
+                  {/* Risultati dei set rimossi per risparmiare spazio */}
                 </View>
               )}
             </View>

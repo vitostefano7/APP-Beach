@@ -23,6 +23,38 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
   const teamAPlayers = match.players?.filter((player: any) => player.team === 'A' && player.status === 'confirmed') || [];
   const teamBPlayers = match.players?.filter((player: any) => player.team === 'B' && player.status === 'confirmed') || [];
 
+  // Get sport icon
+  const getSportIcon = (sport: string) => {
+    switch (sport) {
+      case 'beach_volleyball':
+        return 'sunny';
+      case 'volleyball':
+        return 'basketball';
+      case 'padel':
+        return 'tennisball';
+      case 'tennis':
+        return 'tennisball';
+      default:
+        return 'football';
+    }
+  };
+
+  // Format sport name
+  const formatSportName = (sport: string) => {
+    switch (sport) {
+      case 'beach_volleyball':
+        return 'Beach Volley';
+      case 'volleyball':
+        return 'Pallavolo';
+      case 'padel':
+        return 'Padel';
+      case 'tennis':
+        return 'Tennis';
+      default:
+        return sport;
+    }
+  };
+
   return (
     <Pressable style={styles.openMatchCard} onPress={onPress}>
       <View style={styles.openMatchHeader}>
@@ -31,7 +63,7 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
             {match.booking?.campo?.struttura?.name || 'Struttura'}
           </Text>
           <View style={styles.openMatchBadge}>
-            <Text style={styles.openMatchBadgeText}>{available} posti</Text>
+            <Text style={styles.openMatchBadgeText}>{available} {available === 1 ? 'posto' : 'posti'}</Text>
           </View>
         </View>
         {match.booking?.campo?.struttura?.location?.city && (
@@ -52,6 +84,12 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
           <Ionicons name="time-outline" size={14} color="#666" />
           <Text style={styles.openMatchInfoText}>
             {match.booking?.startTime || '--:--'}
+          </Text>
+        </View>
+        <View style={styles.openMatchInfoRow}>
+          <Ionicons name={getSportIcon(match.booking?.sport || 'beach_volleyball')} size={14} color="#2196F3" />
+          <Text style={[styles.openMatchInfoText, { color: '#2196F3', fontWeight: '600' }]}>
+            {formatSportName(match.booking?.sport || 'beach_volleyball')}
           </Text>
         </View>
       </View>

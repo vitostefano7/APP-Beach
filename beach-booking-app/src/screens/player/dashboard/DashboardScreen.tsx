@@ -650,7 +650,7 @@ export default function HomeScreen() {
                   <View
                     style={{
                       width: screenWidth * 0.7,
-                      marginHorizontal: screenWidth * 0.02,
+                      marginRight: 12,
                     }}
                   >
                     <SuggestedFriendCard 
@@ -672,7 +672,7 @@ export default function HomeScreen() {
               snapToAlignment="start"
               onMomentumScrollEnd={handleFriendsScrollEnd}
               scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: screenWidth * 0.02 }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
               getItemLayout={(data, index) => ({
                 length: screenWidth * 0.74,
                 offset: screenWidth * 0.74 * index,

@@ -470,7 +470,7 @@ export const styles = StyleSheet.create({
   // ✅ NUOVI STILI PER CONTROLLI MAPPA
   mapControlsContainer: {
     position: "absolute",
-    bottom: 100,
+    top: 30,
     right: 16,
     gap: 12,
     alignItems: "flex-end",
@@ -492,7 +492,6 @@ export const styles = StyleSheet.create({
 
   mapControlButtonPrimary: {
     flexDirection: "row",
-    bottom: 650,
     alignItems: "center",
     gap: 8,
     paddingVertical: 14,
@@ -1014,7 +1013,7 @@ export const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 15,
-    bottom: 80,
+    bottom: 20,
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -1029,7 +1028,7 @@ export const styles = StyleSheet.create({
   },
 
   fabList: {
-    bottom: 74,
+    bottom: 14,
   },
 
   fabBadge: {
@@ -1051,6 +1050,23 @@ export const styles = StyleSheet.create({
     color: "white",
     fontSize: 11,
     fontWeight: "800",
+  },
+
+  geolocationFab: {
+    position: "absolute",
+    right: 15,
+    bottom: 75,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#2979ff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   // Calendar Modal Styles
@@ -1118,5 +1134,91 @@ export const styles = StyleSheet.create({
 
   clearDateButton: {
     padding: 4,
+  },
+
+  // Permission Modal Styles
+  permissionModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  permissionModalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 320,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  permissionModalIcon: {
+    marginBottom: 16,
+  },
+
+  permissionModalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    textAlign: "center",
+    marginBottom: 12,
+    lineHeight: 28,
+  },
+
+  permissionModalMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+
+  permissionModalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 0,
+  },
+
+  permissionModalCancelButton: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+
+  permissionModalCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+  },
+
+  permissionModalSettingsButton: {
+    flex: 1,
+    backgroundColor: "#2979ff",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    minHeight: 50,
+  },
+
+  permissionModalSettingsText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    textAlign: "center",
   },
 });

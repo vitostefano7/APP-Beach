@@ -85,6 +85,8 @@ export default function StruttureScreen() {
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [lastPreferredCity, setLastPreferredCity] = useState<string | null>(null);
   
+  const [showLocationPermissionModal, setShowLocationPermissionModal] = useState(false);
+
   // ✅ State per carousel immagini
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({});
 
@@ -112,43 +114,67 @@ export default function StruttureScreen() {
     }
   }, [preferences, isFirstLoad, lastPreferredCity, userManuallyChangedCity]);
 
-  // ✅ Carousel automatico per le immagini (3 secondi)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndexes((prev) => {
-        const newIndexes = { ...prev };
-        filteredStrutture.forEach((struttura) => {
-          if (struttura.images && struttura.images.length > 1) {
-            const currentIndex = prev[struttura._id] || 0;
-            newIndexes[struttura._id] = 
-              currentIndex === struttura.images.length - 1 ? 0 : currentIndex + 1;
-          }
-        });
-        return newIndexes;
-      });
-    }, 3000); // Cambia immagine ogni 3 secondi
+  // ✅ TEMPORANEAMENTE DISABILITATO - Carousel automatico per le immagini
+  // const carouselIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    return () => clearInterval(interval);
-  }, [filteredStrutture]);
+  // useEffect(() => {
+  //   const startCarousel = () => {
+  //     if (carouselIntervalRef.current) {
+  //       clearInterval(carouselIntervalRef.current);
+  //     }
+      
+  //     carouselIntervalRef.current = setInterval(() => {
+  //       setCurrentImageIndexes((prev) => {
+  //         const newIndexes = { ...prev };
+  //         filteredStrutture.forEach((struttura) => {
+  //           if (struttura.images && struttura.images.length > 1) {
+  //             const currentIndex = prev[struttura._id] || 0;
+  //             newIndexes[struttura._id] = 
+  //               currentIndex === struttura.images.length - 1 ? 0 : currentIndex + 1;
+  //           }
+  //         });
+  //         return newIndexes;
+  //       });
+  //     }, 3000);
+  //   };
+
+  //   startCarousel();
+
+  //   return () => {
+  //     if (carouselIntervalRef.current) {
+  //       clearInterval(carouselIntervalRef.current);
+  //       carouselIntervalRef.current = null;
+  //     }
+  //   };
+  // }, [filteredStrutture]);
 
   useFocusEffect(
     useCallback(() => {
+      console.log('🎯 useFocusEffect triggered, token:', !!token);
       // Ricarica sempre le preferenze quando si torna alla schermata
       loadPreferences();
+      // Carica sempre le strutture
+      loadStrutture();
       return () => {};
-    }, [])
+    }, [token])
   );
 
   const loadPreferences = async () => {
-    if (!token) return;
+    console.log('⚙️ Caricamento preferenze...');
+    if (!token) {
+      console.log('❌ Nessun token disponibile');
+      return;
+    }
 
     try {
       const res = await fetch(`${API_URL}/users/preferences`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+      console.log('📡 Risposta preferenze:', res.status);
+      
       if (res.ok) {
         const prefs = await res.json();
+        console.log('✅ Preferenze caricate:', prefs);
         setPreferences(prefs);
         setPreferencesLoaded(true);
 
@@ -160,6 +186,8 @@ export default function StruttureScreen() {
             longitudeDelta: 0.5,
           });
         }
+      } else {
+        console.log('❌ Errore caricamento preferenze:', res.statusText);
       }
     } catch (error) {
       console.error("Errore caricamento preferenze:", error);
@@ -172,13 +200,16 @@ export default function StruttureScreen() {
   };
 
   useEffect(() => {
-    if (preferencesLoaded) {
-      loadStrutture();
-      if (token) loadFavorites();
+    console.log('🔄 Vista cambiata a:', viewMode);
+    if (viewMode === "list") {
+      console.log('📱 Vista lista: FAB filtri visibile a bottom 14');
+    } else {
+      console.log('🗺️ Vista mappa: Pulsante Lista visibile a top 30, FAB geolocalizzazione a bottom 75');
     }
-  }, [filters, preferences, preferencesLoaded, token]);
+  }, [viewMode]);
 
   const loadStrutture = async () => {
+    console.log('🏗️ Iniziando caricamento strutture...');
     try {
       // Costruisci URL con parametri di query per filtri data/fascia oraria
       let url = `${API_URL}/strutture`;
@@ -198,8 +229,12 @@ export default function StruttureScreen() {
         url += `?${params.toString()}`;
       }
       
+      console.log('🌐 URL richiesta:', url);
       const res = await fetch(url);
+      console.log('📡 Risposta HTTP:', res.status, res.statusText);
+      
       let data: Struttura[] = await res.json();
+      console.log('📦 Dati ricevuti:', data.length, 'strutture');
 
       const filterCity = filters.city;
       const prefCity = preferences?.preferredLocation?.city;
@@ -372,26 +407,7 @@ export default function StruttureScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permessi GPS richiesti",
-          "Per utilizzare la geolocalizzazione è necessario abilitare i permessi GPS nelle impostazioni del dispositivo.",
-          [
-            {
-              text: "Annulla",
-              style: "cancel"
-            },
-            {
-              text: "Impostazioni",
-              onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
-                } else {
-                  Linking.openSettings();
-                }
-              }
-            }
-          ]
-        );
+        setShowLocationPermissionModal(true);
         return;
       }
 
@@ -863,20 +879,29 @@ export default function StruttureScreen() {
 
             {/* ✅ GRUPPO BOTTONI ALLINEATI */}
             <View style={styles.mapControlsContainer}>
-              {/* Bottone Posizione */}
-              <Pressable style={styles.mapControlButton} onPress={centerOnUser}>
-                <Ionicons name="locate" size={22} color="#2979ff" />
-              </Pressable>
-
               {/* Bottone Vista Lista - PIÙ CHIARO */}
               <Pressable 
                 style={styles.mapControlButtonPrimary} 
-                onPress={() => setViewMode("list")}
+                onPress={() => {
+                  console.log('📋 Pulsante Lista premuto - posizione: top 30, right 16');
+                  setViewMode("list");
+                }}
               >
                 <Ionicons name="list" size={22} color="white" />
                 <Text style={styles.mapControlButtonText}>Lista</Text>
               </Pressable>
             </View>
+
+            {/* Pulsante geolocalizzazione in vista mappa */}
+            <Pressable 
+              style={styles.geolocationFab} 
+              onPress={() => {
+                console.log('🗺️ Pulsante geolocalizzazione premuto - posizione: bottom 75, right 15');
+                centerOnUser();
+              }}
+            >
+              <Ionicons name="locate" size={22} color="white" />
+            </Pressable>
 
             {selectedMarker && (
               <Modal
@@ -980,7 +1005,10 @@ export default function StruttureScreen() {
           styles.fab,
           viewMode === "list" && styles.fabList
         ]} 
-        onPress={() => setShowFilters(true)}
+        onPress={() => {
+          console.log('🔍 Pulsante filtri premuto - posizione: bottom', viewMode === "list" ? 14 : 20, ', right 15');
+          setShowFilters(true);
+        }}
       >
         <Ionicons name="options-outline" size={24} color="white" />
         {activeFiltersCount > 0 && (
@@ -989,6 +1017,51 @@ export default function StruttureScreen() {
           </View>
         )}
       </Pressable>
+
+      {/* Modal permessi GPS */}
+      <Modal
+        visible={showLocationPermissionModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowLocationPermissionModal(false)}
+      >
+        <View style={styles.permissionModalOverlay}>
+          <View style={styles.permissionModalContent}>
+            <View style={styles.permissionModalIcon}>
+              <Ionicons name="location-outline" size={48} color="#2979ff" />
+            </View>
+            
+            <Text style={styles.permissionModalTitle}>Permessi GPS richiesti</Text>
+            
+            <Text style={styles.permissionModalMessage}>
+              Per centrare la mappa sulla tua posizione attuale, abbiamo bisogno dell'accesso alla geolocalizzazione.
+            </Text>
+            
+            <View style={styles.permissionModalButtons}>
+              <Pressable
+                style={styles.permissionModalCancelButton}
+                onPress={() => setShowLocationPermissionModal(false)}
+              >
+                <Text style={styles.permissionModalCancelText}>Annulla</Text>
+              </Pressable>
+              
+              <Pressable
+                style={styles.permissionModalSettingsButton}
+                onPress={() => {
+                  setShowLocationPermissionModal(false);
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }}
+              >
+                <Text style={styles.permissionModalSettingsText}>Vai alle impostazioni</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
