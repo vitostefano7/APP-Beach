@@ -11,6 +11,7 @@ interface BookingDetailsCardProps {
   price: number;
   createdAt: string; // formato ISO o compatibile con Date
   isPublic?: boolean; // Se la partita è pubblica o privata
+  displayPrice?: number; // Prezzo da mostrare (diverso da price se necessario)
 }
 
 const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
@@ -21,6 +22,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
   price,
   createdAt,
   isPublic,
+  displayPrice,
 }) => {
   const formatDateTime = (dateStr: string, time: string) => {
     try {
@@ -119,7 +121,7 @@ const BookingDetailsCard: React.FC<BookingDetailsCardProps> = ({
             <View style={styles.itemInfo}>
               <Text style={styles.itemLabel}>PREZZO</Text>
               <Text style={[styles.itemValue, styles.priceValue]}>
-                {formatPrice(price)}
+                {formatPrice(displayPrice ?? price)}
               </Text>
             </View>
           </View>

@@ -17,14 +17,58 @@ import { PricingRules, DurationPrice } from "../models/Campo";
  * @param duration - Durata: "1h" o "1.5h"
  * @returns DurationPrice con oneHour e oneHourHalf
  */
+export type PriceResult = {
+  totalPrice: number;
+  unitPrice?: number;
+  appliedPricingMode: "split" | "standard";
+  appliedPlayerCount?: number;
+};
+
 export function calculatePrice(
   pricingRules: PricingRules,
   date: string,
   startTime: string,
-  duration: "1h" | "1.5h"
-): number {
-  const prices = getPricesForSlot(pricingRules, date, startTime);
-  return duration === "1h" ? prices.oneHour : prices.oneHourHalf;
+  duration: "1h" | "1.5h",
+  options?: { isCostSplittingEnabled?: boolean; numberOfPeople?: number }
+): PriceResult {
+  const numberOfPeople = options?.numberOfPeople;
+
+  // Prezzo calcolato usando la gerarchia esistente
+  const basePrices = getPricesForSlot(pricingRules, date, startTime);
+  const totalStandard = duration === "1h" ? basePrices.oneHour : basePrices.oneHourHalf;
+
+  // Se la struttura permette lo split e il campo ha playerCountPricing abilitato
+  if (
+    options?.isCostSplittingEnabled &&
+    pricingRules.playerCountPricing?.enabled &&
+    Array.isArray(pricingRules.playerCountPricing.prices) &&
+    typeof numberOfPeople === "number"
+  ) {
+    const match = pricingRules.playerCountPricing.prices.find((p) => p.count === numberOfPeople);
+    if (match) {
+      const perPerson = duration === "1h" ? match.prices.oneHour : match.prices.oneHourHalf;
+      const totalPrice = perPerson * numberOfPeople;
+      return {
+        totalPrice,
+        unitPrice: roundToTwo(perPerson),
+        appliedPricingMode: "split",
+        appliedPlayerCount: numberOfPeople,
+      };
+    }
+    // Se non trovato, fallback verrà applicato più sotto (opzione permissiva)
+  }
+
+  // Modalità standard (o fallback): restituisce totalStandard e, se numberOfPeople fornito, anche unitPrice calcolato
+  if (typeof numberOfPeople === "number" && numberOfPeople > 0) {
+    const unit = roundToTwo(totalStandard / numberOfPeople);
+    return { totalPrice: totalStandard, unitPrice: unit, appliedPricingMode: "standard" };
+  }
+
+  return { totalPrice: totalStandard, appliedPricingMode: "standard" };
+}
+
+function roundToTwo(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 /**

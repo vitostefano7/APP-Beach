@@ -351,8 +351,31 @@ const CampoSchema = new Schema<ICampo>(
 
     maxPlayers: {
       type: Number,
-      default: 4,
+      default: function (this: any) {
+        // Default dinamico: volley -> 10, beach volley -> 4
+        if (this && this.sport === "volley") return 10;
+        return 4;
+      },
       min: 1,
+      validate: {
+        validator: function (v: number) {
+          const doc: any = this;
+          if (!doc || !doc.sport) return true;
+          if (doc.sport === "volley") {
+            return v >= 2 && v <= 10;
+          }
+          if (doc.sport === "beach volley") {
+            return v >= 4 && v <= 8;
+          }
+          return true;
+        },
+        message: function (props: any) {
+          const doc: any = this;
+          if (doc && doc.sport === "volley") return "Volley: maxPlayers deve essere tra 2 e 10";
+          if (doc && doc.sport === "beach volley") return "Beach volley: maxPlayers deve essere tra 4 e 8";
+          return "maxPlayers non valido";
+        },
+      },
     },
 
     indoor: {

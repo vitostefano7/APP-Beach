@@ -584,7 +584,7 @@ async function seed() {
     ];
 
     const strutture = await Struttura.insertMany(
-      struttureData.map((s) => {
+      struttureData.map((s, idx) => {
         // ✅ Assegna randomicamente 2-4 immagini a ogni struttura
         const numImages = strutturaImageUrls.length > 0 ? randomInt(2, Math.min(4, strutturaImageUrls.length)) : 0;
         const strutturaImages: string[] = [];
@@ -620,6 +620,8 @@ async function seed() {
           isActive: true,
           isFeatured: s.isFeatured,
           isDeleted: false,
+          // Abilita split dei costi per le prime 2 strutture (per test)
+          isCostSplittingEnabled: idx < 2,
         };
       })
     );
@@ -972,51 +974,75 @@ async function seed() {
       const numCampi = idx < 3 ? 3 : 2; // Prime 3 strutture hanno 3 campi
 
       for (let i = 1; i <= numCampi; i++) {
-        const isBeach = Math.random() > 0.3;
-        const isIndoor = !isBeach && Math.random() > 0.5;
+          const isBeach = Math.random() > 0.3;
+          const isIndoor = !isBeach && Math.random() > 0.5;
 
-        campiData.push({
-          struttura: struttura._id,
-          name: `Campo ${isBeach ? "Beach" : "Volley"} ${i}`,
-          sport: isBeach ? "beach volley" : "volley",
-          surface: isBeach ? "sand" : isIndoor ? "pvc" : "cement",
-          maxPlayers: 4,
-          indoor: isIndoor,
-          pricePerHour: randomInt(30, 50),
-          isActive: true,
-          pricingRules: {
-            mode: Math.random() > 0.5 ? "flat" : "advanced",
-            flatPrices: { oneHour: randomInt(30, 50), oneHourHalf: randomInt(42, 70) },
-            basePrices: { oneHour: randomInt(30, 45), oneHourHalf: randomInt(42, 63) },
-            timeSlotPricing: {
-              enabled: Math.random() > 0.5,
-              slots:
-                Math.random() > 0.5
-                  ? [
-                      {
-                        start: "18:00",
-                        end: "23:00",
-                        label: "Sera",
-                        prices: { oneHour: randomInt(40, 55), oneHourHalf: randomInt(56, 77) },
-                      },
-                    ]
-                  : [],
+          // deterministico prezzo base e possibili tariffe per-player
+          const pricePerHour = randomInt(30, 50);
+          const flatOne = randomInt(30, 50);
+          const flatOneHalf = randomInt(42, 70);
+          const baseOne = randomInt(30, 45);
+          const baseOneHalf = randomInt(42, 63);
+
+          // Abilita playerCountPricing per i campi beach nelle prime 2 strutture (quelle con split abilitato)
+          const enablePlayerPricing = isBeach && idx < 2;
+          const playerPrices = enablePlayerPricing
+            ? [
+                {
+                  count: 4,
+                  label: "4 giocatori",
+                  prices: {
+                    oneHour: Math.max(5, Math.round(pricePerHour / 4)),
+                    oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 4)),
+                  },
+                },
+              ]
+            : [];
+
+          const campoMaxPlayers = isBeach ? randomInt(4, 8) : 10;
+
+          campiData.push({
+            struttura: struttura._id,
+            name: `Campo ${isBeach ? "Beach" : "Volley"} ${i}`,
+            sport: isBeach ? "beach volley" : "volley",
+            surface: isBeach ? "sand" : isIndoor ? "pvc" : "cement",
+            maxPlayers: campoMaxPlayers,
+            indoor: isIndoor,
+            pricePerHour: pricePerHour,
+            isActive: true,
+            pricingRules: {
+              mode: Math.random() > 0.5 ? "flat" : "advanced",
+              flatPrices: { oneHour: flatOne, oneHourHalf: flatOneHalf },
+              basePrices: { oneHour: baseOne, oneHourHalf: baseOneHalf },
+              timeSlotPricing: {
+                enabled: Math.random() > 0.5,
+                slots:
+                  Math.random() > 0.5
+                    ? [
+                        {
+                          start: "18:00",
+                          end: "23:00",
+                          label: "Sera",
+                          prices: { oneHour: randomInt(40, 55), oneHourHalf: randomInt(56, 77) },
+                        },
+                      ]
+                    : [],
+              },
+              dateOverrides: { enabled: false, dates: [] },
+              periodOverrides: { enabled: false, periods: [] },
+              playerCountPricing: { enabled: !!enablePlayerPricing, prices: playerPrices },
             },
-            dateOverrides: { enabled: false, dates: [] },
-            periodOverrides: { enabled: false, periods: [] },
-            playerCountPricing: { enabled: false, prices: [] },
-          },
-          weeklySchedule: {
-            monday: { enabled: true, open: "09:00", close: "22:00" },
-            tuesday: { enabled: true, open: "09:00", close: "22:00" },
-            wednesday: { enabled: true, open: "09:00", close: "22:00" },
-            thursday: { enabled: true, open: "09:00", close: "22:00" },
-            friday: { enabled: true, open: "09:00", close: "23:00" },
-            saturday: { enabled: true, open: "08:00", close: "23:00" },
-            sunday: { enabled: true, open: "08:00", close: "22:00" },
-          },
-        });
-      }
+            weeklySchedule: {
+              monday: { enabled: true, open: "09:00", close: "22:00" },
+              tuesday: { enabled: true, open: "09:00", close: "22:00" },
+              wednesday: { enabled: true, open: "09:00", close: "22:00" },
+              thursday: { enabled: true, open: "09:00", close: "22:00" },
+              friday: { enabled: true, open: "09:00", close: "23:00" },
+              saturday: { enabled: true, open: "08:00", close: "23:00" },
+              sunday: { enabled: true, open: "08:00", close: "22:00" },
+            },
+          });
+        }
     });
 
     const campi = await Campo.insertMany(campiData);
@@ -1069,6 +1095,8 @@ async function seed() {
       const endMinutes = duration === 1.5 ? "30" : "00";
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
+      const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
+
       bookings.push({
         user: player._id,
         campo: campo._id,
@@ -1079,7 +1107,8 @@ async function seed() {
         duration,
         price: randomInt(30, 50),
         status: "confirmed",
-        bookingType: Math.random() > 0.3 ? "public" : "private", // 70% pubbliche, 30% private
+        bookingType,
+        paymentMode: bookingType === "public" ? "split" : "full",
       });
     }
 
@@ -1097,6 +1126,8 @@ async function seed() {
       const endMinutes = duration === 1.5 ? "30" : "00";
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
+      const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
+
       bookings.push({
         user: player._id,
         campo: campo._id,
@@ -1107,7 +1138,8 @@ async function seed() {
         duration,
         price: randomInt(30, 50),
         status: "confirmed",
-        bookingType: Math.random() > 0.3 ? "public" : "private", // 70% pubbliche, 30% private
+        bookingType,
+        paymentMode: bookingType === "public" ? "split" : "full",
       });
     }
 
@@ -1277,6 +1309,7 @@ async function seed() {
         price: 40,
         status: "confirmed",
         bookingType: "public",
+        paymentMode: "split",
       });
 
       const matchPlayers: any[] = [];

@@ -115,6 +115,7 @@ export default function OwnerDashboardScreen() {
     if (!token) return;
 
     try {
+      console.log("🔄 [OwnerDashboard] Loading dashboard data...");
       setLoading(true);
       
       await Promise.all([
@@ -125,6 +126,7 @@ export default function OwnerDashboardScreen() {
         loadRecentActivities(),
         loadUpcomingMatches(),
       ]);
+      console.log("✅ [OwnerDashboard] Dashboard data loaded successfully");
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento dati:", error);
     } finally {
@@ -202,13 +204,17 @@ export default function OwnerDashboardScreen() {
     if (!token) return;
 
     try {
+      console.log("📡 [OwnerDashboard] Fetching unread notifications count...");
       const res = await fetch(`${API_URL}/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
+        console.log("✅ [OwnerDashboard] Unread notifications:", data.count || 0);
         setUnreadNotifications(data.count || 0);
+      } else {
+        console.log("❌ [OwnerDashboard] Failed to fetch unread count, status:", res.status);
       }
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento notifiche:", error);
@@ -371,7 +377,10 @@ export default function OwnerDashboardScreen() {
           user={user}
           todayBookingsCount={todayBookings.length}
           unreadNotifications={unreadNotifications}
-          onNotificationsPress={() => console.log("Notifiche")}
+          onNotificationsPress={() => {
+            console.log("🔔 [OwnerDashboard] Notifications button pressed, unread:", unreadNotifications);
+            navigation.navigate("OwnerNotifiche");
+          }}
         />
 
         {/* Quick Stats */}

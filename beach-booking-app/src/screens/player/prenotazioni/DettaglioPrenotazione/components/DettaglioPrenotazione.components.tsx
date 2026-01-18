@@ -22,6 +22,7 @@ interface PlayerCardWithTeamProps {
   slotNumber?: number;
   maxSlotsPerTeam?: number;
   matchStatus?: string; // Aggiunto per controllare se il match è ancora modificabile
+  isOrganizer?: boolean; // Aggiunto per indicare se il giocatore è l'organizzatore
 }
 
 const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
@@ -38,6 +39,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   slotNumber,
   maxSlotsPerTeam,
   matchStatus = "open", // Valore di default
+  isOrganizer = false, // Valore di default
 }) => {
   const navigation = useNavigation<any>();
   const [leaving, setLeaving] = useState(false);
@@ -177,6 +179,9 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
                 : player.user?.name || "Giocatore"}
               {isCurrentUser && (
                 <Text style={styles.currentUserIndicator}> (Tu)</Text>
+              )}
+              {isOrganizer && (
+                <Text style={styles.organizerIndicator}> (organizzatore)</Text>
               )}
             </Text>
             <Text style={styles.playerUsername}>

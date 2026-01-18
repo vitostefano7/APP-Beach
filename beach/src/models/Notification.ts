@@ -3,7 +3,7 @@ import mongoose, { Schema, Types, Document } from "mongoose";
 export interface INotification extends Document {
   recipient: Types.ObjectId;
   sender?: Types.ObjectId;
-  type: "new_follower" | "follow_back" | "match_invite" | "match_start" | "match_result";
+  type: "new_follower" | "follow_back" | "match_invite" | "match_start" | "match_result" | "new_booking" | "match_join";
   title: string;
   message: string;
   relatedId?: Types.ObjectId;
@@ -28,7 +28,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["new_follower", "follow_back", "match_invite", "match_start", "match_result"],
+      enum: ["new_follower", "follow_back", "match_invite", "match_start", "match_result", "new_booking", "match_join"],
       required: true,
       index: true,
     },

@@ -45,6 +45,7 @@ export default function ModificaStrutturaScreen() {
   const [city, setCity] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [images, setImages] = useState<string[]>([]);
+  const [isCostSplittingEnabled, setIsCostSplittingEnabled] = useState(false);
 
   const [openingHours, setOpeningHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
   const [expandedDays, setExpandedDays] = useState<{ [key: string]: boolean }>({});
@@ -71,6 +72,7 @@ export default function ModificaStrutturaScreen() {
       setCity(data.location?.city || "");
       setIsActive(data.isActive !== false);
       setImages(data.images || []);
+      setIsCostSplittingEnabled(!!data.isCostSplittingEnabled);
 
       if (data.openingHours && Object.keys(data.openingHours).length > 0) {
         setOpeningHours(data.openingHours);
@@ -243,6 +245,7 @@ export default function ModificaStrutturaScreen() {
         openingHours,
         isActive,
         forceUpdate,
+        isCostSplittingEnabled,
       };
 
       console.log("📤 Sending request to:", `${API_URL}/strutture/${strutturaId}`);
@@ -365,6 +368,25 @@ export default function ModificaStrutturaScreen() {
               value={isActive} 
               onValueChange={handleToggleActive}
               trackColor={{ false: "#E0E0E0", true: "#4CAF50" }}
+              thumbColor="white"
+            />
+          </View>
+        </Pressable>
+
+        {/* SPLIT PRICE TOGGLE */}
+        <Pressable style={styles.statusCard}>
+          <View style={styles.statusContent}>
+            <View style={styles.statusIconContainer}>
+              <Ionicons name="people" size={28} color="#2196F3" />
+            </View>
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>Divisione prezzo per persona</Text>
+              <Text style={styles.statusSubtitle}>Se attivo, i giocatori vedranno il prezzo per persona</Text>
+            </View>
+            <Switch
+              value={isCostSplittingEnabled}
+              onValueChange={() => setIsCostSplittingEnabled((v) => !v)}
+              trackColor={{ false: "#E0E0E0", true: "#2196F3" }}
               thumbColor="white"
             />
           </View>

@@ -20,6 +20,7 @@ interface TeamSectionProps {
   maxPlayers: number; // Aggiunto per calcolare la formazione
   onInviteToTeam: (team: "A" | "B", slotNumber: number) => void;
   matchStatus: string; // Aggiunto per passare lo stato del match
+  organizerId?: string; // Aggiunto per identificare l'organizzatore
 }
 
 const TeamSection: React.FC<TeamSectionProps> = ({
@@ -33,6 +34,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   maxPlayers,
   onInviteToTeam,
   matchStatus,
+  organizerId,
 }) => {
   const teamColor = team === "A" ? "#2196F3" : "#F44336";
   const teamIcon = team === "A" ? "people-circle" : "people-circle";
@@ -106,6 +108,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
                 isPending={slotPlayer.status === "pending"}
                 slotNumber={slotNumber}
                 matchStatus={matchStatus}
+                isOrganizer={slotPlayer?.user?._id === organizerId}
               />
             );
           } else {

@@ -22,6 +22,8 @@ export type Struttura = {
   sports?: string[];
   isFavorite?: boolean;
   distance?: number;
+  isCostSplittingEnabled?: boolean;
+  hasOpenGames?: boolean;
 };
 
 export type Cluster = {
@@ -40,6 +42,8 @@ export type FilterState = {
   date: Date | null;
   timeSlot: string | null;
   city: string | null;
+  splitPayment: boolean | null;
+  openGames: boolean | null;
 };
 
 export type UserPreferences = {
@@ -151,6 +155,12 @@ export function filterStrutture(
         return false;
     }
 
+    // Filtro split payment
+    if (filters.splitPayment !== null && s.isCostSplittingEnabled !== filters.splitPayment) return false;
+
+    // Filtro partite aperte
+    if (filters.openGames !== null && s.hasOpenGames !== filters.openGames) return false;
+
     return true;
   });
 }
@@ -162,5 +172,7 @@ export function countActiveFilters(filters: FilterState): number {
     filters.date !== null,
     filters.timeSlot !== null,
     filters.city !== null,
+    filters.splitPayment !== null,
+    filters.openGames !== null,
   ].filter(Boolean).length;
 }

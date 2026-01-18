@@ -7,6 +7,7 @@ import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
 import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
+import { createNotification } from "../utils/notificationHelper";
 
 /* =====================================================
    PLAYER
@@ -20,7 +21,7 @@ import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { campoId, date, startTime, duration = "1h", bookingType = "public", maxPlayers } = req.body;
+    const { campoId, date, startTime, duration = "1h", bookingType = "public", paymentMode, maxPlayers, numberOfPeople } = req.body;
 
     console.log("🏐 Nuova prenotazione:", {
       campoId,
@@ -50,6 +51,19 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res
         .status(400)
         .json({ message: "bookingType non valido: ammessi solo 'private' o 'public'" });
+    }
+
+    // Valida paymentMode
+    if (paymentMode && paymentMode !== "full" && paymentMode !== "split") {
+      return res.status(400).json({ message: "paymentMode non valido: ammessi solo 'full' o 'split'" });
+    }
+
+    // Deriva paymentMode se non fornito
+    const paymentModeDerived = paymentMode || (bookingType === "public" ? "split" : "full");
+
+    // Se bookingType è public, paymentMode deve essere split
+    if (bookingType === "public" && paymentModeDerived !== "split") {
+      return res.status(400).json({ message: "Per prenotazioni pubbliche, paymentMode deve essere 'split'" });
     }
 
     if (user.role === "owner") {
@@ -135,15 +149,47 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 💰 Calcola prezzo usando il sistema deterministico
-    const price = calculatePrice(
+    const struttura = (campo as any).struttura;
+
+    // Regola operativa: le partite pubbliche sono permesse solo se la struttura permette lo split dei costi
+    if (bookingType === "public" && !struttura?.isCostSplittingEnabled) {
+      return res.status(400).json({ message: "Partite pubbliche non consentite: la struttura non permette la divisione del costo" });
+    }
+
+    // 🔢 Validazione numberOfPeople (se fornito)
+    if (typeof numberOfPeople !== "undefined") {
+      const np = Number(numberOfPeople);
+      if (!Number.isInteger(np) || np < 2) {
+        return res.status(400).json({ message: "numberOfPeople deve essere un intero >= 2" });
+      }
+      if (np > (campo as any).maxPlayers) {
+        return res.status(400).json({ message: `numberOfPeople non può superare maxPlayers del campo (${(campo as any).maxPlayers})` });
+      }
+      // Per beach volley richiediamo numero pari (es. 4,6,8)
+      if ((campo as any).sport === "beach volley" && np % 2 !== 0) {
+        return res.status(400).json({ message: "Per beach volley numberOfPeople deve essere un numero pari (es. 4,6,8)" });
+      }
+
+      // Se la struttura richiede l'uso delle tariffe per player, verifica che esista una voce corrispondente
+      if (struttura?.isCostSplittingEnabled && (campo as any).pricingRules?.playerCountPricing?.enabled) {
+        const prices = (campo as any).pricingRules.playerCountPricing.prices || [];
+        const match = prices.find((p: any) => p.count === np);
+        if (!match) {
+          return res.status(400).json({ message: `Nessuna tariffa per ${np} giocatori presente nel campo` });
+        }
+      }
+    }
+
+    // 💰 Calcola prezzo usando il sistema deterministico (ora restituisce totalPrice/unitPrice)
+    const priceResult = calculatePrice(
       (campo as any).pricingRules,
       date,
       startTime,
-      duration
+      duration,
+      { isCostSplittingEnabled: !!struttura?.isCostSplittingEnabled, numberOfPeople: numberOfPeople }
     );
 
-    console.log(`💰 Prezzo calcolato: €${price} (${duration})`);
+    console.log(`💰 Prezzo calcolato: €${priceResult.totalPrice} (${duration})`, priceResult);
 
     // Calcola endTime
     const durationMinutes = duration === "1h" ? 60 : 90;
@@ -159,6 +205,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     // ✅ Crea booking
     const booking = await Booking.create({
       bookingType,
+      paymentMode: paymentModeDerived,
       user: user.id,
       campo: campoId,
       struttura: (campo as any).struttura._id || (campo as any).struttura,
@@ -166,7 +213,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       startTime,
       endTime,
       duration: duration === "1h" ? 1 : 1.5,
-      price,
+      price: priceResult.totalPrice,
+      unitPrice: priceResult.unitPrice,
+      numberOfPeople: typeof numberOfPeople !== "undefined" ? Number(numberOfPeople) : undefined,
       status: "confirmed",
     });
 
@@ -179,12 +228,42 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     console.log("✅ Prenotazione creata:", booking._id);
 
+    // 📢 Crea notifica per il proprietario della struttura
+    try {
+      console.log("🔍 [NOTIFICA] Controllo proprietario struttura...");
+      const strutturaOwner = struttura.owner;
+      console.log("🔍 [NOTIFICA] Proprietario struttura:", strutturaOwner);
+      
+      if (strutturaOwner) {
+        console.log("📝 [NOTIFICA] Creazione notifica per:", strutturaOwner);
+        console.log("📝 [NOTIFICA] Dettagli: campo =", campo.name, ", date =", date, ", startTime =", startTime);
+        
+        await createNotification(
+          new mongoose.Types.ObjectId(strutturaOwner),
+          new mongoose.Types.ObjectId(user.id),
+          "new_booking",
+          "Nuova prenotazione confermata",
+          `Prenotazione per ${campo.name} il ${date} alle ${startTime}`,
+          new mongoose.Types.ObjectId(booking._id),
+          "Booking"
+        );
+        console.log("✅ [NOTIFICA] Notifica creata con successo per il proprietario:", strutturaOwner);
+      } else {
+        console.log("⚠️ [NOTIFICA] Nessun proprietario trovato per la struttura:", struttura._id);
+      }
+    } catch (notificationError) {
+      console.error("❌ [NOTIFICA] Errore creazione notifica:", notificationError);
+      // Non fallire la prenotazione per un errore di notifica
+    }
+
     // 🆕 Determina maxPlayers basandosi sul tipo di sport del campo
     const sportType = campo.sport as "beach volley" | "volley";
     
     // Se l'utente ha specificato maxPlayers (per beach volley), usa quello
     // Altrimenti usa il default per lo sport
-    const finalMaxPlayers = maxPlayers || getDefaultMaxPlayersForSport(sportType);
+    const finalMaxPlayers = (typeof numberOfPeople !== "undefined" && numberOfPeople)
+      ? Number(numberOfPeople)
+      : (maxPlayers || getDefaultMaxPlayersForSport(sportType));
 
     // 🆕 Crea automaticamente un Match associato
     const match = await Match.create({
@@ -199,7 +278,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         },
       ],
       maxPlayers: finalMaxPlayers, // Usa il valore selezionato o il default
-      isPublic: false,
+      isPublic: bookingType === "public",
       status: "open", // Cambiato da "draft" a "open" per rendere visibile il match
     });
 
@@ -219,6 +298,63 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     res.status(201).json(populatedBooking);
   } catch (err) {
     console.error("❌ createBooking error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * Registra un pagamento per una prenotazione
+ * POST /bookings/:id/payments
+ * Body: { amount, method?, status? }
+ */
+export const addPaymentToBooking = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const { id } = req.params;
+    const { amount, method, status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID prenotazione non valido" });
+    }
+
+    const booking = await Booking.findById(id).populate({
+      path: "campo",
+      populate: { path: "struttura", select: "name location images" },
+    });
+
+    if (!booking) return res.status(404).json({ message: "Prenotazione non trovata" });
+
+    // Minimal: accetta qualsiasi utente autenticato come pagatore.
+    const payment = {
+      user: user.id,
+      amount: Number(amount) || 0,
+      method: method || "manual",
+      status: status || "completed",
+      createdAt: new Date(),
+    };
+
+    (booking as any).payments.push(payment);
+    await booking.save();
+
+    // Calcola paidAmount e remainingAmount
+    const paidAmount = (booking as any).payments
+      .filter((p: any) => p.status === "completed")
+      .reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+
+    const remainingAmount = Number((booking as any).price || 0) - paidAmount;
+
+    // Rispondi con lo stato aggiornato
+    const populated = await Booking.findById(booking._id)
+      .populate({ path: "campo", populate: { path: "struttura", select: "name location images" } })
+      .populate("user", "name email");
+
+    const responseObj: any = populated ? populated.toObject({ versionKey: false }) : booking;
+    responseObj.paidAmount = paidAmount;
+    responseObj.remainingAmount = remainingAmount;
+
+    res.status(201).json(responseObj);
+  } catch (err) {
+    console.error("❌ addPaymentToBooking error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -437,6 +573,25 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       hasMatch: !!match,
       match: null,
     };
+
+    // Calcola paidAmount e remainingAmount se ci sono pagamenti
+    const payments = (bookingObj as any).payments || [];
+    const paidAmount = payments.filter((p: any) => p.status === "completed").reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+    const remainingAmount = Number(bookingObj.price || 0) - paidAmount;
+    responseData.paidAmount = paidAmount;
+    responseData.remainingAmount = remainingAmount;
+
+    // Breakdown per giocatore se presente numberOfPeople/unitPrice
+    if (bookingObj.numberOfPeople && bookingObj.unitPrice) {
+      // Raggruppa pagamenti per user
+      const perPlayerPayments: any = {};
+      payments.forEach((p: any) => {
+        const uid = p.user?.toString() || "unknown";
+        perPlayerPayments[uid] = (perPlayerPayments[uid] || 0) + Number(p.amount || 0);
+      });
+      responseData.perPlayerPayments = perPlayerPayments;
+      responseData.playerShare = Number(bookingObj.unitPrice || 0);
+    }
 
     // ➕ Aggiungi match se presente
     if (match) {

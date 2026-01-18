@@ -1221,6 +1221,10 @@ const styles = StyleSheet.create({
     color: "#4CAF50",
     fontWeight: "800",
   },
+  organizerIndicator: {
+    color: "#FF9800",
+    fontWeight: "800",
+  },
   playerUsername: {
     fontSize: 12,
     color: "#666",
@@ -2381,6 +2385,11 @@ const styles = StyleSheet.create({
   customAlertButtonTextCancel: {
     color: "#666",
     fontWeight: "500",
+  },
+  teamModalOptionCost: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
 });
 

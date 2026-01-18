@@ -4,6 +4,7 @@ export interface IStruttura extends Document {
   name: string;
   description?: string;
   owner: mongoose.Types.ObjectId;
+  isCostSplittingEnabled?: boolean;
   location: {
     address: string;
     city: string;
@@ -53,6 +54,7 @@ const StrutturaSchema = new Schema<IStruttura>(
     isActive: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    isCostSplittingEnabled: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

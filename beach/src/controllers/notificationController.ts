@@ -19,6 +19,14 @@ export const getMyNotifications = async (
     const userId = req.user!.id;
     const { isRead, type, limit = 50, skip = 0 } = req.query;
 
+    console.log('🔍 [getMyNotifications] Richiesta notifiche:', {
+      userId,
+      isRead,
+      type,
+      limit,
+      skip
+    });
+
     const query: any = { recipient: userId };
     
     if (isRead !== undefined) {
@@ -37,13 +45,19 @@ export const getMyNotifications = async (
 
     const total = await Notification.countDocuments(query);
 
+    console.log('✅ [getMyNotifications] Notifiche trovate:', {
+      count: notifications.length,
+      total,
+      types: notifications.map(n => ({ type: n.type, title: n.title, isRead: n.isRead }))
+    });
+
     res.json({
       notifications,
       total,
       hasMore: Number(skip) + notifications.length < total
     });
   } catch (error) {
-    console.error("getMyNotifications error", error);
+    console.error("❌ [getMyNotifications] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -133,6 +147,8 @@ export const getUnreadCount = async (
     const userId = req.user!.id;
     const { type } = req.query;
 
+    console.log('🔍 [getUnreadCount] Richiesta conteggio non lette:', { userId, type });
+
     const query: any = {
       recipient: userId,
       isRead: false
@@ -144,9 +160,11 @@ export const getUnreadCount = async (
 
     const count = await Notification.countDocuments(query);
 
+    console.log('✅ [getUnreadCount] Conteggio non lette:', count);
+
     res.json({ count });
   } catch (error) {
-    console.error("getUnreadCount error", error);
+    console.error("❌ [getUnreadCount] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };

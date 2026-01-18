@@ -580,6 +580,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                               currentTeam={null}
                               isPending={false}
                               matchStatus={booking.match.status}
+                              isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
                             />
                           </FadeInView>
                         ))}

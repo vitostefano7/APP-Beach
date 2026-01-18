@@ -510,6 +510,7 @@ export default function CreaStrutturaScreen() {
         },
         amenities: s.amenities,
         openingHours: s.openingHours,
+        isCostSplittingEnabled: !!s.isCostSplittingEnabled,
       };
 
       const { struttura } = await createStruttura(strutturaPayload, token);
@@ -590,6 +591,16 @@ export default function CreaStrutturaScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.label, { marginBottom: 6 }]}>Divisione prezzo per persona</Text>
+            <Text style={{ fontSize: 12, color: "#666" }}>Se attivo, i giocatori vedranno il prezzo per persona</Text>
+          </View>
+          <Switch value={s.isCostSplittingEnabled} onValueChange={s.setIsCostSplittingEnabled} />
+        </View>
+      </View>
+      
       <View style={styles.section}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
           <Ionicons name="create-outline" size={16} color="#2196F3" />
