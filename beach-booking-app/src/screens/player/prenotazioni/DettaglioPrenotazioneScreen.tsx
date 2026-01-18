@@ -552,18 +552,40 @@ export default function DettaglioPrenotazioneScreen() {
 
     try {
       setSearching(true);
-      const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
 
-      if (res.ok) {
-        const users = await res.json();
-        const alreadyInMatch = booking.match?.players?.map((p: any) => p.user._id) || [];
-        const filtered = users.filter((u: any) => !alreadyInMatch.includes(u._id));
-        setSearchResults(filtered);
+      // Fetch followed and public users in parallel
+      const [followedRes, publicRes] = await Promise.allSettled([
+        fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}&filter=followed`, { headers }),
+        fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}&filter=public`, { headers })
+      ]);
+
+      let followedUsers: any[] = [];
+      if (followedRes.status === 'fulfilled' && followedRes.value.ok) {
+        followedUsers = await followedRes.value.json();
       }
+
+      let publicUsers: any[] = [];
+      if (publicRes.status === 'fulfilled' && publicRes.value.ok) {
+        publicUsers = await publicRes.value.json();
+      }
+
+      // Merge: followed first, then public, remove duplicates
+      const userMap = new Map();
+      followedUsers.forEach((u: any) => userMap.set(u._id, { ...u, isFollowed: true }));
+      publicUsers.forEach((u: any) => {
+        if (!userMap.has(u._id)) userMap.set(u._id, { ...u, isFollowed: false });
+      });
+      const merged = Array.from(userMap.values());
+
+      // Filter out users already in the match
+      const alreadyInMatch = booking.match?.players?.map((p: any) => p.user._id) || [];
+      const filtered = merged.filter((u: any) => !alreadyInMatch.includes(u._id));
+
+      setSearchResults(filtered);
     } catch (error) {
       console.error("Errore ricerca:", error);
+      setSearchResults([]);
     } finally {
       setSearching(false);
     }
@@ -1568,8 +1590,16 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         )}
                       </Pressable>
                       <View key="info" style={styles.resultInfo}>
-                        <Text style={styles.resultName}>{user.name}</Text>
-                        <Text style={[styles.resultUsername, { color: getTeamColors(inviteToTeam).primary }]}>@{user.username}</Text>
+                        <Text style={styles.resultName}>{user.name} {user.surname}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.resultUsername, { color: getTeamColors(inviteToTeam).primary }]}>@{user.username}</Text>
+                          {user.isFollowed && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 5 }}>
+                              <Ionicons name="person" size={14} color="#FF9800" />
+                              <Text style={{ fontSize: 12, color: '#FF9800', marginLeft: 2 }}>Following</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       <Ionicons key="add" name="add-circle" size={24} color={getTeamColors(inviteToTeam).primary} />
                     </AnimatedButton>

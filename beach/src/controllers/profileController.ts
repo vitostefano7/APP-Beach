@@ -455,18 +455,41 @@ export const changePassword = async (
  */
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const { q } = req.query;
+    const { q, filter } = req.query;
     const currentUserId = req.user!.id;
 
     if (!q || typeof q !== "string" || q.length < 2) {
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
     }
 
-    const users = await User.find({
+    let query: any = {
       username: { $regex: q.toLowerCase(), $options: "i" },
       isActive: true,
       role: { $ne: 'owner' }, // Escludi owner dalla ricerca
-    })
+    };
+
+    if (filter === 'followed') {
+      // Solo amici
+      const Friendship = (await import("../models/Friendship")).default;
+      const friends = await Friendship.find({
+        $or: [
+          { requester: currentUserId, status: 'accepted' },
+          { recipient: currentUserId, status: 'accepted' }
+        ]
+      });
+      const friendIds = friends.map(f => 
+        f.requester.toString() === currentUserId ? f.recipient : f.requester
+      );
+      query._id = { $in: friendIds };
+    } else if (filter === 'public') {
+      // Solo profili pubblici
+      query.profilePrivacy = 'public';
+    } else {
+      // Default: profili pubblici se nessun filtro specificato
+      query.profilePrivacy = 'public';
+    }
+
+    const users = await User.find(query)
       .select("username name surname avatarUrl preferredSports")
       .limit(20);
 

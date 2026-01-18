@@ -534,7 +534,7 @@ export default function UserProfileScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 10 }}>
             {canSendRequest && (
               <Pressable
-                style={{ backgroundColor: sendingRequest ? '#ccc' : '#2196F3', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                style={{ backgroundColor: sendingRequest ? '#ccc' : '#2196F3', borderRadius: 25, paddingHorizontal: data.user.profilePrivacy === 'private' ? 25 : 15, paddingVertical: 12, width: data.user.profilePrivacy === 'private' ? '90%' : '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
                 onPress={handleSendFriendRequest}
                 disabled={sendingRequest}
               >
@@ -543,7 +543,7 @@ export default function UserProfileScreen() {
                 ) : (
                   <>
                     <Ionicons name="person-add" size={20} color="#fff" />
-                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }} numberOfLines={1}>
                       {data.user.profilePrivacy === 'private' ? 'Richiedi di seguire' : 'Segui'}
                     </Text>
                   </>
