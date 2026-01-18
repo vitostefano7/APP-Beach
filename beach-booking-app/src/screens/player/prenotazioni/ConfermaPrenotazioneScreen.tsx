@@ -13,6 +13,8 @@ import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from '@react-navigation/native';
+import React from 'react';
 
 import API_URL from "../../../config/api";
 import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../utils/matchSportRules";
@@ -180,87 +182,204 @@ export default function ConfermaPrenotazioneScreen() {
   return (
     <SafeAreaView style={styles.safe}>
 
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Card riepilogo */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryContent}>
-            <Ionicons name="checkmark-circle" size={36} color="#28a745" />
-            <View style={styles.summaryTextContainer}>
-              <Text style={styles.summaryTitle}>Conferma i dettagli</Text>
-              <Text style={styles.summarySubtitle}>
-                Verifica che tutto sia corretto
-              </Text>
-            </View>
+      {/* HEADER FISSO: SEZIONE PAGAMENTO */}
+      <View style={styles.headerCard}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={styles.cardTitle}>💰 Pagamento</Text>
+          <View>
+             <Text style={styles.totalValue}>
+              {isSplitSelected && unitPrice
+                ? `€${unitPrice.toFixed(2)}`
+                : `€${numericPrice.toFixed(2)}`}
+            </Text>
+             <Text style={[styles.detailLabel, {textAlign: 'right'}]}>TOTALE</Text>
           </View>
         </View>
 
-        {/* Tipo di prenotazione */}
+          {/* Opzione intero / diviso per sport che supportano split */}
+          {(sport === "volley" || sport === "beach_volley") && bookingType === 'private' && canSplitCosts && (
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}> 
+                <Pressable
+                  style={[
+                    styles.paymentOptionCompact,
+                    paymentMode === "full" && styles.paymentOptionCompactSelected,
+                  ]}
+                  onPress={() => setPaymentMode("full")}
+                >
+                  <Text style={[styles.paymentOptionText, paymentMode === "full" && styles.paymentOptionTextSelected]}>Intero</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.paymentOptionCompact,
+                    paymentMode === "split" && styles.paymentOptionCompactSelected,
+                  ]}
+                  onPress={() => setPaymentMode("split")}
+                >
+                   <Text style={[styles.paymentOptionText, paymentMode === "split" && styles.paymentOptionTextSelected]}>Diviso</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Per partite pubbliche */}
+          {bookingType === 'public' && canSplitCosts && (
+             <View style={{marginBottom: 8, padding: 8, backgroundColor: '#E3F2FD', borderRadius: 8}}>
+                 <Text style={{fontSize: 12, color: '#1976D2', textAlign: 'center'}}>
+                    Partita Pubblica: quota a persona obbligatoria
+                 </Text>
+             </View>
+          )}
+
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>
+              {isSplitSelected ? "Prezzo (per giocatore)" : "Prezzo partita"}
+            </Text>
+            <Text style={styles.priceValue}>
+              {isSplitSelected ? `€${unitPrice?.toFixed(2)}` : `€${price}`}
+            </Text>
+          </View>
+
+          {!canSplitCosts && (
+             <Text style={{ fontSize: 11, color: '#999', fontStyle: 'italic', marginTop: 4 }}>
+                La struttura non permette lo split payment
+             </Text>
+          )}
+
+      </View>
+
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80, paddingTop: 12 }}>
+        
+        {/* TIPO DI PARTITA - BLOCCHI ORIZZONTALI */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>🎯 Tipo di Partita</Text>
           
-          <View style={styles.bookingTypeContainer}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* PUBBLICA */}
             <Pressable
               style={[
-                styles.bookingTypeOption,
-                bookingType === "public" && styles.bookingTypeOptionSelected,
+                styles.bookingTypeBlock,
+                bookingType === "public" && styles.bookingTypeBlockSelected,
                 !canSplitCosts && { opacity: 0.5 },
               ]}
               onPress={() => canSplitCosts && setBookingType("public")}
               disabled={!canSplitCosts}
             >
               <Ionicons
-                name={bookingType === "public" ? "radio-button-on" : "radio-button-off"}
-                size={24}
+                name="earth"
+                size={32}
                 color={bookingType === "public" ? "#2196F3" : "#999"}
+                style={{marginBottom: 8}}
               />
-              <View style={styles.bookingTypeContent}>
-                <Text style={[
-                  styles.bookingTypeTitle,
-                  bookingType === "public" && styles.bookingTypeTitleSelected,
+              <Text style={[
+                  styles.bookingTypeBlockTitle,
+                  bookingType === "public" && {color: "#2196F3"}
                 ]}>
-                  🌍 Pubblica
+                  Pubblica
+              </Text>
+              
+              {bookingType === "public" && (
+                <Text style={styles.bookingTypeBlockDesc}>
+                  Altri giocatori possono unirsi
                 </Text>
-                <Text style={styles.bookingTypeDescription}>
-                  Altri giocatori possono trovare e unirsi alla tua partita
-                </Text>
-                {!canSplitCosts && (
-                  <Text style={{ color: "#d00", marginTop: 6 }}>
-                    La struttura non permette la divisione del prezzo. Le partite pubbliche non sono disponibili.
+              )}
+              
+               {!canSplitCosts && bookingType === "public" && (
+                  <Text style={{ color: "#d00", fontSize: 9, textAlign: 'center', marginTop: 4 }}>
+                    Non disponibile
                   </Text>
                 )}
-              </View>
             </Pressable>
 
-            <View style={styles.bookingTypeSeparator} />
-
+            {/* PRIVATA */}
             <Pressable
               style={[
-                styles.bookingTypeOption,
-                bookingType === "private" && styles.bookingTypeOptionSelected,
+                styles.bookingTypeBlock,
+                bookingType === "private" && styles.bookingTypeBlockSelected,
               ]}
               onPress={() => setBookingType("private")}
             >
               <Ionicons
-                name={bookingType === "private" ? "radio-button-on" : "radio-button-off"}
-                size={24}
+                name="lock-closed"
+                size={32}
                 color={bookingType === "private" ? "#2196F3" : "#999"}
+                style={{marginBottom: 8}}
               />
-              <View style={styles.bookingTypeContent}>
-                <Text style={[
-                  styles.bookingTypeTitle,
-                  bookingType === "private" && styles.bookingTypeTitleSelected,
+              <Text style={[
+                  styles.bookingTypeBlockTitle,
+                  bookingType === "private" && {color: "#2196F3"}
                 ]}>
-                  🔒 Privata
+                  Privata
+              </Text>
+
+               {bookingType === "private" && (
+                <Text style={styles.bookingTypeBlockDesc}>
+                  Solo su invito
                 </Text>
-                <Text style={styles.bookingTypeDescription}>
-                  Solo tu puoi invitare altri giocatori
-                </Text>
-              </View>
+              )}
             </Pressable>
           </View>
         </View>
 
-        {/* Dettagli prenotazione */}
+        {/* NUMERO GIOCATORI - MOVED HERE */}
+        {sport === "beach_volley" && sportRules && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>👥 Numero Giocatori *</Text>
+            {/* REMOVED SUBTITLE TO SAVE SPACE AND CLEAN UP */}
+            
+            <View style={styles.maxPlayersContainer}>
+              {sportRules.allowedValues.map((players) => {
+                const formation = getTeamFormationLabel(players);
+                const isSelected = maxPlayers === players;
+                const pricePerPlayer = canSplitCosts ? (numericPrice / players).toFixed(2) : null;
+                
+                return (
+                  <Pressable
+                    key={players}
+                    style={[
+                      styles.maxPlayersOption,
+                      isSelected && styles.maxPlayersOptionSelected,
+                    ]}
+                    onPress={() => setMaxPlayers(players)}
+                  >
+                    <View style={styles.maxPlayersContent}>
+                      <Text style={[
+                        styles.maxPlayersNumber,
+                        isSelected && styles.maxPlayersNumberSelected,
+                      ]}>
+                        {players}
+                      </Text>
+                      <Text style={[
+                        styles.maxPlayersLabel,
+                        isSelected && styles.maxPlayersLabelSelected,
+                      ]}>
+                        giocatori
+                      </Text>
+                       {/* Simplified Formation Text if needed, keeping original logic */}
+                      <Text style={[
+                        styles.maxPlayersFormation,
+                        isSelected && styles.maxPlayersFormationSelected,
+                      ]}>
+                        {formation}
+                      </Text>
+                      {canSplitCosts && pricePerPlayer && (
+                        <Text style={[
+                          styles.maxPlayersPrice,
+                          isSelected && styles.maxPlayersPriceSelected,
+                        ]}>
+                          €{pricePerPlayer}/gioc.
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* STRUTTURA E CAMPO */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📍 Struttura e Campo</Text>
           
@@ -312,161 +431,6 @@ export default function ConfermaPrenotazioneScreen() {
               </Text>
             </View>
           </View>
-        </View>
-
-        {/* Selezione numero giocatori per Beach Volley - SEMPRE obbligatoria */}
-        {sport === "beach_volley" && sportRules && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>👥 Numero Giocatori *</Text>
-            <Text style={styles.cardSubtitle}>
-              Scegli quante persone parteciperanno alla partita
-            </Text>
-            {canSplitCosts && (
-              <Text style={[styles.cardSubtitle, { color: "#FF9800", marginTop: 4 }]}>
-                💡 Puoi scegliere di dividere il prezzo tra i giocatori
-              </Text>
-            )}
-            
-            <View style={styles.maxPlayersContainer}>
-              {sportRules.allowedValues.map((players) => {
-                const formation = getTeamFormationLabel(players);
-                const isSelected = maxPlayers === players;
-                const pricePerPlayer = canSplitCosts ? (numericPrice / players).toFixed(2) : null;
-                
-                return (
-                  <Pressable
-                    key={players}
-                    style={[
-                      styles.maxPlayersOption,
-                      isSelected && styles.maxPlayersOptionSelected,
-                    ]}
-                    onPress={() => setMaxPlayers(players)}
-                  >
-                    <View style={styles.maxPlayersContent}>
-                      <Text style={[
-                        styles.maxPlayersNumber,
-                        isSelected && styles.maxPlayersNumberSelected,
-                      ]}>
-                        {players}
-                      </Text>
-                      <Text style={[
-                        styles.maxPlayersLabel,
-                        isSelected && styles.maxPlayersLabelSelected,
-                      ]}>
-                        giocatori
-                      </Text>
-                      <Text style={[
-                        styles.maxPlayersFormation,
-                        isSelected && styles.maxPlayersFormationSelected,
-                      ]}>
-                        {formation}
-                      </Text>
-                      {canSplitCosts && pricePerPlayer && (
-                        <Text style={[
-                          styles.maxPlayersPrice,
-                          isSelected && styles.maxPlayersPriceSelected,
-                        ]}>
-                          €{pricePerPlayer}/gioc.
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>💰 Pagamento</Text>
-
-          {/* Opzione intero / diviso per sport che supportano split */}
-          {(sport === "volley" || sport === "beach_volley") && bookingType === 'private' && canSplitCosts && (
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.cardSubtitle}>Scegli tipo pagamento</Text>
-
-              <View style={[styles.bookingTypeContainer, { marginTop: 8 }]}> 
-                <Pressable
-                  style={[
-                    styles.bookingTypeOption,
-                    paymentMode === "full" && styles.bookingTypeOptionSelected,
-                  ]}
-                  onPress={() => setPaymentMode("full")}
-                >
-                  <Ionicons
-                    name={paymentMode === "full" ? "radio-button-on" : "radio-button-off"}
-                    size={20}
-                    color={paymentMode === "full" ? "#2196F3" : "#999"}
-                  />
-                  <View style={styles.bookingTypeContent}>
-                    <Text style={[styles.bookingTypeTitle, paymentMode === "full" && styles.bookingTypeTitleSelected]}>Paga tutta la partita</Text>
-                    <Text style={styles.bookingTypeDescription}>Paghi l'intero importo della prenotazione</Text>
-                  </View>
-                </Pressable>
-
-                <View style={styles.bookingTypeSeparator} />
-
-                <Pressable
-                  style={[
-                    styles.bookingTypeOption,
-                    paymentMode === "split" && styles.bookingTypeOptionSelected,
-                  ]}
-                  onPress={() => setPaymentMode("split")}
-                >
-                  <Ionicons
-                    name={paymentMode === "split" ? "radio-button-on" : "radio-button-off"}
-                    size={20}
-                    color={paymentMode === "split" ? "#2196F3" : "#999"}
-                  />
-                  <View style={styles.bookingTypeContent}>
-                    <Text style={[styles.bookingTypeTitle, paymentMode === "split" && styles.bookingTypeTitleSelected]}>Paga la tua quota</Text>
-                    <Text style={styles.bookingTypeDescription}>Ogni giocatore paga la sua quota</Text>
-                  </View>
-                </Pressable>
-              </View>
-            </View>
-          )}
-
-          {/* Per partite pubbliche, mostra solo "Paga la tua quota" */}
-          {bookingType === 'public' && (sport === "volley" || sport === "beach_volley") && canSplitCosts && (
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.cardSubtitle}>Tipo pagamento</Text>
-
-              <View style={[styles.bookingTypeContainer, { marginTop: 8 }]}>
-                <View style={[styles.bookingTypeOption, styles.bookingTypeOptionSelected]}>
-                  <Ionicons name="radio-button-on" size={20} color="#2196F3" />
-                  <View style={styles.bookingTypeContent}>
-                    <Text style={[styles.bookingTypeTitle, styles.bookingTypeTitleSelected]}>Paga la tua quota</Text>
-                    <Text style={styles.bookingTypeDescription}>Ogni giocatore paga la sua quota</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>
-              {isSplitSelected ? "Prezzo (per giocatore)" : "Prezzo"}
-            </Text>
-            <Text style={styles.priceValue}>
-              {isSplitSelected ? `€${unitPrice?.toFixed(2)}` : `€${price}`}
-            </Text>
-          </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.priceRow}>
-            <Text style={styles.totalLabel}>Totale da pagare</Text>
-            <Text style={styles.totalValue}>
-              {isSplitSelected && unitPrice
-                ? `€${unitPrice.toFixed(2)}`
-                : `€${numericPrice.toFixed(2)}`}
-            </Text>
-          </View>
-
-          <Text style={styles.paymentNote}>
-            💳 Il pagamento verrà effettuato direttamente presso la struttura
-          </Text>
         </View>
 
         {/* Note */}
@@ -557,17 +521,6 @@ const SuccessModal = ({ visible, onClose, bookingId, navigation }: any) => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fafbfc" },
-  
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#212121" },
 
   container: { flex: 1, padding: 12 },
 
@@ -621,36 +574,44 @@ const styles = StyleSheet.create({
   },
 
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#212121",
-    marginBottom: 16,
+    marginBottom: 10,
   },
 
   cardSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
-    marginTop: -12,
+    marginTop: -8,
     marginBottom: 8,
   },
 
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
     gap: 12,
+    backgroundColor: "#F8F9FA",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
 
   detailContent: { flex: 1 },
 
   detailLabel: {
-    fontSize: 12,
-    color: "#999",
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   detailValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#212121",
   },
@@ -670,10 +631,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    backgroundColor: "#FAFAFA",
+    borderColor: "#F0F0F0",
+    backgroundColor: "#F8F9FA",
   },
 
   bookingTypeOptionSelected: {
@@ -686,7 +647,7 @@ const styles = StyleSheet.create({
   },
 
   bookingTypeTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#212121",
     marginBottom: 4,
@@ -697,9 +658,9 @@ const styles = StyleSheet.create({
   },
 
   bookingTypeDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   bookingTypeSeparator: {
@@ -718,10 +679,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#E0E0E0",
-    backgroundColor: "#FAFAFA",
+    borderColor: "#F0F0F0",
+    backgroundColor: "#F8F9FA",
     marginHorizontal: 4,
   },
 
@@ -802,15 +763,15 @@ const styles = StyleSheet.create({
   },
 
   totalLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#212121",
   },
 
   totalValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#4CAF50",
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#28a745",
   },
 
   paymentNote: {
@@ -838,12 +799,12 @@ const styles = StyleSheet.create({
 
   footer: {
     flexDirection: "row",
-    padding: 16,
-    paddingBottom: 28,
+    padding: 12,
+    paddingBottom: 12,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#e9ecef",
-    gap: 12,
+    gap: 10,
   },
 
   button: {
@@ -851,10 +812,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
   },
 
   buttonSecondary: {
@@ -864,7 +825,7 @@ const styles = StyleSheet.create({
   },
 
   buttonSecondaryText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#dc3545",
   },
@@ -880,7 +841,7 @@ const styles = StyleSheet.create({
   },
 
   buttonPrimaryText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
     color: "white",
     letterSpacing: 0.5,
@@ -954,4 +915,79 @@ const styles = StyleSheet.create({
     color: 'white',
     letterSpacing: 0.5,
   },
+
+  // NEW STYLES
+  headerCard: {
+    backgroundColor: "#f8fff9",
+    padding: 16,
+    paddingBottom: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: "#28a745",
+    marginBottom: 0,
+    shadowColor: "#28a745",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 10,
+  },
+  
+  paymentOptionCompact: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  
+  paymentOptionCompactSelected: {
+     backgroundColor: '#28a745',
+     borderColor: '#28a745',
+  },
+  
+  paymentOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+  },
+  
+  paymentOptionTextSelected: {
+    color: 'white',
+  },
+
+  bookingTypeBlock: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    backgroundColor: "#F8F9FA",
+    minHeight: 110,
+  },
+
+  bookingTypeBlockSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
+    borderWidth: 2,
+  },
+
+  bookingTypeBlockTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#212121",
+      marginBottom: 0,
+      textAlign: 'center'
+  },
+
+  bookingTypeBlockDesc: {
+      fontSize: 10,
+      color: "#666",
+      textAlign: 'center',
+      marginTop: 4,
+      lineHeight: 12,
+  }
 });

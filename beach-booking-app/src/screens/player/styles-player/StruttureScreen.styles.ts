@@ -280,10 +280,11 @@ export const styles = StyleSheet.create({
     right: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: 2,
+    paddingHorizontal: 6,
     paddingVertical: 5,
     borderRadius: 10,
+    minWidth: 100,
   },
 
   badgeIndoor: {
@@ -294,10 +295,27 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(76,175,80,0.95)",
   },
 
+  badgeSplitPayment: {
+    backgroundColor: "rgba(255,152,0,0.95)",
+  },
+
+  badgeSplitPaymentPosition: {
+    top: 45,
+  },
+
+  badgeOpenGames: {
+    backgroundColor: "rgba(76,175,80,0.95)",
+  },
+
+  badgeOpenGamesPosition: {
+    top: 80,
+  },
+
   badgeText: {
     color: "white",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
+    lineHeight: 14,
   },
 
   favoriteButton: {

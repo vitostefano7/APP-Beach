@@ -145,6 +145,7 @@ export const getStrutture = async (req: Request, res: Response) => {
           sports,
           pricePerHour,
           indoor,
+          hasOpenGames: campi.length > 0,
         };
       })
     );

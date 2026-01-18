@@ -40,9 +40,19 @@ export default function PlayerTabs() {
 
   const getTabBarStyle = (route: any) => {
     const routeName = getFocusedRouteNameFromRoute(route) ?? "";
+    console.log('🔍 DEBUG getTabBarStyle - routeName:', routeName);
+    
     if (routeName === "Chat" || routeName === "GroupChat") {
+      console.log('✅ Hiding tab bar for Chat');
       return { display: "none" };
     }
+    
+    if (routeName === "ConfermaPrenotazione") {
+      console.log('✅ Hiding tab bar for ConfermaPrenotazione');
+      return { display: "none" };
+    }
+    
+    console.log('❌ Showing tab bar');
     return undefined;
   };
 
@@ -105,10 +115,11 @@ export default function PlayerTabs() {
       <Tab.Screen 
         name="StruttureTab" 
         component={StruttureStack} 
-        options={{ 
+        options={({ route }) => ({
           tabBarLabel: "Strutture",
           tabBarLabelStyle: { fontSize: 12 },
-        }} 
+          tabBarStyle: getTabBarStyle(route),
+        })}
       />
       <Tab.Screen 
         name="Prenotazioni" 

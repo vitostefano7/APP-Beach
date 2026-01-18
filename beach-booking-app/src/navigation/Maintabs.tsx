@@ -1,5 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useLayoutEffect, useState } from "react";
 
 import StruttureStack from "./StruttureStack";
 import BookingsStack from "./BookingsStack";
@@ -9,9 +11,42 @@ import DashboardStack from "./DashboardStack";
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
+  const [hideTabBar, setHideTabBar] = useState(false);
+  const navigation = useNavigation();
+
+  useLayoutEffect(() => {
+    const unsubscribe = navigation.addListener('state', () => {
+      const state = navigation.getState();
+      console.log('🔍 DEBUG Navigation state changed:', JSON.stringify(state, null, 2));
+      
+      // Trova la route attiva nel tab corrente
+      const currentRoute = state?.routes[state.index];
+      console.log('🔍 DEBUG Current route:', currentRoute?.name);
+      
+      if (currentRoute?.state) {
+        const nestedState = currentRoute.state;
+        const nestedRoute = nestedState.routes[nestedState.index];
+        console.log('🔍 DEBUG Nested route:', nestedRoute?.name);
+        
+        if (nestedRoute?.name === 'ConfermaPrenotazione') {
+          console.log('✅ Hiding tab bar');
+          setHideTabBar(true);
+        } else {
+          console.log('❌ Showing tab bar');
+          setHideTabBar(false);
+        }
+      } else {
+        console.log('❌ No nested state, showing tab bar');
+        setHideTabBar(false);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#2979ff",
         tabBarInactiveTintColor: "#999",
@@ -20,27 +55,62 @@ export default function MainTabs() {
           paddingBottom: 10,
           paddingTop: 6,
           backgroundColor: "white",
+          display: hideTabBar ? 'none' : 'flex',
         },
-        tabBarIcon: ({ color, focused }) => {
-          let iconName: any;
-          
-          if (route.name === "Dashboard")
-            iconName = focused ? "home" : "home-outline";
-          if (route.name === "Strutture")
-            iconName = focused ? "business" : "business-outline";
-          if (route.name === "Prenotazioni")
-            iconName = focused ? "calendar" : "calendar-outline";
-          if (route.name === "Profilo")
-            iconName = focused ? "person" : "person-outline";
-
-          return <Ionicons name={iconName} size={22} color={color} />;
-        },
-      })}
+      }}
     >
-      <Tab.Screen name="Dashboard" component={DashboardStack} />
-      <Tab.Screen name="Strutture" component={StruttureStack} />
-      <Tab.Screen name="Prenotazioni" component={BookingsStack} />
-      <Tab.Screen name="Profilo" component={ProfilePlayerStack} />
+      <Tab.Screen 
+        name="Dashboard" 
+        component={DashboardStack}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "home" : "home-outline"} 
+              size={22} 
+              color={color} 
+            />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Strutture" 
+        component={StruttureStack}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "business" : "business-outline"} 
+              size={22} 
+              color={color} 
+            />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Prenotazioni" 
+        component={BookingsStack}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "calendar" : "calendar-outline"} 
+              size={22} 
+              color={color} 
+            />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profilo" 
+        component={ProfilePlayerStack}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "person" : "person-outline"} 
+              size={22} 
+              color={color} 
+            />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }

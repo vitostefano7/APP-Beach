@@ -19,7 +19,11 @@ export default function StruttureStack() {
       />
       
       <Stack.Screen name="FriendsList" component={FriendsListScreen} />
-      <Stack.Screen name="ConfermaPrenotazione" component={ConfermaPrenotazioneScreen} />
+      <Stack.Screen 
+        name="ConfermaPrenotazione" 
+        component={ConfermaPrenotazioneScreen} 
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="LeMiePrenotazioni" component={LeMiePrenotazioniScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }}/>
       <Stack.Screen

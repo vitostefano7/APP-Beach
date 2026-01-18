@@ -75,6 +75,8 @@ export default function StruttureScreen() {
     date: null,
     timeSlot: null,
     city: null,
+    splitPayment: null,
+    openGames: null,
   });
 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -584,6 +586,20 @@ export default function StruttureScreen() {
         </Text>
       </View>
 
+      {item.isCostSplittingEnabled && (
+        <View style={[styles.badge, styles.badgeSplitPayment, styles.badgeSplitPaymentPosition]}>
+          <Ionicons name="card-outline" size={14} color="white" />
+          <Text style={styles.badgeText}>Split Payment</Text>
+        </View>
+      )}
+
+      {item.hasOpenGames && (
+        <View style={[styles.badge, styles.badgeOpenGames, styles.badgeOpenGamesPosition]}>
+          <Ionicons name="football-outline" size={14} color="white" />
+          <Text style={styles.badgeText}>Partite Aperte</Text>
+        </View>
+      )}
+
       <Pressable
         style={styles.favoriteButton}
         onPress={() => toggleFavorite(item._id)}
@@ -1047,22 +1063,6 @@ function AdvancedFiltersModal({
             style={styles.modalScrollView}
             contentContainerStyle={styles.modalScrollContent}
           >
-            <Text style={styles.sectionTitle}>Cerca</Text>
-            <View style={styles.searchBoxModal}>
-              <Ionicons name="search-outline" size={20} color="#666" />
-              <TextInput
-                style={styles.inputModal}
-                placeholder="Nome struttura o città..."
-                placeholderTextColor="#999"
-                value={query}
-                onChangeText={setQuery}
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery("")}>
-                  <Ionicons name="close-circle" size={20} color="#999" />
-                </Pressable>
-              )}
-            </View>
 
             <Text style={styles.sectionTitle}>Città</Text>
             <View style={styles.cityInputContainer}>
@@ -1257,6 +1257,68 @@ function AdvancedFiltersModal({
               ))}
             </View>
 
+            <Text style={styles.sectionTitle}>Pagamento Diviso</Text>
+            <View style={styles.timeSlots}>
+              <Pressable
+                style={[
+                  styles.timeSlot,
+                  tempFilters.splitPayment === true && styles.timeSlotActive,
+                ]}
+                onPress={() =>
+                  setTempFilters((prev) => ({
+                    ...prev,
+                    splitPayment: prev.splitPayment === true ? null : true,
+                  }))
+                }
+              >
+                <Ionicons
+                  name="card-outline"
+                  size={20}
+                  color={tempFilters.splitPayment === true ? "white" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.timeSlotText,
+                    tempFilters.splitPayment === true &&
+                      styles.timeSlotTextActive,
+                  ]}
+                >
+                  Split payment
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.sectionTitle}>Partite Aperte</Text>
+            <View style={styles.timeSlots}>
+              <Pressable
+                style={[
+                  styles.timeSlot,
+                  tempFilters.openGames === true && styles.timeSlotActive,
+                ]}
+                onPress={() =>
+                  setTempFilters((prev) => ({
+                    ...prev,
+                    openGames: prev.openGames === true ? null : true,
+                  }))
+                }
+              >
+                <Ionicons
+                  name="football-outline"
+                  size={20}
+                  color={tempFilters.openGames === true ? "white" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.timeSlotText,
+                    tempFilters.openGames === true &&
+                      styles.timeSlotTextActive,
+                  ]}
+                >
+                  Partite aperte
+                </Text>
+              </Pressable>
+            </View>
+
             <View style={{ height: 40 }} />
           </ScrollView>
 
@@ -1270,6 +1332,8 @@ function AdvancedFiltersModal({
                   date: null,
                   timeSlot: null,
                   city: null,
+                  splitPayment: null,
+                  openGames: null,
                 })
               }
             >
