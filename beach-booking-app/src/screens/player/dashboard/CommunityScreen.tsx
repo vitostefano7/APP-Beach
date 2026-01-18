@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -92,6 +93,10 @@ export default function CommunityScreen() {
   const [replyingToPostId, setReplyingToPostId] = useState<string | null>(null);
   const replyInputRef = useRef<TextInput>(null);
   const tabBarOffset = 20;
+
+  // Scroll-based FAB visibility
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const fabTranslateY = useRef(new Animated.Value(0)).current;
 
   // Focus the global input when replyingToPostId changes
   useEffect(() => {
@@ -422,6 +427,34 @@ export default function CommunityScreen() {
     if (diffDays > 0) return `Tra ${diffDays}g`;
     if (diffHours > 0) return `Tra ${diffHours}h`;
     return 'Oggi';
+  };
+
+  // Handle scroll to show/hide FAB like Twitter
+  const handleScroll = (event: any) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const scrollThreshold = 10; // Minimum scroll distance to trigger animation
+
+    if (Math.abs(currentScrollY - lastScrollY) < scrollThreshold) {
+      return; // Ignore small scroll movements
+    }
+
+    if (currentScrollY > lastScrollY && currentScrollY > 50) {
+      // Scrolling down - hide FAB
+      Animated.timing(fabTranslateY, {
+        toValue: 100, // Move down to hide
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else if (currentScrollY < lastScrollY || currentScrollY <= 50) {
+      // Scrolling up or near top - show FAB
+      Animated.timing(fabTranslateY, {
+        toValue: 0, // Move back to original position
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+
+    setLastScrollY(currentScrollY);
   };
 
   const renderHeader = () => (
@@ -823,6 +856,8 @@ export default function CommunityScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             automaticallyAdjustKeyboardInsets={true}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             onScrollToIndexFailed={(info) => {
               // Gestisci errore scroll to index - fallback a scrollToOffset
               console.log('⚠️ Scroll to index failed:', info);
@@ -861,6 +896,8 @@ export default function CommunityScreen() {
             showsVerticalScrollIndicator={false}
             refreshing={refreshing}
             onRefresh={onRefresh}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           />
         );
       } else {
@@ -904,15 +941,21 @@ export default function CommunityScreen() {
 
           {/* FAB per creare post (nascosto se stiamo commentando) */}
           {!replyingToPostId && (
-            <Pressable
-              style={styles.fab}
-              onPress={() => {
-                console.log('Navigazione a CreatePost');
-                navigation.navigate('CreatePost');
+            <Animated.View
+              style={{
+                transform: [{ translateY: fabTranslateY }],
               }}
             >
-              <Ionicons name="add" size={28} color="white" />
-            </Pressable>
+              <Pressable
+                style={styles.fab}
+                onPress={() => {
+                  console.log('Navigazione a CreatePost');
+                  navigation.navigate('CreatePost');
+                }}
+              >
+                <Ionicons name="add" size={28} color="white" />
+              </Pressable>
+            </Animated.View>
           )}
 
           {/* Global Input Bar per i commenti */}
