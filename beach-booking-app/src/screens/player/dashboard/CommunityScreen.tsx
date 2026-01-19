@@ -173,7 +173,7 @@ export default function CommunityScreen() {
       console.log('User ID:', user?.id);
       console.log('User name:', user?.name);
 
-      const url = `${API_URL}/community/posts?limit=20&offset=0`;
+      const url = `${API_URL}/community/posts?limit=20&offset=0&filter=following`;
       console.log('URL completo:', url);
 
       const res = await fetch(url, {
@@ -565,15 +565,6 @@ export default function CommunityScreen() {
             </Text>
           </View>
 
-          {/* Pulsante Follow per strutture */}
-          {isStruttura && (
-            <Pressable
-              style={styles.followPostButton}
-              onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item.struttura!._id })}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
-            </Pressable>
-          )}
         </View>
 
         <Text style={styles.postContent}>{item.content}</Text>
