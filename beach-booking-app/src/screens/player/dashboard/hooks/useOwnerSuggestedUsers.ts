@@ -23,6 +23,8 @@ interface OwnerSuggestedUser {
   friendshipStatus?: "none" | "pending" | "accepted";
 }
 
+export type { OwnerSuggestedUser };
+
 interface UseOwnerSuggestedUsersProps {
   limit?: number;
   autoLoad?: boolean;

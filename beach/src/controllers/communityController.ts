@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import Post from "../models/Post";
 import CommunityEvent from "../models/CommunityEvent";
 import Match from "../models/Match";
+import Booking from "../models/Booking";
 import Struttura from "../models/Strutture";
 import Campo from "../models/Campo";
 import StrutturaFollower from "../models/StrutturaFollower";
@@ -1089,6 +1090,187 @@ export const searchStrutture = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Errore ricerca strutture:", error);
     res.status(500).json({ message: "Errore nella ricerca delle strutture" });
+  }
+};
+
+/**
+ * GET /community/strutture/suggestions
+ * Suggerisce strutture all'utente basate su strutture seguite da amici o strutture popolari
+ */
+export const getStrutturaSuggestions = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    console.log("🔍 Suggerimenti strutture per utente:", userId);
+    console.log("🔍 Limit:", limit);
+
+    // Trova strutture dove l'utente ha giocato (prenotato)
+    console.log("🔍 Recupero strutture dove l'utente ha giocato...");
+    const playedBookings = await Booking.find({ user: userId }).select('struttura').distinct('struttura');
+    console.log("🔍 Prenotazioni trovate:", playedBookings.length);
+    const playedStrutturaIds = playedBookings.map(id => id.toString());
+    console.log("🔍 ID strutture giocate:", playedStrutturaIds);
+
+    // Trova amici dell'utente
+    console.log("🔍 Recupero amici...");
+    const friendships = await Friendship.find({
+      $or: [
+        { requester: userId, status: 'accepted' },
+        { recipient: userId, status: 'accepted' }
+      ]
+    }).select('_id requester recipient');
+
+    console.log("🔍 Amicizie trovate:", friendships.length);
+
+    const friendIds = friendships.map(f => 
+      f.requester.toString() === userId ? f.recipient : f.requester
+    );
+
+    console.log("🔍 ID amici:", friendIds);
+
+    // Trova strutture seguite dagli amici
+    console.log("🔍 Recupero strutture seguite dagli amici...");
+    const friendFollowedStrutture = await StrutturaFollower.find({
+      follower: { $in: friendIds }
+    }).select('struttura follower').limit(50);
+
+    console.log("🔍 Strutture seguite dagli amici trovate:", friendFollowedStrutture.length);
+
+    const friendStrutturaIds = friendFollowedStrutture.map(f => f.struttura.toString());
+    console.log("🔍 ID strutture amici (string):", friendStrutturaIds);
+
+    // Trova strutture popolari (con più follower)
+    console.log("🔍 Recupero strutture popolari...");
+    const popularStrutture = await StrutturaFollower.aggregate([
+      {
+        $group: {
+          _id: '$struttura',
+          followerCount: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { followerCount: -1 }
+      },
+      {
+        $limit: 20
+      }
+    ]);
+
+    console.log("🔍 Strutture popolari trovate:", popularStrutture.length);
+    const popularStrutturaIds = popularStrutture.map(p => p._id.toString());
+    console.log("🔍 ID strutture popolari (string):", popularStrutturaIds);
+
+    // Trova strutture già seguite dall'utente
+    console.log("🔍 Recupero strutture seguite dall'utente...");
+    const userFollowedStrutture = await StrutturaFollower.find({
+      follower: userId
+    }).select('struttura');
+
+    console.log("🔍 Strutture seguite dall'utente:", userFollowedStrutture.length);
+    const userFollowedIds = userFollowedStrutture.map(f => f.struttura.toString());
+    console.log("🔍 ID strutture utente seguite:", userFollowedIds);
+
+    // Combina e rimuovi duplicati, escludendo strutture già seguite dall'utente
+    const combinedIds = [...playedStrutturaIds, ...friendStrutturaIds, ...popularStrutturaIds];
+    console.log("🔍 ID combinati prima del set:", combinedIds.length);
+
+    const uniqueIds = [...new Set(combinedIds)];
+    console.log("🔍 ID unici dopo set:", uniqueIds.length);
+
+    const suggestedIds = uniqueIds
+      .filter(id => !userFollowedIds.includes(id))
+      .slice(0, limit);
+
+    console.log("🔍 ID suggeriti finali:", suggestedIds);
+
+    if (suggestedIds.length === 0) {
+      console.log("🔍 Nessun suggerimento disponibile");
+      return res.json({ suggestions: [] });
+    }
+
+    // Converti a ObjectId per la query
+    const objectIds = suggestedIds.map(id => {
+      try {
+        return new mongoose.Types.ObjectId(id);
+      } catch (error) {
+        console.error("🔍 Errore conversione ObjectId per:", id, error);
+        return null;
+      }
+    }).filter(id => id !== null);
+
+    console.log("🔍 ObjectId validi:", objectIds.length);
+
+    // Recupera i dettagli delle strutture suggerite
+    console.log("🔍 Query strutture suggerite...");
+    const suggestedStrutture = await Struttura.find({
+      _id: { $in: objectIds },
+      isDeleted: false
+    })
+      .select('name description images location')
+      .lean();
+
+    console.log("🔍 Strutture trovate nel DB:", suggestedStrutture.length);
+
+    // Aggiungi informazioni sul follow status per ogni struttura
+    console.log("🔍 Aggiunta follow status...");
+    const struttureWithFollowStatus = await Promise.all(
+      suggestedStrutture.map(async (struttura) => {
+        try {
+          const followStatus = await StrutturaFollower.findOne({
+            struttura: struttura._id,
+            follower: userId
+          });
+
+          const strutturaIdStr = struttura._id.toString();
+          const isFollowedByFriends = friendStrutturaIds.includes(strutturaIdStr);
+          const isPlayed = playedStrutturaIds.includes(strutturaIdStr);
+
+          // Determina la ragione del suggerimento
+          let reasonType: string;
+          let reasonScore: number;
+          if (isPlayed) {
+            reasonType = 'played';
+            reasonScore = 3;
+          } else if (isFollowedByFriends) {
+            reasonType = 'followed_by_friends';
+            reasonScore = 2;
+          } else {
+            reasonType = 'popular';
+            reasonScore = 1;
+          }
+
+          console.log(`🔍 Struttura ${struttura.name} (${strutturaIdStr}): ragione=${reasonType}, score=${reasonScore}`);
+
+          return {
+            ...struttura,
+            isFollowing: !!followStatus,
+            reason: { type: reasonType, details: {} },
+            score: reasonScore
+          };
+        } catch (error) {
+          console.error("🔍 Errore nel mapping struttura:", struttura._id, error);
+          return null;
+        }
+      })
+    );
+
+    const validStrutture = struttureWithFollowStatus.filter(s => s !== null);
+    console.log("🔍 Strutture valide dopo mapping:", validStrutture.length);
+
+    // Ordina per score (amici prima) e limita
+    const sortedSuggestions = validStrutture
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, limit);
+
+    console.log("✅ Suggerimenti strutture completati:", sortedSuggestions.length);
+
+    res.json({
+      suggestions: sortedSuggestions
+    });
+  } catch (error) {
+    console.error("❌ Errore suggerimenti strutture:", error);
+    res.status(500).json({ message: "Errore nel recupero dei suggerimenti strutture" });
   }
 };
 

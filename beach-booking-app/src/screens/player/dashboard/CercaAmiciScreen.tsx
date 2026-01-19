@@ -15,8 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../../../context/AuthContext';
 import API_URL from '../../../config/api';
-import { useSuggestedFriends } from './hooks/useSuggestedFriends';
-import { useOwnerSuggestedUsers } from './hooks/useOwnerSuggestedUsers';
+import { useSuggestedFriends, type SuggestedFriend } from './hooks/useSuggestedFriends';
+import { useOwnerSuggestedUsers, type OwnerSuggestedUser } from './hooks/useOwnerSuggestedUsers';
+import { useSuggestedStrutture } from './hooks/useSuggestedStrutture';
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import { StyleSheet } from 'react-native';
 import Avatar from '../../../components/Avatar/Avatar';
@@ -47,6 +48,25 @@ interface Struttura {
   isFollowing?: boolean;
 }
 
+interface SuggestedStruttura {
+  _id: string;
+  name: string;
+  description?: string;
+  images: string[];
+  location: {
+    address: string;
+    city: string;
+  };
+  isFollowing?: boolean;
+  reason?: {
+    type: string;
+    details?: any;
+  };
+  score?: number;
+}
+
+type SuggestedItem = SuggestedFriend | OwnerSuggestedUser | SuggestedStruttura;
+
 export default function CercaAmiciScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
@@ -71,6 +91,26 @@ export default function CercaAmiciScreen() {
   } = isOwner
     ? useOwnerSuggestedUsers({ limit: 10 })
     : useSuggestedFriends({ limit: 10 });
+
+  // Hook per strutture suggerite
+  const {
+    suggestions: suggestedStrutture,
+    loading: struttureLoading,
+    followStruttura,
+    unfollowStruttura,
+  } = useSuggestedStrutture({ limit: 10 });
+
+  // Debug suggerimenti strutture
+  useEffect(() => {
+    console.log('=== SUGGERIMENTI STRUTTURE ===');
+    console.log('Loading:', struttureLoading);
+    console.log('Suggerimenti:', suggestedStrutture?.length);
+    if (suggestedStrutture) {
+      suggestedStrutture.forEach((struttura, index) => {
+        console.log(`${index + 1}. ${struttura.name}: ${struttura.reason?.type} (score: ${struttura.score})`);
+      });
+    }
+  }, [suggestedStrutture, struttureLoading]);
 
   // Load recent searches on mount
   useEffect(() => {
@@ -489,6 +529,59 @@ export default function CercaAmiciScreen() {
     );
   };
 
+  const renderSuggestedStruttura = (item: SuggestedStruttura) => (
+    <Pressable
+      style={styles.strutturaCard}
+      onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item._id })}
+    >
+      <View style={styles.strutturaLeft}>
+        {item.images[0] ? (
+          <Image
+            source={{ uri: item.images[0] }}
+            style={styles.strutturaImage}
+          />
+        ) : (
+          <View style={styles.strutturaImagePlaceholder}>
+            <Ionicons name="business" size={30} color="#2196F3" />
+          </View>
+        )}
+
+        <View style={styles.strutturaInfo}>
+          <Text style={styles.strutturaName} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.strutturaLocation}>
+            <Ionicons name="location" size={12} color="#666" />
+            <Text style={styles.strutturaLocationText} numberOfLines={1}>
+              {item.location.city}
+            </Text>
+          </View>
+          {item.description && (
+            <Text style={styles.strutturaDescription} numberOfLines={1}>
+              {item.description}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.strutturaRight}>
+        {item.isFollowing ? (
+          <Pressable
+            style={styles.followingButton}
+            onPress={() => unfollowStruttura(item._id)}
+          >
+            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+          </Pressable>
+        ) : (
+          <Pressable
+            style={styles.followStrutturaButton}
+            onPress={() => followStruttura(item._id)}
+          >
+            <Ionicons name="add-circle" size={20} color="#fff" />
+          </Pressable>
+        )}
+      </View>
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header with integrated search */}
@@ -504,7 +597,7 @@ export default function CercaAmiciScreen() {
           <Ionicons name="search" size={20} color="#999" />
           <TextInput
             style={styles.headerSearchInput}
-            placeholder={searchType === 'users' ? 'Cerca amici...' : 'Cerca strutture...'}
+            placeholder={searchType === 'users' ? 'Cerca giocatori...' : 'Cerca strutture...'}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -566,57 +659,87 @@ export default function CercaAmiciScreen() {
         data={[]}
         ListHeaderComponent={
           <>
-            {/* Suggested Friends Carousel */}
+            {/* Suggested Carousel */}
             {!hasSearched && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>
-                    {isOwner ? 'Utenti da contattare' : 'Persone che potresti conoscere'}
+                    {searchType === 'users'
+                      ? (isOwner ? 'Utenti da contattare' : 'Persone che potresti conoscere')
+                      : 'Strutture suggerite'}
                   </Text>
-                  {suggestedFriends && suggestedFriends.length > 0 && (
+                  {((searchType === 'users' && suggestedFriends) || (searchType === 'strutture' && suggestedStrutture)) &&
+                   ((searchType === 'users' ? suggestedFriends.length : suggestedStrutture.length) > 0) && (
                     <View style={styles.countBadge}>
-                      <Text style={styles.countText}>{suggestedFriends.length}</Text>
+                      <Text style={styles.countText}>
+                        {searchType === 'users' ? suggestedFriends.length : suggestedStrutture.length}
+                      </Text>
                     </View>
                   )}
                 </View>
 
-                {suggestionsLoading ? (
+                {(searchType === 'users' ? suggestionsLoading : struttureLoading) ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color="#2196F3" />
                     <Text style={styles.loadingText}>Caricamento suggerimenti...</Text>
                   </View>
-                ) : suggestedFriends && suggestedFriends.length > 0 ? (
-                  <FlatList
-                    data={suggestedFriends}
-                    renderItem={({ item }) => (
-                      <View style={{ width: screenWidth * 0.75, marginRight: 16 }}>
-                        <SuggestedFriendCard
-                          friend={item}
-                          onPress={() => handlePressFriend(item)}
-                          onInvite={() =>
-                            handleAddFriend(
-                              item.user._id,
-                              item.user.name
-                            )
-                          }
-                        />
-                      </View>
-                    )}
-                    keyExtractor={(item, index) =>
-                      `suggested-${item.user._id || index}`
-                    }
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16 }}
-                  />
+                ) : searchType === 'users' ? (
+                  suggestedFriends && suggestedFriends.length > 0 ? (
+                    <FlatList
+                      data={suggestedFriends as any}
+                      renderItem={({ item }) => (
+                        <View style={{ width: screenWidth * 0.75, marginRight: 16 }}>
+                          <SuggestedFriendCard
+                            friend={item}
+                            onPress={() => handlePressFriend(item)}
+                            onInvite={() =>
+                              handleAddFriend(
+                                item.user._id,
+                                item.user.name
+                              )
+                            }
+                          />
+                        </View>
+                      )}
+                      keyExtractor={(item, index) =>
+                        `suggested-${item.user._id || index}`
+                      }
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingHorizontal: 16 }}
+                    />
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="people-outline" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>Nessun suggerimento disponibile</Text>
+                      <Text style={styles.emptySubtext}>
+                        Gioca più partite per ricevere suggerimenti personalizzati
+                      </Text>
+                    </View>
+                  )
                 ) : (
-                  <View style={styles.emptyState}>
-                    <Ionicons name="people-outline" size={48} color="#ccc" />
-                    <Text style={styles.emptyText}>Nessun suggerimento disponibile</Text>
-                    <Text style={styles.emptySubtext}>
-                      Gioca più partite per ricevere suggerimenti personalizzati
-                    </Text>
-                  </View>
+                  suggestedStrutture && suggestedStrutture.length > 0 ? (
+                    <FlatList
+                      data={suggestedStrutture}
+                      renderItem={({ item }) => (
+                        <View style={{ width: screenWidth * 0.75, marginRight: 16 }}>
+                          {renderSuggestedStruttura(item)}
+                        </View>
+                      )}
+                      keyExtractor={(item) => item._id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingHorizontal: 16 }}
+                    />
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="business-outline" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>Nessuna struttura suggerita</Text>
+                      <Text style={styles.emptySubtext}>
+                        Segui più strutture per ricevere suggerimenti personalizzati
+                      </Text>
+                    </View>
+                  )
                 )}
               </View>
             )}

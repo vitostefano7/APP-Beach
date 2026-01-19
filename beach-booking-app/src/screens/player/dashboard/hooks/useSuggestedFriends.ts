@@ -25,6 +25,8 @@ interface SuggestedFriend {
   friendshipStatus?: "none" | "pending" | "accepted";
 }
 
+export type { SuggestedFriend };
+
 interface UseSuggestedFriendsProps {
   limit?: number;
   autoLoad?: boolean;

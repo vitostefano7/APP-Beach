@@ -17,6 +17,7 @@ import {
   getStrutturaDetails,
   getStrutturaPosts,
   searchStrutture,
+  getStrutturaSuggestions,
   followUser,
   unfollowUser,
   getUserFollowStatus,
@@ -91,6 +92,9 @@ router.get("/rankings", requireAuth, getRankings);
 
 // GET /community/strutture/search - Cerca strutture (DEVE ESSERE PRIMA di :strutturaId)
 router.get("/strutture/search", requireAuth, searchStrutture);
+
+// GET /community/strutture/suggestions - Suggerimenti strutture
+router.get("/strutture/suggestions", requireAuth, getStrutturaSuggestions);
 
 // GET /community/strutture/:strutturaId - Dettagli struttura
 router.get("/strutture/:strutturaId", requireAuth, getStrutturaDetails);
