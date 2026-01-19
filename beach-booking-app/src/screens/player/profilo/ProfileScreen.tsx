@@ -451,9 +451,9 @@ export default function ProfileScreen() {
 
       {/* Header con gradiente */}
       <LinearGradient
-        colors={['#FF6B35', '#F7931E']}
+        colors={['#2563EB', '#3B82F6']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.gradientHeader}
       >
         <View style={styles.header}>
@@ -481,7 +481,7 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Hero Section con Avatar e Info */}
         <LinearGradient
-          colors={['#FF6B35', '#F7931E']}
+          colors={['#2563EB', '#3B82F6']}
           style={styles.heroGradient}
         >
           <View style={styles.heroContent}>
@@ -503,7 +503,7 @@ export default function ProfileScreen() {
                   </View>
                 )}
 
-                <Pressable style={styles.editAvatarButton} onPress={changeAvatar}>
+                <Pressable style={[styles.editAvatarButton, { backgroundColor: '#3B82F6', shadowColor: '#3B82F6' }]} onPress={changeAvatar}>
                   <Ionicons name="camera" size={14} color="white" />
                 </Pressable>
               </View>
@@ -591,13 +591,153 @@ export default function ProfileScreen() {
           </LinearGradient>
         )}
 
-        {/* Statistiche Carousel */}
-        <StatsCarousel
-          performanceData={performanceStats}
-          socialData={socialStats}
-          venuesData={venuesStats}
-          loading={statsLoading}
-        />
+        {/* Performance Card */}
+        {statsLoading ? (
+          <View style={{ marginHorizontal: 16, marginTop: 20, marginBottom: 20, alignItems: 'center', paddingVertical: 40 }}>
+            <Ionicons name="stats-chart" size={48} color="#3B82F6" />
+            <Text style={{ marginTop: 12, fontSize: 14, color: '#666' }}>Caricamento statistiche...</Text>
+          </View>
+        ) : performanceStats ? (
+          <View style={{ marginHorizontal: 16, marginTop: 20, marginBottom: 20 }}>
+            <LinearGradient
+              colors={['#2563EB', '#3B82F6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: 20,
+                padding: 20,
+                shadowColor: '#3B82F6',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.3,
+                shadowRadius: 16,
+                elevation: 8,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <Ionicons name="trophy" size={28} color="#fff" />
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', marginLeft: 10 }}>
+                  Performance
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                <View style={{
+                  flex: 1,
+                  minWidth: '45%',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 16,
+                  padding: 16,
+                  alignItems: 'center',
+                }}>
+                  <Ionicons name="tennisball" size={24} color="#fff" style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>
+                    {performanceStats.matchesPlayed || 0}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' }}>
+                    Partite
+                  </Text>
+                </View>
+
+                <View style={{
+                  flex: 1,
+                  minWidth: '45%',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 16,
+                  padding: 16,
+                  alignItems: 'center',
+                }}>
+                  <Ionicons name="trophy" size={24} color="#4ADE80" style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 32, fontWeight: '700', color: '#4ADE80' }}>
+                    {performanceStats.wins || 0}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' }}>
+                    Vittorie
+                  </Text>
+                </View>
+
+                <View style={{
+                  flex: 1,
+                  minWidth: '45%',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 16,
+                  padding: 16,
+                  alignItems: 'center',
+                }}>
+                  <Ionicons name="trending-down" size={24} color="#fff" style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>
+                    {performanceStats.losses || 0}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' }}>
+                    Sconfitte
+                  </Text>
+                </View>
+
+                <View style={{
+                  flex: 1,
+                  minWidth: '45%',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 16,
+                  padding: 16,
+                  alignItems: 'center',
+                }}>
+                  <Ionicons name="stats-chart" size={24} color="#FCD34D" style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 32, fontWeight: '700', color: '#FCD34D' }}>
+                    {performanceStats.winRate || 0}%
+                  </Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' }}>
+                    Win Rate
+                  </Text>
+                </View>
+              </View>
+
+              
+            </LinearGradient>
+          </View>
+        ) : null}
+
+        {/* Match History */}
+        {performanceStats?.recentMatches && performanceStats.recentMatches.length > 0 && (
+          <View style={{ marginHorizontal: 16, marginBottom: 30 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
+              {performanceStats.recentMatches.slice(0, 5).map((match: any, index: number) => (
+                <View 
+                  key={index}
+                  style={{ 
+                    width: 50, 
+                    height: 50, 
+                    borderRadius: 25, 
+                    backgroundColor: match.won ? '#22C55E' : '#EF4444',
+                    justifyContent: 'center', 
+                    alignItems: 'center' 
+                  }}
+                >
+                  <Ionicons 
+                    name={match.won ? "checkmark" : "close"} 
+                    size={28} 
+                    color="#fff" 
+                  />
+                </View>
+              ))}
+              {performanceStats.recentMatches.length < 5 && (
+                Array.from({ length: 5 - performanceStats.recentMatches.length }).map((_, index) => (
+                  <View 
+                    key={`empty-${index}`}
+                    style={{ 
+                      width: 50, 
+                      height: 50, 
+                      borderRadius: 25, 
+                      backgroundColor: '#E5E7EB',
+                      justifyContent: 'center', 
+                      alignItems: 'center' 
+                    }}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={28} color="#9CA3AF" />
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+        )}
 
         <Pressable 
           style={({ pressed }) => [

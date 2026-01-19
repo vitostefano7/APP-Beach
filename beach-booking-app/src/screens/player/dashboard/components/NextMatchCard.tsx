@@ -135,16 +135,19 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
           <View style={styles.matchInfoLeft}>
             <View style={styles.matchInfoSection}>
               <Text style={styles.matchDay}>{displayDate}</Text>
-              <Text style={styles.matchTime}>
-                {booking.startTime} - {booking.endTime}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="time-outline" size={16} color="#666" style={{ marginRight: 4 }} />
+                <Text style={styles.matchTime}>
+                  {booking.startTime} - {booking.endTime}
+                </Text>
+              </View>
             </View>
 
             {/* Location */}
             <View style={styles.matchLocation}>
-              <Ionicons name="location" size={16} color="#666" />
+              <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 4 }} />
               <Text style={styles.matchLocationText}>
-                {booking.campo?.struttura?.name}
+                {booking.campo?.struttura?.name}, {booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'}
               </Text>
             </View>
           </View>
@@ -199,7 +202,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 <>
-                  <Ionicons name="chatbubble" size={20} color="white" />
+                  <Ionicons name="chatbubble-ellipses-outline" size={20} color="white" />
                   <Text style={styles.chatActionText}>Chat Partita</Text>
                 </>
               )}

@@ -276,16 +276,13 @@ export const styles = StyleSheet.create({
   },
 
   badge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
     paddingHorizontal: 6,
     paddingVertical: 5,
     borderRadius: 10,
-    minWidth: 100,
+    minWidth: 80,
   },
 
   badgeIndoor: {
@@ -300,16 +297,8 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(255,152,0,0.95)",
   },
 
-  badgeSplitPaymentPosition: {
-    top: 45,
-  },
-
   badgeOpenGames: {
     backgroundColor: "rgba(76,175,80,0.95)",
-  },
-
-  badgeOpenGamesPosition: {
-    top: 80,
   },
 
   badgeText: {
@@ -339,6 +328,13 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
+    marginBottom: 8,
+  },
+
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 8,
   },
 

@@ -589,6 +589,30 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       },
     });
 
+    // Create an array of active badges to render dynamically
+    const badges = [];
+    if (item.indoor !== undefined) {
+      badges.push({
+        icon: item.indoor ? "business-outline" : "sunny-outline",
+        text: item.indoor ? "Indoor" : "Outdoor",
+        style: item.indoor ? styles.badgeIndoor : styles.badgeOutdoor,
+      });
+    }
+    if (item.isCostSplittingEnabled) {
+      badges.push({
+        icon: "card-outline",
+        text: "Split Payment",
+        style: styles.badgeSplitPayment,
+      });
+    }
+    if (item.hasOpenGames) {
+      badges.push({
+        icon: "football-outline",
+        text: "Partite Aperte",
+        style: styles.badgeOpenGames,
+      });
+    }
+
     return (
       <Pressable
         style={styles.card}
@@ -626,33 +650,6 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           )}
         </View>
 
-      <View
-        style={[styles.badge, item.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}
-      >
-        <Ionicons
-          name={item.indoor ? "business-outline" : "sunny-outline"}
-          size={14}
-          color="white"
-        />
-        <Text style={styles.badgeText}>
-          {item.indoor ? "Indoor" : "Outdoor"}
-        </Text>
-      </View>
-
-      {item.isCostSplittingEnabled && (
-        <View style={[styles.badge, styles.badgeSplitPayment, styles.badgeSplitPaymentPosition]}>
-          <Ionicons name="card-outline" size={14} color="white" />
-          <Text style={styles.badgeText}>Split Payment</Text>
-        </View>
-      )}
-
-      {item.hasOpenGames && (
-        <View style={[styles.badge, styles.badgeOpenGames, styles.badgeOpenGamesPosition]}>
-          <Ionicons name="football-outline" size={14} color="white" />
-          <Text style={styles.badgeText}>Partite Aperte</Text>
-        </View>
-      )}
-
       <Pressable
         style={styles.favoriteButton}
         onPress={() => toggleFavorite(item._id)}
@@ -684,6 +681,18 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
             <Text style={styles.price}>€{item.pricePerHour}</Text>
           </View>
         </View>
+
+        {/* Add badges row here in the descriptive part */}
+        {badges.length > 0 && (
+          <View style={styles.badgesRow}>
+            {badges.map((badge, index) => (
+              <View key={index} style={[styles.badge, badge.style]}>
+                <Ionicons name={badge.icon} size={14} color="white" />
+                <Text style={styles.badgeText}>{badge.text}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.tagsRow}>
           {item.sports?.slice(0, 2).map((sport, idx) => (
@@ -823,6 +832,12 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           <Text style={styles.resultsText}>
             {filteredStrutture.length} strutture trovate
           </Text>
+          <View style={styles.locationBadge}>
+            <Ionicons name="filter" size={14} color="#2979ff" />
+            <Text style={styles.locationBadgeText}>
+              Filtri attivi: {activeFiltersCount}
+            </Text>
+          </View>
           {activeCity && activeRadius ? (
             <View style={styles.locationBadge}>
               <Ionicons name="location" size={14} color="#2979ff" />
@@ -1044,10 +1059,10 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         style={[
           styles.fab,
           viewMode === "list" && styles.fabList,
-          isTabMode && { bottom: (viewMode === "list" ? 14 : 20) + TAB_BAR_HEIGHT }
+          isTabMode && { bottom: 20 + TAB_BAR_HEIGHT }
         ]} 
         onPress={() => {
-          console.log('🔍 Pulsante filtri premuto - posizione: bottom', viewMode === "list" ? 14 : 20, ', right 15');
+          console.log('🔍 Pulsante filtri premuto - posizione: bottom 20, right 15');
           setShowFilters(true);
         }}
       >
@@ -1300,6 +1315,36 @@ function AdvancedFiltersModal({
                     ]}
                   >
                     {sport}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.sectionTitle}>Campo</Text>
+            <View style={styles.optionsGrid}>
+              {["Indoor", "Outdoor"].map((tipo) => (
+                <Pressable
+                  key={tipo}
+                  style={[
+                    styles.option,
+                    (tempFilters.indoor === true && tipo === "Indoor") ||
+                    (tempFilters.indoor === false && tipo === "Outdoor") && styles.optionActive,
+                  ]}
+                  onPress={() =>
+                    setTempFilters((prev) => ({
+                      ...prev,
+                      indoor: tipo === "Indoor" ? (prev.indoor === true ? null : true) : (prev.indoor === false ? null : false),
+                    }))
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      (tempFilters.indoor === true && tipo === "Indoor") ||
+                      (tempFilters.indoor === false && tipo === "Outdoor") && styles.optionTextActive,
+                    ]}
+                  >
+                    {tipo}
                   </Text>
                 </Pressable>
               ))}

@@ -36,7 +36,7 @@ export default function ConfermaPrenotazioneScreen() {
     struttura,
   } = route.params;
 
-  // Normalizza lo sport ("beach volley" -> "beach_volley")
+  // Normalizza lo sport ("Beach Volley" -> "beach_volley")
   const sport = rawSport.replace(/ /g, "_");
 
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ export default function ConfermaPrenotazioneScreen() {
 
   // Determina le opzioni disponibili per lo sport
   const sportRules = sport === "beach_volley" || sport === "volley" 
-    ? getMaxPlayersRulesForSport(sport === "beach_volley" ? "beach volley" : sport as "volley")
+    ? getMaxPlayersRulesForSport(sport === "beach_volley" ? "Beach Volley" : sport as "volley")
     : null;
 
   // DEBUG

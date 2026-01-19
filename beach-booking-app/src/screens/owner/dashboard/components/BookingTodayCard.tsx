@@ -1,7 +1,8 @@
 import { View, Text, Pressable } from "react-native";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { styles } from "../styles/OwnerDashboardScreen.styles";
+import SportIcon from '../../../../components/SportIcon';
 
 interface Booking {
   _id: string;
@@ -62,12 +63,6 @@ export default function BookingTodayCard({
     ? `${booking.userName} ${booking.userSurname}`
     : booking.userName;
 
-  const getSportIcon = (sport: string) => {
-    if (!sport) return "football";
-    if (sport.toLowerCase().includes("volley")) return "basketball";
-    return "football";
-  };
-
   return (
     <Pressable style={styles.bookingCard} onPress={onPress}>
       <View style={styles.bookingHeader}>
@@ -96,11 +91,7 @@ export default function BookingTodayCard({
           </View>
 
           <View style={styles.bookingRow}>
-            {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'volley' || booking.campo.sport === 'beach_volleyball' || booking.campo.sport === 'volleyball') ? (
-              <FontAwesome5 name="volleyball-ball" size={16} color="#666" />
-            ) : (
-              <Ionicons name={getSportIcon(booking.campo.sport)} size={16} color="#666" />
-            )}
+            <SportIcon sport={booking.campo.sport} size={16} color="#666" />
             <Text style={styles.bookingText}>{booking.campo.name}</Text>
           </View>
         </View>

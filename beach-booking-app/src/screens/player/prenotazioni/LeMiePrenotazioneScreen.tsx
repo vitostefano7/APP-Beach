@@ -324,7 +324,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             <View style={styles.sportBadge}>
-              {(item.campo.sport === "beach volley" || item.campo.sport === "volley") ? (
+              {(item.campo.sport === "beach_volley" || item.campo.sport === "volley") ? (
                 <FontAwesome5 name="volleyball-ball" size={12} color="#2196F3" />
               ) : (
                 <Ionicons 

@@ -732,7 +732,7 @@ export const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "700",
     textTransform: "uppercase",
-    color: "#2196F3",
+    color: "#D32F2F",
   },
   matchPlayersRow: {
     flexDirection: "row",

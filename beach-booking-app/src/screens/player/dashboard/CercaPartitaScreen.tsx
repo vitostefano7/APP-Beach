@@ -13,11 +13,12 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar } from "react-native-calendars";
 import * as Location from "expo-location";
+import SportIcon from '../../../components/SportIcon';
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
@@ -87,21 +88,6 @@ const getSportLabel = (sport?: string) => {
   if (!sport) return "Sport";
   if (sport === "beach_volley") return "Beach Volley";
   return sport.charAt(0).toUpperCase() + sport.slice(1);
-};
-
-const getSportIcon = (sport?: string) => {
-  switch (sport) {
-    case "calcio":
-      return "football";
-    case "tennis":
-      return "tennisball";
-    case "basket":
-      return "basketball";
-    case "beach_volley":
-      return "trophy";
-    default:
-      return "fitness";
-  }
 };
 
 const getDuration = (startTime?: string, endTime?: string) => {
@@ -678,11 +664,7 @@ export default function CercaPartitaScreen() {
           )}
         </View>
         <View style={styles.infoRow}>
-          {(item.booking?.campo?.sport === 'beach_volley' || item.booking?.campo?.sport === 'volley' || item.booking?.campo?.sport === 'beach_volleyball' || item.booking?.campo?.sport === 'volleyball') ? (
-            <FontAwesome5 name="volleyball-ball" size={16} color="#666" />
-          ) : (
-            <Ionicons name={getSportIcon(item.booking?.campo?.sport)} size={16} color="#666" />
-          )}
+          <SportIcon sport={item.booking?.campo?.sport || 'beach_volley'} size={16} color="#666" />
           <Text style={styles.infoText}>
             {getSportLabel(item.booking?.campo?.sport)}
           </Text>

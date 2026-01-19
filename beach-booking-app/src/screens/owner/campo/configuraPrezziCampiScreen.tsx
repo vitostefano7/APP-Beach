@@ -690,8 +690,8 @@ export default function ConfiguraPrezziCampoScreen() {
       }
     }
 
-    // Livello 5: Player count pricing (solo per beach volley)
-    if (campoSport === "beach volley" && pricing.playerCountPricing.enabled && pricing.playerCountPricing.prices.length > 0) {
+    // Livello 5: Player count pricing (solo per Beach Volley)
+    if (campoSport === "beach_volley" && pricing.playerCountPricing.enabled && pricing.playerCountPricing.prices.length > 0) {
       pricing.playerCountPricing.prices
         .sort((a, b) => a.count - b.count)
         .forEach((pc) => {
@@ -1140,8 +1140,8 @@ export default function ConfiguraPrezziCampoScreen() {
               )}
             </View>
 
-            {/* PREZZI PER NUMERO GIOCATORI - Solo per beach volley */}
-            {campoSport === "beach volley" && (
+            {/* PREZZI PER NUMERO GIOCATORI - Solo per Beach Volley */}
+            {campoSport === "beach_volley" && (
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>👥 Prezzi per Numero Giocatori</Text>

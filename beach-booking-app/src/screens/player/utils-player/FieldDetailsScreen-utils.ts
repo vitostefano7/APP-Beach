@@ -3,8 +3,17 @@ export const DAYS_SHORT = ["D", "L", "M", "M", "G", "V", "S"];
 
 export const SPORT_LABELS: Record<string, string> = {
   beach_volley: "Beach Volley",
+  "beach volley": "Beach Volley",
+  beach_volleyball: "Beach Volley",
+  "beach volleyball": "Beach Volley",
+  volley: "Volley",
+  volleyball: "Volley",
   padel: "Padel",
   tennis: "Tennis",
+  calcio: "Calcio",
+  football: "Calcio",
+  basket: "Basket",
+  basketball: "Basket",
 };
 
 export const SURFACE_LABELS: Record<string, string> = {
@@ -55,7 +64,7 @@ export function getAmenitiesDisplay(amenities: string[]): Array<{ key: string; l
 export function getSportIcon(sport: string): string {
   switch (sport) {
     case "beach_volley":
-      return "fitness";
+      return "volleyball-ball";
     case "padel":
     case "tennis":
       return "tennisball";

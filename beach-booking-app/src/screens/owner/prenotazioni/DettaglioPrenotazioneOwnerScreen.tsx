@@ -15,8 +15,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { styles } from "../styles/DettaglioPrenotazioneOwnerScreen.styles";
-import { getSportIcon } from "../utils/DettaglioPrenotazione.utils";
 import { Avatar } from "../../../components/Avatar";
+import SportIcon from '../../../components/SportIcon';
 
 // Componenti animati e gradients
 import {
@@ -325,8 +325,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           <AnimatedCard delay={100}>
             <View style={styles.strutturaHeader}>
               <View style={styles.sportIconBox}>
-                <Ionicons
-                  name={getSportIcon(booking.campo?.sport) as any}
+                <SportIcon
+                  sport={booking.campo?.sport || 'beach_volley'}
                   size={28}
                   color="#2196F3"
                 />

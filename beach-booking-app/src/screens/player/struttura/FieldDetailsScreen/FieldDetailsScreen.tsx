@@ -12,6 +12,7 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
@@ -19,6 +20,7 @@ import { styles } from "../../styles-player/FieldDetailsScreen.styles";
 import API_URL from "../../../../config/api";
 import { resolveImageUrl } from "../../../../utils/imageUtils";
 import OpenMatchCard from "../../dashboard/components/OpenMatchCard";
+import SportIcon from "../../../../components/SportIcon";
 
 import {
   MONTHS,
@@ -26,7 +28,6 @@ import {
   SPORT_LABELS,
   SURFACE_LABELS,
   getAmenitiesDisplay,
-  getSportIcon,
   toLocalDateString,
   getMonthStr,
   isPastDate,
@@ -695,8 +696,8 @@ export default function FieldDetailsScreen() {
                     ]}
                     onPress={() => setSportFilter(sport)}
                   >
-                    <Ionicons
-                      name={getSportIcon(sport) as any}
+                    <SportIcon
+                      sport={sport}
                       size={14}
                       color={sportFilter === sport ? 'white' : '#2196F3'}
                     />
@@ -751,8 +752,8 @@ export default function FieldDetailsScreen() {
                 <Pressable onPress={() => toggleCampo(campo._id)}>
                   <View style={styles.campoHeader}>
                     <View style={styles.sportIconBox}>
-                      <Ionicons
-                        name={getSportIcon(campo.sport) as any}
+                      <SportIcon
+                        sport={campo.sport}
                         size={24}
                         color="#2196F3"
                       />

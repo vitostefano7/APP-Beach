@@ -7,22 +7,22 @@ export const styles = StyleSheet.create({
   },
   gradientHeader: {
     paddingTop: 0,
-    paddingBottom: 12,
+    paddingBottom: 6,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#fff",
     textAlign: "center",
     flex: 1,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   headerSpacer: {
     width: 40,

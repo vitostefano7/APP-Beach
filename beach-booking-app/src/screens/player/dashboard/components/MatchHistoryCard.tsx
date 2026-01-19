@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable } from "react-native";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from "../../../../components/Avatar";
+import SportIcon from '../../../../components/SportIcon';
 import { formatMatchDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
 import { useNavigation } from '@react-navigation/native';
@@ -27,22 +28,6 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
   // Get players for each team
   const teamAPlayers = match.players.filter((p: any) => p.team === 'A');
   const teamBPlayers = match.players.filter((p: any) => p.team === 'B');
-
-  // Get sport icon
-  const getSportIcon = (sport: string) => {
-    switch (sport) {
-      case 'beach_volleyball':
-        return 'sunny';
-      case 'volleyball':
-        return 'basketball';
-      case 'padel':
-        return 'tennisball';
-      case 'tennis':
-        return 'tennisball';
-      default:
-        return 'football';
-    }
-  };
 
   const handlePress = () => {
     if (match.booking?._id) {
@@ -130,15 +115,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             </View>
 
             <View style={styles.matchSportBadge}>
-              {(match.booking?.sport === 'beach_volleyball' || match.booking?.sport === 'volleyball' || match.booking?.sport === 'beach_volley' || match.booking?.sport === 'volley') ? (
-                <FontAwesome5 name="volleyball-ball" size={16} color="#2196F3" />
-              ) : (
-                <Ionicons 
-                  name={getSportIcon(match.booking?.sport || 'beach_volleyball')} 
-                  size={16} 
-                  color="#2196F3" 
-                />
-              )}
+              <SportIcon sport={match.booking?.sport || 'beach_volleyball'} size={16} color="#2196F3" />
               <Text style={styles.matchSportText}>
                 {formatSportName(match.booking?.sport || 'beach_volleyball')}
               </Text>

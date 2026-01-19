@@ -13,9 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
 import API_URL from "../../../config/api";
+import SportIcon from '../../../components/SportIcon';
 
 /* =========================
    TYPES
@@ -53,27 +54,6 @@ interface Booking {
 /* =========================
    UTILITY FUNCTIONS
 ========================= */
-const getSportIcon = (sport: string) => {
-  switch (sport) {
-    case "beach_volleyball":
-    case "beach_volley":
-      return "sunny";
-    case "volleyball":
-    case "volley":
-      return "basketball";
-    case "calcio":
-    case "football":
-      return "football";
-    case "tennis":
-      return "tennisball";
-    case "basket":
-    case "basketball":
-      return "basketball";
-    default:
-      return "fitness";
-  }
-};
-
 const formatSportName = (sport: string) => {
   switch (sport) {
     case "beach_volleyball":
@@ -246,11 +226,7 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
         </View>
 
         <View style={styles.infoRowSub}>
-             {(item.campo.sport === 'beach_volley' || item.campo.sport === 'volley' || item.campo.sport === 'beach_volleyball' || item.campo.sport === 'volleyball') ? (
-               <FontAwesome5 name="volleyball-ball" size={16} color="#888" />
-             ) : (
-               <Ionicons name={getSportIcon(item.campo.sport) as any} size={16} color="#888" />
-             )}
+             <SportIcon sport={item.campo.sport} size={16} color="#888" />
              <Text style={styles.locationText}>{formatSportName(item.campo.sport)}</Text>
         </View>
       </View>

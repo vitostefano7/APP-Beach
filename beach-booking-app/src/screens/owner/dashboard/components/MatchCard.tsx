@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome5 } from "@expo/vector-icons";
 import { styles } from "../styles/OwnerDashboardScreen.styles";
 
 type MatchCardProps = {
@@ -116,10 +117,10 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
   // Icona per sport
   const getSportIcon = () => {
     const sport = booking.campo.sport.toLowerCase();
-    if (sport.includes("padel")) return "tennisball";
-    if (sport.includes("calcetto") || sport.includes("calcio")) return "football";
-    if (sport.includes("volley")) return "basketball";
-    return "trophy";
+    if (sport.includes("padel")) return { library: "Ionicons", name: "tennisball" };
+    if (sport.includes("calcetto") || sport.includes("calcio")) return { library: "Ionicons", name: "football" };
+    if (sport.includes("volley")) return { library: "FontAwesome5", name: "volleyball-ball" };
+    return { library: "Ionicons", name: "trophy" };
   };
 
   return (
@@ -145,12 +146,6 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
           </View>
         </View>
 
-        {/* Status Badge */}
-        {timeStatus && (
-          <View style={styles.matchStatusBadgeWhite}>
-            <Text style={styles.matchStatusText}>{timeStatus}</Text>
-          </View>
-        )}
       </LinearGradient>
 
       {/* Content */}
@@ -197,12 +192,12 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
         {/* Teams */}
         <View style={styles.matchTeamsContainer}>
           <View style={styles.matchTeam}>
-            <View style={styles.matchTeamLabelBadge}>
-              <Text style={styles.matchTeamLabel}>Team A</Text>
+            <View style={[styles.matchTeamLabelBadge, { backgroundColor: "#FFEBEE" }]}>
+              <Text style={[styles.matchTeamLabel, { color: "#F44336" }]}>Team A</Text>
             </View>
             <View style={styles.matchPlayersRow}>
               {teamA.slice(0, 3).map((player) => (
-                <View key={player.user._id} style={styles.matchPlayerAvatar}>
+                <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor: "#F44336" }]}>
                   {player.user.avatarUrl ? (
                     <Image
                       source={{ uri: player.user.avatarUrl }}
@@ -210,7 +205,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
                     />
                   ) : (
                     <View style={styles.matchPlayerAvatarPlaceholder}>
-                      <Ionicons name="person" size={12} color="#2196F3" />
+                      <Ionicons name="person" size={12} color="#F44336" />
                     </View>
                   )}
                 </View>
@@ -226,12 +221,12 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
           </View>
 
           <View style={styles.matchTeam}>
-            <View style={styles.matchTeamLabelBadge}>
-              <Text style={styles.matchTeamLabel}>Team B</Text>
+            <View style={[styles.matchTeamLabelBadge, { backgroundColor: "#E3F2FD" }]}>
+              <Text style={[styles.matchTeamLabel, { color: "#2196F3" }]}>Team B</Text>
             </View>
             <View style={styles.matchPlayersRow}>
               {teamB.slice(0, 3).map((player) => (
-                <View key={player.user._id} style={styles.matchPlayerAvatar}>
+                <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor: "#2196F3" }]}>
                   {player.user.avatarUrl ? (
                     <Image
                       source={{ uri: player.user.avatarUrl }}
@@ -239,7 +234,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
                     />
                   ) : (
                     <View style={styles.matchPlayerAvatarPlaceholder}>
-                      <Ionicons name="person" size={12} color="#F44336" />
+                      <Ionicons name="person" size={12} color="#2196F3" />
                     </View>
                   )}
                 </View>
@@ -261,6 +256,24 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
             />
             <Text style={styles.matchVisibilityText}>
               {isPublic ? "Pubblica" : "Privata"}
+            </Text>
+          </View>
+          <View style={styles.matchVisibilityBadge}>
+            {getSportIcon().library === "FontAwesome5" ? (
+              <FontAwesome5
+                name={getSportIcon().name}
+                size={12}
+                color="#2196F3"
+              />
+            ) : (
+              <Ionicons
+                name={getSportIcon().name}
+                size={12}
+                color="#2196F3"
+              />
+            )}
+            <Text style={styles.matchVisibilityText}>
+              {booking.campo.sport}
             </Text>
           </View>
         </View>

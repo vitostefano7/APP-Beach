@@ -22,6 +22,7 @@ import Notification from "./models/Notification";
 import StrutturaFollower from "./models/StrutturaFollower";
 import UserFollower from "./models/UserFollower";
 import Post from "./models/Post";
+import CommunityEvent from "./models/CommunityEvent";
 
 /* =========================
    CONFIG
@@ -202,6 +203,7 @@ async function seed() {
       Notification.deleteMany({}),
       Friendship.deleteMany({}),
       Event.deleteMany({}),
+      CommunityEvent.deleteMany({}),
       Match.deleteMany({}),
       Booking.deleteMany({}),
       CampoCalendarDay.deleteMany({}),
@@ -964,7 +966,75 @@ async function seed() {
     ];
 
     const events = await Event.insertMany(eventsData);
-    console.log(`OK Creati ${events.length} eventi`);
+    console.log(`✅ Creati ${events.length} eventi`);
+
+    /* -------- COMMUNITY EVENTS (5) -------- */
+    console.log(`\n🎊 Creazione Community Events...`);
+    const communityEventsData = [
+      {
+        title: "Torneo Beach Volley Amatoriale",
+        description: "Torneo aperto a tutti i livelli. Iscrizione gratuita!",
+        date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        location: "Milano Beach Arena",
+        organizer: players[0]._id,
+        participants: [players[1]._id, players[2]._id, players[3]._id],
+        maxParticipants: 16,
+        status: "upcoming",
+        struttura: strutture[0]._id,
+        isStrutturaEvent: false,
+      },
+      {
+        title: "Open Day Struttura",
+        description: "Vieni a provare i nostri campi gratuitamente!",
+        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        location: strutture[1].name,
+        organizer: owners[1]._id,
+        participants: [players[4]._id, players[5]._id],
+        maxParticipants: 30,
+        status: "upcoming",
+        struttura: strutture[1]._id,
+        isStrutturaEvent: true,
+      },
+      {
+        title: "Clinic con Professionisti",
+        description: "Allenamento tecnico con coach professionista",
+        date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        location: strutture[5].name,
+        organizer: owners[5]._id,
+        participants: [players[6]._id, players[7]._id, players[8]._id],
+        maxParticipants: 12,
+        status: "upcoming",
+        struttura: strutture[5]._id,
+        isStrutturaEvent: true,
+      },
+      {
+        title: "Beach Party & Volley",
+        description: "Serata di beach volley e divertimento con DJ set",
+        date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        location: "Rimini Beach",
+        organizer: players[9]._id,
+        participants: [players[10]._id, players[11]._id],
+        maxParticipants: 50,
+        status: "upcoming",
+        struttura: strutture[7]._id,
+        isStrutturaEvent: false,
+      },
+      {
+        title: "Campionato Estivo",
+        description: "Campionato a squadre - Iscrizioni aperte",
+        date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+        location: "Bologna Volley Club",
+        organizer: owners[3]._id,
+        participants: [],
+        maxParticipants: 24,
+        status: "upcoming",
+        struttura: strutture[3]._id,
+        isStrutturaEvent: true,
+      },
+    ];
+
+    const communityEvents = await CommunityEvent.insertMany(communityEventsData);
+    console.log(`✅ Creati ${communityEvents.length} community events`);
 
     /* -------- CAMPI (20) -------- */
     const campiData: any[] = [];
@@ -984,22 +1054,92 @@ async function seed() {
           const baseOne = randomInt(30, 45);
           const baseOneHalf = randomInt(42, 63);
 
-          // Abilita playerCountPricing per i campi beach nelle prime 2 strutture (quelle con split abilitato)
-          const enablePlayerPricing = isBeach && idx < 2;
+          // ✅ Abilita playerCountPricing per TUTTI i campi beach volley (non solo prime 2 strutture)
+          const enablePlayerPricing = isBeach;
           const playerPrices = enablePlayerPricing
             ? [
                 {
                   count: 4,
                   label: "4 giocatori",
                   prices: {
-                    oneHour: Math.max(5, Math.round(pricePerHour / 4)),
-                    oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 4)),
+                    oneHour: Math.max(8, Math.round(pricePerHour / 4)),
+                    oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
+                  },
+                },
+                {
+                  count: 6,
+                  label: "6 giocatori",
+                  prices: {
+                    oneHour: Math.max(6, Math.round(pricePerHour / 6)),
+                    oneHourHalf: Math.max(8, Math.round((pricePerHour * 1.4) / 6)),
+                  },
+                },
+                {
+                  count: 8,
+                  label: "8 giocatori",
+                  prices: {
+                    oneHour: Math.max(5, Math.round(pricePerHour / 8)),
+                    oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 8)),
                   },
                 },
               ]
             : [];
 
           const campoMaxPlayers = isBeach ? randomInt(4, 8) : 10;
+
+          // ✅ Pricing avanzato con esempi realistici
+          const enableTimeSlot = Math.random() > 0.5;
+          const enableDateOverride = idx === 0 && i === 1; // Solo primo campo della prima struttura
+          const enablePeriodOverride = idx === 1 && i === 1; // Solo primo campo della seconda struttura
+
+          // TimeSlot con giorni specifici (weekend vs feriali)
+          const timeSlots = enableTimeSlot
+            ? [
+                {
+                  start: "18:00",
+                  end: "23:00",
+                  label: "Serale Weekend",
+                  prices: { oneHour: randomInt(45, 60), oneHourHalf: randomInt(63, 84) },
+                  daysOfWeek: [5, 6, 0], // Ven, Sab, Dom
+                },
+                {
+                  start: "18:00",
+                  end: "23:00",
+                  label: "Serale Feriale",
+                  prices: { oneHour: randomInt(35, 50), oneHourHalf: randomInt(49, 70) },
+                  daysOfWeek: [1, 2, 3, 4], // Lun-Gio
+                },
+              ]
+            : [];
+
+          // Date override per eventi speciali
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const dateOverrides = enableDateOverride
+            ? [
+                {
+                  date: formatDate(tomorrow),
+                  label: "Evento Speciale",
+                  prices: { oneHour: 25, oneHourHalf: 35 },
+                },
+              ]
+            : [];
+
+          // Period override per estate/inverno
+          const summerStart = new Date();
+          summerStart.setMonth(5, 1); // 1 giugno
+          const summerEnd = new Date();
+          summerEnd.setMonth(8, 30); // 30 settembre
+          const periodOverrides = enablePeriodOverride
+            ? [
+                {
+                  startDate: formatDate(summerStart),
+                  endDate: formatDate(summerEnd),
+                  label: "Estate",
+                  prices: { oneHour: randomInt(50, 65), oneHourHalf: randomInt(70, 91) },
+                },
+              ]
+            : [];
 
           campiData.push({
             struttura: struttura._id,
@@ -1015,21 +1155,11 @@ async function seed() {
               flatPrices: { oneHour: flatOne, oneHourHalf: flatOneHalf },
               basePrices: { oneHour: baseOne, oneHourHalf: baseOneHalf },
               timeSlotPricing: {
-                enabled: Math.random() > 0.5,
-                slots:
-                  Math.random() > 0.5
-                    ? [
-                        {
-                          start: "18:00",
-                          end: "23:00",
-                          label: "Sera",
-                          prices: { oneHour: randomInt(40, 55), oneHourHalf: randomInt(56, 77) },
-                        },
-                      ]
-                    : [],
+                enabled: enableTimeSlot,
+                slots: timeSlots,
               },
-              dateOverrides: { enabled: false, dates: [] },
-              periodOverrides: { enabled: false, periods: [] },
+              dateOverrides: { enabled: enableDateOverride, dates: dateOverrides },
+              periodOverrides: { enabled: enablePeriodOverride, periods: periodOverrides },
               playerCountPricing: { enabled: !!enablePlayerPricing, prices: playerPrices },
             },
             weeklySchedule: {
@@ -1096,6 +1226,10 @@ async function seed() {
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
       const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
+      const paymentMode = bookingType === "public" ? "split" : "full";
+      const totalPrice = randomInt(30, 50);
+      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomInt(4, 6) : undefined;
+      const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
 
       bookings.push({
         user: player._id,
@@ -1105,10 +1239,12 @@ async function seed() {
         startTime,
         endTime,
         duration,
-        price: randomInt(30, 50),
+        price: totalPrice,
+        numberOfPeople: numPeople,
+        unitPrice: unitPrice,
         status: "confirmed",
         bookingType,
-        paymentMode: bookingType === "public" ? "split" : "full",
+        paymentMode,
       });
     }
 
@@ -1127,6 +1263,10 @@ async function seed() {
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
       const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
+      const paymentMode = bookingType === "public" ? "split" : "full";
+      const totalPrice = randomInt(30, 50);
+      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomInt(4, 6) : undefined;
+      const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
 
       bookings.push({
         user: player._id,
@@ -1136,10 +1276,12 @@ async function seed() {
         startTime,
         endTime,
         duration,
-        price: randomInt(30, 50),
+        price: totalPrice,
+        numberOfPeople: numPeople,
+        unitPrice: unitPrice,
         status: "confirmed",
         bookingType,
-        paymentMode: bookingType === "public" ? "split" : "full",
+        paymentMode,
       });
     }
 
@@ -1193,7 +1335,7 @@ async function seed() {
         respondedAt: new Date(booking.date),
       });
 
-      // Altri 3 giocatori casuali
+      // Altri 3 giocatori casuali con respondedAt
       for (let j = 1; j < 4; j++) {
         let player: any;
         do {
@@ -1201,12 +1343,15 @@ async function seed() {
         } while (selectedPlayers.includes(player._id.toString()));
 
         selectedPlayers.push(player._id.toString());
+        const joinDate = new Date(booking.date);
+        joinDate.setHours(joinDate.getHours() - randomInt(1, 24)); // Joined prima del match
+        
         matchPlayers.push({
           user: player._id,
           team: j < 2 ? "A" : "B",
           status: "confirmed",
-          joinedAt: new Date(booking.date),
-          respondedAt: new Date(booking.date),
+          joinedAt: joinDate,
+          respondedAt: joinDate, // ✅ Aggiunto respondedAt
         });
       }
 
@@ -1264,12 +1409,15 @@ async function seed() {
         } while (selectedPlayers.includes(player._id.toString()));
 
         selectedPlayers.push(player._id.toString());
+        const joinDate = new Date(booking.date);
+        joinDate.setHours(joinDate.getHours() - randomInt(1, 48));
+        
         matchPlayers.push({
           user: player._id,
           team: j < 2 ? "A" : "B",
           status: "confirmed",
-          joinedAt: new Date(booking.date),
-          respondedAt: new Date(booking.date),
+          joinedAt: joinDate,
+          respondedAt: joinDate, // ✅ Aggiunto respondedAt
         });
       }
 
@@ -1350,7 +1498,7 @@ async function seed() {
       matchCounters.inProgress++;
     }
 
-    // 4. MATCH FUTURI APERTI (open) - 5 match (per testare inviti)
+    // 4. MATCH FUTURI APERTI (open) - 5 match con stati misti
     for (let i = 0; i < Math.min(5, futureBookings.length); i++) {
       const booking = futureBookings[i];
       const creator = booking.user;
@@ -1366,20 +1514,47 @@ async function seed() {
         respondedAt: new Date(),
       });
 
-      // Solo 2 giocatori (mancano 2 posti)
-      let player: any;
-      do {
-        player = randomElement(players as any[]);
-      } while (selectedPlayers.includes(player._id.toString()));
+      // ✅ Match con mix di stati: 1 confirmed, 1 pending, 1 declined (2 slot liberi)
+      const statuses = ["confirmed", "pending"];
+      
+      for (let j = 0; j < 2; j++) {
+        let player: any;
+        do {
+          player = randomElement(players as any[]);
+        } while (selectedPlayers.includes(player._id.toString()));
 
-      selectedPlayers.push(player._id.toString());
-      matchPlayers.push({
-        user: player._id,
-        team: "A",
-        status: "confirmed",
-        joinedAt: new Date(),
-        respondedAt: new Date(),
-      });
+        selectedPlayers.push(player._id.toString());
+        const status = statuses[j];
+        const joinDate = new Date();
+        joinDate.setHours(joinDate.getHours() - randomInt(1, 12));
+        
+        matchPlayers.push({
+          user: player._id,
+          team: j === 0 ? "A" : "B",
+          status: status,
+          joinedAt: joinDate,
+          respondedAt: status === "confirmed" ? joinDate : undefined, // Solo confirmed ha respondedAt
+        });
+      }
+
+      // Aggiungi anche un declined player per test
+      if (Math.random() > 0.5) {
+        let declinedPlayer: any;
+        do {
+          declinedPlayer = randomElement(players as any[]);
+        } while (selectedPlayers.includes(declinedPlayer._id.toString()));
+
+        const declineDate = new Date();
+        declineDate.setHours(declineDate.getHours() - randomInt(1, 6));
+        
+        matchPlayers.push({
+          user: declinedPlayer._id,
+          team: "B",
+          status: "declined",
+          joinedAt: declineDate,
+          respondedAt: declineDate,
+        });
+      }
 
       matches.push({
         booking: booking._id,
@@ -1531,8 +1706,10 @@ async function seed() {
     const savedMessages = await Message.insertMany(messages);
     console.log(`OK Creati ${savedMessages.length} messaggi`);
 
-    /* -------- NOTIFICATIONS -------- */
+    /* -------- NOTIFICATIONS (COMPLETE) -------- */
+    console.log(`\n🔔 Creazione notifiche...`);
     const notifications = [
+      // Follower notifications
       {
         recipient: players[0]._id,
         sender: players[1]._id,
@@ -1541,43 +1718,92 @@ async function seed() {
         message: `${players[1].name} ha iniziato a seguirti.`,
         relatedId: players[1]._id,
         relatedModel: "User",
+        isRead: false,
       },
+      {
+        recipient: players[1]._id,
+        sender: players[0]._id,
+        type: "follow_back",
+        title: "Ti sta seguendo",
+        message: `${players[0].name} ora ti segue!`,
+        relatedId: players[0]._id,
+        relatedModel: "User",
+        isRead: true,
+      },
+      // Match invites
       {
         recipient: players[0]._id,
         sender: players[2]._id,
         type: "match_invite",
         title: "Invito partita",
-        message: "Sei stato invitato a una partita.",
+        message: `${players[2].name} ti ha invitato a una partita.`,
         relatedId: (savedMatches as any[])[0]._id,
         relatedModel: "Match",
+        isRead: false,
       },
+      // Match join
+      {
+        recipient: players[3]._id,
+        sender: players[5]._id,
+        type: "match_join",
+        title: "Nuovo giocatore",
+        message: `${players[5].name} si è unito alla tua partita.`,
+        relatedId: (savedMatches as any[])[1]._id,
+        relatedModel: "Match",
+        isRead: false,
+      },
+      // Match starting soon
       {
         recipient: players[3]._id,
         sender: owners[0]._id,
         type: "match_start",
-        title: "Match iniziato",
-        message: "Il tuo match sta per iniziare.",
+        title: "Match in partenza",
+        message: "Il tuo match inizia tra 1 ora!",
         relatedId: (savedMatches as any[])[1]._id,
         relatedModel: "Match",
+        isRead: true,
       },
+      // Match result
       {
         recipient: players[4]._id,
-        sender: owners[1]._id,
+        sender: players[0]._id,
         type: "match_result",
-        title: "Risultato match",
-        message: "Il risultato del match e' disponibile.",
+        title: "Risultato disponibile",
+        message: "Il risultato del match è stato inserito.",
         relatedId: (savedMatches as any[])[2]._id,
         relatedModel: "Match",
+        isRead: false,
+      },
+      // New booking (owner notification)
+      {
+        recipient: owners[0]._id,
+        sender: players[6]._id,
+        type: "new_booking",
+        title: "Nuova prenotazione",
+        message: `${players[6].name} ha prenotato un campo.`,
+        relatedId: (savedBookings as any[])[0]._id,
+        relatedModel: "Booking",
+        isRead: false,
+      },
+      {
+        recipient: owners[1]._id,
+        sender: players[7]._id,
+        type: "new_booking",
+        title: "Nuova prenotazione",
+        message: `${players[7].name} ha prenotato un campo.`,
+        relatedId: (savedBookings as any[])[1]._id,
+        relatedModel: "Booking",
+        isRead: true,
       },
     ];
 
     const savedNotifications = await Notification.insertMany(notifications);
-    console.log(`OK Create ${savedNotifications.length} notifiche`);
+    console.log(`✅ Create ${savedNotifications.length} notifiche (${notifications.filter(n => !n.isRead).length} non lette)`);
 
     /* -------- SUMMARY -------- */
-    console.log("\n" + "=".repeat(50));
+    console.log("\n" + "=".repeat(60));
     console.log("🌱 SEED COMPLETATO CON SUCCESSO");
-    console.log("=".repeat(50));
+    console.log("=".repeat(60));
     console.log(`👥 Utenti: ${users.length} (${players.length} player, ${owners.length} owner)`);
     console.log(`🤝 Amicizie: ${friendships.length}`);
     console.log(`👁️ StrutturaFollower: ${strutturaFollowers.length}`);
@@ -1585,10 +1811,25 @@ async function seed() {
     console.log(`📱 Post Community: ${savedPosts.length}`);
     console.log(`🏟️ Strutture: ${strutture.length}`);
     console.log(`⚽ Campi: ${campi.length}`);
+    console.log(`   - Beach volley: ${campi.filter((c: any) => c.sport === "beach volley").length}`);
+    console.log(`   - Volley indoor: ${campi.filter((c: any) => c.sport === "volley").length}`);
+    console.log(`   - Con pricing per giocatori: ${campi.filter((c: any) => c.pricingRules?.playerCountPricing?.enabled).length}`);
+    console.log(`   - Con fasce orarie: ${campi.filter((c: any) => c.pricingRules?.timeSlotPricing?.enabled).length}`);
     console.log(`📅 Giorni calendario: ${calendarDocs.length}`);
     console.log(`📝 Prenotazioni: ${savedBookings.length}`);
+    console.log(`   - Con split payment: ${bookings.filter(b => b.paymentMode === "split").length}`);
     console.log(`🏆 Match: ${matches.length}`);
-    console.log("=".repeat(50));
+    console.log(`   - Completati con risultato: ${matchCounters.completed}`);
+    console.log(`   - Completati senza risultato: ${matchCounters.noResult}`);
+    console.log(`   - Aperti (con inviti): ${matchCounters.open}`);
+    console.log(`   - Completi: ${matchCounters.full}`);
+    console.log(`   - In bozza: ${matchCounters.draft}`);
+    console.log(`🎉 Eventi: ${events.length}`);
+    console.log(`🎊 Community Events: ${communityEvents.length}`);
+    console.log(`🔔 Notifiche: ${savedNotifications.length}`);
+    console.log(`💬 Conversazioni: ${savedConversations.length}`);
+    console.log(`📨 Messaggi: ${savedMessages.length}`);
+    console.log("=".repeat(60));
     console.log("🔑 Password per tutti gli utenti: 123");
     console.log("\n📧 UTENTI PLAYER:");
     players.slice(0, 5).forEach((p: any) => {
@@ -1599,7 +1840,12 @@ async function seed() {
     owners.forEach((o: any) => {
       console.log(`   - ${o.email} (${o.username})`);
     });
-    console.log("=".repeat(50) + "\n");
+    console.log("\n🎯 TEST SCENARIOS:");
+    console.log(`   - Privacy profiles: 4 utenti privati (Luca, Anna, Sofia, Chiara)`);
+    console.log(`   - Split payment: ${strutture.filter((s: any) => s.isCostSplittingEnabled).length} strutture abilitate`);
+    console.log(`   - Advanced pricing: fasce orarie weekend/feriali, eventi speciali`);
+    console.log(`   - Match states: pending invites, declined, confirmed, mix`);
+    console.log("=".repeat(60) + "\n");
 
     process.exit(0);
   } catch (err) {

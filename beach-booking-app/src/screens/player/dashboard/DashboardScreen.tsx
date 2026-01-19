@@ -740,7 +740,10 @@ export default function HomeScreen() {
         <View style={styles.quickActionsContainer}>
           <Pressable 
             style={styles.quickActionButton}
-            onPress={() => navigation.navigate("Strutture")}
+            onPress={() => {
+              // Naviga alla tab Strutture del bottom tab navigator
+              navigation.getParent()?.navigate("StruttureTab");
+            }}
           >
             <Ionicons name="calendar-outline" size={20} color="#2196F3" />
             <Text style={styles.quickActionText}>Prenota un campo</Text>
