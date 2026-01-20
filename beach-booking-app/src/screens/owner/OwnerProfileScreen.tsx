@@ -31,6 +31,8 @@ interface OwnerStats {
   strutture: number;
   prenotazioni: number;
   incassoTotale: number;
+  tassoOccupazione: number;
+  nuoviClienti: number;
 }
 
 interface OwnerEarnings {
@@ -61,6 +63,11 @@ interface Booking {
   id: string;
   status: string;
   price: number;
+  user?: {
+    _id: string;
+    name: string;
+    surname?: string;
+  };
   [key: string]: any;
 }
 
@@ -77,6 +84,8 @@ const useOwnerProfile = (token: string | null) => {
     strutture: 0,
     prenotazioni: 0,
     incassoTotale: 0,
+    tassoOccupazione: 0,
+    nuoviClienti: 0,
   });
   const [earnings, setEarnings] = useState<OwnerEarnings>({
     totalEarnings: 0,
@@ -125,9 +134,20 @@ const useOwnerProfile = (token: string | null) => {
       const bookings: Booking[] = bookingsRes.ok ? await bookingsRes.json() : [];
       const earningsData: OwnerEarnings = earningsRes.ok ? await earningsRes.json() : { totalEarnings: 0, earnings: [] };
       
-      const incasso = bookings
-        .filter((b) => b.status === "confirmed")
-        .reduce((sum, b) => sum + (b.price || 0), 0);
+      const confirmedBookings = bookings.filter((b) => b.status === "confirmed");
+      const incasso = confirmedBookings.reduce((sum, b) => sum + (b.price || 0), 0);
+
+      // Calcola clienti unici (usa user._id dalla struttura dei bookings)
+      const nuoviClienti = new Set(
+        bookings
+          .filter((b) => b.user?._id)
+          .map((b) => b.user!._id)
+      ).size;
+
+      // Calcola tasso occupazione (stima basata su prenotazioni per struttura)
+      const tassoOccupazione = struttureData.length > 0 
+        ? Math.min(100, Math.round((confirmedBookings.length / struttureData.length) * 10)) 
+        : 0;
 
       setStrutture(struttureData);
       setEarnings(earningsData);
@@ -135,6 +155,8 @@ const useOwnerProfile = (token: string | null) => {
         strutture: struttureData.length,
         prenotazioni: bookings.length,
         incassoTotale: incasso,
+        tassoOccupazione,
+        nuoviClienti,
       });
 
       return profileData.user;
@@ -765,20 +787,10 @@ export default function OwnerProfileScreen() {
 
         {/* ACTION CARDS BLU */}
         <View style={styles.actionCardsContainer}>
-          <Pressable 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate("Messages")}
-          >
-            <View style={styles.messageBadge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
-            <Ionicons name="chatbubbles" size={32} color="white" />
-            <Text style={styles.actionCardTitle}>Messaggi</Text>
-          </Pressable>
 
           <Pressable 
             style={styles.actionCard}
-            onPress={() => navigation.navigate("OwnerStrutture")}
+            onPress={() => navigation.navigate("Strutture")}
           >
             <Ionicons name="business" size={32} color="white" />
             <Text style={styles.actionCardTitle}>Strutture</Text>
@@ -797,7 +809,16 @@ export default function OwnerProfileScreen() {
 
         {/* STATISTICHE BUSINESS */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistiche Business</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Statistiche Business</Text>
+            <Pressable
+              style={styles.viewMoreButton}
+              onPress={() => navigation.navigate("OwnerStatistics")}
+            >
+              <Text style={styles.viewMoreText}>Dettagli</Text>
+              <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+            </Pressable>
+          </View>
           
           {/* Card Guadagni Cliccabile */}
           <Pressable 
@@ -829,12 +850,12 @@ export default function OwnerProfileScreen() {
             <View style={styles.businessStat}>
               <Ionicons name="trending-up" size={28} color="#FF9800" />
               <Text style={styles.businessStatLabel}>Tasso Occupazione:</Text>
-              <Text style={styles.businessStatValue}>88%</Text>
+              <Text style={styles.businessStatValue}>{stats.tassoOccupazione}%</Text>
             </View>
             <View style={styles.businessStat}>
               <Ionicons name="people" size={28} color="#9C27B0" />
-              <Text style={styles.businessStatLabel}>Nuovi Clienti:</Text>
-              <Text style={styles.businessStatValue}>45</Text>
+              <Text style={styles.businessStatLabel}>Clienti Unici:</Text>
+              <Text style={styles.businessStatValue}>{stats.nuoviClienti}</Text>
             </View>
           </View>
         </View>
@@ -1200,11 +1221,29 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
-    marginBottom: 12,
+  },
+
+  viewMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  viewMoreText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2196F3",
   },
 
   // EARNINGS CARD

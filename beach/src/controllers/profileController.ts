@@ -1388,7 +1388,14 @@ export const getMyEarnings = async (
       ((ownerUser as any).earnings || []).map(async (earning: any) => {
         if (earning.booking) {
           const booking = await Booking.findById(earning.booking)
-            .populate('campo', 'name')
+            .populate({
+              path: 'campo',
+              select: 'name struttura',
+              populate: {
+                path: 'struttura',
+                select: 'name address _id'
+              }
+            })
             .populate('user', 'name surname username')
             .select('date startTime endTime price status');
           
@@ -1401,6 +1408,11 @@ export const getMyEarnings = async (
               price: booking.price,
               status: booking.status,
               campo: (booking as any).campo?.name,
+              struttura: (booking as any).campo?.struttura ? {
+                id: (booking as any).campo.struttura._id,
+                name: (booking as any).campo.struttura.name,
+                address: (booking as any).campo.struttura.address,
+              } : null,
               user: (booking as any).user ? {
                 name: (booking as any).user.name,
                 surname: (booking as any).user.surname,

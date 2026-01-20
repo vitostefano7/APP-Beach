@@ -23,6 +23,7 @@ import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 import OwnerNotificheScreen from "../screens/owner/dashboard/OwnerNotificheScreen";
 import EarningsStatsScreen from "../screens/owner/EarningsStatsScreen";
+import OwnerStatisticsScreen from "../screens/owner/OwnerStatisticsScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -35,6 +36,7 @@ export type OwnerRootStackParamList = {
   ModificaCampo: { campoId: string };
   OwnerCercaAmiciScreen: undefined;
   OwnerNotifiche: undefined;
+  OwnerStatistics: undefined;
   EarningsStats: {
     earnings: {
       totalEarnings: number;
@@ -58,6 +60,10 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="OwnerNotifiche"
         component={OwnerNotificheScreen}
+      />
+      <Stack.Screen
+        name="OwnerStatistics"
+        component={OwnerStatisticsScreen}
       />
       <Stack.Screen
         name="StrutturaDashboard"
