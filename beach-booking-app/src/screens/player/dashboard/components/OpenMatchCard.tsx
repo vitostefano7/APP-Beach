@@ -40,6 +40,43 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
     }
   };
 
+  // Calculate duration between start and end time
+  const getDuration = (startTime: string, endTime: string) => {
+    const startParts = startTime.split(':');
+    const endParts = endTime.split(':');
+    const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+    const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+    const diff = endMin - startMin;
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  };
+
+  // Calculate time left until registration closes (assuming 24 hours before match start)
+  const getTimeLeft = () => {
+    const matchStart = new Date(`${match.booking?.date}T${match.booking?.startTime}:00`);
+    const registrationDeadline = new Date(matchStart.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+    const now = new Date();
+    const diff = registrationDeadline.getTime() - now.getTime();
+    if (diff <= 0) return { text: 'Chiuso', color: '#ff0000' };
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const totalHours = hours + minutes / 60;
+    let color = '#666';
+    if (totalHours <= 3) {
+      color = '#ff0000'; // red
+    } else {
+      color = '#ffcc00'; // yellow
+    }
+    let text;
+    if (hours > 0) text = `${hours}h ${minutes}m`;
+    else text = `${minutes}m`;
+    return { text, color };
+  };
+
+  const { text: timeLeftText, color: iconColor } = getTimeLeft();
+
   return (
     <Pressable style={styles.openMatchCard} onPress={onPress}>
       <View style={styles.openMatchHeader}>
@@ -47,8 +84,18 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
           <Text style={styles.openMatchTitle} numberOfLines={1}>
             {match.booking?.campo?.struttura?.name || 'Struttura'}
           </Text>
-          <View style={styles.openMatchBadge}>
-            <Text style={styles.openMatchBadgeText}>{available} {available === 1 ? 'posto' : 'posti'}</Text>
+          <View style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
+            <View style={styles.openMatchBadge}>
+              <Text style={styles.openMatchBadgeText}>{available} {available === 1 ? 'posto' : 'posti'}</Text>
+            </View>
+            {match.booking?.endTime && (
+              <View style={[styles.openMatchInfoRow, { marginTop: 6 }]}>
+                <Ionicons name="hourglass-outline" size={14} color={iconColor} />
+                <Text style={styles.openMatchInfoText}>
+                  {timeLeftText}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         {match.booking?.campo?.struttura?.location?.address && (

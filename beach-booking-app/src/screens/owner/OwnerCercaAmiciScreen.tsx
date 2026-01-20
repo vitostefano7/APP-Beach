@@ -191,7 +191,7 @@ export default function OwnerCercaAmiciScreen() {
   };
 
   const handleStrutturaPress = (struttura: Struttura) => {
-    navigation.navigate('StrutturaDetailScreen', { strutturaId: struttura._id });
+    navigation.navigate('StrutturaDetail', { strutturaId: struttura._id });
   };
 
   const handleSendFriendRequest = async (userId: string) => {

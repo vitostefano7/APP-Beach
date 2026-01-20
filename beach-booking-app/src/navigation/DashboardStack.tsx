@@ -20,6 +20,7 @@ import CreatePostScreen from "../screens/player/dashboard/CreatePostScreen";
 import PostDetailScreen from "../screens/player/dashboard/PostDetailScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
+import StrutturaFollowersScreen from "../screens/player/struttura/StrutturaFollowersScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -34,6 +35,7 @@ export type DashboardStackParamList = {
   DettaglioInvitoRifiutato: { matchId: string };
   Strutture: undefined;
   FieldDetails: { fieldId: string };
+  Campi: { strutturaId: string };
   CercaAmici: undefined;
   ProfiloUtente: {
     userId: string;
@@ -46,6 +48,7 @@ export type DashboardStackParamList = {
   CreatePost: undefined;
   PostDetail: { postId: string };
   StrutturaDetail: { strutturaId: string };
+  StrutturaFollowers: { strutturaId: string; strutturaName?: string; type: "followers" | "following" };
 };
 
 const Stack = createNativeStackNavigator();
@@ -165,6 +168,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen
         name="StrutturaDetail"
         component={StrutturaDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="StrutturaFollowers"
+        component={StrutturaFollowersScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   container: {
     flex: 1,
@@ -22,31 +22,34 @@ export const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: 'rgba(33, 150, 243, 0.1)',
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#212121',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: 0.3,
   },
   searchButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2196F3',
+  },
+  searchButtonPressed: {
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    borderRadius: 20,
   },
   createButton: {
     padding: 4,
@@ -65,10 +68,12 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 8,
     zIndex: 1000,
-    shadowColor: '#000',
+    shadowColor: '#2196F3',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.2)',
   },
 
   // Tab Bar
@@ -123,18 +128,18 @@ export const styles = StyleSheet.create({
 
   // Post Card
   postCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#F5F9FF',
+    borderRadius: 16,
     marginBottom: 12,
-    marginHorizontal: 16,
-    padding: 16,
-    shadowColor: '#000',
+    marginHorizontal: 12,
+    padding: 14,
+    shadowColor: '#2196F3',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: 'rgba(33, 150, 243, 0.15)',
   },
   postHeader: {
     flexDirection: 'row',
@@ -149,9 +154,9 @@ export const styles = StyleSheet.create({
     padding: 8,
   },
   postAuthor: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#212121',
+    color: '#1a1a1a',
     marginBottom: 2,
   },
   strutturaAvatar: {
@@ -168,24 +173,24 @@ export const styles = StyleSheet.create({
     color: '#999',
   },
   postContent: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#424242',
-    lineHeight: 22,
-    marginBottom: 12,
+    lineHeight: 20,
+    marginBottom: 10,
   },
   postImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 12,
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   postActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
-    paddingTop: 12,
+    gap: 20,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: 'rgba(33, 150, 243, 0.1)',
   },
   postAction: {
     flexDirection: 'row',
@@ -193,7 +198,7 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   postActionText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },

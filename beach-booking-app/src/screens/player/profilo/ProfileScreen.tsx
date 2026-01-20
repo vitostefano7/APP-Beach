@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
@@ -63,6 +64,10 @@ export default function ProfileScreen() {
   const [venuesStats, setVenuesStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
+  // Stati per i post
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
     console.log("👤 User context aggiornato, dati completi:", user);
@@ -88,6 +93,7 @@ export default function ProfileScreen() {
         refreshUnreadCount();
         loadProfile();
         loadStats();
+        loadPosts();
       }
     }, [token])
   );
@@ -215,7 +221,25 @@ export default function ProfileScreen() {
       setStatsLoading(false);
     }
   };
+const loadPosts = async () => {
+    try {
+      setPostsLoading(true);
+      const res = await fetch(`${API_URL}/community/my-posts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts || []);
+      }
+    } catch (e) {
+      console.error("Errore caricamento post", e);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  
   // ✅ Funzione per cambiare avatar
   const changeAvatar = () => {
     setShowAvatarPicker(true);
@@ -738,6 +762,135 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
+
+        {/* Posts Section */}
+        <View style={{ marginHorizontal: 16, marginBottom: 30, marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="images" size={24} color="#2563EB" />
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1a1a1a', marginLeft: 10 }}>
+                I tuoi Post
+              </Text>
+            </View>
+            <Text style={{ fontSize: 14, color: '#666', fontWeight: '600' }}>
+              {posts.length} {posts.length === 1 ? 'post' : 'post'}
+            </Text>
+          </View>
+
+          {postsLoading ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Ionicons name="time-outline" size={48} color="#ccc" />
+              <Text style={{ marginTop: 12, fontSize: 14, color: '#999' }}>Caricamento post...</Text>
+            </View>
+          ) : posts.length === 0 ? (
+            <View style={{
+              backgroundColor: '#f8f9fa',
+              borderRadius: 16,
+              padding: 32,
+              alignItems: 'center',
+              borderWidth: 2,
+              borderColor: 'rgba(33, 150, 243, 0.1)',
+              borderStyle: 'dashed',
+            }}>
+              <Ionicons name="camera-outline" size={48} color="#ccc" />
+              <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '600', color: '#666' }}>
+                Nessun post ancora
+              </Text>
+              <Text style={{ marginTop: 4, fontSize: 14, color: '#999', textAlign: 'center' }}>
+                Condividi i tuoi momenti migliori!
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {posts.slice(0, 3).map((post: any) => (
+                <View
+                  key={post._id}
+                  style={{
+                    backgroundColor: '#F5F9FF',
+                    borderRadius: 16,
+                    padding: 14,
+                    shadowColor: '#2196F3',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    borderWidth: 1,
+                    borderColor: 'rgba(33, 150, 243, 0.15)',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1a1a' }}>
+                        {post.struttura?.name || 'Post'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+                        {new Date(post.createdAt).toLocaleDateString('it-IT', { 
+                          day: 'numeric', 
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {post.content && (
+                    <Text style={{ fontSize: 14, color: '#424242', lineHeight: 20, marginBottom: 10 }} numberOfLines={3}>
+                      {post.content}
+                    </Text>
+                  )}
+                  
+                  {post.image && (
+                    <Image
+                      source={{ uri: post.image }}
+                      style={{
+                        width: '100%',
+                        height: 180,
+                        borderRadius: 12,
+                        marginBottom: 10,
+                      }}
+                      resizeMode="cover"
+                    />
+                  )}
+                  
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="heart-outline" size={16} color="#666" />
+                      <Text style={{ fontSize: 13, color: '#666', fontWeight: '500' }}>
+                        {post.likes?.length || 0}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
+                      <Text style={{ fontSize: 13, color: '#666', fontWeight: '500' }}>
+                        {post.comments?.length || 0}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+              
+              {posts.length > 3 && (
+                <Pressable
+                  style={({ pressed }) => [
+                    {
+                      backgroundColor: pressed ? '#E3F2FD' : '#F5F9FF',
+                      borderRadius: 12,
+                      padding: 14,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: 'rgba(33, 150, 243, 0.2)',
+                    }
+                  ]}
+                  onPress={() => navigation.navigate("Community")}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#2196F3' }}>
+                    Vedi tutti i {posts.length} post →
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
 
         <Pressable 
           style={({ pressed }) => [

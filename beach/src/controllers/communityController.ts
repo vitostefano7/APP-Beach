@@ -128,7 +128,10 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
       const userIds = followedUsers.map((f) => f.recipient);
       const strutturaIds = followedStrutture.map((f) => f.struttura);
 
-      // Post degli utenti seguiti O post delle strutture seguite
+      // Includi anche i propri post
+      userIds.push(new mongoose.Types.ObjectId(req.user.id));
+
+      // Post degli utenti seguiti (incluso se stesso) O post delle strutture seguite
       queryFilter = {
         $or: [
           { user: { $in: userIds }, isStrutturaPost: false },
@@ -389,6 +392,38 @@ export const createPost = async (req: AuthRequest, res: Response) => {
     }
     console.error('========================================\n');
     res.status(500).json({ message: "Errore nella creazione del post" });
+  }
+};
+
+/**
+ * GET /community/my-posts
+ * Recupera tutti i post dell'utente loggato
+ */
+export const getMyPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    console.log('========================================');
+    console.log('📥 GET /community/my-posts');
+    console.log('User ID:', userId);
+    console.log('========================================');
+
+    const posts = await Post.find({ user: userId })
+      .populate("user", "name surname username avatarUrl")
+      .populate("struttura", "name images location")
+      .populate("comments.user", "name surname username avatarUrl")
+      .sort({ createdAt: -1 });
+
+    console.log('✅ Post trovati:', posts.length);
+
+    res.json({ posts });
+  } catch (error: any) {
+    console.error('========================================');
+    console.error("❌ ERRORE recupero post utente:");
+    console.error('Nome:', error.name);
+    console.error('Messaggio:', error.message);
+    console.error('========================================\n');
+    res.status(500).json({ message: "Errore nel recupero dei post" });
   }
 };
 
@@ -896,6 +931,8 @@ export const getStrutturaFollowers = async (req: AuthRequest, res: Response) => 
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
 
+    console.log("👥 Caricamento follower struttura:", strutturaId);
+
     const followers = await StrutturaFollower.find({
       struttura: strutturaId,
       status: "active",
@@ -903,7 +940,7 @@ export const getStrutturaFollowers = async (req: AuthRequest, res: Response) => 
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
-      .populate("user", "name surname username avatarUrl")
+      .populate("user", "name username avatarUrl")
       .lean();
 
     const total = await StrutturaFollower.countDocuments({
@@ -911,8 +948,10 @@ export const getStrutturaFollowers = async (req: AuthRequest, res: Response) => 
       status: "active",
     });
 
+    console.log("✅ Follower trovati:", followers.length);
+
     res.json({
-      followers,
+      followers: followers.map((f: any) => f.user),
       total,
       hasMore: offset + limit < total,
     });
@@ -943,6 +982,46 @@ export const getStrutturaFollowStatus = async (req: AuthRequest, res: Response) 
   } catch (error) {
     console.error("Errore verifica follow status:", error);
     res.status(500).json({ message: "Errore nel verificare lo status" });
+  }
+};
+
+/**
+ * GET /community/strutture/:strutturaId/following
+ * Ottieni gli utenti che la struttura segue
+ */
+export const getStrutturaFollowing = async (req: AuthRequest, res: Response) => {
+  try {
+    const { strutturaId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    console.log("👥 Caricamento following struttura:", strutturaId);
+
+    const following = await UserFollower.find({
+      struttura: strutturaId,
+      status: "active",
+    })
+      .populate("user", "name username avatarUrl")
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean();
+
+    const total = await UserFollower.countDocuments({
+      struttura: strutturaId,
+      status: "active",
+    });
+
+    console.log("✅ Following trovati:", following.length);
+
+    res.json({
+      following: following.map((f: any) => f.user),
+      total,
+      hasMore: offset + limit < total,
+    });
+  } catch (error) {
+    console.error("Errore recupero following:", error);
+    res.status(500).json({ message: "Errore nel recupero del following" });
   }
 };
 
@@ -984,8 +1063,9 @@ export const getStrutturaDetails = async (req: AuthRequest, res: Response) => {
     // Conta i campi
     const fieldsCount = await Campo.countDocuments({
       struttura: strutturaId,
-      isDeleted: false,
     });
+
+    console.log("📊 Stats per struttura", strutturaId, "- Follower:", followersCount, "- Campi:", fieldsCount);
 
     res.json({
       ...struttura,

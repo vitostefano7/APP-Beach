@@ -79,6 +79,7 @@ export default function CercaAmiciScreen() {
   const [searchType, setSearchType] = useState<'users' | 'strutture'>('users');
   const [struttureResults, setStruttureResults] = useState<Struttura[]>([]);
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
+  const [recentStruttureSearches, setRecentStruttureSearches] = useState<Struttura[]>([]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -115,6 +116,7 @@ export default function CercaAmiciScreen() {
   // Load recent searches on mount
   useEffect(() => {
     loadRecentSearches();
+    loadRecentStruttureSearches();
   }, []);
 
   // Debug per verificare il caricamento
@@ -199,6 +201,76 @@ export default function CercaAmiciScreen() {
     }
   };
 
+  const loadRecentStruttureSearches = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@recent_strutture_searches');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setRecentStruttureSearches(parsed);
+        // Aggiorna i dati aggiornati con isFollowing
+        refreshRecentStruttureData(parsed);
+      }
+    } catch (error) {
+      console.error('Errore caricamento strutture recenti:', error);
+    }
+  };
+
+  const refreshRecentStruttureData = async (strutture: Struttura[]) => {
+    if (!token || strutture.length === 0) return;
+
+    try {
+      // Fetch updated follow status for each struttura
+      const updatedStrutture = await Promise.all(
+        strutture.map(async (struttura) => {
+          try {
+            const statusResponse = await fetch(
+              `${API_URL}/community/strutture/${struttura._id}/follow-status`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              return { ...struttura, isFollowing: statusData.isFollowing };
+            }
+            return struttura;
+          } catch (err) {
+            console.error('Error fetching struttura follow status:', err);
+            return struttura;
+          }
+        })
+      );
+
+      setRecentStruttureSearches(updatedStrutture);
+      // Aggiorna anche AsyncStorage con i nuovi dati
+      await AsyncStorage.setItem('@recent_strutture_searches', JSON.stringify(updatedStrutture));
+    } catch (error) {
+      console.error('Errore aggiornamento dati strutture recenti:', error);
+    }
+  };
+
+  const saveRecentStruttura = async (struttura: Struttura) => {
+    try {
+      // Remove duplicates based on struttura ID
+      const updated = [struttura, ...recentStruttureSearches.filter(s => s._id !== struttura._id)].slice(0, 5);
+      setRecentStruttureSearches(updated);
+      await AsyncStorage.setItem('@recent_strutture_searches', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Errore salvataggio struttura recente:', error);
+    }
+  };
+
+  const clearRecentStruttureSearches = async () => {
+    try {
+      setRecentStruttureSearches([]);
+      await AsyncStorage.removeItem('@recent_strutture_searches');
+    } catch (error) {
+      console.error('Errore cancellazione strutture recenti:', error);
+    }
+  };
+
   // Debounced search
   useEffect(() => {
     if (debounceTimer.current) {
@@ -250,7 +322,9 @@ export default function CercaAmiciScreen() {
         if (response.ok) {
           const data = await response.json();
           console.log('Search results:', data);
-          setSearchResults(data.users || data || []);
+          // Filtra per escludere l'utente corrente dai risultati
+          const filteredResults = (data.users || data || []).filter((item: SearchResult) => item._id !== user?.id);
+          setSearchResults(filteredResults);
         } else {
           const errorText = await response.text();
           console.error('Errore ricerca:', response.status, errorText);
@@ -336,6 +410,15 @@ export default function CercaAmiciScreen() {
     });
   };
 
+  const handlePressStruttura = async (struttura: Struttura, fromSearchResults: boolean = false) => {
+    // If clicked from search results, save to recent searches
+    if (fromSearchResults) {
+      await saveRecentStruttura(struttura);
+    }
+
+    navigation.navigate('StrutturaDetail', { strutturaId: struttura._id });
+  };
+
   const handleFollowStruttura = async (strutturaId: string) => {
     try {
       setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
@@ -349,6 +432,12 @@ export default function CercaAmiciScreen() {
 
       if (response.ok) {
         setStruttureResults((prev) =>
+          prev.map((s) =>
+            s._id === strutturaId ? { ...s, isFollowing: true } : s
+          )
+        );
+        // Aggiorna anche le strutture recenti
+        setRecentStruttureSearches((prev) =>
           prev.map((s) =>
             s._id === strutturaId ? { ...s, isFollowing: true } : s
           )
@@ -381,6 +470,12 @@ export default function CercaAmiciScreen() {
 
       if (response.ok) {
         setStruttureResults((prev) =>
+          prev.map((s) =>
+            s._id === strutturaId ? { ...s, isFollowing: false } : s
+          )
+        );
+        // Aggiorna anche le strutture recenti
+        setRecentStruttureSearches((prev) =>
           prev.map((s) =>
             s._id === strutturaId ? { ...s, isFollowing: false } : s
           )
@@ -468,7 +563,7 @@ export default function CercaAmiciScreen() {
     return (
       <Pressable
         style={styles.strutturaCard}
-        onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item._id })}
+        onPress={() => handlePressStruttura(item, true)}
       >
         <View style={styles.strutturaLeft}>
           {item.images[0] ? (
@@ -790,6 +885,53 @@ export default function CercaAmiciScreen() {
                       </Pressable>
                     );
                   })}
+                </View>
+              </View>
+            )}
+
+            {/* Recent Strutture Searches - Show only when not searching and strutture tab */}
+            {!hasSearched && searchType === 'strutture' && recentStruttureSearches.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Viste di recente</Text>
+                  <Pressable onPress={clearRecentStruttureSearches}>
+                    <Text style={styles.clearText}>Cancella</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.recentStruttureContainer}>
+                  {recentStruttureSearches.map((struttura, index) => (
+                    <Pressable
+                      key={struttura._id || `recent-struttura-${index}`}
+                      style={styles.recentStrutturaCard}
+                      onPress={() => handlePressStruttura(struttura, false)}
+                    >
+                      {struttura.images[0] ? (
+                        <Image
+                          source={{ uri: struttura.images[0] }}
+                          style={styles.recentStrutturaImage}
+                        />
+                      ) : (
+                        <View style={styles.recentStrutturaImagePlaceholder}>
+                          <Ionicons name="business" size={24} color="#2196F3" />
+                        </View>
+                      )}
+                      <View style={styles.recentStrutturaInfo}>
+                        <Text style={styles.recentStrutturaName} numberOfLines={1}>{struttura.name}</Text>
+                        <View style={styles.recentStrutturaLocation}>
+                          <Ionicons name="location" size={10} color="#666" />
+                          <Text style={styles.recentStrutturaLocationText} numberOfLines={1}>
+                            {struttura.location.city}
+                          </Text>
+                        </View>
+                      </View>
+                      {struttura.isFollowing && (
+                        <View style={styles.recentFollowingBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
                 </View>
               </View>
             )}
@@ -1123,6 +1265,69 @@ const styles = StyleSheet.create({
   },
   recentUserSportIcon: {
     fontSize: 12,
+  },
+  recentStruttureContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  recentStrutturaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    width: '47%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  recentStrutturaImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#e0e0e0',
+  },
+  recentStrutturaImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentStrutturaInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  recentStrutturaName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  recentStrutturaLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  recentStrutturaLocationText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  recentFollowingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 2,
   },
   tabSwitcher: {
     flexDirection: 'row',

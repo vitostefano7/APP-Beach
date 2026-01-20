@@ -18,6 +18,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
 import { styles } from "../styles-player/StrutturaDetailScreen.styles";
+import { AVAILABLE_AMENITIES, isCustomAmenity } from "../../owner/utils/ModificaStruttura-utils";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -82,6 +83,8 @@ export default function StrutturaDetailScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showAmenities, setShowAmenities] = useState(false);
+  const [showHours, setShowHours] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -109,6 +112,23 @@ export default function StrutturaDetailScreen() {
       if (res.ok) {
         const data = await res.json();
         console.log("✅ [StrutturaDetail] Data received:", data.name);
+        console.log("🎯 [StrutturaDetail] Amenities:", data.amenities);
+
+        // Normalize openingHours
+        if (data.openingHours && typeof data.openingHours === 'string') {
+          try {
+            const parsed = JSON.parse(data.openingHours);
+            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+              data.openingHours = parsed;
+            }
+          } catch (e) {
+            // If it's "[object Object]", set to undefined to avoid displaying it
+            if (data.openingHours === '[object Object]') {
+              data.openingHours = undefined;
+            }
+          }
+        }
+
         setStruttura(data);
       } else {
         console.error("❌ [StrutturaDetail] Error:", res.status);
@@ -345,53 +365,57 @@ export default function StrutturaDetailScreen() {
             <Text style={styles.name}>{struttura.name}</Text>
           </View>
 
-          {/* Location */}
-          <Pressable style={styles.locationContainer} onPress={handleOpenMaps}>
-            <Ionicons name="location" size={20} color="#666" />
-            <View style={styles.locationTextContainer}>
-              <Text style={styles.locationText}>{struttura.location.address}</Text>
-              <Text style={styles.cityText}>{struttura.location.city}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#2196F3" />
+          {/* View Fields Button */}
+          <Pressable 
+            style={styles.viewFieldsButton}
+            onPress={() => navigation.navigate("DettaglioStruttura", { struttura })}
+          >
+            <Ionicons name="grid" size={18} color="#2196F3" />
+            <Text style={styles.viewFieldsButtonText}>Vedi Info e Prenota</Text>
+            <Ionicons name="arrow-forward" size={16} color="#2196F3" />
           </Pressable>
 
-          {/* Description */}
-          {struttura.description && (
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.description}>{struttura.description}</Text>
-            </View>
-          )}
 
           {/* Stats */}
           <View style={styles.statsContainer}>
-            {struttura.followersCount !== undefined && (
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{struttura.followersCount}</Text>
-                <Text style={styles.statLabel}>Follower</Text>
-              </View>
-            )}
-            {struttura.fieldsCount !== undefined && (
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{struttura.fieldsCount}</Text>
-                <Text style={styles.statLabel}>Campi</Text>
-              </View>
-            )}
+            <Pressable 
+              style={styles.statItem}
+              onPress={() => navigation.navigate("StrutturaFollowers", { 
+                strutturaId,
+                strutturaName: struttura.name,
+                type: "followers"
+              })}
+            >
+              <Text style={styles.statValue}>{struttura.followersCount || 0}</Text>
+              <Text style={styles.statLabel}>Follower</Text>
+            </Pressable>
+            <Pressable 
+              style={styles.statItem}
+              onPress={() => navigation.navigate("StrutturaFollowers", { 
+                strutturaId,
+                strutturaName: struttura.name,
+                type: "following"
+              })}
+            >
+              <Text style={styles.statValue}>{struttura.fieldsCount || 0}</Text>
+              <Text style={styles.statLabel}>Following</Text>
+            </Pressable>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
             {struttura.isFollowing ? (
               <Pressable
-                style={[styles.followButton, styles.followingButton]}
+                style={[styles.followButton, styles.unfollowButton]}
                 onPress={handleUnfollow}
                 disabled={followingInProgress}
               >
                 {followingInProgress ? (
-                  <ActivityIndicator size="small" color="#4CAF50" />
+                  <ActivityIndicator size="small" color="#F44336" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                    <Text style={[styles.followButtonText, styles.followingButtonText]}>Segui già</Text>
+                    <Ionicons name="remove-circle" size={20} color="#F44336" />
+                    <Text style={[styles.followButtonText, styles.unfollowButtonText]}>Smetti di seguire</Text>
                   </>
                 )}
               </Pressable>
@@ -417,91 +441,6 @@ export default function StrutturaDetailScreen() {
               <Text style={styles.chatButtonText}>Chat</Text>
             </Pressable>
           </View>
-
-          {/* Contact Info */}
-          {(struttura.phoneNumber || struttura.email || struttura.website) && (
-            <View style={styles.contactSection}>
-              <Text style={styles.sectionTitle}>Contatti</Text>
-              {struttura.phoneNumber && (
-                <Pressable style={styles.contactItem} onPress={handleCall}>
-                  <Ionicons name="call" size={20} color="#2196F3" />
-                  <Text style={styles.contactText}>{struttura.phoneNumber}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                </Pressable>
-              )}
-              {struttura.email && (
-                <Pressable style={styles.contactItem} onPress={handleEmail}>
-                  <Ionicons name="mail" size={20} color="#2196F3" />
-                  <Text style={styles.contactText}>{struttura.email}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                </Pressable>
-              )}
-              {struttura.website && (
-                <Pressable style={styles.contactItem} onPress={handleWebsite}>
-                  <Ionicons name="globe" size={20} color="#2196F3" />
-                  <Text style={styles.contactText}>{struttura.website}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          {/* Amenities */}
-          {struttura.amenities && struttura.amenities.length > 0 && (
-            <View style={styles.amenitiesSection}>
-              <Text style={styles.sectionTitle}>Servizi</Text>
-              <View style={styles.amenitiesContainer}>
-                {struttura.amenities.map((amenity, index) => (
-                  <View key={index} style={styles.amenityChip}>
-                    <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                    <Text style={styles.amenityText}>{amenity}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Opening Hours */}
-          {struttura.openingHours && (
-            <View style={styles.hoursSection}>
-              <View style={styles.hoursHeader}>
-                <Ionicons name="time" size={20} color="#2196F3" />
-                <Text style={styles.sectionTitle}>Orari</Text>
-              </View>
-              {typeof struttura.openingHours === 'string' ? (
-                <Text style={styles.hoursText}>{struttura.openingHours}</Text>
-              ) : (
-                <View style={styles.hoursContainer}>
-                  {Object.entries(struttura.openingHours).map(([day, hours]) => {
-                    const dayNames: { [key: string]: string } = {
-                      monday: 'Lunedì',
-                      tuesday: 'Martedì',
-                      wednesday: 'Mercoledì',
-                      thursday: 'Giovedì',
-                      friday: 'Venerdì',
-                      saturday: 'Sabato',
-                      sunday: 'Domenica',
-                    };
-                    
-                    if (!hours) return null;
-                    
-                    return (
-                      <View key={day} style={styles.hourRow}>
-                        <Text style={styles.dayLabel}>{dayNames[day]}:</Text>
-                        <Text style={styles.hourText}>
-                          {typeof hours === 'string' 
-                            ? hours 
-                            : hours.closed 
-                              ? 'Chiuso' 
-                              : hours.slots?.join(', ') || 'N/A'}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         {/* Posts Section */}
@@ -562,6 +501,8 @@ export default function StrutturaDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );

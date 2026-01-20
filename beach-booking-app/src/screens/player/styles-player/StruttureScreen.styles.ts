@@ -63,6 +63,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    marginHorizontal: -16,
   },
 
   favoritesSectionHeader: {

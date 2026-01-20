@@ -436,6 +436,16 @@ export default function FieldDetailsScreen() {
               />
             </Pressable>
           )}
+
+          {/* Bottone community */}
+          {token && (
+            <Pressable
+              style={styles.communityButton}
+              onPress={() => navigation.navigate("StrutturaDetail", { strutturaId: struttura._id })}
+            >
+              <Ionicons name="people" size={24} color="white" />
+            </Pressable>
+          )}
         </View>
 
         {/* INFO SECTION */}

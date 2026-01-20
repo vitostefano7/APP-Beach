@@ -6,6 +6,7 @@ import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenota
 import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";
 import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
+import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 const Stack = createNativeStackNavigator();
 
 export default function StruttureStack({ isTabMode = false }: { isTabMode?: boolean }) {
@@ -28,6 +29,7 @@ export default function StruttureStack({ isTabMode = false }: { isTabMode?: bool
         component={ConfermaPrenotazioneScreen} 
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="StrutturaDetail" component={StrutturaDetailScreen} />
       <Stack.Screen name="LeMiePrenotazioni" component={LeMiePrenotazioniScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }}/>
       <Stack.Screen

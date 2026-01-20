@@ -24,6 +24,7 @@ import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailSc
 import OwnerNotificheScreen from "../screens/owner/dashboard/OwnerNotificheScreen";
 import EarningsStatsScreen from "../screens/owner/EarningsStatsScreen";
 import OwnerStatisticsScreen from "../screens/owner/OwnerStatisticsScreen";
+import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen/FieldDetailsScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -72,6 +73,10 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="Strutture"
         component={OwnerStruttureScreen}
+      />
+      <Stack.Screen
+        name="Campi"
+        component={FieldDetailsScreen}
       />
       <Stack.Screen
         name="CreaStruttura"
@@ -151,7 +156,7 @@ export default function OwnerRootStack() {
         component={UserProfileScreen} 
       />
       <Stack.Screen 
-        name="StrutturaDetailScreen"
+        name="StrutturaDetail"
         component={StrutturaDetailScreen} 
       />
     </Stack.Navigator>

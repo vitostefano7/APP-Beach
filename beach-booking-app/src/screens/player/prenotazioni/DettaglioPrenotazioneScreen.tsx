@@ -340,7 +340,8 @@ export default function DettaglioPrenotazioneScreen() {
       isWithin24Hours: isWithin24Hours(),
       bookingStatus: booking.status
     });
-    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
+    // TEMPORANEO: sempre true per testare
+    return true; // isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
   };
 
   const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
@@ -1383,14 +1384,14 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                 <FadeInView delay={300} style={styles.sportCampoColumn}>
                   <View style={styles.sportCampoBox}>
                     <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                      {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'volley') ? (
+                      {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley' || booking.campo.sport === 'volley') ? (
                         <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />
                       ) : (
                         <Ionicons 
                           name={
                             booking.campo.sport === 'calcio' ? 'football' :
                             booking.campo.sport === 'tennis' ? 'tennisball' :
-                            booking.campo.sport === 'basket' ? 'basketball' : 'fitness'
+                            booking.campo.sport === 'basket' ? 'basketball' : 'barbell'
                           } 
                           size={18} 
                           color="#FF9800" 
@@ -1400,7 +1401,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                     <View style={styles.fieldInfoContent}>
                       <Text style={styles.fieldInfoLabel}>SPORT</Text>
                       <Text style={styles.fieldInfoValue}>
-                        {booking.campo.sport === 'beach_volley' 
+                        {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley')
                           ? 'Beach Volley' 
                           : booking.campo.sport.charAt(0).toUpperCase() + booking.campo.sport.slice(1)}
                       </Text>
@@ -1515,6 +1516,22 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
         )}
 
         {renderMatchSection()}
+
+        {/* Cancel Booking Button - Only for organizer */}
+        {canCancelBooking() && (
+          <AnimatedCard delay={2000} style={styles.cancelCard}>
+            <AnimatedButton style={styles.cancelButton} onPress={handleCancelBooking} disabled={cancellingBooking}>
+              {cancellingBooking ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={20} color="white" />
+                  <Text style={styles.cancelButtonText}>Annulla Prenotazione</Text>
+                </>
+              )}
+            </AnimatedButton>
+          </AnimatedCard>
+        )}
       </ScrollView>
 
       {/* Invite Modal */}

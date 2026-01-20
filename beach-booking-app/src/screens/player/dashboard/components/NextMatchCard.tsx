@@ -114,10 +114,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
           matchInProgress && { backgroundColor: 'rgba(76, 175, 80, 0.95)' }
         ]}>
           {matchInProgress ? (
-            <>
-              <Ionicons name="play-circle" size={14} color="white" style={{ marginRight: 4 }} />
-              <Text style={styles.matchTimeText}>IN CORSO</Text>
-            </>
+            <Text style={styles.matchTimeText}>IN CORSO</Text>
           ) : (
             <Text style={styles.matchTimeText}>
               {displayDate === "Oggi" || displayDate === "Domani"

@@ -3,6 +3,7 @@ import {
   createPost,
   getPosts,
   getPost,
+  getMyPosts,
   deletePost,
   likePost,
   addComment,
@@ -13,6 +14,7 @@ import {
   followStruttura,
   unfollowStruttura,
   getStrutturaFollowers,
+  getStrutturaFollowing,
   getStrutturaFollowStatus,
   getStrutturaDetails,
   getStrutturaPosts,
@@ -50,6 +52,9 @@ const upload = multer({
 
 // GET /community/posts - Recupera tutti i post
 router.get("/posts", requireAuth, getPosts);
+
+// GET /community/my-posts - Recupera i post dell'utente loggato
+router.get("/my-posts", requireAuth, getMyPosts);
 
 // GET /community/posts/:postId - Recupera singolo post
 router.get("/posts/:postId", requireAuth, getPost);
@@ -110,6 +115,9 @@ router.delete("/strutture/:strutturaId/follow", requireAuth, unfollowStruttura);
 
 // GET /community/strutture/:strutturaId/followers - Ottieni follower struttura
 router.get("/strutture/:strutturaId/followers", requireAuth, getStrutturaFollowers);
+
+// GET /community/strutture/:strutturaId/following - Ottieni following struttura
+router.get("/strutture/:strutturaId/following", requireAuth, getStrutturaFollowing);
 
 // GET /community/strutture/:strutturaId/follow-status - Verifica se segui la struttura
 router.get("/strutture/:strutturaId/follow-status", requireAuth, getStrutturaFollowStatus);

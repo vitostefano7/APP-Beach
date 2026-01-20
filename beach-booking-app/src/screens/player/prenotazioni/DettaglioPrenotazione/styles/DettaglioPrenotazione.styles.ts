@@ -2494,6 +2494,28 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "500",
   },
+
+  // ==================== CANCEL BOOKING ====================
+  cancelCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
 });
 
 export default styles;

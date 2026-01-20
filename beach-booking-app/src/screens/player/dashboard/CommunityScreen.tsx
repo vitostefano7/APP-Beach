@@ -80,7 +80,7 @@ export default function CommunityScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'events' | 'rankings'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'events' | 'rankings' | 'search'>('feed');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -460,15 +460,6 @@ export default function CommunityScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <Text style={styles.headerTitle}>Community</Text>
-        <Pressable
-          style={styles.searchButton}
-          onPress={() => {
-            navigation.navigate('CercaAmici');
-          }}
-        >
-          <Ionicons name="search" size={24} color="#2196F3" />
-        </Pressable>
       </View>
 
       <View style={styles.tabBar}>
@@ -500,17 +491,20 @@ export default function CommunityScreen() {
           </Text>
         </Pressable>
 
+
         <Pressable
-          style={({pressed}) => [styles.tab, activeTab === 'rankings' && styles.tabActive, pressed && styles.tabPressed]}
-          onPress={() => setActiveTab('rankings')}
+          style={({pressed}) => [styles.tab, activeTab === 'search' && styles.tabActive, pressed && styles.tabPressed]}
+          onPress={() => {
+            navigation.navigate('CercaAmici');
+          }}
         >
           <Ionicons
-            name="trophy-outline"
+            name="search"
             size={20}
-            color={activeTab === 'rankings' ? 'white' : '#999'}
+            color={activeTab === 'search' ? 'white' : '#999'}
           />
-          <Text style={[styles.tabText, activeTab === 'rankings' && styles.tabTextActive]}>
-            Classifiche
+          <Text style={[styles.tabText, activeTab === 'search' && styles.tabTextActive]}>
+            Cerca
           </Text>
         </Pressable>
       </View>

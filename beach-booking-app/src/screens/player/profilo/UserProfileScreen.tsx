@@ -40,6 +40,7 @@ type UserProfileData = {
     followingCount?: number;
   };
   friendshipStatus?: 'none' | 'pending' | 'accepted'; // Il TUO status verso di loro
+  friendshipId?: string; // ID della friendship per unfollow
   isPrivate?: boolean;
   message?: string;
   hasIncomingRequest?: boolean; // Hanno una richiesta pending verso di te
@@ -73,6 +74,7 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<UserProfileData | null>(null);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [unfollowing, setUnfollowing] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [visibleComments, setVisibleComments] = useState<Record<string, boolean>>({});
@@ -111,6 +113,23 @@ export default function UserProfileScreen() {
         console.log("👤 [UserProfile] User:", json.user?.name, json.user?._id);
         console.log("🤝 [UserProfile] friendshipStatus:", json.friendshipStatus);
         console.log("🔒 [UserProfile] isPrivate:", json.isPrivate);
+        
+        // Se siamo amici, ottieni l'ID della friendship per poter unfollow
+        if (json.friendshipStatus === 'accepted') {
+          try {
+            const statusRes = await fetch(`${API_URL}/friends/status/${userId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              json.friendshipId = statusData.friendshipId;
+              console.log("🤝 [UserProfile] friendshipId:", json.friendshipId);
+            }
+          } catch (error) {
+            console.error("❌ [UserProfile] Error getting friendship ID:", error);
+          }
+        }
+        
         setData(json);
       } else {
         console.error("❌ [UserProfile] Error loading user profile:", res.status);
@@ -210,6 +229,49 @@ export default function UserProfileScreen() {
     } finally {
       setSendingRequest(false);
       console.log("🏁 [UserProfile] Request completed");
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!token || !userId || !data?.friendshipId || unfollowing) {
+      console.log("⚠️ [UserProfile] Cannot unfollow:", { hasToken: !!token, userId, friendshipId: data?.friendshipId, unfollowing });
+      return;
+    }
+
+    console.log("📤 [UserProfile] Unfollowing user:", userId, "friendshipId:", data.friendshipId);
+
+    try {
+      setUnfollowing(true);
+      const res = await fetch(`${API_URL}/friends/request/${data.friendshipId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("📡 [UserProfile] Unfollow response status:", res.status);
+
+      if (res.ok) {
+        console.log("✅ [UserProfile] Unfollow SUCCESS");
+        
+        setData((prev) => {
+          if (!prev) return prev;
+          const updated = {
+            ...prev,
+            friendshipStatus: 'none',
+            friendshipId: undefined,
+          };
+          console.log("✅ [UserProfile] Data updated, new friendshipStatus:", updated.friendshipStatus);
+          return updated;
+        });
+      } else {
+        const errorData = await res.json();
+        console.error("❌ [UserProfile] Unfollow FAILED:", errorData);
+        console.error("❌ [UserProfile] Status:", res.status);
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception unfollowing:", error);
+    } finally {
+      setUnfollowing(false);
+      console.log("🏁 [UserProfile] Unfollow completed");
     }
   };
 
@@ -517,10 +579,20 @@ export default function UserProfileScreen() {
               </Pressable>
             )}
             {isFriend && (
-              <View style={{ backgroundColor: '#E8F5E9', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                <Text style={{ color: '#4CAF50', fontWeight: 'bold', marginLeft: 5 }}>Segui già</Text>
-              </View>
+              <Pressable
+                style={{ backgroundColor: unfollowing ? '#ccc' : '#FF5722', borderRadius: 25, paddingHorizontal: 25, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                onPress={handleUnfollow}
+                disabled={unfollowing}
+              >
+                {unfollowing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="person-remove" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>Smetti di seguire</Text>
+                  </>
+                )}
+              </Pressable>
             )}
             {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public') && (
               <Pressable style={{ backgroundColor: '#2196F3', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }} onPress={handleChat}>

@@ -107,6 +107,27 @@ const getDuration = (startTime?: string, endTime?: string) => {
   }
 };
 
+const getTimeLeft = (item: MatchItem) => {
+  const matchStart = new Date(`${item.booking?.date}T${item.booking?.startTime}:00`);
+  const registrationDeadline = new Date(matchStart.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+  const now = new Date();
+  const diff = registrationDeadline.getTime() - now.getTime();
+  if (diff <= 0) return { text: 'Chiuso', color: '#ff0000' };
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const totalHours = hours + minutes / 60;
+  let color = '#666';
+  if (totalHours <= 3) {
+    color = '#ff0000'; // red
+  } else {
+    color = '#ffcc00'; // yellow
+  }
+  let text;
+  if (hours > 0) text = `${hours}h ${minutes}m`;
+  else text = `${minutes}m`;
+  return { text, color };
+};
+
 export default function CercaPartitaScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
@@ -654,14 +675,17 @@ export default function CercaPartitaScreen() {
           <Text style={styles.infoText}>
             {item.booking?.startTime || "--:--"}
           </Text>
-          {item.booking?.endTime && (
-            <>
-              <Ionicons name="hourglass-outline" size={16} color="#666" style={styles.infoIcon} />
-              <Text style={styles.infoText}>
-                {getDuration(item.booking.startTime, item.booking.endTime)}
-              </Text>
-            </>
-          )}
+          {item.booking?.startTime && (() => {
+            const { text, color } = getTimeLeft(item);
+            return (
+              <>
+                <Ionicons name="timer-outline" size={16} color={color} style={styles.infoIcon} />
+                <Text style={styles.infoText}>
+                  {text}
+                </Text>
+              </>
+            );
+          })()}
         </View>
         <View style={styles.infoRow}>
           <SportIcon sport={item.booking?.campo?.sport || 'beach_volley'} size={16} color="#666" />

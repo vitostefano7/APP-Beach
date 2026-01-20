@@ -438,7 +438,7 @@ export const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     right: 12,
-    backgroundColor: "rgba(255, 152, 0, 0.95)",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 14,
@@ -453,7 +453,7 @@ export const styles = StyleSheet.create({
   matchTimeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "blue",
+    color: "black",
     letterSpacing: 0.4,
   },
   matchInfo: {

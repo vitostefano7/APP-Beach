@@ -324,7 +324,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             <View style={styles.sportBadge}>
-              {(item.campo.sport === "beach_volley" || item.campo.sport === "volley") ? (
+              {(item.campo.sport === "beach_volley" || item.campo.sport === "beach volley" || item.campo.sport === "volley") ? (
                 <FontAwesome5 name="volleyball-ball" size={12} color="#2196F3" />
               ) : (
                 <Ionicons 
@@ -338,7 +338,11 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   color="#2196F3" 
                 />
               )}
-              <Text style={styles.sportText}>{item.campo.sport}</Text>
+              <Text style={styles.sportText}>
+                {(item.campo.sport === 'beach_volley' || item.campo.sport === 'beach volley')
+                  ? 'Beach Volley' 
+                  : item.campo.sport.charAt(0).toUpperCase() + item.campo.sport.slice(1)}
+              </Text>
             </View>
           </View>
         </View>
@@ -360,12 +364,12 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           />
           <InfoRow
             icon="location-outline"
-            text={item.campo.struttura.location.city}
+            text={`${item.campo.struttura.location.address}, ${item.campo.struttura.location.city}` || 'Indirizzo non disponibile'}
           />
         </View>
 
         {/* TEAMS */}
-        {item.matchSummary && item.players && item.players.length > 0 && (
+        {item.players && item.players.length > 0 && (
           <View style={styles.teamsContainer}>
             <View style={styles.teamsRow}>
               <TeamSection players={item.players} team="A" />
