@@ -17,6 +17,15 @@ export interface IUser extends Document {
     type: "Point";
     coordinates: [number, number];
   };
+  // 💰 Guadagni owner (storico transazioni)
+  earnings?: Array<{
+    type: "booking" | "refund" | "cancellation_penalty";
+    amount: number;
+    booking?: mongoose.Types.ObjectId;
+    description?: string;
+    createdAt: Date;
+  }>;
+  totalEarnings?: number; // Bilancio totale calcolato
 }
 
 const UserSchema = new Schema<IUser>(
@@ -99,6 +108,29 @@ const UserSchema = new Schema<IUser>(
         type: [Number],
         index: "2dsphere",
       },
+    },
+
+    // 💰 GUADAGNI OWNER
+    earnings: {
+      type: [
+        {
+          type: {
+            type: String,
+            enum: ["booking", "refund", "cancellation_penalty"],
+            required: true,
+          },
+          amount: { type: Number, required: true },
+          booking: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
+          description: { type: String },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    totalEarnings: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

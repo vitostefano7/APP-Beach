@@ -4,6 +4,7 @@ import Booking from "../models/Booking";
 import Campo from "../models/Campo";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
+import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
 import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
@@ -202,6 +203,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
     const endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
+    // 💰 Calcola guadagno owner (100% del prezzo della prenotazione)
+    const ownerEarnings = priceResult.totalPrice;
+
     // ✅ Crea booking
     const booking = await Booking.create({
       bookingType,
@@ -217,6 +221,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       unitPrice: priceResult.unitPrice,
       numberOfPeople: typeof numberOfPeople !== "undefined" ? Number(numberOfPeople) : undefined,
       status: "confirmed",
+      ownerEarnings,
     });
 
     // 🔒 Disabilita lo slot nel calendario
@@ -228,7 +233,37 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     console.log("✅ Prenotazione creata:", booking._id);
 
-    // 📢 Crea notifica per il proprietario della struttura
+    // � Registra guadagno per l'owner
+    try {
+      const strutturaOwnerId = struttura.owner;
+      if (strutturaOwnerId) {
+        const ownerUser = await User.findById(strutturaOwnerId);
+        if (ownerUser) {
+          // Aggiungi transazione ai guadagni
+          if (!ownerUser.earnings) {
+            ownerUser.earnings = [];
+          }
+          ownerUser.earnings.push({
+            type: "booking",
+            amount: ownerEarnings,
+            booking: new mongoose.Types.ObjectId(booking._id),
+            description: `Guadagno da prenotazione ${campo.name} - ${date} ${startTime}`,
+            createdAt: new Date(),
+          } as any);
+          
+          // Aggiorna bilancio totale
+          ownerUser.totalEarnings = (ownerUser.totalEarnings || 0) + ownerEarnings;
+          
+          await ownerUser.save();
+          console.log(`💰 Guadagno di €${ownerEarnings} registrato per owner ${strutturaOwnerId}`);
+        }
+      }
+    } catch (earningsError) {
+      console.error("❌ Errore registrazione guadagni owner:", earningsError);
+      // Non fallire la prenotazione per un errore di guadagni
+    }
+
+    // �📢 Crea notifica per il proprietario della struttura
     try {
       console.log("🔍 [NOTIFICA] Controllo proprietario struttura...");
       const strutturaOwner = struttura.owner;
@@ -238,12 +273,15 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         console.log("📝 [NOTIFICA] Creazione notifica per:", strutturaOwner);
         console.log("📝 [NOTIFICA] Dettagli: campo =", campo.name, ", date =", date, ", startTime =", startTime);
         
+        const userDoc = await User.findById(user.id).select('name');
+        const userName = userDoc?.name || 'Utente';
+        
         await createNotification(
           new mongoose.Types.ObjectId(strutturaOwner),
           new mongoose.Types.ObjectId(user.id),
           "new_booking",
           "Nuova prenotazione confermata",
-          `Prenotazione per ${campo.name} il ${date} alle ${startTime}`,
+          `Prenotazione per ${campo.name} presso ${struttura.name} da ${userName} {userSurname} il ${date} alle ${startTime}`,
           new mongoose.Types.ObjectId(booking._id),
           "Booking"
         );
@@ -661,7 +699,66 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
 
     // Aggiorna status
     (booking as any).status = "cancelled";
+    (booking as any).cancelledBy = "user";
     await booking.save();
+
+    // 💰 Gestione rimborsi fittizi e deduzione guadagni owner
+    try {
+      const bookingPopulated = await Booking.findById(id).populate('campo');
+      if (bookingPopulated) {
+        const campo = await Campo.findById((bookingPopulated as any).campo._id).populate('struttura');
+        if (campo) {
+          const struttura = (campo as any).struttura;
+          const ownerId = struttura?.owner;
+          const ownerEarnings = (booking as any).ownerEarnings || 0;
+
+          if (ownerId && ownerEarnings > 0) {
+            const ownerUser = await User.findById(ownerId);
+            if (ownerUser) {
+              // Aggiungi transazione di rimborso (negativa)
+              if (!ownerUser.earnings) {
+                ownerUser.earnings = [];
+              }
+              ownerUser.earnings.push({
+                type: "refund",
+                amount: -ownerEarnings,
+                booking: new mongoose.Types.ObjectId(id),
+                description: `Rimborso per cancellazione prenotazione ${campo.name} - ${(booking as any).date} ${(booking as any).startTime}`,
+                createdAt: new Date(),
+              } as any);
+
+              // Aggiorna bilancio totale
+              ownerUser.totalEarnings = (ownerUser.totalEarnings || 0) - ownerEarnings;
+
+              await ownerUser.save();
+              console.log(`💰 Rimborso di €${ownerEarnings} dedotto dall'owner ${ownerId}`);
+
+              // Marca tutti i pagamenti come "refunded"
+              (booking as any).payments.forEach((payment: any) => {
+                if (payment.status === "completed") {
+                  payment.status = "refunded";
+                }
+              });
+              await booking.save();
+
+              // Invia notifica rimborso all'owner
+              await createNotification(
+                new mongoose.Types.ObjectId(ownerId),
+                new mongoose.Types.ObjectId(req.user!.id),
+                "booking_cancelled",
+                "Prenotazione cancellata - Rimborso elaborato",
+                `Prenotazione ${campo.name} cancellata. Rimborso di €${ownerEarnings} dedotto dai tuoi guadagni.`,
+                new mongoose.Types.ObjectId(booking._id),
+                "Booking"
+              );
+            }
+          }
+        }
+      }
+    } catch (refundError) {
+      console.error("❌ Errore gestione rimborso:", refundError);
+      // Non fallire la cancellazione per un errore di rimborso
+    }
 
     // 🔓 Riabilita lo slot nel calendario
     const calendarDay = await CampoCalendarDay.findOne({
@@ -873,6 +970,7 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
 
     // Verifica che l'owner sia proprietario della struttura
     const struttura = (booking as any).campo?.struttura;
+    const campo = (booking as any).campo;
     if (!struttura || struttura.owner.toString() !== ownerId) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
@@ -883,7 +981,47 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
 
     // Aggiorna status
     (booking as any).status = "cancelled";
+    (booking as any).cancelledBy = "owner";
     await booking.save();
+
+    // 💰 Gestione rimborsi fittizi e deduzione guadagni owner
+    try {
+      const ownerEarnings = (booking as any).ownerEarnings || 0;
+
+      if (ownerEarnings > 0) {
+        const ownerUser = await User.findById(ownerId);
+        if (ownerUser) {
+          // Aggiungi transazione di rimborso (negativa)
+          if (!ownerUser.earnings) {
+            ownerUser.earnings = [];
+          }
+          ownerUser.earnings.push({
+            type: "refund",
+            amount: -ownerEarnings,
+            booking: new mongoose.Types.ObjectId(id),
+            description: `Rimborso per cancellazione prenotazione ${campo.name} - ${(booking as any).date} ${(booking as any).startTime}`,
+            createdAt: new Date(),
+          } as any);
+
+          // Aggiorna bilancio totale
+          ownerUser.totalEarnings = (ownerUser.totalEarnings || 0) - ownerEarnings;
+
+          await ownerUser.save();
+          console.log(`💰 Rimborso di €${ownerEarnings} dedotto dall'owner ${ownerId}`);
+
+          // Marca tutti i pagamenti come "refunded"
+          (booking as any).payments.forEach((payment: any) => {
+            if (payment.status === "completed") {
+              payment.status = "refunded";
+            }
+          });
+          await booking.save();
+        }
+      }
+    } catch (refundError) {
+      console.error("❌ Errore gestione rimborso:", refundError);
+      // Non fallire la cancellazione per un errore di rimborso
+    }
 
     // 🔓 Riabilita lo slot nel calendario
     const calendarDay = await CampoCalendarDay.findOne({
@@ -925,6 +1063,33 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
     }
 
     console.log("✅ Prenotazione cancellata dall'owner");
+
+    // 📢 Invia notifica agli utenti coinvolti
+    try {
+      const match = await Match.findOne({ booking: booking._id }).populate('players.user', 'name surname');
+      if (match) {
+        const ownerEarnings = (booking as any).ownerEarnings || 0;
+        const confirmedPlayersCount = match.players.filter((p: any) => p.status === 'confirmed').length;
+        const refundPerPlayer = confirmedPlayersCount > 0 ? ownerEarnings / confirmedPlayersCount : 0;
+        
+        for (const player of match.players) {
+          if (player.status === 'confirmed') {
+            await createNotification(
+              new mongoose.Types.ObjectId(player.user._id),
+              new mongoose.Types.ObjectId(ownerId),
+              "booking_cancelled",
+              "Prenotazione cancellata - Rimborso",
+              `La prenotazione per ${campo.name} presso ${struttura.name} il ${(booking as any).date} alle ${(booking as any).startTime} è stata cancellata. Riceverai un rimborso di €${refundPerPlayer.toFixed(2)}.`,
+              new mongoose.Types.ObjectId(booking._id),
+              "Booking"
+            );
+          }
+        }
+      }
+    } catch (notificationError) {
+      console.error("❌ Errore invio notifica cancellazione:", notificationError);
+    }
+
     res.json({ message: "Prenotazione cancellata con successo" });
   } catch (err) {
     console.error("❌ cancelOwnerBooking error:", err);

@@ -1357,3 +1357,72 @@ export const getUserFriends = async (
     res.status(500).json({ message: "Errore server" });
   }
 };
+
+/**
+ * GET /users/me/earnings
+ * Ottiene lo storico guadagni dell'owner
+ */
+export const getMyEarnings = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    const user = req.user!;
+
+    // Solo gli owner possono vedere i guadagni
+    if (user.role !== "owner") {
+      return res.status(403).json({ 
+        message: "Solo i proprietari possono visualizzare i guadagni" 
+      });
+    }
+
+    const ownerUser = await User.findById(userId).select('earnings totalEarnings');
+
+    if (!ownerUser) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Popola i dettagli delle prenotazioni per lo storico
+    const earningsWithDetails = await Promise.all(
+      ((ownerUser as any).earnings || []).map(async (earning: any) => {
+        if (earning.booking) {
+          const booking = await Booking.findById(earning.booking)
+            .populate('campo', 'name')
+            .populate('user', 'name surname username')
+            .select('date startTime endTime price status');
+          
+          return {
+            ...earning.toObject(),
+            bookingDetails: booking ? {
+              date: booking.date,
+              startTime: booking.startTime,
+              endTime: booking.endTime,
+              price: booking.price,
+              status: booking.status,
+              campo: (booking as any).campo?.name,
+              user: (booking as any).user ? {
+                name: (booking as any).user.name,
+                surname: (booking as any).user.surname,
+                username: (booking as any).user.username,
+              } : null,
+            } : null,
+          };
+        }
+        return earning.toObject();
+      })
+    );
+
+    console.log(`💰 Guadagni owner ${userId}: €${(ownerUser as any).totalEarnings || 0}`);
+
+    res.json({
+      totalEarnings: (ownerUser as any).totalEarnings || 0,
+      earnings: earningsWithDetails.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    });
+  } catch (err) {
+    console.error("❌ getMyEarnings error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};

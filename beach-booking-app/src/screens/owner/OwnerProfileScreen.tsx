@@ -10,6 +10,7 @@ import {
   useColorScheme,
   AppState,
   AppStateStatus,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback, memo } from "react";
@@ -30,6 +31,17 @@ interface OwnerStats {
   strutture: number;
   prenotazioni: number;
   incassoTotale: number;
+}
+
+interface OwnerEarnings {
+  totalEarnings: number;
+  earnings: Array<{
+    type: string;
+    amount: number;
+    description?: string;
+    createdAt: string;
+    bookingDetails?: any;
+  }>;
 }
 
 interface User {
@@ -66,6 +78,11 @@ const useOwnerProfile = (token: string | null) => {
     prenotazioni: 0,
     incassoTotale: 0,
   });
+  const [earnings, setEarnings] = useState<OwnerEarnings>({
+    totalEarnings: 0,
+    earnings: [],
+  });
+  const [strutture, setStrutture] = useState<Struttura[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +97,7 @@ const useOwnerProfile = (token: string | null) => {
       setLoading(true);
       setError(null);
 
-      const [profileRes, struttureRes, bookingsRes] = await Promise.all([
+      const [profileRes, struttureRes, bookingsRes, earningsRes] = await Promise.all([
         fetch(`${API_URL}/users/me/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -88,6 +105,9 @@ const useOwnerProfile = (token: string | null) => {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_URL}/bookings/owner`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/users/me/earnings`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -101,15 +121,18 @@ const useOwnerProfile = (token: string | null) => {
       const profileData: ProfileResponse = await profileRes.json();
       
       // Carica statistiche
-      const strutture: Struttura[] = struttureRes.ok ? await struttureRes.json() : [];
+      const struttureData: Struttura[] = struttureRes.ok ? await struttureRes.json() : [];
       const bookings: Booking[] = bookingsRes.ok ? await bookingsRes.json() : [];
+      const earningsData: OwnerEarnings = earningsRes.ok ? await earningsRes.json() : { totalEarnings: 0, earnings: [] };
       
       const incasso = bookings
         .filter((b) => b.status === "confirmed")
         .reduce((sum, b) => sum + (b.price || 0), 0);
 
+      setStrutture(struttureData);
+      setEarnings(earningsData);
       setStats({
-        strutture: strutture.length,
+        strutture: struttureData.length,
         prenotazioni: bookings.length,
         incassoTotale: incasso,
       });
@@ -124,7 +147,7 @@ const useOwnerProfile = (token: string | null) => {
     }
   }, [token]);
 
-  return { stats, loading, error, fetchProfile, setError };
+  return { stats, earnings, strutture, loading, error, fetchProfile, setError };
 };
 
 const useAvatarManager = (
@@ -482,11 +505,9 @@ const SkeletonLoader = () => (
 export default function OwnerProfileScreen() {
   const { token, logout, user, updateUser } = useContext(AuthContext);
   const navigation = useNavigation<any>();
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === 'dark';
   const { showAlert, AlertComponent } = useCustomAlert();
 
-  const { stats, loading, error, fetchProfile, setError } = useOwnerProfile(token);
+  const { stats, earnings, strutture, loading, error, fetchProfile, setError } = useOwnerProfile(token);
   const {
     avatarUrl,
     avatarError,
@@ -641,15 +662,15 @@ export default function OwnerProfileScreen() {
 
   if (error && !refreshing) {
     return (
-      <SafeAreaView style={[styles.safe, isDarkMode && styles.darkSafe]}>
+      <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <View style={[styles.errorIcon, isDarkMode && styles.darkErrorIcon]}>
+          <View style={styles.errorIcon}>
             <Ionicons name="alert-circle" size={64} color="#E53935" />
           </View>
-          <Text style={[styles.errorTitle, isDarkMode && styles.darkText]}>{error}</Text>
+          <Text style={styles.errorTitle}>{error}</Text>
           
           {isOffline && (
-            <Text style={[styles.offlineText, isDarkMode && styles.darkOfflineText]}>
+            <Text style={styles.offlineText}>
               ⚠️ Sei offline
             </Text>
           )}
@@ -672,7 +693,7 @@ export default function OwnerProfileScreen() {
   const shouldShowAvatar = finalAvatarUrl && !avatarError;
 
   return (
-    <SafeAreaView style={[styles.safe, isDarkMode && styles.darkSafe]}>
+    <SafeAreaView style={styles.safe}>
       <AlertComponent />
       <AvatarPicker
         visible={showAvatarPicker}
@@ -702,192 +723,178 @@ export default function OwnerProfileScreen() {
           </View>
         )}
 
-        {/* HEADER CON AVATAR */}
-        <View style={[styles.header, isDarkMode && styles.darkHeader]}>
-          <View style={styles.headerContent}>
-            <Pressable
-              style={styles.avatar}
-              onPress={changeAvatar}
-              accessibilityLabel="Cambia immagine profilo"
-              accessibilityHint="Premi per cambiare la tua foto profilo"
-              accessibilityRole="button"
-              disabled={uploading}
+        {/* HEADER BLU CON GRADIENTE */}
+        <View style={styles.blueHeader}>
+          {/* BOTTONE IMPOSTAZIONI */}
+          <View style={styles.headerTopRow}>
+            <View style={{ width: 40 }} />
+            <Text style={styles.headerTitle}>Profilo Owner</Text>
+            <Pressable 
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate("Settings")}
             >
-              {uploading ? (
-                <View style={[styles.avatarPlaceholder, styles.uploadingAvatar]}>
-                  <ActivityIndicator size="small" color="white" />
-                </View>
-              ) : (
-                <Avatar
-                  key={`avatar-${avatarRefreshKey}`}
-                  name={user?.name}
-                  surname={user?.surname}
-                  avatarUrl={avatarUrl}
-                  size="large"
-                />
-              )}
-              <View style={styles.ownerBadge}>
-                <Ionicons name="business" size={14} color="white" />
-              </View>
+              <Ionicons name="settings-outline" size={22} color="white" />
             </Pressable>
+          </View>
 
-            <View style={styles.headerInfo}>
-              <Text style={[styles.name, isDarkMode && styles.darkText]}>{user?.name}</Text>
-              <Text style={[styles.email, isDarkMode && styles.darkSubtext]}>{user?.email}</Text>
-              <View style={styles.roleBadge}>
-                <Ionicons name="star" size={12} color="#FFB800" />
-                <Text style={styles.roleText}>Proprietario</Text>
+          {/* AVATAR CENTRATO */}
+          <Pressable
+            style={styles.avatarContainer}
+            onPress={changeAvatar}
+            accessibilityLabel="Cambia immagine profilo"
+            accessibilityRole="button"
+            disabled={uploading}
+          >
+            {shouldShowAvatar ? (
+              <Image
+                key={avatarRefreshKey}
+                source={{ uri: finalAvatarUrl }}
+                style={[styles.largeAvatar, uploading && styles.uploadingAvatar]}
+                onError={handleAvatarError}
+              />
+            ) : (
+              <View style={[styles.largeAvatarPlaceholder, uploading && styles.uploadingAvatar]}>
+                <Ionicons name="business" size={50} color="white" />
               </View>
+            )}
+          </Pressable>
+
+          <Text style={styles.ownerName}>{user?.name || "Caricamento..."}</Text>
+          <Text style={styles.companyName}>Sunset Beach Club S.r.l.</Text>
+        </View>
+
+        {/* ACTION CARDS BLU */}
+        <View style={styles.actionCardsContainer}>
+          <Pressable 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate("Messages")}
+          >
+            <View style={styles.messageBadge}>
+              <Text style={styles.badgeText}>3</Text>
+            </View>
+            <Ionicons name="chatbubbles" size={32} color="white" />
+            <Text style={styles.actionCardTitle}>Messaggi</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate("OwnerStrutture")}
+          >
+            <Ionicons name="business" size={32} color="white" />
+            <Text style={styles.actionCardTitle}>Strutture</Text>
+            <Text style={styles.actionCardSubtitle}>{stats.strutture} Centri</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate("Reviews")}
+          >
+            <Ionicons name="star" size={32} color="white" />
+            <Text style={styles.actionCardTitle}>Recensioni</Text>
+            <Text style={styles.actionCardSubtitle}>4.8 ⭐</Text>
+          </Pressable>
+        </View>
+
+        {/* STATISTICHE BUSINESS */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Statistiche Business</Text>
+          
+          {/* Card Guadagni Cliccabile */}
+          <Pressable 
+            style={styles.earningsCard}
+            onPress={() => navigation.navigate("EarningsStats", { earnings: earnings })}
+          >
+            <View style={styles.earningsHeader}>
+              <View style={styles.earningsIconContainer}>
+                <Ionicons name="wallet" size={32} color="#2196F3" />
+              </View>
+              <View style={styles.earningsContent}>
+                <Text style={styles.earningsLabel}>Guadagni Totali</Text>
+                <Text style={styles.earningsValue}>€{earnings.totalEarnings.toFixed(2)}</Text>
+                <Text style={styles.earningsSubtext}>
+                  {earnings.earnings.length} transazioni
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+            </View>
+          </Pressable>
+
+          {/* Altre Statistiche */}
+          <View style={styles.businessStatsCard}>
+            <View style={styles.businessStat}>
+              <Ionicons name="calendar" size={28} color="#4CAF50" />
+              <Text style={styles.businessStatLabel}>Prenotazioni:</Text>
+              <Text style={styles.businessStatValue}>{stats.prenotazioni}</Text>
+            </View>
+            <View style={styles.businessStat}>
+              <Ionicons name="trending-up" size={28} color="#FF9800" />
+              <Text style={styles.businessStatLabel}>Tasso Occupazione:</Text>
+              <Text style={styles.businessStatValue}>88%</Text>
+            </View>
+            <View style={styles.businessStat}>
+              <Ionicons name="people" size={28} color="#9C27B0" />
+              <Text style={styles.businessStatLabel}>Nuovi Clienti:</Text>
+              <Text style={styles.businessStatValue}>45</Text>
             </View>
           </View>
         </View>
 
-        {/* STATISTICHE */}
-        <View style={styles.statsContainer}>
-          <StatCard
-            icon="business-outline"
-            iconColor="#2196F3"
-            iconBg={isDarkMode ? "#1E3A5F" : "#E3F2FD"}
-            label="Strutture"
-            value={stats.strutture.toString()}
-          />
-          <StatCard
-            icon="calendar-outline"
-            iconColor="#4CAF50"
-            iconBg={isDarkMode ? "#1B3A2E" : "#E8F5E9"}
-            label="Prenotazioni"
-            value={stats.prenotazioni.toString()}
-          />
-          <StatCard
-            icon="cash-outline"
-            iconColor="#FF9800"
-            iconBg={isDarkMode ? "#3E2E1B" : "#FFF3E0"}
-            label="Incasso"
-            value={`€${stats.incassoTotale.toLocaleString('it-IT')}`}
-          />
-        </View>
-
-        {/* GESTIONE RAPIDA */}
+        {/* LE TUE STRUTTURE */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Gestione rapida</Text>
+          <Text style={styles.sectionTitle}>Le Tue Strutture</Text>
           
-          <MenuCard
-            icon="business"
-            iconColor="#2196F3"
-            iconBg={isDarkMode ? "#1E3A5F" : "#E3F2FD"}
-            title="Le mie strutture"
-            subtitle={stats.strutture === 1 ? "1 struttura attiva" : `${stats.strutture} strutture attive`}
-            onPress={() => navigation.navigate("OwnerStrutture")}
-          />
-
-          <MenuCard
-            icon="calendar"
-            iconColor="#4CAF50"
-            iconBg={isDarkMode ? "#1B3A2E" : "#E8F5E9"}
-            title="Prenotazioni ricevute"
-            subtitle={stats.prenotazioni === 1 ? "1 prenotazione" : `${stats.prenotazioni} prenotazioni`}
-            onPress={() => navigation.navigate("OwnerBookings")}
-          />
-
-          <MenuCard
-            icon="cash"
-            iconColor="#FF9800"
-            iconBg={isDarkMode ? "#3E2E1B" : "#FFF3E0"}
-            title="Pagamenti e incassi"
-            subtitle="Gestisci i tuoi pagamenti"
-            onPress={() => navigation.navigate("OwnerPayments")}
-          />
-        </View>
-
-        {/* ACCOUNT */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Account</Text>
-          
-          <InfoCard
-            icon="person-outline"
-            label="Nome completo"
-            value={user?.name || ""}
-          />
-          
-          <InfoCard
-            icon="mail-outline"
-            label="Email"
-            value={user?.email || ""}
-          />
-          
-          <InfoCard
-            icon="calendar-outline"
-            label="Membro dal"
-            value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString("it-IT", {
-              month: "long",
-              year: "numeric",
-            }) : ""}
-          />
-        </View>
-
-        {/* IMPOSTAZIONI */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Impostazioni</Text>
-          
-          <MenuCard
-            icon="settings-outline"
-            iconColor={isDarkMode ? "#aaa" : "#666"}
-            iconBg={isDarkMode ? "#2a2a2a" : "#f5f5f5"}
-            title="Preferenze"
-            subtitle="Gestisci le tue preferenze"
-            onPress={() => navigation.navigate("Preferences")}
-          />
-
-          <MenuCard
-            icon="notifications-outline"
-            iconColor={isDarkMode ? "#aaa" : "#666"}
-            iconBg={isDarkMode ? "#2a2a2a" : "#f5f5f5"}
-            title="Notifiche"
-            subtitle="Gestisci notifiche e avvisi"
-            onPress={() => navigation.navigate("Notifications")}
-          />
-
-          <MenuCard
-            icon="shield-checkmark-outline"
-            iconColor={isDarkMode ? "#aaa" : "#666"}
-            iconBg={isDarkMode ? "#2a2a2a" : "#f5f5f5"}
-            title="Privacy e sicurezza"
-            subtitle="Gestisci password e privacy"
-            onPress={() => navigation.navigate("Privacy")}
-          />
-
-          <MenuCard
-            icon="help-circle-outline"
-            iconColor={isDarkMode ? "#aaa" : "#666"}
-            iconBg={isDarkMode ? "#2a2a2a" : "#f5f5f5"}
-            title="Supporto"
-            subtitle="FAQ e contatti"
-            onPress={() => navigation.navigate("Support")}
-          />
-
-          <MenuCard
-            icon="trash-outline"
-            iconColor="#E53935"
-            iconBg={isDarkMode ? "#3A1E1E" : "#FFEBEE"}
-            title="Cancella account"
-            subtitle="Elimina definitivamente il tuo account"
-            onPress={handleDeleteAccount}
-          />
+          {strutture.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="business-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyStateText}>Nessuna struttura trovata</Text>
+            </View>
+          ) : (
+            strutture.map((struttura, index) => {
+              const isOpen = struttura.status === 'open' || struttura.isOpen;
+              const mainImage = struttura.images?.[0] || struttura.imageUrl;
+              
+              return (
+                <Pressable 
+                  key={struttura.id || `struttura-${index}`}
+                  style={styles.strutturaCard}
+                  onPress={() => navigation.navigate("StrutturaDetail", { id: struttura.id })}
+                >
+                  <Image
+                    source={{ uri: mainImage || 'https://via.placeholder.com/100x80' }}
+                    style={styles.strutturaImage}
+                  />
+                  <View style={styles.strutturaInfo}>
+                    <Text style={styles.strutturaName}>{struttura.name}</Text>
+                    <Text style={styles.strutturaSubtitle}>
+                      {struttura.address || struttura.city || 'Indirizzo non disponibile'}
+                    </Text>
+                  </View>
+                  <View style={isOpen ? styles.statusBadgeOpen : styles.statusBadgeMaintenance}>
+                    <Ionicons 
+                      name={isOpen ? "checkmark-circle" : "time"} 
+                      size={16} 
+                      color={isOpen ? "#4CAF50" : "#FF9800"} 
+                    />
+                    <Text style={isOpen ? styles.statusTextOpen : styles.statusTextMaintenance}>
+                      {isOpen ? "Aperto" : "Chiuso"}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
         </View>
 
         {/* LOGOUT */}
         <Pressable 
-          style={[styles.logoutButton, isDarkMode && styles.darkLogoutButton]} 
+          style={styles.logoutButton}
           onPress={logout}
           accessibilityLabel="Esci dall'account"
-          accessibilityHint="Premi per uscire dal tuo account"
           accessibilityRole="button"
         >
           <Ionicons name="log-out-outline" size={24} color="#E53935" />
           <Text style={styles.logoutText}>Esci dall'account</Text>
         </Pressable>
-
-        <Text style={[styles.version, isDarkMode && styles.darkSubtext]}>Versione App 2.4.0</Text>
         <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
@@ -898,10 +905,7 @@ export default function OwnerProfileScreen() {
 const styles = StyleSheet.create({
   safe: { 
     flex: 1, 
-    backgroundColor: "#f8f9fa",
-  },
-  darkSafe: {
-    backgroundColor: "#121212",
+    backgroundColor: "#f0f2f5",
   },
 
   center: {
@@ -995,128 +999,175 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // HEADER
-  header: {
-    backgroundColor: "white",
+  // HEADER BLU
+  blueHeader: {
+    backgroundColor: "#2979c1",
     paddingTop: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  darkHeader: {
-    backgroundColor: "#1e1e1e",
-    shadowColor: "#000",
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    alignItems: "center",
   },
 
-  headerContent: {
+  headerTopRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 16,
-  },
-
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    overflow: "hidden",
-    position: "relative",
-  },
-
-  avatarImage: {
     width: "100%",
-    height: "100%",
+    marginBottom: 20,
   },
 
-  avatarPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#2196F3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadingAvatar: {
-    opacity: 0.7,
-  },
-
-  avatarText: { 
-    fontSize: 32, 
-    fontWeight: "800",
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
     color: "white",
   },
 
-  ownerBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#FF9800",
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 30,
+  },
+
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "white",
+  },
+
+  editButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+
+  editButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  avatarContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#1e5a8e",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
     borderColor: "white",
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
-  headerInfo: {
-    flex: 1,
+  largeAvatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
   },
 
-  name: { 
-    fontSize: 22, 
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 4,
-  },
-  darkText: {
-    color: "#ffffff",
-  },
-
-  email: { 
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  darkSubtext: {
-    color: "#aaa",
-  },
-
-  roleBadge: {
-    flexDirection: "row",
+  largeAvatarPlaceholder: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#1e5a8e",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FFF3E0",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
+    justifyContent: "center",
   },
 
-  roleText: {
-    fontSize: 12,
+  uploadingAvatar: {
+    opacity: 0.7,
+  },
+
+  ownerName: {
+    fontSize: 18,
     fontWeight: "700",
-    color: "#FF9800",
+    color: "white",
+    marginBottom: 2,
   },
 
-  // STATISTICHE
-  statsContainer: {
+  companyName: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+
+  // ACTION CARDS
+  actionCardsContainer: {
     flexDirection: "row",
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 10,
   },
 
-  statCard: {
+  actionCard: {
     flex: 1,
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "#3c8fd3",
+    borderRadius: 14,
+    padding: 12,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  messageBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "#E53935",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  badgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  actionCardTitle: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+
+  actionCardSubtitle: {
+    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+
+  // BUSINESS STATS
+  businessStatsCard: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1124,122 +1175,175 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  businessStat: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     marginBottom: 12,
   },
 
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 4,
-  },
-
-  statLabel: {
+  businessStatLabel: {
     fontSize: 12,
     color: "#666",
-    fontWeight: "600",
+    marginLeft: 10,
+    flex: 1,
+  },
+
+  businessStatValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
   },
 
   // SEZIONI
   section: {
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: 20,
   },
 
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-
-  // MENU CARD
-  menuCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  menuLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-
-  menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  menuText: {
-    flex: 1,
-  },
-
-  menuTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
-    marginBottom: 2,
+    marginBottom: 12,
   },
 
-  menuSubtitle: {
+  // EARNINGS CARD
+  earningsCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+
+  earningsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  earningsIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+
+  earningsContent: {
+    flex: 1,
+  },
+
+  earningsLabel: {
     fontSize: 13,
     color: "#666",
-  },
-
-  // INFO CARD
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  infoLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  infoLabel: {
-    fontSize: 14,
-    color: "#666",
+    marginBottom: 4,
     fontWeight: "600",
   },
 
-  infoValue: {
+  earningsValue: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#2196F3",
+    marginBottom: 2,
+  },
+
+  earningsSubtext: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+
+  // STRUTTURE CARD
+  strutturaCard: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  strutturaImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#e0e0e0",
+  },
+
+  strutturaInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  strutturaName: {
     fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
+    marginBottom: 3,
+  },
+
+  strutturaSubtitle: {
+    fontSize: 12,
+    color: "#666",
+  },
+
+  statusBadgeOpen: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  statusTextOpen: {
+    color: "#4CAF50",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  statusBadgeMaintenance: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  statusTextMaintenance: {
+    color: "#FF9800",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // EMPTY STATE
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+    backgroundColor: "white",
+    borderRadius: 14,
+  },
+
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "600",
   },
 
   // LOGOUT
@@ -1256,9 +1360,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E53935",
   },
-  darkLogoutButton: {
-    backgroundColor: "#3A1E1E",
-  },
 
   logoutText: { 
     color: "#E53935", 
@@ -1266,11 +1367,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  version: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 8,
+  darkText: {
+    color: "#1a1a1a",
+  },
+  darkSubtext: {
+    color: "#666",
   },
 });

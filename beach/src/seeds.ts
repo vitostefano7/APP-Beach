@@ -1245,6 +1245,7 @@ async function seed() {
         status: "confirmed",
         bookingType,
         paymentMode,
+        ownerEarnings: totalPrice, // Owner guadagna 100% del prezzo
       });
     }
 
@@ -1282,6 +1283,7 @@ async function seed() {
         status: "confirmed",
         bookingType,
         paymentMode,
+        ownerEarnings: totalPrice, // Owner guadagna 100% del prezzo
       });
     }
 
@@ -1303,6 +1305,37 @@ async function seed() {
     }
 
     console.log(`✅ Disabilitati ${savedBookings.length} slot nel calendario`);
+
+    // 💰 Inizializza mappa guadagni owner (verrà popolata dopo con tutti i booking)
+    const ownerEarningsMap = new Map<string, { total: number, earnings: any[] }>();
+
+    // Calcola guadagni per i booking già salvati
+    for (const booking of savedBookings as any[]) {
+      const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+      if (!campo) continue;
+
+      const struttura = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
+      if (!struttura) continue;
+
+      const ownerId = struttura.owner.toString();
+      const ownerEarnings = booking.ownerEarnings || 0;
+
+      if (!ownerEarningsMap.has(ownerId)) {
+        ownerEarningsMap.set(ownerId, { total: 0, earnings: [] });
+      }
+
+      const ownerData = ownerEarningsMap.get(ownerId)!;
+      ownerData.total += ownerEarnings;
+      ownerData.earnings.push({
+        type: "booking",
+        amount: ownerEarnings,
+        booking: booking._id,
+        description: `Guadagno da prenotazione ${campo.name} - ${booking.date} ${booking.startTime}`,
+        createdAt: new Date(booking.createdAt || booking.date),
+      });
+    }
+
+    console.log(`💰 Calcolati guadagni per ${savedBookings.length} prenotazioni base`);
 
     /* -------- MATCH (vari tipi) -------- */
     const pastBookings = (savedBookings as any[]).filter((b) => {
@@ -1438,7 +1471,7 @@ async function seed() {
     const currentHour = now.getHours();
 
     for (let i = 0; i < 2; i++) {
-      const campo: any = randomElement(campi as any[]);
+      const inProgressCampo: any = randomElement(campi as any[]);
       const creator: any = randomElement(players as any[]);
 
       // Orario: iniziato 30 minuti fa, finisce tra 30 minuti
@@ -1448,8 +1481,8 @@ async function seed() {
 
       const inProgressBooking = await Booking.create({
         user: creator._id,
-        campo: campo._id,
-        struttura: campo.struttura,
+        campo: inProgressCampo._id,
+        struttura: inProgressCampo.struttura,
         date: formatDate(now),
         startTime,
         endTime,
@@ -1458,6 +1491,7 @@ async function seed() {
         status: "confirmed",
         bookingType: "public",
         paymentMode: "split",
+        ownerEarnings: 40, // Owner guadagna 100% del prezzo
       });
 
       const matchPlayers: any[] = [];
@@ -1496,7 +1530,44 @@ async function seed() {
         status: "full",
       });
       matchCounters.inProgress++;
+
+      // 💰 Aggiungi guadagno owner per booking in progress
+      const bookingCampo: any = campi.find((c: any) => c._id.toString() === inProgressBooking.campo.toString());
+      if (bookingCampo) {
+        const bookingStruttura: any = strutture.find((s: any) => s._id.toString() === bookingCampo.struttura.toString());
+        if (bookingStruttura) {
+          const ownerId = bookingStruttura.owner.toString();
+          const ownerEarnings = inProgressBooking.ownerEarnings || 0;
+
+          if (!ownerEarningsMap.has(ownerId)) {
+            ownerEarningsMap.set(ownerId, { total: 0, earnings: [] });
+          }
+
+          const ownerData = ownerEarningsMap.get(ownerId)!;
+          ownerData.total += ownerEarnings;
+          ownerData.earnings.push({
+            type: "booking",
+            amount: ownerEarnings,
+            booking: inProgressBooking._id,
+            description: `Guadagno da prenotazione ${bookingCampo.name} - ${inProgressBooking.date} ${inProgressBooking.startTime}`,
+            createdAt: new Date(),
+          });
+        }
+      }
     }
+
+    // Aggiorna gli owner con i guadagni (inclusi booking in progress)
+    for (const [ownerId, data] of ownerEarningsMap.entries()) {
+      await User.findByIdAndUpdate(ownerId, {
+        $set: {
+          earnings: data.earnings,
+          totalEarnings: data.total,
+        },
+      });
+      console.log(`   💰 Owner ${ownerId}: €${data.total} da ${data.earnings.length} prenotazioni`);
+    }
+
+    console.log(`✅ Guadagni totali assegnati a ${ownerEarningsMap.size} owner`);
 
     // 4. MATCH FUTURI APERTI (open) - 5 match con stati misti
     for (let i = 0; i < Math.min(5, futureBookings.length); i++) {

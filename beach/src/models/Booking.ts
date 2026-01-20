@@ -38,7 +38,7 @@ const bookingSchema = new mongoose.Schema(
           user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
           amount: { type: Number, required: true },
           method: { type: String, required: false },
-          status: { type: String, enum: ["pending", "completed", "failed"], default: "completed" },
+          status: { type: String, enum: ["pending", "completed", "failed", "refunded"], default: "completed" },
           createdAt: { type: Date, default: Date.now },
         },
       ],
@@ -56,6 +56,12 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       enum: ["full", "split"],
       required: true,
+    },
+
+    // 💰 Guadagno dell'owner per questa prenotazione
+    ownerEarnings: {
+      type: Number,
+      default: 0,
     },
 
     status: {

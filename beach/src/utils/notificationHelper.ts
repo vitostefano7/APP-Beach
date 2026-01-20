@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import Notification, { INotification } from "../models/Notification";
 
-type NotificationType = "new_follower" | "follow_back" | "match_invite" | "match_start" | "match_result" | "new_booking" | "match_join";
+type NotificationType = "new_follower" | "follow_back" | "match_invite" | "match_start" | "match_result" | "new_booking" | "match_join" | "booking_cancelled";
 
 export async function createNotification(
   recipient: Types.ObjectId,

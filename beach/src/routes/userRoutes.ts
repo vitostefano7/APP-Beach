@@ -22,6 +22,7 @@ import {
   getPerformanceStats,
   getUserPosts,
   getUserFriends,
+  getMyEarnings,
 } from "../controllers/profileController";
 
 import { uploadAvatar as uploadMiddleware } from "../middleware/uploadProfiloImages";
@@ -36,6 +37,11 @@ router.get("/me/played-with", requireAuth, getPlayedWith);
 router.get("/me/frequented-venues", requireAuth, getFrequentedVenues);
 router.get("/me/stats", requireAuth, getUserStats);
 router.get("/me/performance-stats", requireAuth, getPerformanceStats);
+
+/**
+ * EARNINGS (solo per owner)
+ */
+router.get("/me/earnings", requireAuth, getMyEarnings);
 
 /**
  * USER BASE

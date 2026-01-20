@@ -278,6 +278,15 @@ export default function DettaglioPrenotazioneScreen() {
     }
   };
 
+  const isWithin24Hours = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    const diffMs = matchStartTime.getTime() - now.getTime();
+    const hoursDiff = diffMs / (1000 * 60 * 60);
+    return hoursDiff <= 24 && hoursDiff > 0;
+  };
+
   const isRegistrationOpen = () => {
     if (!booking) return false;
     const now = new Date();
@@ -321,16 +330,17 @@ export default function DettaglioPrenotazioneScreen() {
     // Solo il creatore della prenotazione può cancellarla
     const bookingUserId = booking.match?.createdBy?._id;
     const isBookingCreator = bookingUserId === getUserId(user);
-    // Solo se la partita non è ancora iniziata
+    // Solo se la partita non è ancora iniziata e mancano meno di 24 ore
     console.log('canCancelBooking check:', {
       isBookingCreator,
       bookingUserId,
       userId: getUserId(user),
       isMatchInProgress: isMatchInProgress(),
       isMatchPassed: isMatchPassed(),
+      isWithin24Hours: isWithin24Hours(),
       bookingStatus: booking.status
     });
-    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && booking.status !== "cancelled";
+    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
   };
 
   const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
@@ -349,9 +359,15 @@ export default function DettaglioPrenotazioneScreen() {
   const handleCancelBooking = async () => {
     if (!booking) return;
 
+    // Calcola l'importo del rimborso da mostrare
+    const ownerEarnings = booking.price || 0;
+    const maxPlayers = booking.match?.maxPlayers || 4;
+    const confirmedPlayers = booking.match?.players?.filter((p: any) => p.status === "confirmed").length || 1;
+    const refundPerPlayer = ownerEarnings / confirmedPlayers;
+
     showCustomAlert(
       "Annulla Prenotazione",
-      "Sei sicuro di voler annullare questa prenotazione? Questa azione non può essere annullata.",
+      `Sei sicuro di voler annullare questa prenotazione?\n\nRiceverai un rimborso fittizio di €${refundPerPlayer.toFixed(2)}.\n\nQuesta azione non può essere annullata.`,
       [
         { text: "No", style: "cancel" },
         {
@@ -372,9 +388,13 @@ export default function DettaglioPrenotazioneScreen() {
                 throw new Error(error.message || "Errore durante la cancellazione");
               }
 
-              showCustomAlert("Prenotazione Annullata", "La prenotazione è stata annullata con successo.", [
-                { text: "OK", onPress: () => navigation.goBack() }
-              ]);
+              showCustomAlert(
+                "Prenotazione Annullata", 
+                `La prenotazione è stata annullata con successo.\n\nRimborso: €${refundPerPlayer.toFixed(2)}`, 
+                [
+                  { text: "OK", onPress: () => navigation.goBack() }
+                ]
+              );
             } catch (error: any) {
               showCustomAlert("Errore", error.message || "Impossibile annullare la prenotazione");
             } finally {

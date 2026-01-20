@@ -22,6 +22,7 @@ import OwnerCercaAmiciScreen from "../screens/owner/OwnerCercaAmiciScreen";
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 import OwnerNotificheScreen from "../screens/owner/dashboard/OwnerNotificheScreen";
+import EarningsStatsScreen from "../screens/owner/EarningsStatsScreen";
 
 
 export type OwnerRootStackParamList = {
@@ -34,6 +35,18 @@ export type OwnerRootStackParamList = {
   ModificaCampo: { campoId: string };
   OwnerCercaAmiciScreen: undefined;
   OwnerNotifiche: undefined;
+  EarningsStats: {
+    earnings: {
+      totalEarnings: number;
+      earnings: Array<{
+        type: string;
+        amount: number;
+        description: string;
+        createdAt: string;
+        booking?: any;
+      }>;
+    };
+  };
 };
 
 const Stack = createNativeStackNavigator<OwnerRootStackParamList>();
@@ -61,6 +74,10 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="AggiungiCampo"
         component={AggiungiCampoScreen}
+      />
+      <Stack.Screen
+        name="EarningsStats"
+        component={EarningsStatsScreen}
       />
       <Stack.Screen
         name="ModificaStruttura"
