@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Dimensions,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -68,10 +69,11 @@ export default function StrutturaDashboardScreen() {
   const [campi, setCampi] = useState<Campo[]>([]);
   const [bookingsCount, setBookingsCount] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
 
-  // 🎠 Carosello automatico ogni 3 secondi
+  // 🎠 Carosello automatico ogni 3 secondi (pausa se utente interagisce)
   useEffect(() => {
-    if (!struttura?.images || struttura.images.length <= 1) return;
+    if (!struttura?.images || struttura.images.length <= 1 || isUserInteracting) return;
 
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => 
@@ -80,7 +82,7 @@ export default function StrutturaDashboardScreen() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [struttura?.images]);
+  }, [struttura?.images, isUserInteracting]);
 
   const loadData = useCallback(async () => {
     if (!token) {
@@ -138,6 +140,48 @@ export default function StrutturaDashboardScreen() {
     }
   }, [token, strutturaId]);
 
+  const handleImageSwipe = (direction: 'left' | 'right') => {
+    if (!struttura?.images || struttura.images.length <= 1) return;
+
+    setIsUserInteracting(true);
+    setCurrentImageIndex((prevIndex) => {
+      let newIndex: number;
+
+      if (direction === 'left') {
+        // Swipe a sinistra = immagine successiva
+        newIndex = prevIndex === struttura.images!.length - 1 ? 0 : prevIndex + 1;
+      } else {
+        // Swipe a destra = immagine precedente
+        newIndex = prevIndex === 0 ? struttura.images!.length - 1 : prevIndex - 1;
+      }
+
+      return newIndex;
+    });
+
+    // Riavvia il carosello automatico dopo 5 secondi di inattività
+    setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 5000);
+  };
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      return Math.abs(gestureState.dx) > 10;
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (struttura?.images && struttura.images.length > 1) {
+        if (gestureState.dx > 50) {
+          // Swipe a destra
+          handleImageSwipe('right');
+        } else if (gestureState.dx < -50) {
+          // Swipe a sinistra
+          handleImageSwipe('left');
+        }
+      }
+    },
+  });
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -151,52 +195,6 @@ export default function StrutturaDashboardScreen() {
       };
     }, [loadData])
   );
-
-  const handleDeleteStruttura = async () => {
-    Alert.alert(
-      "Elimina struttura",
-      `Sei sicuro di voler eliminare "${struttura?.name}"?\n\n` +
-      `Verranno eliminati anche tutti i ${campi.length} campi associati.\n\n` +
-      `Questa azione NON può essere annullata.`,
-      [
-        { 
-          text: "Annulla", 
-          style: "cancel",
-        },
-        {
-          text: "Elimina",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/strutture/${strutturaId}`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-
-              if (response.ok) {
-                Alert.alert("Successo", "Struttura eliminata con successo", [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      navigation.reset({
-                        index: 0,
-                        routes: [{ name: "OwnerTabs" }],
-                      });
-                    },
-                  },
-                ]);
-              } else {
-                const error = await response.json();
-                Alert.alert("Errore", error.message || "Impossibile eliminare la struttura");
-              }
-            } catch (error) {
-              Alert.alert("Errore", "Errore di connessione");
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const handleGoToBookings = () => {
     navigation.navigate("OwnerBookings", {
@@ -242,8 +240,11 @@ export default function StrutturaDashboardScreen() {
           <Ionicons name="arrow-back" size={22} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Dashboard</Text>
-        <Pressable onPress={loadData} style={styles.refreshButton}>
-          <Ionicons name="reload" size={20} color="#2196F3" />
+        <Pressable 
+          onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })} 
+          style={styles.settingsButton}
+        >
+          <Ionicons name="settings" size={20} color="#2196F3" />
         </Pressable>
       </View>
 
@@ -256,11 +257,28 @@ export default function StrutturaDashboardScreen() {
           {/* 🎠 CAROSELLO IMMAGINI */}
           {currentImageUri && (
             <View style={styles.imageContainer}>
-              <Image 
-                source={{ uri: currentImageUri }} 
-                style={styles.strutturaImage}
-                resizeMode="cover"
-              />
+              <View {...panResponder.panHandlers} style={styles.imageWrapper}>
+                <Image 
+                  source={{ uri: currentImageUri }} 
+                  style={styles.strutturaImage}
+                  resizeMode="cover"
+                />
+              </View>
+              
+              {/* Indicatori pallini */}
+              {struttura.images && struttura.images.length > 1 && (
+                <View style={styles.imageIndicators}>
+                  {struttura.images.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.indicator,
+                        index === currentImageIndex && styles.indicatorActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
               
               {/* BADGE GESTISCI IMMAGINI */}
               <Pressable
@@ -427,42 +445,6 @@ export default function StrutturaDashboardScreen() {
           )}
         </View>
 
-        {/* AZIONI RAPIDE */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderLeft}>
-            <Ionicons name="flash" size={18} color="#FF9800" />
-            <Text style={styles.sectionTitle}>Azioni rapide</Text>
-          </View>
-
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })}
-          >
-            <View style={styles.actionButtonLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: "#EEF6FF" }]}>
-                <Ionicons name="create" size={16} color="#2196F3" />
-              </View>
-              <Text style={styles.actionButtonText}>Modifica struttura</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#999" />
-          </Pressable>
-
-          <Pressable
-            style={[styles.actionButton, styles.actionButtonDanger]}
-            onPress={handleDeleteStruttura}
-          >
-            <View style={styles.actionButtonLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: "#FFEBEE" }]}>
-                <Ionicons name="trash" size={16} color="#F44336" />
-              </View>
-              <Text style={[styles.actionButtonText, { color: "#F44336" }]}>
-                Elimina struttura
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#F44336" />
-          </Pressable>
-        </View>
-
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -507,6 +489,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   scrollContent: {
     padding: 14,
@@ -536,6 +524,28 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: "#f5f5f5",
+  },
+  imageWrapper: {
+    width: "100%",
+    height: "100%",
+  },
+  imageIndicators: {
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  indicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  indicatorActive: {
+    backgroundColor: "white",
   },
   manageImagesButton: {
     position: "absolute",
@@ -882,46 +892,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     fontSize: 12,
-  },
-
-  // ACTION BUTTONS
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    borderRadius: 18,
-    padding: 12,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  actionButtonDanger: {
-    borderWidth: 1.5,
-    borderColor: "#FFCDD2",
-    backgroundColor: "#FFF8F8",
-  },
-  actionButtonLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
-  actionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
   },
 
   // ERROR

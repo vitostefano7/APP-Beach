@@ -118,6 +118,15 @@ function StrutturaCard({ item }: { item: any }) {
             </Text>
           </View>
 
+          {item.location?.address && (
+            <View style={styles.infoRow}>
+              <Ionicons name="map" size={10} color="#666" />
+              <Text style={styles.infoText} numberOfLines={1}>
+                {item.location.address}
+              </Text>
+            </View>
+          )}
+
           {item.campiCount !== undefined && (
             <View style={styles.infoRow}>
               <Ionicons name="basketball" size={10} color="#666" />
@@ -131,15 +140,6 @@ function StrutturaCard({ item }: { item: any }) {
 
         {/* FOOTER */}
         <View style={styles.cardFooter}>
-          {item.bookingsCount !== undefined && (
-            <View>
-              <Text style={styles.statValue}>
-                {item.bookingsCount || 0}
-              </Text>
-              <Text style={styles.statLabel}>Prenotazioni</Text>
-            </View>
-          )}
-
           <View style={styles.viewDetailsButton}>
             <Text style={styles.viewDetailsText}>Gestisci</Text>
             <Ionicons name="chevron-forward" size={11} color="white" />
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  listContent: { paddingHorizontal: 14, paddingBottom: 14 },
+  listContent: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 14 },
 
   card: {
     backgroundColor: "white",
@@ -356,12 +356,12 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "white",
+    backgroundColor: "#75ec79",
     marginRight: 3,
   },
 
   statusDotInactive: {
-    backgroundColor: "white",
+    backgroundColor: "red",
   },
 
   statusText: {
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
 
   cardFooter: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#f5f5f5",

@@ -317,6 +317,41 @@ export const styles = StyleSheet.create({
     minHeight: 90, 
     textAlignVertical: "top",
   },
+
+  inputWrapper: { position: "relative" },
+  inputDisabled: { backgroundColor: "#f5f5f5", color: "#666" },
+  inputIcon: { position: "absolute", right: 12, top: 12 },
+
+  suggestionsContainer: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    marginTop: 4,
+    maxHeight: 200,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  suggestionText: { flex: 1, fontSize: 13, color: "#333" },
+
+  inputHint: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+    marginTop: 4,
+    marginBottom: 8,
+  },
   
   infoBox: {
     flexDirection: "row",
@@ -745,6 +780,147 @@ export const styles = StyleSheet.create({
   modalAddText: {
     fontSize: 14,
     fontWeight: "700",
+    color: "white",
+  },
+
+  iconSelectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+
+  iconGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+
+  iconOption: {
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+
+  iconOptionSelected: {
+    backgroundColor: "#e3f2fd",
+    borderColor: "#2196F3",
+  },
+
+  confirmModalContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    maxHeight: "50%",
+  },
+
+  // CENTERED MODAL STYLES
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+
+  centeredModalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  centeredModalHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+
+  centeredModalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FFF3E0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    shadowColor: "#FF9800",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  centeredModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+
+  centeredModalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  centeredModalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  centeredModalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+
+  centeredModalCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  centeredModalConfirmButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#F44336",
+    shadowColor: "#F44336",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  centeredModalConfirmText: {
+    fontSize: 16,
+    fontWeight: "600",
     color: "white",
   },
 });
