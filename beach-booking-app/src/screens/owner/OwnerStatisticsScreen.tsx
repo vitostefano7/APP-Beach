@@ -12,7 +12,9 @@ import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { LineChart, BarChart } from "react-native-chart-kit";
+import { BarChart, LineChart } from "react-native-gifted-charts";
+import { Picker } from '@react-native-picker/picker';
+import { Platform } from 'react-native';
 import API_URL from "../../config/api";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -234,51 +236,34 @@ export default function OwnerStatisticsScreen() {
           </ScrollView>
         </View>
 
-        {/* FILTRO UTENTI */}
+        {/* FILTRO UTENTI (DROPDOWN) */}
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>Filtra per Cliente</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
-            <Pressable
-              style={[
-                styles.filterChip,
-                selectedUser === "all" && styles.filterChipActive,
-              ]}
-              onPress={() => setSelectedUser("all")}
+          <View style={styles.pickerModernWrapper}>
+            <Picker
+              selectedValue={selectedUser}
+              onValueChange={(itemValue) => setSelectedUser(itemValue)}
+              style={styles.pickerModern}
+              dropdownIconColor="#2196F3"
+              mode="dropdown"
+              itemStyle={{ fontWeight: '600' }}
             >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  selectedUser === "all" && styles.filterChipTextActive,
-                ]}
-              >
-                Tutti
-              </Text>
-            </Pressable>
-
-            {users.map((user) => (
-              <Pressable
-                key={user._id}
-                style={[
-                  styles.filterChip,
-                  selectedUser === user._id && styles.filterChipActive,
-                ]}
-                onPress={() => setSelectedUser(user._id)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedUser === user._id && styles.filterChipTextActive,
-                  ]}
-                >
-                  {user.name} {user.surname}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+              <Picker.Item label="Tutti" value="all" color="#2196F3" style={{fontWeight:'700'}} />
+                {users.map((user) => {
+                  let label = `${user.name}${user.surname ? ' ' + user.surname : ''}`;
+                  if (label.length > 28) label = label.slice(0, 25) + '...';
+                  return (
+                    <Picker.Item
+                      key={user._id}
+                      label={label}
+                      value={user._id}
+                      color="#1a1a1a"
+                    />
+                  );
+                })}
+            </Picker>
+            <Ionicons name="chevron-down" size={20} color="#2196F3" style={styles.pickerIcon} pointerEvents="none" />
+          </View>
         </View>
 
         {/* STATISTICHE TOTALI */}
@@ -304,29 +289,35 @@ export default function OwnerStatisticsScreen() {
           <Text style={styles.chartSubtitle}>Distribuzione settimanale</Text>
 
           {weeklyStats.data.some((v) => v > 0) ? (
-            <BarChart
-              data={{
-                labels: weeklyStats.labels,
-                datasets: [{ data: weeklyStats.data }],
-              }}
-              width={SCREEN_WIDTH - 32}
-              height={220}
-              chartConfig={{
-                backgroundColor: "#ffffff",
-                backgroundGradientFrom: "#ffffff",
-                backgroundGradientTo: "#ffffff",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                style: { borderRadius: 16 },
-                propsForLabels: {
-                  fontSize: 12,
-                },
-              }}
-              style={styles.chart}
-              fromZero
-              showValuesOnTopOfBars
-            />
+            <View style={styles.giftedChartContainer}>
+              <BarChart
+                data={weeklyStats.data.map((value, index) => ({
+                  value,
+                  label: weeklyStats.labels[index],
+                  frontColor: "#2196F3",
+                  topLabelComponent: () => (
+                    <Text style={{ fontSize: 11, color: "#2196F3", fontWeight: "700" }}>
+                      {value}
+                    </Text>
+                  ),
+                }))}
+                width={SCREEN_WIDTH - 80}
+                height={200}
+                barWidth={32}
+                spacing={18}
+                noOfSections={5}
+                yAxisThickness={0}
+                xAxisThickness={1}
+                xAxisColor="#E0E0E0"
+                yAxisTextStyle={{ color: "#666", fontSize: 11 }}
+                xAxisLabelTextStyle={{ color: "#666", fontSize: 11, fontWeight: "600" }}
+                isAnimated
+                animationDuration={300}
+                showGradient={false}
+                roundedTop
+                hideRules
+              />
+            </View>
           ) : (
             <View style={styles.emptyChart}>
               <Ionicons name="bar-chart-outline" size={48} color="#ccc" />
@@ -341,30 +332,36 @@ export default function OwnerStatisticsScreen() {
           <Text style={styles.chartSubtitle}>Distribuzione nelle 24 ore</Text>
 
           {hourlyStats.some((v) => v > 0) ? (
-            <LineChart
-              data={{
-                labels: ["0", "4", "8", "12", "16", "20", "24"],
-                datasets: [{ data: hourlyStats }],
-              }}
-              width={SCREEN_WIDTH - 32}
-              height={220}
-              chartConfig={{
-                backgroundColor: "#ffffff",
-                backgroundGradientFrom: "#ffffff",
-                backgroundGradientTo: "#ffffff",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                style: { borderRadius: 16 },
-                propsForDots: {
-                  r: "4",
-                  strokeWidth: "2",
-                  stroke: "#4CAF50",
-                },
-              }}
-              bezier
-              style={styles.chart}
-            />
+            <View style={styles.giftedChartContainer}>
+              <LineChart
+                data={hourlyStats.map((value, hour) => ({
+                  value,
+                  label: hour % 4 === 0 ? hour.toString() : "",
+                }))}
+                width={SCREEN_WIDTH - 80}
+                height={200}
+                spacing={14}
+                color="#4CAF50"
+                thickness={3}
+                noOfSections={5}
+                yAxisThickness={0}
+                xAxisThickness={1}
+                xAxisColor="#E0E0E0"
+                yAxisTextStyle={{ color: "#666", fontSize: 11 }}
+                xAxisLabelTextStyle={{ color: "#666", fontSize: 11 }}
+                isAnimated
+                animationDuration={500}
+                curved
+                hideRules
+                dataPointsColor="#4CAF50"
+                dataPointsRadius={4}
+                startFillColor="rgba(76, 175, 80, 0.2)"
+                endFillColor="rgba(76, 175, 80, 0.05)"
+                startOpacity={0.9}
+                endOpacity={0.2}
+                areaChart
+              />
+            </View>
           ) : (
             <View style={styles.emptyChart}>
               <Ionicons name="stats-chart-outline" size={48} color="#ccc" />
@@ -542,6 +539,71 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
+  giftedChartContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginVertical: 8,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  victoryChartContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  pickerModernWrapper: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#B3D7F6',
+    marginTop: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: Platform.OS === 'android' ? 2 : 0,
+    minWidth: 220,
+    width: '100%',
+    maxWidth: 500,
+  },
+  pickerModern: {
+    flex: 1,
+    height: 48,
+    color: '#1a1a1a',
+    fontWeight: '600',
+    backgroundColor: 'transparent',
+    fontSize: 17,
+    paddingLeft: 8,
+    marginLeft: 0,
+    minWidth: 180,
+    maxWidth: 400,
+  },
+  pickerIcon: {
+    marginLeft: -24,
+    marginRight: 4,
+    position: 'absolute',
+    right: 8,
+    top: 12,
+    zIndex: 1,
+    pointerEvents: 'none',
+  },
   emptyChart: {
     backgroundColor: "white",
     borderRadius: 16,

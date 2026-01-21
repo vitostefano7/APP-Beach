@@ -830,7 +830,7 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
           select: "name location",
         },
       })
-      .populate("user", "name surname email")
+      .populate("user", "name surname email avatarUrl")
       .sort({ date: 1, startTime: 1 });
 
     // Rimuove booking non dell'owner

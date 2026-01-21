@@ -9,6 +9,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { Avatar } from "../../../components/Avatar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../../../context/AuthContext";
@@ -39,6 +40,7 @@ interface Booking {
     _id: string;
     name: string;
     surname?: string;
+    avatarUrl?: string;
   };
   date: string;
   startTime: string;
@@ -127,6 +129,27 @@ const formatDate = (dateStr: string) =>
     month: "long",
   });
 
+// Calcola quanto manca alla chiusura della registrazione (1 ora prima dell'inizio)
+const getRegistrationCloseStatus = (booking: Booking): string => {
+  try {
+    const bookingStartDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
+    // Registrazione chiude 1 ora prima dell'inizio
+    const registrationCloseDateTime = new Date(bookingStartDateTime.getTime() - 60 * 60 * 1000);
+    const now = new Date();
+    const diffMs = registrationCloseDateTime.getTime() - now.getTime();
+    if (diffMs <= 0) return "Chiusura registrazione scaduta";
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (diffHours > 0) {
+      return `Chiude tra ${diffHours} ${diffHours === 1 ? 'ora' : 'ore'}`;
+    } else {
+      return `Chiude tra ${diffMinutes} minuti`;
+    }
+  } catch (error) {
+    return "Chiusura registrazione";
+  }
+};
+
 const getTimeStatus = (booking: Booking): string => {
   if (isPastBooking(booking)) return "Conclusa";
   if (isOngoingBooking(booking)) return "In corso";
@@ -174,6 +197,10 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
   const isCancelled = item.status === "cancelled";
   const timeStatus = getTimeStatus(item);
 
+
+  // DEBUG: logga avatarUrl e user
+  console.log('[BookingCard] user:', item.user);
+  console.log('[BookingCard] avatarUrl:', item.user?.avatarUrl);
   return (
     <Pressable
       style={[
@@ -199,10 +226,22 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
                   styles.statusBadge, 
                   isOngoing ? styles.statusBadgeOngoing : (isPast ? styles.statusBadgePast : styles.statusBadgeUpcoming)
                 ]}>
-                  <Text style={[
-                      styles.statusBadgeText, 
-                      isOngoing ? styles.statusBadgeTextOngoing : (isPast ? styles.statusBadgeTextPast : styles.statusBadgeTextUpcoming)
-                  ]}>{timeStatus}</Text>
+                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    {!isPast && !isOngoing && (
+                      <Ionicons name="hourglass-outline" size={13} color="#2196F3" style={{ marginRight: 3 }} />
+                    )}
+                    <Text style={[
+                        styles.statusBadgeText, 
+                        isOngoing ? styles.statusBadgeTextOngoing : (isPast ? styles.statusBadgeTextPast : styles.statusBadgeTextUpcoming)
+                    ]}>{timeStatus}</Text>
+                  </View>
+                  {/* Riga aggiuntiva: quanto manca alla chiusura registrazione */}
+                  {!isPast && !isOngoing && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                      <Ionicons name="lock-closed-outline" size={13} color="#2196F3" style={{ marginRight: 3 }} />
+                      <Text style={{ fontSize: 11, color: '#2196F3', fontWeight: '700' }}>{getRegistrationCloseStatus(item)}</Text>
+                    </View>
+                  )}
                 </View>
             )}
         </View>
@@ -212,10 +251,18 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
 
       <View style={styles.cardContent}>
         <View style={styles.infoRowMain}>
-             <Ionicons name="person" size={18} color="#444" />
-             <Text style={styles.userNameText}>
-                {item.user?.name || "N/A"} {item.user?.surname || ""}
-             </Text>
+          {/* Avatar instead of Ionicons person */}
+          <Avatar
+            name={item.user?.name}
+            surname={item.user?.surname}
+            avatarUrl={item.user?.avatarUrl}
+            size={32}
+            fallbackIcon="person"
+            style={{ marginRight: 2 }}
+          />
+          <Text style={styles.userNameText}>
+            {item.user?.name || "N/A"} {item.user?.surname || ""}
+          </Text>
         </View>
 
         <View style={styles.infoRowSub}>
@@ -232,14 +279,14 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
       </View>
 
       {/* FOOTER */}
-      <View style={styles.cardFooter}>
-         <View style={styles.priceContainer}>
-             <Text style={styles.priceLabel}>Incasso</Text>
-             <Text style={styles.priceValue}>€{item.price}</Text>
+      <View style={styles.cardFooterBlue}>
+         <View style={styles.priceContainerBlue}>
+             <Text style={styles.priceLabelBlue}>Incasso</Text>
+             <Text style={styles.priceValueBlue}>€{item.price}</Text>
          </View>
-         <View style={styles.actionButton}>
-             <Text style={styles.actionButtonText}>Vedi dettagli</Text>
-             <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+         <View style={styles.actionButtonBlue}>
+             <Text style={styles.actionButtonTextBlue}>Vedi dettagli</Text>
+             <Ionicons name="chevron-forward" size={16} color="#fff" />
          </View>
       </View>
     </Pressable>
@@ -270,6 +317,7 @@ export default function OwnerBookingsScreen() {
   const [showStrutturaModal, setShowStrutturaModal] = useState(false);
   const [showCampoModal, setShowCampoModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   /* =========================
      LOAD DATA
@@ -456,84 +504,62 @@ export default function OwnerBookingsScreen() {
           </Pressable>
         </View>
 
-        {/* SEARCH BAR */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Cerca per nome cliente..."
-            placeholderTextColor="#999"
-            value={filterUsername}
-            onChangeText={setFilterUsername}
-          />
-          {filterUsername.length > 0 && (
-            <Pressable onPress={() => setFilterUsername("")} hitSlop={8}>
-              <Ionicons name="close-circle" size={20} color="#999" />
-            </Pressable>
-          )}
-        </View>
 
-        {/* FILTER TABS */}
-        <View style={styles.filterTabsWrapper}>
-          <View style={styles.filterTabsRow}>
-            <Pressable
-              style={[styles.filterTab, filter === "ongoing" && styles.filterTabOngoing]}
-              onPress={() => setFilter("ongoing")}
-            >
-              <Text style={[styles.filterTabText, filter === "ongoing" && styles.filterTabTextActive]}>
-                In corso
-              </Text>
-              <View style={[styles.filterBadge, filter === "ongoing" && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === "ongoing" && styles.filterBadgeTextActive]}>
-                  {getFilteredCount("ongoing")}
-                </Text>
-              </View>
-            </Pressable>
 
-            <Pressable
-              style={[styles.filterTab, filter === "upcoming" && styles.filterTabActive]}
-              onPress={() => setFilter("upcoming")}
-            >
-              <Text style={[styles.filterTabText, filter === "upcoming" && styles.filterTabTextActive]}>
-                Prossime
+        {/* FILTER TABS - ORIZZONTALI E COMPATTI */}
+        <View style={styles.filterTabsWrapperCompact}>
+          <Pressable
+            style={[styles.filterTabCompact, filter === "ongoing" && styles.filterTabOngoing]}
+            onPress={() => setFilter("ongoing")}
+          >
+            <Text style={[styles.filterTabTextCompact, filter === "ongoing" && styles.filterTabTextActive]}>
+              In corso
+            </Text>
+            <View style={[styles.filterBadgeCompact, filter === "ongoing" && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeTextCompact, filter === "ongoing" && styles.filterBadgeTextActive]}>
+                {getFilteredCount("ongoing")}
               </Text>
-              <View style={[styles.filterBadge, filter === "upcoming" && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === "upcoming" && styles.filterBadgeTextActive]}>
-                  {getFilteredCount("upcoming")}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-
-          <View style={styles.filterTabsRow}>
-            <Pressable
-              style={[styles.filterTab, filter === "past" && styles.filterTabActive]}
-              onPress={() => setFilter("past")}
-            >
-              <Text style={[styles.filterTabText, filter === "past" && styles.filterTabTextActive]}>
-                Concluse
+            </View>
+          </Pressable>
+          <Pressable
+            style={[styles.filterTabCompact, filter === "upcoming" && styles.filterTabActive]}
+            onPress={() => setFilter("upcoming")}
+          >
+            <Text style={[styles.filterTabTextCompact, filter === "upcoming" && styles.filterTabTextActive]}>
+              Prossime
+            </Text>
+            <View style={[styles.filterBadgeCompact, filter === "upcoming" && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeTextCompact, filter === "upcoming" && styles.filterBadgeTextActive]}>
+                {getFilteredCount("upcoming")}
               </Text>
-              <View style={[styles.filterBadge, filter === "past" && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === "past" && styles.filterBadgeTextActive]}>
-                  {getFilteredCount("past")}
-                </Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              style={[styles.filterTab, filter === "all" && styles.filterTabActive]}
-              onPress={() => setFilter("all")}
-            >
-              <Text style={[styles.filterTabText, filter === "all" && styles.filterTabTextActive]}>
-                Tutte
+            </View>
+          </Pressable>
+          <Pressable
+            style={[styles.filterTabCompact, filter === "past" && styles.filterTabActive]}
+            onPress={() => setFilter("past")}
+          >
+            <Text style={[styles.filterTabTextCompact, filter === "past" && styles.filterTabTextActive]}>
+              Concluse
+            </Text>
+            <View style={[styles.filterBadgeCompact, filter === "past" && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeTextCompact, filter === "past" && styles.filterBadgeTextActive]}>
+                {getFilteredCount("past")}
               </Text>
-              <View style={[styles.filterBadge, filter === "all" && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === "all" && styles.filterBadgeTextActive]}>
-                  {getFilteredCount("all")}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
+            </View>
+          </Pressable>
+          <Pressable
+            style={[styles.filterTabCompact, filter === "all" && styles.filterTabActive]}
+            onPress={() => setFilter("all")}
+          >
+            <Text style={[styles.filterTabTextCompact, filter === "all" && styles.filterTabTextActive]}>
+              Tutte
+            </Text>
+            <View style={[styles.filterBadgeCompact, filter === "all" && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeTextCompact, filter === "all" && styles.filterBadgeTextActive]}>
+                {getFilteredCount("all")}
+              </Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* ADDITIONAL FILTERS */}
@@ -543,6 +569,27 @@ export default function OwnerBookingsScreen() {
           style={styles.filtersScroll}
           contentContainerStyle={styles.filtersScrollContent}
         >
+          {/* CHIP RICERCA NOME - PRIMO CHIP */}
+          <Pressable
+            style={[styles.filterChip, filterUsername && styles.filterChipActive]}
+            onPress={() => setShowSearchModal(true)}
+          >
+            <Ionicons
+              name="search"
+              size={16}
+              color={filterUsername ? "white" : "#666"}
+            />
+            <Text style={[styles.filterChipText, filterUsername && styles.filterChipTextActive]}>
+              {filterUsername ? filterUsername : "Cliente"}
+            </Text>
+            {filterUsername.length > 0 && (
+              <Pressable onPress={() => setFilterUsername("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={filterUsername ? "white" : "#999"} />
+              </Pressable>
+            )}
+          </Pressable>
+
+          {/* CHIP DATA */}
           <Pressable
             style={[styles.filterChip, filterDate && styles.filterChipActive]}
             onPress={() => setShowCalendarModal(true)}
@@ -603,6 +650,35 @@ export default function OwnerBookingsScreen() {
             </Pressable>
           )}
         </ScrollView>
+
+        {/* MODAL RICERCA NOME CLIENTE - CENTRATO */}
+        <Modal visible={showSearchModal} animationType="fade" transparent>
+          <Pressable style={styles.modalOverlayCenter} onPress={() => setShowSearchModal(false)}>
+            <Pressable style={styles.modalContentCenter} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Cerca per nome cliente</Text>
+                <Pressable onPress={() => setShowSearchModal(false)} hitSlop={10}>
+                  <Ionicons name="close" size={24} color="#999" />
+                </Pressable>
+              </View>
+              <TextInput
+                style={styles.searchInputModal}
+                placeholder="Nome o cognome..."
+                placeholderTextColor="#999"
+                value={filterUsername}
+                onChangeText={setFilterUsername}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => setShowSearchModal(false)}
+              />
+              {filterUsername.length > 0 && (
+                <Pressable onPress={() => setFilterUsername("")} style={{ marginTop: 12, alignSelf: 'flex-end' }}>
+                  <Ionicons name="close-circle" size={22} color="#E53935" />
+                </Pressable>
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {/* LIST */}
         {loading ? (
@@ -833,9 +909,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: "white",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -846,84 +922,74 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "800",
     color: "#1a1a1a",
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#666",
-    marginTop: 2,
+    marginTop: 1,
     fontWeight: "600",
   },
   refreshButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
   },
 
   // SEARCH
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
+  // SEARCH MODAL INPUT
+  searchInputModal: {
+    fontSize: 16,
     color: "#1a1a1a",
     fontWeight: "500",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    backgroundColor: "#fafafa",
   },
 
-  // FILTER TABS
-  filterTabsWrapper: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    gap: 6,
-  },
-  filterTabsRow: {
+  // FILTER TABS - COMPACT ORIZZONTALE
+  filterTabsWrapperCompact: {
     flexDirection: "row",
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 8,
+    marginTop: 10,
+    marginBottom: 6,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  filterTab: {
-    flex: 1,
+  filterTabCompact: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 6,
+    justifyContent: "center",
+    paddingVertical: 4,
     paddingHorizontal: 8,
-    borderRadius: 8,
+    borderRadius: 7,
     backgroundColor: "white",
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: "#E0E0E0",
+    minWidth: 0,
+    marginHorizontal: 0,
+    gap: 4,
   },
   filterTabActive: {
     backgroundColor: "#2196F3",
@@ -933,29 +999,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
     borderColor: "#4CAF50",
   },
-  filterTabText: {
-    fontSize: 13,
+  filterTabTextCompact: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#666",
+    marginRight: 2,
   },
   filterTabTextActive: {
     color: "white",
   },
-  filterBadge: {
+  filterBadgeCompact: {
     backgroundColor: "#F0F0F0",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 3,
+    marginLeft: 2,
   },
   filterBadgeActive: {
     backgroundColor: "rgba(255,255,255,0.3)",
   },
-  filterBadgeText: {
-    fontSize: 12,
+  filterBadgeTextCompact: {
+    fontSize: 11,
     fontWeight: "800",
     color: "#666",
+    paddingHorizontal: 1,
   },
   filterBadgeTextActive: {
     color: "white",
@@ -1030,7 +1100,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 60, // Maggiore spazio per la tab bar
   },
 
   // EMPTY
@@ -1097,14 +1167,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
-    marginBottom: 4,
+    marginBottom: 3,
     textTransform: "capitalize",
   },
   timeText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#666",
   },
@@ -1129,7 +1199,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E3F2FD",
   },
   statusBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
   },
   statusBadgeTextCancelled: {
@@ -1154,66 +1224,73 @@ const styles = StyleSheet.create({
 
   // CARD CONTENT
   cardContent: {
-    padding: 16,
-    paddingTop: 12,
-    gap: 10,
+    padding: 14,
+    paddingTop: 10,
+    gap: 8,
   },
   infoRowMain: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   infoRowSub: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     paddingLeft: 2,
   },
   userNameText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
     flex: 1,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "500",
     color: "#666",
     flex: 1,
   },
 
   // CARD FOOTER
-  cardFooter: {
+  cardFooterBlue: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: "#fafafa",
+    backgroundColor: "#2196F3",
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
-  priceContainer: {
+  priceContainerBlue: {
     gap: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 70,
   },
-  priceLabel: {
-    fontSize: 11,
+  priceLabelBlue: {
+    fontSize: 10,
     fontWeight: "600",
-    color: "#999",
+    color: "#fff",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  priceValue: {
-    fontSize: 22,
+  priceValueBlue: {
+    fontSize: 16,
     fontWeight: "900",
-    color: "#4CAF50",
+    color: "#fff",
+    marginTop: -2,
   },
-  actionButton: {
+  actionButtonBlue: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
-  actionButtonText: {
-    fontSize: 14,
+  actionButtonTextBlue: {
+    fontSize: 12,
     fontWeight: "700",
-    color: "#2196F3",
+    color: "#fff",
   },
 
   // MODALS
@@ -1222,12 +1299,29 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "flex-end",
   },
+  // Centered modal overlay for search
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   modalContent: {
     backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: "70%",
+  },
+  // Centered modal content for search
+  modalContentCenter: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    minWidth: 300,
+    maxWidth: '90%',
+    alignItems: 'stretch',
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: "row",

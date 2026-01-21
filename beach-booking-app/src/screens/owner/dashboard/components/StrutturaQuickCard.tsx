@@ -59,7 +59,7 @@ export default function StrutturaQuickCard({
         <View style={styles.strutturaLocation}>
           <Ionicons name="location" size={12} color="#666" />
           <Text style={styles.strutturaCityText} numberOfLines={1}>
-            {struttura.location.city}
+            {struttura.location.address}
           </Text>
         </View>
 

@@ -399,7 +399,7 @@ export default function OwnerDashboardScreen() {
         />
 
         {/* Prossime Prenotazioni Oggi */}
-        {todayBookings.length > 0 && (
+        {upcomingBookings.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Prenotazioni Oggi</Text>
@@ -471,7 +471,7 @@ export default function OwnerDashboardScreen() {
           )}
         </View>
 
-        {/* Le Tue Strutture */}
+        {/*   rutture */}
         {strutture.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
