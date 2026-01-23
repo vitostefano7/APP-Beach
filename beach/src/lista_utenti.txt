@@ -1,0 +1,3328 @@
+================================================================================
+LISTA COMPLETA UTENTI - BEACH VOLLEY APP
+================================================================================
+
+Data generazione: 23/01/2026, 18:55:11
+Password per tutti gli utenti: 123
+
+================================================================================
+PLAYERS (500 utenti)
+================================================================================
+
+   1. Gabriele Ferrero
+      Email: gabriele0@test.it
+      Username: gabriele880
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   2. Giulia Sala
+      Email: giulia1@test.it
+      Username: giulia8661
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   3. Francesco Bertini
+      Email: francesco2@test.it
+      Username: france3382
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   4. Andrea Rossi
+      Email: andrea3@test.it
+      Username: andrea9403
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   5. Flora Mazza
+      Email: flora4@test.it
+      Username: flora_mazza4
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   6. Carla Caputo
+      Email: carla5@test.it
+      Username: carla_caputo5
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   7. Emanuela Lombardi
+      Email: emanuela6@test.it
+      Username: lombardi_e6
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   8. Samuele Palumbo
+      Email: samuele7@test.it
+      Username: samuel8387
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   9. Bruno Silvestri
+      Email: bruno8@test.it
+      Username: bruno2218
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  10. Tommaso Sorrentino
+      Email: tommaso9@test.it
+      Username: tomm_sorr9
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  11. Claudia Benedetti
+      Email: claudia10@test.it
+      Username: clau_bene10
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  12. Claudia Ruggeri
+      Email: claudia11@test.it
+      Username: claudia_ruggeri
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  13. Giulio Ragusa
+      Email: giulio12@test.it
+      Username: giulio412
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  14. Dino Giuliani
+      Email: dino13@test.it
+      Username: dino_giuliani13
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  15. Salvatore Conte
+      Email: salvatore14@test.it
+      Username: salv_cont14
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  16. Mirko Rossi
+      Email: mirko15@test.it
+      Username: rossi_m15
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  17. Cristina Milani
+      Email: cristina16@test.it
+      Username: milani_c16
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  18. Gianluca Cavalli
+      Email: gianluca17@test.it
+      Username: gian_cava17
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  19. Nicola Santini
+      Email: nicola18@test.it
+      Username: nicola_santini18
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  20. Emanuele Damico
+      Email: emanuele19@test.it
+      Username: damico_e19
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  21. Gina Ferraro
+      Email: gina20@test.it
+      Username: ferraro_g20
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  22. Mara Santini
+      Email: mara21@test.it
+      Username: santini_m21
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  23. Nicoletta Pellegrino
+      Email: nicoletta22@test.it
+      Username: nicoletta6722
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  24. Nicoletta Neri
+      Email: nicoletta23@test.it
+      Username: nico_neri23
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  25. Giacomo DAngelo
+      Email: giacomo24@test.it
+      Username: giacomo2624
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  26. Mara Grasso
+      Email: mara25@test.it
+      Username: mara_grasso25
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  27. Greta Mancini
+      Email: greta26@test.it
+      Username: mancini_g26
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  28. Marianna Sorrentino
+      Email: marianna27@test.it
+      Username: sorrentino_m27
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  29. Elena Fontana
+      Email: elena28@test.it
+      Username: elena20228
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  30. Dario Bianchi
+      Email: dario29@test.it
+      Username: dario3329
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  31. Leonardo Napoli
+      Email: leonardo30@test.it
+      Username: leonardo5730
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  32. Giovanni Vitale
+      Email: giovanni31@test.it
+      Username: giovanni4931
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  33. Omar Giordano
+      Email: omar32@test.it
+      Username: omar57132
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  34. Gianluca Villa
+      Email: gianluca33@test.it
+      Username: villa_g33
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  35. Patrizia Rizzi
+      Email: patrizia34@test.it
+      Username: patr_rizz34
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  36. Paola Pirlo
+      Email: paola35@test.it
+      Username: paola18035
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  37. Mirko Ferretti
+      Email: mirko36@test.it
+      Username: mirko4936
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  38. Federica Moreno
+      Email: federica37@test.it
+      Username: fede_more37
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  39. Barbara Ferretti
+      Email: barbara38@test.it
+      Username: barbara_ferretti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  40. Dino Esposito
+      Email: dino39@test.it
+      Username: dino9039
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  41. Alessandro Lombardo
+      Email: alessandro40@test.it
+      Username: alessandro2640
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  42. Silvia Rizzo
+      Email: silvia41@test.it
+      Username: rizzo_s41
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  43. Paola Pirlo
+      Email: paola42@test.it
+      Username: paola4642
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  44. Greta Piras
+      Email: greta43@test.it
+      Username: greta_piras43
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  45. Rosa Sorrentino
+      Email: rosa44@test.it
+      Username: rosa_sorrentino
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  46. Diego Grasso
+      Email: diego45@test.it
+      Username: diego8145
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  47. Greta Cipriani
+      Email: greta46@test.it
+      Username: greta93446
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  48. Omar Bianco
+      Email: omar47@test.it
+      Username: omar9347
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  49. Alessia Grimaldi
+      Email: alessia48@test.it
+      Username: alessia_grimaldi
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  50. Dario Ragusa
+      Email: dario49@test.it
+      Username: dario5149
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  51. Claudio DAngelo
+      Email: claudio50@test.it
+      Username: claudio_dangelo
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  52. Gabriele Rossetti
+      Email: gabriele51@test.it
+      Username: rossetti_g51
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  53. Eleonora Villa
+      Email: eleonora52@test.it
+      Username: eleonora7852
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  54. Paola Mariani
+      Email: paola53@test.it
+      Username: paola5453
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  55. Manuel Sorrentino
+      Email: manuel54@test.it
+      Username: manuel6654
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  56. Noemi Conte
+      Email: noemi55@test.it
+      Username: noemi9755
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  57. Elia Longo
+      Email: elia56@test.it
+      Username: elia_longo56
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  58. Giulio Amore
+      Email: giulio57@test.it
+      Username: giulio63557
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  59. Laura Neri
+      Email: laura58@test.it
+      Username: laura57358
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  60. Serena Benedetti
+      Email: serena59@test.it
+      Username: serena_benedetti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  61. Matteo Rinaldi
+      Email: matteo60@test.it
+      Username: matteo12560
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  62. Giulia Giuliani
+      Email: giulia61@test.it
+      Username: giuliani_g61
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  63. Mario Piras
+      Email: mario62@test.it
+      Username: piras_m62
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  64. Simone Silvestri
+      Email: simone63@test.it
+      Username: simo_silv63
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  65. Mauro Montanari
+      Email: mauro64@test.it
+      Username: mauro4564
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  66. Renzo Fontana
+      Email: renzo65@test.it
+      Username: renzo5665
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  67. Giovanni Moretti
+      Email: giovanni66@test.it
+      Username: giovanni4766
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  68. Gina Amato
+      Email: gina67@test.it
+      Username: amato_g67
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  69. Mirko Esposito
+      Email: mirko68@test.it
+      Username: mirko_esposito68
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  70. Filippo Fabbri
+      Email: filippo69@test.it
+      Username: filippo_fabbri69
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  71. Mirco Orsini
+      Email: mirco70@test.it
+      Username: orsini_m70
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  72. Samuel Ferreira
+      Email: samuel71@test.it
+      Username: samuel61071
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  73. Alessandro Martino
+      Email: alessandro72@test.it
+      Username: alessandro3872
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  74. Riccardo Villa
+      Email: riccardo73@test.it
+      Username: villa_r73
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  75. Paola Santini
+      Email: paola74@test.it
+      Username: paola_santini74
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  76. Roberta Santoro
+      Email: roberta75@test.it
+      Username: roberta3875
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  77. Stefano Bernardi
+      Email: stefano76@test.it
+      Username: stefano_bernardi
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  78. Sabrina Cavalli
+      Email: sabrina77@test.it
+      Username: sabrina_cavalli
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  79. Raffaele Messina
+      Email: raffaele78@test.it
+      Username: raff_mess78
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  80. Elia Bianco
+      Email: elia79@test.it
+      Username: elia83979
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  81. Eleonora Conti
+      Email: eleonora80@test.it
+      Username: eleono63180
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  82. Aldo Ferrari
+      Email: aldo81@test.it
+      Username: aldo4481
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  83. Nicoletta Rossini
+      Email: nicoletta82@test.it
+      Username: nicoletta_rossini
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  84. Veronica Moreno
+      Email: veronica83@test.it
+      Username: moreno_v83
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  85. Rosa Farina
+      Email: rosa84@test.it
+      Username: rosa60984
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  86. Claudia Costa
+      Email: claudia85@test.it
+      Username: claudi27185
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  87. Sandro DeSantis
+      Email: sandro86@test.it
+      Username: desantis_s86
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  88. Ivana Bruno
+      Email: ivana87@test.it
+      Username: ivana72187
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  89. Francesco Rizzi
+      Email: francesco88@test.it
+      Username: france46488
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  90. Stefano Vitale
+      Email: stefano89@test.it
+      Username: stef_vita89
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  91. Giada Cattani
+      Email: giada90@test.it
+      Username: giada_cattani90
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  92. Salvatore Vitale
+      Email: salvatore91@test.it
+      Username: salvat72891
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  93. Oscar Riva
+      Email: oscar92@test.it
+      Username: oscar7992
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  94. Emanuele Rinaldi
+      Email: emanuele93@test.it
+      Username: emanue2993
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  95. Monica Moretti
+      Email: monica94@test.it
+      Username: moni_more94
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  96. Raffaele Cipriani
+      Email: raffaele95@test.it
+      Username: raffaele9895
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  97. Sergio Farina
+      Email: sergio96@test.it
+      Username: sergio3496
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  98. Loredana Rinaldi
+      Email: loredana97@test.it
+      Username: loredana_rinaldi
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  99. Loredana Gentile
+      Email: loredana98@test.it
+      Username: loredana7398
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 100. Aldo Sanna
+      Email: aldo99@test.it
+      Username: aldo9299
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 101. Elia Lazzari
+      Email: elia100@test.it
+      Username: elia_lazz100
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 102. Diego Volpe
+      Email: diego101@test.it
+      Username: diego143101
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 103. Angelo Guerra
+      Email: angelo102@test.it
+      Username: ange_guer102
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 104. Valentina Caruso
+      Email: valentina103@test.it
+      Username: valentina83103
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 105. Mario Giuliani
+      Email: mario104@test.it
+      Username: mari_giul104
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 106. Sandro Marchi
+      Email: sandro105@test.it
+      Username: sandro583105
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 107. Leonardo Gallo
+      Email: leonardo106@test.it
+      Username: leonardo68106
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 108. Michele Silvestri
+      Email: michele107@test.it
+      Username: silvestri_m107
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 109. Diego Martini
+      Email: diego108@test.it
+      Username: diego_martini108
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 110. Martina Giordano
+      Email: martina109@test.it
+      Username: martin731109
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 111. Cristina Bernardi
+      Email: cristina110@test.it
+      Username: bernardi_c110
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 112. Filippo Bernardi
+      Email: filippo111@test.it
+      Username: filipp138111
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 113. Francesco Pellegrini
+      Email: francesco112@test.it
+      Username: fran_pell112
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 114. Sara Mazza
+      Email: sara113@test.it
+      Username: sara51113
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 115. Elena Battaglia
+      Email: elena114@test.it
+      Username: elena42114
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 116. Cristina Pellegrino
+      Email: cristina115@test.it
+      Username: pellegrino_c115
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 117. Leonardo Galli
+      Email: leonardo116@test.it
+      Username: leonardo88116
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 118. Aldo Barone
+      Email: aldo117@test.it
+      Username: aldo86117
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 119. Martina Martinelli
+      Email: martina118@test.it
+      Username: martinelli_m118
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 120. Dino Palumbo
+      Email: dino119@test.it
+      Username: dino_palu119
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 121. Veronica Negri
+      Email: veronica120@test.it
+      Username: veronica46120
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 122. Martina Biagi
+      Email: martina121@test.it
+      Username: biagi_m121
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 123. Greta Riva
+      Email: greta122@test.it
+      Username: greta562122
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 124. Andrea Caruso
+      Email: andrea123@test.it
+      Username: andrea13123
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 125. Patrizia Conti
+      Email: patrizia124@test.it
+      Username: patrizia44124
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 126. Lina Benedetti
+      Email: lina125@test.it
+      Username: lina311125
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 127. Mirko Testa
+      Email: mirko126@test.it
+      Username: mirko65126
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 128. Roberta Battaglia
+      Email: roberta127@test.it
+      Username: robert211127
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 129. Paola Napoli
+      Email: paola128@test.it
+      Username: paola_napoli128
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 130. Beatrice Bianchi
+      Email: beatrice129@test.it
+      Username: beatrice45129
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 131. Sandro Monti
+      Email: sandro130@test.it
+      Username: sandro_monti130
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 132. Stefania Rinaldi
+      Email: stefania131@test.it
+      Username: rinaldi_s131
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 133. Giovanni Battaglia
+      Email: giovanni132@test.it
+      Username: battaglia_g132
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 134. Debora Santoro
+      Email: debora133@test.it
+      Username: debora99133
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 135. Renzo Conti
+      Email: renzo134@test.it
+      Username: conti_r134
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 136. Teresa Gallo
+      Email: teresa135@test.it
+      Username: teresa_gallo135
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 137. Emanuele DeRosa
+      Email: emanuele136@test.it
+      Username: emanuele24136
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 138. Ivana Biagi
+      Email: ivana137@test.it
+      Username: ivana_biagi137
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 139. Oscar Pellegrino
+      Email: oscar138@test.it
+      Username: osca_pell138
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 140. Davide Messina
+      Email: davide139@test.it
+      Username: davide_messina139
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 141. Riccardo Testa
+      Email: riccardo140@test.it
+      Username: riccar102140
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 142. Arianna Napoli
+      Email: arianna141@test.it
+      Username: aria_napo141
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 143. Elia Testa
+      Email: elia142@test.it
+      Username: elia20142
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 144. Claudio Mancini
+      Email: claudio143@test.it
+      Username: claudio60143
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 145. Elia Longo
+      Email: elia144@test.it
+      Username: elia_longo144
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 146. Mauro Monti
+      Email: mauro145@test.it
+      Username: monti_m145
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 147. Caterina Villa
+      Email: caterina146@test.it
+      Username: caterina36146
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 148. Manuel Mancini
+      Email: manuel147@test.it
+      Username: manuel65147
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 149. Simone Galli
+      Email: simone148@test.it
+      Username: simo_gall148
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 150. Paolo Ferreira
+      Email: paolo149@test.it
+      Username: paolo_ferreira149
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 151. Giulio Cattani
+      Email: giulio150@test.it
+      Username: giulio_cattani150
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 152. Antonella Moreno
+      Email: antonella151@test.it
+      Username: antonella22151
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 153. Dino Bruno
+      Email: dino152@test.it
+      Username: dino_bruno152
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 154. Antonio DeAngelis
+      Email: antonio153@test.it
+      Username: anto_dean153
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 155. Beatrice Barbieri
+      Email: beatrice154@test.it
+      Username: beatri431154
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 156. Matteo Martino
+      Email: matteo155@test.it
+      Username: matt_mart155
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 157. Luisa Barbieri
+      Email: luisa156@test.it
+      Username: barbieri_l156
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 158. Christian Pellegrini
+      Email: christian157@test.it
+      Username: chri_pell157
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 159. Giorgio Ragusa
+      Email: giorgio158@test.it
+      Username: gior_ragu158
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 160. Rita Marchetti
+      Email: rita159@test.it
+      Username: marchetti_r159
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 161. Sandro Sanna
+      Email: sandro160@test.it
+      Username: sanna_s160
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 162. Simone Conti
+      Email: simone161@test.it
+      Username: simone777161
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 163. Gianluca Bassi
+      Email: gianluca162@test.it
+      Username: gianluca34162
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 164. Carla Marino
+      Email: carla163@test.it
+      Username: carla_marino163
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 165. Denise Rizzo
+      Email: denise164@test.it
+      Username: rizzo_d164
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 166. Claudio Longo
+      Email: claudio165@test.it
+      Username: clau_long165
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 167. Marianna Parisi
+      Email: marianna166@test.it
+      Username: marian497166
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 168. Valeria Neri
+      Email: valeria167@test.it
+      Username: valeria82167
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 169. Valerio Santini
+      Email: valerio168@test.it
+      Username: valerio_santini
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 170. Giulio Piras
+      Email: giulio169@test.it
+      Username: giulio852169
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 171. Rosa Ruggiero
+      Email: rosa170@test.it
+      Username: rosa_rugg170
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 172. Giovanna Morelli
+      Email: giovanna171@test.it
+      Username: giovan691171
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 173. Tiziano Barbieri
+      Email: tiziano172@test.it
+      Username: tiziano_barbieri
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 174. Caterina Marchi
+      Email: caterina173@test.it
+      Username: marchi_c173
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 175. Ivan Conti
+      Email: ivan174@test.it
+      Username: ivan584174
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 176. Angela Napoli
+      Email: angela175@test.it
+      Username: napoli_a175
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 177. Francesca Rossetti
+      Email: francesca176@test.it
+      Username: fran_ross176
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 178. Vincenzo Giordano
+      Email: vincenzo177@test.it
+      Username: vincenzo73177
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 179. Gabriele Ferrari
+      Email: gabriele178@test.it
+      Username: gabriele99178
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 180. Sandro Moreno
+      Email: sandro179@test.it
+      Username: sand_more179
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 181. Daniele Caputo
+      Email: daniele180@test.it
+      Username: daniele42180
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 182. Giovanna Ferreira
+      Email: giovanna181@test.it
+      Username: ferreira_g181
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 183. Elena DeLuca
+      Email: elena182@test.it
+      Username: elena_deluca182
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 184. Nicola DAngelo
+      Email: nicola183@test.it
+      Username: dangelo_n183
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 185. Silvia Moreno
+      Email: silvia184@test.it
+      Username: silvia_moreno184
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 186. Pietro Donati
+      Email: pietro185@test.it
+      Username: pietro_donati185
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 187. Valeria Lupo
+      Email: valeria186@test.it
+      Username: valeri245186
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 188. Patrizia Caruso
+      Email: patrizia187@test.it
+      Username: patr_caru187
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 189. Alice Longo
+      Email: alice188@test.it
+      Username: alic_long188
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 190. Cristian Marchi
+      Email: cristian189@test.it
+      Username: cristian_marchi
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 191. Mara Berti
+      Email: mara190@test.it
+      Username: mara_bert190
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 192. Aldo Pellegrini
+      Email: aldo191@test.it
+      Username: aldo_pellegrini
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 193. Lina Galli
+      Email: lina192@test.it
+      Username: lina822192
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 194. Davide Ruggiero
+      Email: davide193@test.it
+      Username: davide78193
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 195. Flora Sorrentino
+      Email: flora194@test.it
+      Username: flora_sorrentino
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 196. Nadia Bianco
+      Email: nadia195@test.it
+      Username: nadia971195
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 197. Samuele Ferrero
+      Email: samuele196@test.it
+      Username: samu_ferr196
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 198. Claudia Rossetti
+      Email: claudia197@test.it
+      Username: clau_ross197
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 199. Michela Conti
+      Email: michela198@test.it
+      Username: michel640198
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 200. Laura Amato
+      Email: laura199@test.it
+      Username: laur_amat199
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 201. Teresa Morelli
+      Email: teresa200@test.it
+      Username: tere_more200
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 202. Angela Fontana
+      Email: angela201@test.it
+      Username: fontana_a201
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 203. Simone Ferreira
+      Email: simone202@test.it
+      Username: simone695202
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 204. Alessio Mancini
+      Email: alessio203@test.it
+      Username: alessio18203
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 205. Sandro Orsini
+      Email: sandro204@test.it
+      Username: sandro120204
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 206. Katia Cipriani
+      Email: katia205@test.it
+      Username: kati_cipr205
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 207. Daniele Cattani
+      Email: daniele206@test.it
+      Username: dani_catt206
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 208. Mauro Rossetti
+      Email: mauro207@test.it
+      Username: maur_ross207
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 209. Guido Bianchi
+      Email: guido208@test.it
+      Username: guido_bianchi208
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 210. Greta Lombardo
+      Email: greta209@test.it
+      Username: greta_lombardo209
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 211. Katia Serra
+      Email: katia210@test.it
+      Username: katia_serra210
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 212. Pietro Esposito
+      Email: pietro211@test.it
+      Username: esposito_p211
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 213. Tania Cavalli
+      Email: tania212@test.it
+      Username: tania739212
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 214. Alice Donati
+      Email: alice213@test.it
+      Username: alic_dona213
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 215. Sergio Marchi
+      Email: sergio214@test.it
+      Username: sergio_marchi214
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 216. Valeria Pellegrino
+      Email: valeria215@test.it
+      Username: valeria_pellegrino
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 217. Sandro Riva
+      Email: sandro216@test.it
+      Username: riva_s216
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 218. Ugo Damico
+      Email: ugo217@test.it
+      Username: damico_u217
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 219. Rosa Bellini
+      Email: rosa218@test.it
+      Username: rosa958218
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 220. Francesco Rinaldi
+      Email: francesco219@test.it
+      Username: fran_rina219
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 221. Paola Sanna
+      Email: paola220@test.it
+      Username: sanna_p220
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 222. Mirko Ferri
+      Email: mirko221@test.it
+      Username: mirko_ferri221
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 223. Mauro Riva
+      Email: mauro222@test.it
+      Username: maur_riva222
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 224. Francesca Amato
+      Email: francesca223@test.it
+      Username: fran_amat223
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 225. Mario Benedetti
+      Email: mario224@test.it
+      Username: mario_benedetti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 226. Gabriele Amato
+      Email: gabriele225@test.it
+      Username: gabr_amat225
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 227. Cristina Sartori
+      Email: cristina226@test.it
+      Username: cris_sart226
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 228. Giuseppe Lazzari
+      Email: giuseppe227@test.it
+      Username: lazzari_g227
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 229. Samuel Villa
+      Email: samuel228@test.it
+      Username: samu_vill228
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 230. Federico Romano
+      Email: federico229@test.it
+      Username: federico47229
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 231. Mauro Giuliani
+      Email: mauro230@test.it
+      Username: maur_giul230
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 232. Monica Grasso
+      Email: monica231@test.it
+      Username: grasso_m231
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 233. Simone Pirlo
+      Email: simone232@test.it
+      Username: simone23232
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 234. Veronica Sanna
+      Email: veronica233@test.it
+      Username: veronica35233
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 235. Monica Cattani
+      Email: monica234@test.it
+      Username: moni_catt234
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 236. Samuele Biagi
+      Email: samuele235@test.it
+      Username: samuele26235
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 237. Christian Orlando
+      Email: christian236@test.it
+      Username: christian_orlando
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 238. Bruno Rossini
+      Email: bruno237@test.it
+      Username: bruno699237
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 239. Elena Grassi
+      Email: elena238@test.it
+      Username: elen_gras238
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 240. Massimo Sartori
+      Email: massimo239@test.it
+      Username: massimo_sartori
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 241. Mario Colombo
+      Email: mario240@test.it
+      Username: mari_colo240
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 242. Fabiano Romano
+      Email: fabiano241@test.it
+      Username: fabi_roma241
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 243. Claudia Colombo
+      Email: claudia242@test.it
+      Username: claudi711242
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 244. Carla Caputo
+      Email: carla243@test.it
+      Username: carla72243
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 245. Sofia Galli
+      Email: sofia244@test.it
+      Username: sofia85244
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 246. Laura Caruso
+      Email: laura245@test.it
+      Username: laura117245
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 247. Chiara Neri
+      Email: chiara246@test.it
+      Username: chia_neri246
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 248. Cristian Villa
+      Email: cristian247@test.it
+      Username: villa_c247
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 249. Enrico Orlando
+      Email: enrico248@test.it
+      Username: orlando_e248
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 250. Giovanna Berti
+      Email: giovanna249@test.it
+      Username: berti_g249
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 251. Alessandro Rizzo
+      Email: alessandro250@test.it
+      Username: alessa284250
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 252. Alessandro Marino
+      Email: alessandro251@test.it
+      Username: ales_mari251
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 253. Vincenzo Grimaldi
+      Email: vincenzo252@test.it
+      Username: grimaldi_v252
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 254. Matteo Vitale
+      Email: matteo253@test.it
+      Username: vitale_m253
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 255. Omar Leone
+      Email: omar254@test.it
+      Username: leone_o254
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 256. Tania Rossetti
+      Email: tania255@test.it
+      Username: rossetti_t255
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 257. Ornella Grassi
+      Email: ornella256@test.it
+      Username: ornella_grassi256
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 258. Paola Fabbri
+      Email: paola257@test.it
+      Username: paola19257
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 259. Francesca Conti
+      Email: francesca258@test.it
+      Username: francesca_conti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 260. Mirco Ferraro
+      Email: mirco259@test.it
+      Username: ferraro_m259
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 261. Mara Gatti
+      Email: mara260@test.it
+      Username: mara47260
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 262. Davide Fontana
+      Email: davide261@test.it
+      Username: davide_fontana261
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 263. Massimo Moreno
+      Email: massimo262@test.it
+      Username: massimo92262
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 264. Angela Rizzi
+      Email: angela263@test.it
+      Username: rizzi_a263
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 265. Beatrice Mancini
+      Email: beatrice264@test.it
+      Username: beatri831264
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 266. Alessia Martini
+      Email: alessia265@test.it
+      Username: ales_mart265
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 267. Irene Silvestri
+      Email: irene266@test.it
+      Username: iren_silv266
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 268. Lidia Costa
+      Email: lidia267@test.it
+      Username: costa_l267
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 269. Federico Santini
+      Email: federico268@test.it
+      Username: federico78268
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 270. Noemi Battaglia
+      Email: noemi269@test.it
+      Username: noemi27269
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 271. Arianna Martinelli
+      Email: arianna270@test.it
+      Username: ariann493270
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 272. Ilaria Napoli
+      Email: ilaria271@test.it
+      Username: ilaria363271
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 273. Simone Rizzo
+      Email: simone272@test.it
+      Username: simone20272
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 274. Anna Orsini
+      Email: anna273@test.it
+      Username: anna_orsi273
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 275. Carla Ferri
+      Email: carla274@test.it
+      Username: carla24274
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 276. Bruno Russo
+      Email: bruno275@test.it
+      Username: russo_b275
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 277. Carla Gallo
+      Email: carla276@test.it
+      Username: carla34276
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 278. Eleonora Costa
+      Email: eleonora277@test.it
+      Username: eleo_cost277
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 279. Simone Marchi
+      Email: simone278@test.it
+      Username: simone44278
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 280. Giuseppe Cavalli
+      Email: giuseppe279@test.it
+      Username: giuseppe61279
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 281. Barbara Cattaneo
+      Email: barbara280@test.it
+      Username: barbara_cattaneo
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 282. Mirko Serra
+      Email: mirko281@test.it
+      Username: mirk_serr281
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 283. Dino Serra
+      Email: dino282@test.it
+      Username: dino38282
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 284. Nadia Ferrero
+      Email: nadia283@test.it
+      Username: nadia96283
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 285. Serena Barone
+      Email: serena284@test.it
+      Username: serena12284
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 286. Dino DeRosa
+      Email: dino285@test.it
+      Username: dino_dero285
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 287. Katia Moreno
+      Email: katia286@test.it
+      Username: katia71286
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 288. Daniele Silvestri
+      Email: daniele287@test.it
+      Username: dani_silv287
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 289. Enrico Benedetti
+      Email: enrico288@test.it
+      Username: enrico196288
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 290. Patrizia Leone
+      Email: patrizia289@test.it
+      Username: patriz149289
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 291. Raffaele Conti
+      Email: raffaele290@test.it
+      Username: raff_cont290
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 292. Emanuele Colombo
+      Email: emanuele291@test.it
+      Username: colombo_e291
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 293. Christian Bellini
+      Email: christian292@test.it
+      Username: christian_bellini
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 294. Elena Moretti
+      Email: elena293@test.it
+      Username: moretti_e293
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 295. Omar DeAngelis
+      Email: omar294@test.it
+      Username: omar_deangelis294
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 296. Alice Rizzi
+      Email: alice295@test.it
+      Username: alice272295
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 297. Cinzia Fontana
+      Email: cinzia296@test.it
+      Username: fontana_c296
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 298. Antonio Martinelli
+      Email: antonio297@test.it
+      Username: antoni370297
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 299. Noemi Vitale
+      Email: noemi298@test.it
+      Username: noem_vita298
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 300. Nicoletta Costantini
+      Email: nicoletta299@test.it
+      Username: nicoletta91299
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 301. Stefano Sorrentino
+      Email: stefano300@test.it
+      Username: stefan3300
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 302. Rossella Pirlo
+      Email: rossella301@test.it
+      Username: rossel894301
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 303. Fabiano Esposito
+      Email: fabiano302@test.it
+      Username: esposito_f302
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 304. Alice Ferraro
+      Email: alice303@test.it
+      Username: alic_ferr303
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 305. Sandro Rizzo
+      Email: sandro304@test.it
+      Username: sandro_rizzo304
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 306. Monica Ragusa
+      Email: monica305@test.it
+      Username: monica_ragusa305
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 307. Tommaso Volpe
+      Email: tommaso306@test.it
+      Username: volpe_t306
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 308. Filippo DAngelo
+      Email: filippo307@test.it
+      Username: filippo_dangelo
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 309. Federico Moreno
+      Email: federico308@test.it
+      Username: moreno_f308
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 310. Giacomo Sorrentino
+      Email: giacomo309@test.it
+      Username: giacom964309
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 311. Stefania Mancini
+      Email: stefania310@test.it
+      Username: stefan31310
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 312. Luisa Longo
+      Email: luisa311@test.it
+      Username: luisa691311
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 313. Caterina Caruso
+      Email: caterina312@test.it
+      Username: caterina25312
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 314. Irene Gatti
+      Email: irene313@test.it
+      Username: gatti_i313
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 315. Oscar Orsini
+      Email: oscar314@test.it
+      Username: oscar725314
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 316. Debora Volpe
+      Email: debora315@test.it
+      Username: debora823315
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 317. Valerio Gallo
+      Email: valerio316@test.it
+      Username: vale_gall316
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 318. Denise Damico
+      Email: denise317@test.it
+      Username: deni_dami317
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 319. Mario Lombardi
+      Email: mario318@test.it
+      Username: mario45318
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 320. Federico Cattani
+      Email: federico319@test.it
+      Username: federico_cattani
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 321. Leonardo Greco
+      Email: leonardo320@test.it
+      Username: leon_grec320
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 322. Antonella Fabbri
+      Email: antonella321@test.it
+      Username: antonella_fabbri
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 323. Ivan Rossetti
+      Email: ivan322@test.it
+      Username: ivan87322
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 324. Daniela Ferreira
+      Email: daniela323@test.it
+      Username: ferreira_d323
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 325. Manuela Pirlo
+      Email: manuela324@test.it
+      Username: manuel517324
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 326. Fabio Sartori
+      Email: fabio325@test.it
+      Username: fabio920325
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 327. Mario Volpe
+      Email: mario326@test.it
+      Username: volpe_m326
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 328. Manuela Santoro
+      Email: manuela327@test.it
+      Username: manuela17327
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 329. Anna Amato
+      Email: anna328@test.it
+      Username: anna91328
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 330. Roberta Bellini
+      Email: roberta329@test.it
+      Username: robert613329
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 331. Debora Sala
+      Email: debora330@test.it
+      Username: debora_sala330
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 332. Giulio Neri
+      Email: giulio331@test.it
+      Username: neri_g331
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 333. Giada Berti
+      Email: giada332@test.it
+      Username: giada739332
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 334. Simone Bianco
+      Email: simone333@test.it
+      Username: simo_bian333
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 335. Monica Colombo
+      Email: monica334@test.it
+      Username: colombo_m334
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 336. Serena Pagano
+      Email: serena335@test.it
+      Username: serena565335
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 337. Mirco Grasso
+      Email: mirco336@test.it
+      Username: mirco68336
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 338. Lina Guerra
+      Email: lina337@test.it
+      Username: guerra_l337
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 339. Dino Testa
+      Email: dino338@test.it
+      Username: dino_test338
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 340. Francesco Monti
+      Email: francesco339@test.it
+      Username: francesco_monti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 341. Leonardo Martinelli
+      Email: leonardo340@test.it
+      Username: leon_mart340
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 342. Mauro DeSantis
+      Email: mauro341@test.it
+      Username: mauro394341
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 343. Andrea Gallo
+      Email: andrea342@test.it
+      Username: andr_gall342
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 344. Guido Lazzari
+      Email: guido343@test.it
+      Username: guido285343
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 345. Omar Testa
+      Email: omar344@test.it
+      Username: testa_o344
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 346. Alberto Valentini
+      Email: alberto345@test.it
+      Username: valentini_a345
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 347. Manuela Silvestri
+      Email: manuela346@test.it
+      Username: manuela39346
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 348. Tiziano Milani
+      Email: tiziano347@test.it
+      Username: milani_t347
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 349. Sandro Colombo
+      Email: sandro348@test.it
+      Username: colombo_s348
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 350. Lidia Leone
+      Email: lidia349@test.it
+      Username: lidi_leon349
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 351. Nadia Pagano
+      Email: nadia350@test.it
+      Username: nadi_paga350
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 352. Carla Negri
+      Email: carla351@test.it
+      Username: carla_negri351
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 353. Dino Cipriani
+      Email: dino352@test.it
+      Username: dino_cipr352
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 354. Andrea Santoro
+      Email: andrea353@test.it
+      Username: andrea_santoro353
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 355. Alberto Martino
+      Email: alberto354@test.it
+      Username: alberto19354
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 356. Davide Bruno
+      Email: davide355@test.it
+      Username: davi_brun355
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 357. Giada Cavalli
+      Email: giada356@test.it
+      Username: giad_cava356
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 358. Rino Pellegrino
+      Email: rino357@test.it
+      Username: pellegrino_r357
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 359. Thomas Testa
+      Email: thomas358@test.it
+      Username: testa_t358
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 360. Mario Martino
+      Email: mario359@test.it
+      Username: mario68359
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 361. Angelo DeSantis
+      Email: angelo360@test.it
+      Username: angelo703360
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 362. Federico Rizzi
+      Email: federico361@test.it
+      Username: rizzi_f361
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 363. Alice DeSantis
+      Email: alice362@test.it
+      Username: alice_desantis362
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 364. Patrizia Martinelli
+      Email: patrizia363@test.it
+      Username: patr_mart363
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 365. Alberto Pellegrini
+      Email: alberto364@test.it
+      Username: alberto_pellegrini
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 366. Michela Sorrentino
+      Email: michela365@test.it
+      Username: sorrentino_m365
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 367. Cristian Marchi
+      Email: cristian366@test.it
+      Username: cris_marc366
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 368. Camilla Esposito
+      Email: camilla367@test.it
+      Username: camilla_esposito
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 369. Luisa Donati
+      Email: luisa368@test.it
+      Username: luisa918368
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 370. Camilla Rizzi
+      Email: camilla369@test.it
+      Username: camilla24369
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 371. Gianluca Cattani
+      Email: gianluca370@test.it
+      Username: gianluca65370
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 372. Camilla DeLuca
+      Email: camilla371@test.it
+      Username: camilla99371
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 373. Francesco Vitale
+      Email: francesco372@test.it
+      Username: france181372
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 374. Katia Milani
+      Email: katia373@test.it
+      Username: katia89373
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 375. Raffaele Messina
+      Email: raffaele374@test.it
+      Username: raff_mess374
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 376. Alessia Marino
+      Email: alessia375@test.it
+      Username: alessia_marino375
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 377. Renzo Mazza
+      Email: renzo376@test.it
+      Username: renz_mazz376
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 378. Nicoletta Serra
+      Email: nicoletta377@test.it
+      Username: nicoletta_serra
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 379. Arianna Rinaldi
+      Email: arianna378@test.it
+      Username: arianna_rinaldi
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 380. Manuel Carbone
+      Email: manuel379@test.it
+      Username: manuel64379
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 381. Mario Bellini
+      Email: mario380@test.it
+      Username: mario780380
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 382. Elena Mazza
+      Email: elena381@test.it
+      Username: elen_mazz381
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 383. Gabriele Serra
+      Email: gabriele382@test.it
+      Username: gabriele_serra382
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 384. Beatrice Donati
+      Email: beatrice383@test.it
+      Username: donati_b383
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 385. Giulio Mancini
+      Email: giulio384@test.it
+      Username: mancini_g384
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 386. Roberto Marchetti
+      Email: roberto385@test.it
+      Username: roberto_marchetti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 387. Alessio Caruso
+      Email: alessio386@test.it
+      Username: ales_caru386
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 388. Stefano Bianchi
+      Email: stefano387@test.it
+      Username: stefano41387
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 389. Manuela Pellegrini
+      Email: manuela388@test.it
+      Username: pellegrini_m388
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 390. Manuela Bernardi
+      Email: manuela389@test.it
+      Username: manu_bern389
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 391. Katia Conte
+      Email: katia390@test.it
+      Username: katia95390
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 392. Pietro Gatti
+      Email: pietro391@test.it
+      Username: piet_gatt391
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 393. Valentina Ferretti
+      Email: valentina392@test.it
+      Username: ferretti_v392
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 394. Olga Mariani
+      Email: olga393@test.it
+      Username: mariani_o393
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 395. Vincenzo Ricci
+      Email: vincenzo394@test.it
+      Username: vincenzo16394
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 396. Mauro Gentile
+      Email: mauro395@test.it
+      Username: mauro291395
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 397. Angela Esposito
+      Email: angela396@test.it
+      Username: angela36396
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 398. Enrico Farina
+      Email: enrico397@test.it
+      Username: enrico800397
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 399. Dino Galli
+      Email: dino398@test.it
+      Username: dino_galli398
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 400. Francesca DeLuca
+      Email: francesca399@test.it
+      Username: francesca72399
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 401. Christian Santoro
+      Email: christian400@test.it
+      Username: christ71400
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 402. Giacomo Testa
+      Email: giacomo401@test.it
+      Username: giac_test401
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 403. Nicoletta Greco
+      Email: nicoletta402@test.it
+      Username: nicoletta35402
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 404. Paola Rossi
+      Email: paola403@test.it
+      Username: paola91403
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 405. Mauro Gatti
+      Email: mauro404@test.it
+      Username: mauro70404
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 406. Giada Orlando
+      Email: giada405@test.it
+      Username: giad_orla405
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 407. Stefano Mancini
+      Email: stefano406@test.it
+      Username: stefan378406
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 408. Beatrice Ferri
+      Email: beatrice407@test.it
+      Username: ferri_b407
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 409. Sergio Barbieri
+      Email: sergio408@test.it
+      Username: sergio641408
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 410. Michele Caruso
+      Email: michele409@test.it
+      Username: michele_caruso409
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 411. Stefano Pellegrini
+      Email: stefano410@test.it
+      Username: stef_pell410
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 412. Camilla Colombo
+      Email: camilla411@test.it
+      Username: cami_colo411
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 413. Thomas Testa
+      Email: thomas412@test.it
+      Username: thomas343412
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 414. Diego Ragusa
+      Email: diego413@test.it
+      Username: diego63413
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 415. Roberto Fabbri
+      Email: roberto414@test.it
+      Username: roberto22414
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 416. Valeria Ferretti
+      Email: valeria415@test.it
+      Username: vale_ferr415
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 417. Antonio Fiorentino
+      Email: antonio416@test.it
+      Username: antonio_fiorentino
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 418. Anna Gatti
+      Email: anna417@test.it
+      Username: anna_gatt417
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 419. Gabriele Russo
+      Email: gabriele418@test.it
+      Username: gabrie518418
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 420. Vincenzo Santini
+      Email: vincenzo419@test.it
+      Username: santini_v419
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 421. Sergio Bertini
+      Email: sergio420@test.it
+      Username: sergio_bertini420
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 422. Mario Mariani
+      Email: mario421@test.it
+      Username: mario36421
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 423. Emanuele Grasso
+      Email: emanuele422@test.it
+      Username: grasso_e422
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 424. Oscar Gentile
+      Email: oscar423@test.it
+      Username: oscar_gentile423
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 425. Fabio Benedetti
+      Email: fabio424@test.it
+      Username: fabio_benedetti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 426. Cinzia Galli
+      Email: cinzia425@test.it
+      Username: cinzia24425
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 427. Samuele Bruno
+      Email: samuele426@test.it
+      Username: samuel193426
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 428. Raffaele Lombardi
+      Email: raffaele427@test.it
+      Username: raffae708427
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 429. Federico Conti
+      Email: federico428@test.it
+      Username: federi755428
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 430. Giada Caruso
+      Email: giada429@test.it
+      Username: giada4429
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 431. Davide Marino
+      Email: davide430@test.it
+      Username: marino_d430
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 432. Simona Testa
+      Email: simona431@test.it
+      Username: simona27431
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 433. Giovanni Grimaldi
+      Email: giovanni432@test.it
+      Username: giov_grim432
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 434. Valerio DeSantis
+      Email: valerio433@test.it
+      Username: valerio89433
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 435. Enrico Longo
+      Email: enrico434@test.it
+      Username: enrico85434
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 436. Marianna Galli
+      Email: marianna435@test.it
+      Username: marianna55435
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 437. Samuel Palumbo
+      Email: samuel436@test.it
+      Username: samuel21436
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 438. Manuela Morelli
+      Email: manuela437@test.it
+      Username: manuel207437
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 439. Teresa Silvestri
+      Email: teresa438@test.it
+      Username: teresa325438
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 440. Olga Ferri
+      Email: olga439@test.it
+      Username: ferri_o439
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 441. Serena Ruggeri
+      Email: serena440@test.it
+      Username: ruggeri_s440
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 442. Veronica Ferreira
+      Email: veronica441@test.it
+      Username: ferreira_v441
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 443. Thomas Cavalli
+      Email: thomas442@test.it
+      Username: thomas_cavalli442
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 444. Fabiano Caruso
+      Email: fabiano443@test.it
+      Username: fabi_caru443
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 445. Elia Pellegrino
+      Email: elia444@test.it
+      Username: pellegrino_e444
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 446. Samuele Leone
+      Email: samuele445@test.it
+      Username: samuel271445
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 447. Ada Vitale
+      Email: ada446@test.it
+      Username: ada133446
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 448. Cinzia Berti
+      Email: cinzia447@test.it
+      Username: berti_c447
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 449. Elisa Amore
+      Email: elisa448@test.it
+      Username: elisa902448
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 450. Chiara Moreno
+      Email: chiara449@test.it
+      Username: chiara116449
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 451. Michela Amore
+      Email: michela450@test.it
+      Username: michela_amore450
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 452. Paola Ruggeri
+      Email: paola451@test.it
+      Username: paola22451
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 453. Simona Carbone
+      Email: simona452@test.it
+      Username: carbone_s452
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 454. Raffaele Carbone
+      Email: raffaele453@test.it
+      Username: raffaele43453
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 455. Barbara Martinelli
+      Email: barbara454@test.it
+      Username: barbar576454
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 456. Angelo Volpe
+      Email: angelo455@test.it
+      Username: volpe_a455
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 457. Ilaria Cattani
+      Email: ilaria456@test.it
+      Username: ilaria_cattani456
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 458. Katia Lombardo
+      Email: katia457@test.it
+      Username: kati_lomb457
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 459. Pamela Messina
+      Email: pamela458@test.it
+      Username: pame_mess458
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 460. Nicoletta Ferretti
+      Email: nicoletta459@test.it
+      Username: nicoletta_ferretti
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 461. Emanuele Ferri
+      Email: emanuele460@test.it
+      Username: emanue39460
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 462. Mirco Piras
+      Email: mirco461@test.it
+      Username: mirco_piras461
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 463. Mirko DAngelo
+      Email: mirko462@test.it
+      Username: mirko764462
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 464. Valentina Palumbo
+      Email: valentina463@test.it
+      Username: valentina_palumbo
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 465. Emanuele Barbieri
+      Email: emanuele464@test.it
+      Username: emanue717464
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 466. Massimo Esposito
+      Email: massimo465@test.it
+      Username: mass_espo465
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 467. Riccardo Grasso
+      Email: riccardo466@test.it
+      Username: riccardo57466
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 468. Oscar Amore
+      Email: oscar467@test.it
+      Username: amore_o467
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 469. Lorenzo Lazzari
+      Email: lorenzo468@test.it
+      Username: lazzari_l468
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 470. Giorgia Ruggiero
+      Email: giorgia469@test.it
+      Username: gior_rugg469
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 471. Beatrice Conti
+      Email: beatrice470@test.it
+      Username: conti_b470
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 472. Alessandro Sanna
+      Email: alessandro471@test.it
+      Username: ales_sann471
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 473. Enrico Fiore
+      Email: enrico472@test.it
+      Username: enri_fior472
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 474. Eleonora Parisi
+      Email: eleonora473@test.it
+      Username: parisi_e473
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 475. Aldo Montanari
+      Email: aldo474@test.it
+      Username: montanari_a474
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 476. Mirko Ferretti
+      Email: mirko475@test.it
+      Username: mirko94475
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 477. Mauro Ruggeri
+      Email: mauro476@test.it
+      Username: mauro_ruggeri476
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 478. Tiziano Santini
+      Email: tiziano477@test.it
+      Username: tiziano47477
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 479. Antonella Ferretti
+      Email: antonella478@test.it
+      Username: antonella69478
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 480. Tommaso Romano
+      Email: tommaso479@test.it
+      Username: romano_t479
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 481. Tommaso Martino
+      Email: tommaso480@test.it
+      Username: martino_t480
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 482. Angelo Gatti
+      Email: angelo481@test.it
+      Username: angelo61481
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 483. Alessio Morelli
+      Email: alessio482@test.it
+      Username: alessio_morelli
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 484. Valerio Biagi
+      Email: valerio483@test.it
+      Username: valerio51483
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 485. Giorgio Gallo
+      Email: giorgio484@test.it
+      Username: gallo_g484
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 486. Gina Rossini
+      Email: gina485@test.it
+      Username: gina161485
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 487. Silvia Barbieri
+      Email: silvia486@test.it
+      Username: barbieri_s486
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 488. Greta Caputo
+      Email: greta487@test.it
+      Username: greta_caputo487
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 489. Leonardo Giordano
+      Email: leonardo488@test.it
+      Username: leonar368488
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 490. Denis Gentile
+      Email: denis489@test.it
+      Username: deni_gent489
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 491. Silvia Caputo
+      Email: silvia490@test.it
+      Username: silvia60490
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 492. Irene Silvestri
+      Email: irene491@test.it
+      Username: irene523491
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 493. Silvia Cavalli
+      Email: silvia492@test.it
+      Username: cavalli_s492
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 494. Sara Palumbo
+      Email: sara493@test.it
+      Username: sara32493
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 495. Manuel Ruggeri
+      Email: manuel494@test.it
+      Username: manu_rugg494
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 496. Emanuele DAngelo
+      Email: emanuele495@test.it
+      Username: eman_dang495
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 497. Giorgio Conte
+      Email: giorgio496@test.it
+      Username: conte_g496
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 498. Manuel Vitale
+      Email: manuel497@test.it
+      Username: manuel50497
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 499. Enrico Cattaneo
+      Email: enrico498@test.it
+      Username: cattaneo_e498
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+ 500. Gabriele Amore
+      Email: gabriele499@test.it
+      Username: gabriele84499
+      Role: player
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+
+================================================================================
+OWNERS (50 utenti)
+================================================================================
+
+   1. Luca Marchi
+      Email: luca500@test.it
+      Username: marchi_l500
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   2. Leonardo Marchi
+      Email: leonardo501@test.it
+      Username: leonardo_marchi
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   3. Marco Farina
+      Email: marco502@test.it
+      Username: farina_m502
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   4. Denise Serra
+      Email: denise503@test.it
+      Username: deni_serr503
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   5. Denis Farina
+      Email: denis504@test.it
+      Username: deni_fari504
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   6. Denis Caputo
+      Email: denis505@test.it
+      Username: caputo_d505
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   7. Elena Rossi
+      Email: elena506@test.it
+      Username: rossi_e506
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   8. Tiziano Cipriani
+      Email: tiziano507@test.it
+      Username: tizi_cipr507
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+   9. Fabio Martinelli
+      Email: fabio508@test.it
+      Username: fabio355508
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  10. Vera Valentini
+      Email: vera509@test.it
+      Username: vera_vale509
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  11. Lorenzo Lombardo
+      Email: lorenzo510@test.it
+      Username: lore_lomb510
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  12. Valentina Bertini
+      Email: valentina511@test.it
+      Username: vale_bert511
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  13. Sergio Ferraro
+      Email: sergio512@test.it
+      Username: sergio57512
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  14. Federico Silvestri
+      Email: federico513@test.it
+      Username: fede_silv513
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  15. Ornella Colombo
+      Email: ornella514@test.it
+      Username: ornell906514
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  16. Elena Napoli
+      Email: elena515@test.it
+      Username: elena10515
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  17. Denise Romano
+      Email: denise516@test.it
+      Username: denise70516
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  18. Fabiano Valentini
+      Email: fabiano517@test.it
+      Username: valentini_f517
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  19. Tommaso Rossini
+      Email: tommaso518@test.it
+      Username: tommaso_rossini
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  20. Sergio Benedetti
+      Email: sergio519@test.it
+      Username: sergio_benedetti
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  21. Valentina Mancini
+      Email: valentina520@test.it
+      Username: valentina46520
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  22. Nadia Orsini
+      Email: nadia521@test.it
+      Username: nadi_orsi521
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  23. Paolo Bianco
+      Email: paolo522@test.it
+      Username: paol_bian522
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  24. Francesca Cavalli
+      Email: francesca523@test.it
+      Username: france516523
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  25. Antonella Messina
+      Email: antonella524@test.it
+      Username: messina_a524
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  26. Sofia Piras
+      Email: sofia525@test.it
+      Username: sofia_piras525
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  27. Barbara Mazza
+      Email: barbara526@test.it
+      Username: barbara93526
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  28. Arianna Esposito
+      Email: arianna527@test.it
+      Username: esposito_a527
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  29. Ornella Gentile
+      Email: ornella528@test.it
+      Username: ornella61528
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  30. Leonardo Caruso
+      Email: leonardo529@test.it
+      Username: leonardo15529
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  31. Veronica Moretti
+      Email: veronica530@test.it
+      Username: veronica65530
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  32. Mauro Marino
+      Email: mauro531@test.it
+      Username: mauro74531
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  33. Caterina Farina
+      Email: caterina532@test.it
+      Username: cateri701532
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  34. Emanuela Ferri
+      Email: emanuela533@test.it
+      Username: ferri_e533
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  35. Thomas Moreno
+      Email: thomas534@test.it
+      Username: thomas780534
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  36. Omar Grassi
+      Email: omar535@test.it
+      Username: omar1535
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  37. Ilaria Ferrero
+      Email: ilaria536@test.it
+      Username: ilaria18536
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  38. Manuel Napoli
+      Email: manuel537@test.it
+      Username: manuel89537
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  39. Nicola Neri
+      Email: nicola538@test.it
+      Username: neri_n538
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  40. Simone Donati
+      Email: simone539@test.it
+      Username: simone989539
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  41. Tommaso Giuliani
+      Email: tommaso540@test.it
+      Username: giuliani_t540
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  42. Mario Palumbo
+      Email: mario541@test.it
+      Username: mario68541
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  43. Angela Berti
+      Email: angela542@test.it
+      Username: angela660542
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  44. Antonio Caputo
+      Email: antonio543@test.it
+      Username: antonio40543
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  45. Lorenzo Santoro
+      Email: lorenzo544@test.it
+      Username: lore_sant544
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  46. Noemi Fontana
+      Email: noemi545@test.it
+      Username: noem_font545
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  47. Paola Pirlo
+      Email: paola546@test.it
+      Username: paol_pirl546
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  48. Stefano Riva
+      Email: stefano547@test.it
+      Username: stef_riva547
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  49. Giuseppe Volpe
+      Email: giuseppe548@test.it
+      Username: volpe_g548
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+  50. Monica Mariani
+      Email: monica549@test.it
+      Username: monica178549
+      Role: owner
+      Avatar: https://res.cloudinary.com/ddkt2wunn/image/upload/v176919085...
+
+
+================================================================================
+RIEPILOGO
+================================================================================
+Totale utenti: 550
+- Players: 500
+- Owners: 50
+Strutture: 100
+Campi: 203
+Prenotazioni: 1500
+Match: 1420
+================================================================================

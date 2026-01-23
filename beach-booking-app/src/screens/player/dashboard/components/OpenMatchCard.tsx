@@ -54,9 +54,10 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
   };
 
   // Calculate time left until registration closes (assuming 24 hours before match start)
+  // Calculate time left until registration closes (now 45 minutes before match start)
   const getTimeLeft = () => {
     const matchStart = new Date(`${match.booking?.date}T${match.booking?.startTime}:00`);
-    const registrationDeadline = new Date(matchStart.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+    const registrationDeadline = new Date(matchStart.getTime() - 45 * 60 * 1000); // 45 minutes before
     const now = new Date();
     const diff = registrationDeadline.getTime() - now.getTime();
     if (diff <= 0) return { text: 'Chiuso', color: '#ff0000' };
@@ -89,18 +90,16 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
               <Text style={styles.openMatchBadgeText}>{available} {available === 1 ? 'posto' : 'posti'}</Text>
             </View>
             {match.booking?.endTime && (
-              <View style={[styles.openMatchInfoRow, { marginTop: 6 }]}>
-                <Ionicons name="hourglass-outline" size={14} color={iconColor} />
-                <Text style={styles.openMatchInfoText}>
-                  {timeLeftText}
-                </Text>
+              <View style={[styles.openMatchTimeLabel, { backgroundColor: iconColor }]}>
+                <Ionicons name="hourglass-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={[styles.openMatchTimeLabelText, { color: '#fff' }]}>{timeLeftText}</Text>
               </View>
             )}
           </View>
         </View>
         {match.booking?.campo?.struttura?.location?.address && (
           <Text style={styles.openMatchSubtitle} numberOfLines={1}>
-            {match.booking.campo.struttura.location.address}
+            {match.booking.campo.struttura.location.address}, {match.booking.campo.struttura.location.city}
           </Text>
         )}
       </View>
@@ -109,13 +108,14 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
         <View style={styles.openMatchInfoRow}>
           <Ionicons name="calendar-outline" size={14} color="#666" />
           <Text style={styles.openMatchInfoText}>
-            {match.booking?.date || 'Data da definire'}
+            {match.booking?.date ? new Date(match.booking.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Data da definire'}
           </Text>
         </View>
         <View style={styles.openMatchInfoRow}>
           <Ionicons name="time-outline" size={14} color="#666" />
           <Text style={styles.openMatchInfoText}>
             {match.booking?.startTime || '--:--'}
+            {match.booking?.endTime ? `-${match.booking.endTime}` : ''}
           </Text>
         </View>
         <View style={styles.openMatchInfoRow}>

@@ -1,4 +1,12 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+// Debounce utility
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 import {
   View,
   Text,
@@ -62,7 +70,11 @@ type MatchItem = {
       sport?: string;
       struttura?: {
         name?: string;
-        location?: { city?: string };
+        location?: { 
+          city?: string;
+          lat?: number;
+          lng?: number;
+        };
       };
     };
   };
@@ -109,7 +121,7 @@ const getDuration = (startTime?: string, endTime?: string) => {
 
 const getTimeLeft = (item: MatchItem) => {
   const matchStart = new Date(`${item.booking?.date}T${item.booking?.startTime}:00`);
-  const registrationDeadline = new Date(matchStart.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+  const registrationDeadline = new Date(matchStart.getTime() - 45 * 60 * 1000); // 45 minutes before
   const now = new Date();
   const diff = registrationDeadline.getTime() - now.getTime();
   if (diff <= 0) return { text: 'Chiuso', color: '#ff0000' };
@@ -128,6 +140,19 @@ const getTimeLeft = (item: MatchItem) => {
   return { text, color };
 };
 
+// Calcola distanza tra due punti in km usando formula Haversine
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const R = 6371; // Raggio della Terra in km
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export default function CercaPartitaScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
@@ -140,6 +165,10 @@ export default function CercaPartitaScreen() {
   const [cityFilter, setCityFilter] = useState("");
   const [tempCity, setTempCity] = useState("");
   const [isCityEditing, setIsCityEditing] = useState(false);
+  const [manualCityCoords, setManualCityCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
+  const [isLoadingCitySuggestions, setIsLoadingCitySuggestions] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
@@ -204,8 +233,6 @@ export default function CercaPartitaScreen() {
         if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
 
         const start = parseMatchStart(match);
-        // Escludi partite che iniziano tra 30 minuti o meno
-        if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) return false;
 
         const alreadyJoined = match.players?.some((player) => player.user?._id === user?.id);
         if (alreadyJoined) return false;
@@ -365,28 +392,77 @@ export default function CercaPartitaScreen() {
 
   const filteredMatches = useMemo(() => {
     console.log("🔍 [CercaPartita] Filtro partite - cityFilter:", cityFilter);
-    console.log("🔍 [CercaPartita] Città preferita:", preferences?.preferredLocation?.city);
+    console.log("🔍 [CercaPartita] Città preferita:", preferences?.preferredLocation);
     
-    const filtered = matches.filter((match) => {
-      const city = match.booking?.campo?.struttura?.location?.city || "";
-      if (cityFilter.trim()) {
-        if (!city.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
-          return false;
+    // Determina la città di riferimento e il raggio
+    let referenceLat: number | null = null;
+    let referenceLng: number | null = null;
+    let searchRadius = 30; // Default 30km
+    
+    if (cityFilter.trim() && manualCityCoords) {
+      // Se l'utente ha selezionato una città manualmente e abbiamo le coordinate
+      referenceLat = manualCityCoords.lat;
+      referenceLng = manualCityCoords.lng;
+      searchRadius = 30;
+      console.log("📍 [CercaPartita] Città manuale:", cityFilter, "Coordinate:", manualCityCoords, "Raggio: 30km");
+    } else if (preferences?.preferredLocation?.lat && preferences?.preferredLocation?.lng) {
+      // Se non c'è filtro città, usa la città preferita
+      referenceLat = preferences.preferredLocation.lat;
+      referenceLng = preferences.preferredLocation.lng;
+      searchRadius = preferences.preferredLocation.radius || 30;
+      console.log("📍 [CercaPartita] Città preferita:", preferences.preferredLocation.city, "Raggio:", searchRadius, "km");
+    }
+
+    // Filtra le partite
+    let filtered = matches.filter((match) => {
+      const structureName = match.booking?.campo?.struttura?.name || "N/A";
+      const structureCity = match.booking?.campo?.struttura?.location?.city || "";
+      const structureLat = match.booking?.campo?.struttura?.location?.lat;
+      const structureLng = match.booking?.campo?.struttura?.location?.lng;
+      
+      // Filtro raggio: se c'è un riferimento (città scelta o preferita)
+      if (referenceLat !== null && referenceLng !== null) {
+        if (structureLat && structureLng) {
+          const distance = calculateDistance(referenceLat, referenceLng, structureLat, structureLng);
+          console.log(`📏 [CercaPartita] ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
+          if (distance > searchRadius) {
+            return false;
+          }
+        } else {
+          // Se la struttura non ha coordinate, faccio fallback sul controllo testuale della città
+          console.log(`⚠️ [CercaPartita] ${structureName} non ha coordinate, fallback su città testuale`);
+          if (cityFilter.trim()) {
+            // Se c'è un filtro città manuale, controlla la corrispondenza testuale
+            if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
+              return false;
+            }
+          } else if (preferences?.preferredLocation?.city) {
+            // Se usiamo città preferita, controlla la corrispondenza testuale
+            if (!structureCity.toLowerCase().includes(preferences.preferredLocation.city.toLowerCase())) {
+              return false;
+            }
+          } else {
+            // Nessun modo di verificare, escludi
+            return false;
+          }
         }
       }
 
+      // Filtro data: si applica sempre
       if (dateFilter) {
         if (match.booking?.date !== formatDate(dateFilter)) {
           return false;
         }
       }
 
+      // Filtro orario
       if (timeFilter) {
         if (match.booking?.startTime !== timeFilter) {
           return false;
         }
       }
 
+      // Filtro sport
       if (sportFilter) {
         const matchSport = normalizeSport(match.booking?.campo?.sport);
         if (matchSport !== sportFilter) {
@@ -397,9 +473,71 @@ export default function CercaPartitaScreen() {
       return true;
     });
 
-    console.log(`✅ [CercaPartita] ${filtered.length} match dopo filtri`);
+    console.log(`✅ [CercaPartita] ${filtered.length} match dopo filtri con raggio ${searchRadius}km`);
 
-    // Se NON c'è filtro città attivo, ordina mettendo prima i match della città preferita
+    // Se nessun risultato e c'è un riferimento, amplia il raggio a 50km
+    if (filtered.length === 0 && referenceLat !== null && referenceLng !== null && searchRadius < 50) {
+      console.log("⚠️ [CercaPartita] Nessun risultato, amplio il raggio a 50km");
+      searchRadius = 50;
+      
+      filtered = matches.filter((match) => {
+        const structureName = match.booking?.campo?.struttura?.name || "N/A";
+        const structureCity = match.booking?.campo?.struttura?.location?.city || "";
+        const structureLat = match.booking?.campo?.struttura?.location?.lat;
+        const structureLng = match.booking?.campo?.struttura?.location?.lng;
+        
+        // Filtro raggio con 50km
+        if (structureLat && structureLng) {
+          const distance = calculateDistance(referenceLat!, referenceLng!, structureLat, structureLng);
+          console.log(`📏 [CercaPartita] 50km - ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
+          if (distance > searchRadius) {
+            return false;
+          }
+        } else {
+          // Fallback su città testuale se non ha coordinate
+          console.log(`⚠️ [CercaPartita] 50km - ${structureName} non ha coordinate, fallback su città testuale`);
+          if (cityFilter.trim()) {
+            if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
+              return false;
+            }
+          } else if (preferences?.preferredLocation?.city) {
+            if (!structureCity.toLowerCase().includes(preferences.preferredLocation.city.toLowerCase())) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        }
+
+        // Filtro data
+        if (dateFilter) {
+          if (match.booking?.date !== formatDate(dateFilter)) {
+            return false;
+          }
+        }
+
+        // Filtro orario
+        if (timeFilter) {
+          if (match.booking?.startTime !== timeFilter) {
+            return false;
+          }
+        }
+
+        // Filtro sport
+        if (sportFilter) {
+          const matchSport = normalizeSport(match.booking?.campo?.sport);
+          if (matchSport !== sportFilter) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+      
+      console.log(`✅ [CercaPartita] ${filtered.length} match dopo ampliamento a 50km`);
+    }
+
+    // Ordinamento: se NON c'è filtro città manuale, ordina mettendo prima i match della città preferita
     if (!cityFilter.trim() && preferences?.preferredLocation?.city) {
       const preferredCity = preferences.preferredLocation.city.toLowerCase();
       console.log("📍 [CercaPartita] Ordinamento con città preferita:", preferredCity);
@@ -421,22 +559,96 @@ export default function CercaPartitaScreen() {
         return dateA - dateB;
       });
       
-      const preferredCount = sorted.filter(m => 
-        (m.booking?.campo?.struttura?.location?.city || "").toLowerCase().includes(preferredCity)
-      ).length;
-      console.log(`✅ [CercaPartita] ${preferredCount} match di ${preferredCity} in cima`);
-      
       return sorted;
     }
 
+    // Ordinamento normale per data
     console.log("📍 [CercaPartita] Ordinamento normale per data");
-    return filtered;
+    return filtered.sort((a, b) => {
+      const dateA = parseMatchStart(a)?.getTime() ?? 0;
+      const dateB = parseMatchStart(b)?.getTime() ?? 0;
+      return dateA - dateB;
+    });
   }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences]);
+
+  // Debounced city suggestion fetch
+  const fetchCitySuggestions = useCallback(async (text: string) => {
+    if (!text.trim()) {
+      setManualCityCoords(null);
+      setCitySuggestions([]);
+      return;
+    }
+    if (text.trim().length >= 3) {
+      setIsLoadingCitySuggestions(true);
+      try {
+        const searchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&addressdetails=1`;
+        const res = await fetch(searchUrl, {
+          headers: { 'User-Agent': 'SportBookingApp/1.0' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const suggestions = data.map((item: any) => ({
+            name: item.display_name,
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+          }));
+          setCitySuggestions(suggestions);
+        }
+      } catch (error) {
+        console.error("❌ [CercaPartita] Errore ricerca città:", error);
+      } finally {
+        setIsLoadingCitySuggestions(false);
+      }
+    } else {
+      setCitySuggestions([]);
+    }
+  }, []);
+
+  // Debounced version
+  const debouncedFetchCitySuggestions = useMemo(() => debounce(fetchCitySuggestions, 500), [fetchCitySuggestions]);
 
   const handleCityTextChange = useCallback((text: string) => {
     console.log("🔤 [CercaPartita] Cambio testo città:", text);
     setTempCity(text);
+    debouncedFetchCitySuggestions(text);
+  }, [debouncedFetchCitySuggestions]);
+
+  const handleSelectCitySuggestion = useCallback((suggestion: { name: string; lat: number; lng: number }) => {
+    console.log("✅ [CercaPartita] Città selezionata:", suggestion);
+    // Estrai solo il nome della città (prima parte prima della virgola)
+    const cityName = suggestion.name.split(',')[0].trim();
+    setTempCity(cityName);
+    setCityFilter(cityName);
+    setManualCityCoords({ lat: suggestion.lat, lng: suggestion.lng });
+    setCitySuggestions([]);
+    setIsCityEditing(false);
   }, []);
+
+  const geocodeCity = async (cityName: string) => {
+    try {
+      console.log("🌍 [CercaPartita] Geocoding città:", cityName);
+      const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`;
+      
+      const geoRes = await fetch(geocodeUrl, {
+        headers: { 'User-Agent': 'SportBookingApp/1.0' },
+      });
+      
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData && geoData.length > 0) {
+          const coords = {
+            lat: parseFloat(geoData[0].lat),
+            lng: parseFloat(geoData[0].lon),
+          };
+          console.log("✅ [CercaPartita] Coordinate città:", coords);
+          return coords;
+        }
+      }
+    } catch (error) {
+      console.error("❌ [CercaPartita] Errore geocoding:", error);
+    }
+    return null;
+  };
 
   const handleUseGPS = async () => {
     console.log("📍 [CercaPartita] Richiesta posizione GPS dall'input...");
@@ -475,6 +687,10 @@ export default function CercaPartitaScreen() {
           if (city) {
             setTempCity(city);
             setCityFilter(city);
+            setManualCityCoords({
+              lat: location.coords.latitude,
+              lng: location.coords.longitude,
+            });
             setIsCityEditing(false);
             console.log("✅ [CercaPartita] Città da GPS impostata:", city);
           }
@@ -525,6 +741,7 @@ export default function CercaPartitaScreen() {
               onPress={(event) => {
                 event.stopPropagation();
                 setCityFilter("");
+                setManualCityCoords(null);
               }}
             >
               <Ionicons name="close" size={12} color="white" />
@@ -660,8 +877,21 @@ export default function CercaPartitaScreen() {
               {item.booking?.campo?.struttura?.location?.city &&
                 ` - ${item.booking.campo.struttura.location.city}`}
             </Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{available} posti</Text>
+            <View style={styles.badgeContainer}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{available} posti</Text>
+              </View>
+              {item.booking?.startTime && (() => {
+                const { text, color } = getTimeLeft(item);
+                return (
+                  <View style={[styles.timerBadge, { backgroundColor: color + '20', borderColor: color }]}>
+                    <Ionicons name="timer-outline" size={12} color={color} />
+                    <Text style={[styles.timerBadgeText, { color }]}>
+                      {text}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
           </View>
         </View>
@@ -674,18 +904,8 @@ export default function CercaPartitaScreen() {
           <Ionicons name="time-outline" size={16} color="#666" style={styles.infoIcon} />
           <Text style={styles.infoText}>
             {item.booking?.startTime || "--:--"}
+            {item.booking?.endTime ? ` - ${item.booking.endTime}` : ""}
           </Text>
-          {item.booking?.startTime && (() => {
-            const { text, color } = getTimeLeft(item);
-            return (
-              <>
-                <Ionicons name="timer-outline" size={16} color={color} style={styles.infoIcon} />
-                <Text style={styles.infoText}>
-                  {text}
-                </Text>
-              </>
-            );
-          })()}
         </View>
         <View style={styles.infoRow}>
           <SportIcon sport={item.booking?.campo?.sport || 'beach_volley'} size={16} color="#666" />
@@ -832,8 +1052,19 @@ export default function CercaPartitaScreen() {
                         autoCapitalize="words"
                         autoFocus
                         returnKeyType="done"
-                        onSubmitEditing={() => {
-                          setCityFilter(tempCity.trim());
+                        onSubmitEditing={async () => {
+                          const cityName = tempCity.trim();
+                          if (cityName) {
+                            const coords = await geocodeCity(cityName);
+                            if (coords) {
+                              setManualCityCoords(coords);
+                            }
+                            setCityFilter(cityName);
+                          } else {
+                            setCityFilter("");
+                            setManualCityCoords(null);
+                          }
+                          setCitySuggestions([]);
                           setIsCityEditing(false);
                         }}
                       />
@@ -849,9 +1080,26 @@ export default function CercaPartitaScreen() {
                         )}
                       </Pressable>
                       <Pressable
+                        style={styles.cityEditGPS}
+                        onPress={() => setShowMapModal(true)}
+                      >
+                        <Ionicons name="map" size={16} color="#2196F3" />
+                      </Pressable>
+                      <Pressable
                         style={styles.cityEditApply}
-                        onPress={() => {
-                          setCityFilter(tempCity.trim());
+                        onPress={async () => {
+                          const cityName = tempCity.trim();
+                          if (cityName) {
+                            const coords = await geocodeCity(cityName);
+                            if (coords) {
+                              setManualCityCoords(coords);
+                            }
+                            setCityFilter(cityName);
+                          } else {
+                            setCityFilter("");
+                            setManualCityCoords(null);
+                          }
+                          setCitySuggestions([]);
                           setIsCityEditing(false);
                         }}
                       >
@@ -861,12 +1109,37 @@ export default function CercaPartitaScreen() {
                         style={styles.cityEditCancel}
                         onPress={() => {
                           setTempCity(cityFilter);
+                          setCitySuggestions([]);
                           setIsCityEditing(false);
                         }}
                       >
                         <Ionicons name="close" size={18} color="#666" />
                       </Pressable>
                     </View>
+
+                    {/* Suggerimenti città */}
+                    {citySuggestions.length > 0 && (
+                      <View style={styles.citySuggestionsContainer}>
+                        {isLoadingCitySuggestions && (
+                          <View style={styles.citySuggestionItem}>
+                            <ActivityIndicator size="small" color="#2196F3" />
+                            <Text style={styles.citySuggestionText}>Ricerca in corso...</Text>
+                          </View>
+                        )}
+                        {!isLoadingCitySuggestions && citySuggestions.map((suggestion, index) => (
+                          <Pressable
+                            key={index}
+                            style={styles.citySuggestionItem}
+                            onPress={() => handleSelectCitySuggestion(suggestion)}
+                          >
+                            <Ionicons name="location" size={16} color="#2196F3" />
+                            <Text style={styles.citySuggestionText} numberOfLines={1}>
+                              {suggestion.name}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 )}
                 {renderFilters()}
@@ -1052,6 +1325,32 @@ export default function CercaPartitaScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={showMapModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowMapModal(false)}
+      >
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.header}>
+            <Pressable onPress={() => setShowMapModal(false)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color="#333" />
+            </Pressable>
+            <Text style={styles.headerTitle}>Seleziona posizione</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map-outline" size={64} color="#ccc" />
+            <Text style={styles.mapPlaceholderText}>
+              Per usare la mappa, installa react-native-maps
+            </Text>
+            <Text style={styles.mapPlaceholderSubtext}>
+              npx expo install react-native-maps
+            </Text>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1190,6 +1489,49 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  citySuggestionsContainer: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    marginTop: 8,
+    maxHeight: 200,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  citySuggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  citySuggestionText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  mapPlaceholderText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 16,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 8,
+    fontFamily: "monospace",
+  },
   card: {
     backgroundColor: "white",
     borderRadius: 16,
@@ -1216,6 +1558,10 @@ const styles = StyleSheet.create({
     color: "#333",
     flex: 1,
   },
+  badgeContainer: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
   badge: {
     backgroundColor: "#E3F2FD",
     paddingHorizontal: 10,
@@ -1226,6 +1572,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#2196F3",
+  },
+  timerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  timerBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   infoRow: {
     flexDirection: "row",

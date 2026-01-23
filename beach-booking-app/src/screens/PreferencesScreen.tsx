@@ -12,7 +12,15 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
+// Debounce utility
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import API_URL from "../config/api";
@@ -113,19 +121,15 @@ export default function PreferencesScreen({ navigation }: any) {
       setShowCitySuggestions(false);
       return;
     }
-
     try {
       const geocodeUrl = 
         `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(searchText)},Italia&` +
         `format=json&limit=5`;
-      
       const geocodeResponse = await fetch(geocodeUrl, {
         headers: { 'User-Agent': 'SportBookingApp/1.0' },
       });
-
       const geocodeData = await geocodeResponse.json();
-      
       if (geocodeData && geocodeData.length > 0) {
         // Filtra solo risultati in Italia
         const italianResults = geocodeData.filter((result: any) => {
@@ -133,7 +137,6 @@ export default function PreferencesScreen({ navigation }: any) {
           const lng = parseFloat(result.lon);
           return lat >= 35.5 && lat <= 47.1 && lng >= 6.6 && lng <= 18.5;
         });
-        
         setCitySuggestions(italianResults);
         setShowCitySuggestions(italianResults.length > 0);
       }
@@ -141,6 +144,9 @@ export default function PreferencesScreen({ navigation }: any) {
       console.error("Errore ricerca città:", error);
     }
   };
+
+  // Debounced version
+  const debouncedSearchCitySuggestions = useMemo(() => debounce(searchCitySuggestions, 500), []);
 
   const selectCity = (suggestion: any) => {
     const cityName = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.name;
@@ -170,6 +176,17 @@ export default function PreferencesScreen({ navigation }: any) {
       Alert.alert(
         "Seleziona una citta",
         "Per favore scegli la citta dai suggerimenti per confermare le coordinate."
+      );
+      return;
+    }
+
+    // Validazione raggio
+    const radiusValue = parseInt(radius) || 30;
+    if (radiusValue < 1 || radiusValue > 100) {
+      Alert.alert(
+        "Raggio non valido",
+        "Il raggio deve essere compreso tra 1 e 100 km.",
+        [{ text: "OK", style: "default" }]
       );
       return;
     }
@@ -384,7 +401,7 @@ export default function PreferencesScreen({ navigation }: any) {
                   setCity(text);
                   setSelectedCoordinates(null);
                   setPreviewCoordinates(null);
-                  searchCitySuggestions(text);
+                  debouncedSearchCitySuggestions(text);
                 }}
                 autoCapitalize="words"
               />

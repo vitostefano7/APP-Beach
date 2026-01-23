@@ -360,7 +360,77 @@ export default function HomeScreen() {
           return true;
         });
 
-        const sorted = filtered.sort((a: any, b: any) => {
+        // Carica città preferita e strutture dove ha già giocato
+        let preferredCity = '';
+        let playedStructures: string[] = [];
+
+        try {
+          // Carica preferenze utente
+          const prefsRes = await fetch(`${API_URL}/users/preferences`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (prefsRes.ok) {
+            const prefs = await prefsRes.json();
+            preferredCity = prefs.preferredLocation?.city?.toLowerCase() || '';
+            console.log('📍 Città preferita caricata:', preferredCity || 'NESSUNA');
+          }
+
+          // Carica storico match per ottenere strutture dove ha già giocato
+          const historyRes = await fetch(`${API_URL}/matches/me?limit=50`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (historyRes.ok) {
+            const historyData = await historyRes.json();
+            const historyMatches = Array.isArray(historyData) ? historyData : 
+                                  Array.isArray(historyData.matches) ? historyData.matches : [];
+            playedStructures = [...new Set(
+              historyMatches
+                .filter((m: any) => m.booking?.campo?.struttura?._id)
+                .map((m: any) => m.booking.campo.struttura._id)
+            )];
+            console.log('🏟️ Strutture dove hai giocato:', playedStructures.length);
+          }
+        } catch (err) {
+          console.warn('Errore caricamento preferenze/storico per ordinamento:', err);
+        }
+
+        // Filtra solo partite nella città preferita o nelle strutture già visitate
+        const priorityMatches = filtered.filter((match: any) => {
+          const city = (match.booking?.campo?.struttura?.location?.city || '').toLowerCase();
+          const structureId = match.booking?.campo?.struttura?._id || '';
+          
+          const isPreferredCity = preferredCity && city.includes(preferredCity);
+          const isPlayedStructure = playedStructures.includes(structureId);
+          
+          return isPreferredCity || isPlayedStructure;
+        });
+
+        console.log(`🔍 Partite filtrate: ${priorityMatches.length} su ${filtered.length} totali`);
+        console.log(`  - Città preferita: ${preferredCity || 'nessuna'}`);
+        console.log(`  - Strutture visitate: ${playedStructures.length}`);
+
+        // Ordinamento per data
+        const sorted = priorityMatches.sort((a: any, b: any) => {
+          const cityA = (a.booking?.campo?.struttura?.location?.city || '').toLowerCase();
+          const cityB = (b.booking?.campo?.struttura?.location?.city || '').toLowerCase();
+          const structureA = a.booking?.campo?.struttura?._id || '';
+          const structureB = b.booking?.campo?.struttura?._id || '';
+
+          // 1. Prima città preferita
+          const aIsPreferredCity = preferredCity && cityA.includes(preferredCity);
+          const bIsPreferredCity = preferredCity && cityB.includes(preferredCity);
+          
+          if (aIsPreferredCity && !bIsPreferredCity) return -1;
+          if (!aIsPreferredCity && bIsPreferredCity) return 1;
+
+          // 2. Poi strutture dove ha già giocato
+          const aIsPlayedStructure = playedStructures.includes(structureA);
+          const bIsPlayedStructure = playedStructures.includes(structureB);
+          
+          if (aIsPlayedStructure && !bIsPlayedStructure) return -1;
+          if (!aIsPlayedStructure && bIsPlayedStructure) return 1;
+
+          // 3. Ordina per data
           const dateA = a.booking?.date && a.booking?.startTime ? 
             new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
           const dateB = b.booking?.date && b.booking?.startTime ? 
@@ -369,7 +439,7 @@ export default function HomeScreen() {
         });
 
         setOpenMatches(sorted.slice(0, 10));
-        console.log(`✅ ${sorted.length} partite aperte caricate`);
+        console.log(`✅ ${sorted.length} partite prioritarie caricate`);
       }
     } catch (error) {
       console.error('Errore caricamento partite aperte:', error);
@@ -804,14 +874,14 @@ export default function HomeScreen() {
         </View>
 
         {/* Partite Aperte */}
-        {openMatches.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Partite aperte</Text>
-              <Pressable onPress={() => navigation.navigate('CercaPartita')}>
-                <Text style={styles.sectionLink}>Vedi tutte</Text>
-              </Pressable>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Partite aperte</Text>
+            <Pressable onPress={() => navigation.navigate('CercaPartita')}>
+              <Text style={styles.sectionLink}>Vedi tutte</Text>
+            </Pressable>
+          </View>
+          {openMatches.length > 0 ? (
             <FlatList
               data={openMatches}
               renderItem={({ item }) => (
@@ -832,8 +902,27 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
             />
-          </View>
-        )}
+          ) : (
+            <EmptyStateCard
+              icon="search-outline"
+              title={
+                user?.preferences?.preferredLocation?.city 
+                  ? `Non ci sono partite aperte intorno a ${user.preferences.preferredLocation.city} o in strutture in cui hai già giocato`
+                  : "Non ci sono partite aperte in strutture in cui hai già giocato"
+              }
+              subtitle={
+                user?.preferences?.preferredLocation?.city
+                  ? "Cerca tra tutte le partite disponibili"
+                  : "Cerca tra tutte le partite o imposta una città preferita"
+              }
+              buttonText="Cerca partite"
+              onPress={() => navigation.navigate('CercaPartita')}
+              secondaryButtonText={!user?.preferences?.preferredLocation?.city ? "Preferenze" : undefined}
+              onSecondaryPress={!user?.preferences?.preferredLocation?.city ? () => navigation.navigate('Preferenze') : undefined}
+              type="match"
+            />
+          )}
+        </View>
 
         {validPendingInvites.length > 0 && (
           <View style={styles.section}>

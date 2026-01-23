@@ -9,7 +9,9 @@ interface EmptyStateCardProps {
   subtitle?: string;
   buttonText?: string;
   onPress?: () => void;
-  type?: 'booking' | 'invite';
+  secondaryButtonText?: string;
+  onSecondaryPress?: () => void;
+  type?: 'booking' | 'invite' | 'match';
 }
 
 const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
@@ -18,6 +20,8 @@ const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
   subtitle,
   buttonText,
   onPress,
+  secondaryButtonText,
+  onSecondaryPress,
   type = 'booking',
 }) => {
   const cardStyle = type === 'booking' 
@@ -40,11 +44,18 @@ const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
             {subtitle}
           </Text>
         )}
-        {buttonText && onPress && (
-          <Pressable style={styles.bookButton} onPress={onPress}>
-            <Text style={styles.bookButtonText}>{buttonText}</Text>
-          </Pressable>
-        )}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+          {buttonText && onPress && (
+            <Pressable style={[styles.bookButton, { flex: secondaryButtonText ? 1 : undefined }]} onPress={onPress}>
+              <Text style={styles.bookButtonText}>{buttonText}</Text>
+            </Pressable>
+          )}
+          {secondaryButtonText && onSecondaryPress && (
+            <Pressable style={[styles.bookButton, { flex: 1, backgroundColor: '#666' }]} onPress={onSecondaryPress}>
+              <Text style={styles.bookButtonText}>{secondaryButtonText}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </Pressable>
   );

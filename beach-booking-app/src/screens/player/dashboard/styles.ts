@@ -683,6 +683,20 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#999",
   },
+  openMatchTimeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 5,
+  },
+  openMatchTimeLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 
   // ==================== INVITES ====================
   inviteCountBadge: {

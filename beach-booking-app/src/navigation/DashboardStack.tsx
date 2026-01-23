@@ -21,6 +21,8 @@ import PostDetailScreen from "../screens/player/dashboard/PostDetailScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 import FriendsListScreen from "../screens/player/profilo/FriendsListScreen";
 import StrutturaFollowersScreen from "../screens/player/struttura/StrutturaFollowersScreen";
+import SetupPreferencesScreen from "../screens/player/profilo/SetupPreferencesScreen";
+import PreferencesScreen from "../screens/PreferencesScreen";
 
 export type DashboardStackParamList = {
   Home: undefined;
@@ -178,6 +180,11 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen
         name="DettaglioStruttura"
         component={FieldDetailsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Preferenze"
+        component={PreferencesScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

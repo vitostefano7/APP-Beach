@@ -281,7 +281,7 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
       {/* FOOTER */}
       <View style={styles.cardFooterBlue}>
          <View style={styles.priceContainerBlue}>
-             <Text style={styles.priceLabelBlue}>Incasso</Text>
+             <Text style={styles.priceLabelBlue}>Prezzo</Text>
              <Text style={styles.priceValueBlue}>€{item.price}</Text>
          </View>
          <View style={styles.actionButtonBlue}>
