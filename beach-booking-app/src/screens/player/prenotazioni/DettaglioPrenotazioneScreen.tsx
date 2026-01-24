@@ -1322,9 +1322,11 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
             </AnimatedButton>
           </View>
           
-          <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
-            {booking.status === 'confirmed' 
-              ? (isMatchPassed() ? 'Dettaglio Partita Conclusa' : (isMatchInProgress() ? 'Dettaglio Partita In corso' : 'Dettaglio Prossima Partita'))
+          <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}> 
+            {booking.status === 'confirmed'
+              ? (isMatchInProgress()
+                  ? 'Partita in Corso'
+                  : (isMatchPassed() ? 'Partita Conclusa' : 'Prossima Partita'))
               : 'Cancellata'}
           </Text>
 

@@ -295,6 +295,13 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     matchCounters.draft++;
   }
 
+  // Rimuovi score e winner da match non conclusi
+  for (const m of matches) {
+    if (m.status !== "completed") {
+      delete m.score;
+      delete m.winner;
+    }
+  }
   const savedMatches = await Match.insertMany(matches);
   console.log(`✅ Creati ${savedMatches.length} match:`);
   console.log(`   - ${matchCounters.completed} completati con risultato (beach)`);
