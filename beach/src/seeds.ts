@@ -39,17 +39,6 @@ const SALT_ROUNDS = 10;
 
 const MONTHS_TO_GENERATE = 3; // Rolling calendar di 3 mesi
 
-// ✅ CONFIGURAZIONE QUANTITÀ DATI (ALTA MOLE)
-const NUM_PLAYERS = 500; // Aumentato per più dati
-const NUM_OWNERS = 50; // Aumentato per più strutture
-const NUM_STRUTTURE = 100; // Aumentato per varietà
-const NUM_USER_POSTS = 500; // Molti più post utenti
-const NUM_STRUTTURA_POSTS = 200; // Molti più post strutture
-const NUM_BOOKINGS_PAST = 1000; // Storico prenotazioni ricco
-const NUM_BOOKINGS_FUTURE = 500; // Prenotazioni future
-const NUM_EVENTS = 50; // Eventi disponibili
-const NUM_COMMUNITY_EVENTS = 100; // Eventi community
-
 /* =========================
    CLOUDINARY
 ========================= */
@@ -83,308 +72,6 @@ const formatDate = (d: Date) => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
-
-/* =========================
-   GENERATORI DATI RANDOM
-========================= */
-
-// Nomi italiani comuni (senza accenti e spazi)
-const ITALIAN_FIRST_NAMES = [
-  "Mario", "Giulia", "Luca", "Anna", "Marco", "Sofia", "Alessandro", "Chiara",
-  "Matteo", "Elena", "Davide", "Francesca", "Simone", "Valentina", "Andrea",
-  "Martina", "Lorenzo", "Alessia", "Gabriele", "Beatrice", "Giuseppe", "Sara",
-  "Francesco", "Federica", "Antonio", "Laura", "Nicola", "Silvia", "Giovanni",
-  "Eleonora", "Roberto", "Giorgia", "Emanuele", "Camilla", "Stefano", "Alice",
-  "Fabio", "Veronica", "Pietro", "Ilaria", "Riccardo", "Claudia", "Daniele",
-  "Michela", "Paolo", "Serena", "Federico", "Cristina", "Michele", "Roberta",
-  "Salvatore", "Paola", "Vincenzo", "Elisa", "Diego", "Arianna", "Filippo",
-  "Valeria", "Giacomo", "Monica", "Alessio", "Sabrina", "Alberto", "Caterina",
-  "Claudio", "Angela", "Enrico", "Daniela", "Gianluca", "Barbara", "Massimo",
-  "Teresa", "Leonardo", "Simona", "Antonella", "Thomas", "Irene",
-  "Samuele", "Manuela", "Christian", "Rossella", "Edoardo", "Patrizia",
-  "Raffaele", "Giovanna", "Manuel", "Emanuela", "Mirko", "Cinzia", "Angelo",
-  "Marianna", "Giorgio", "Stefania", "Carlo", "Nicoletta", "Ivan", "Luisa",
-  "Dario", "Greta", "Tommaso", "Giada", "Mauro", "Denise", "Mirco", "Katia",
-  "Sergio", "Nadia", "Cristian", "Pamela", "Omar", "Tania", "Samuel", "Noemi",
-  "Fabiano", "Gioia", "Tiziano", "Debora", "Valerio", "Ivana", "Mauro", "Rita",
-  "Denis", "Ornella", "Oscar", "Mara", "Elia", "Loredana", "Giulio", "Carla",
-  "Bruno", "Gina", "Dino", "Flora", "Renzo", "Lidia", "Sandro", "Rosa",
-  "Guido", "Vera", "Rino", "Ada", "Aldo", "Olga", "Ugo", "Lina"
-];
-
-const ITALIAN_LAST_NAMES = [
-  "Rossi", "Ferrari", "Russo", "Bianchi", "Romano", "Gallo", "Conti", "Bruno",
-  "Ricci", "Marino", "Greco", "Lombardi", "Costa", "Fontana", "Serra", "Mancini",
-  "Villa", "Caruso", "DeLuca", "Esposito", "Colombo", "Barbieri", "Martini", "Moretti",
-  "Santoro", "DeRosa", "Vitale", "Leone", "Marchetti", "Ferri", "Galli",
-  "Rinaldi", "Benedetti", "Caputo", "Giordano", "Palumbo", "Pellegrini", "Bianco",
-  "Messina", "Rossetti", "Parisi", "DAngelo", "Rizzi", "Sala", "Silvestri",
-  "Fabbri", "Mariani", "Milani", "Testa", "Longo", "Pellegrino", "Donati",
-  "Cattaneo", "Carbone", "Morelli", "Costantini", "Guerra", "Ferraro", "Orlando",
-  "Montanari", "Bernardi", "Bellini", "Marchi", "Martino", "Valentini", "Ferretti",
-  "Rossini", "Sanna", "Monti", "Piras", "Battaglia", "Pagano", "Negri", "Grasso",
-  "Farina", "Cattani", "Bassi", "Biagi", "Neri", "Sartori", "Riva",
-  "Gentile", "Gatti", "DeSantis", "Martinelli", "Lombardo", "Santini", "Fiore",
-  "Lazzari", "Ferrero", "Sorrentino", "Ruggiero", "Conte", "Damico", "Barone",
-  "Ragusa", "Moreno", "Ferreira", "Giuliani", "DeAngelis", "Rizzo", "Bertini",
-  "Fiorentino", "Ruggeri", "Grassi", "Mazza", "Cipriani", "Cavalli", "Pirlo",
-  "Grimaldi", "Amore", "Napoli", "Orsini", "Berti", "Lupo", "Volpe", "Amato"
-];
-
-const CITIES = [
-  "Milano", "Roma", "Torino", "Bologna", "Firenze", "Napoli", "Venezia", "Verona",
-  "Genova", "Palermo", "Catania", "Bari", "Cagliari", "Padova", "Brescia", "Rimini",
-  "Parma", "Modena", "Reggio Emilia", "Trieste", "Piacenza", "Perugia", "Ancona",
-  "Como", "Lecce", "Bergamo", "Salerno", "Ravenna", "Ferrara", "Pescara"
-];
-
-// Vie reali per ogni città italiana
-const CITY_STREETS: { [city: string]: string[] } = {
-  Milano: ["Via Dante", "Corso Buenos Aires", "Via Montenapoleone", "Corso Vittorio Emanuele II", "Via Torino", "Viale Monza", "Corso Sempione", "Via Paolo Sarpi"],
-  Roma: ["Via del Corso", "Via Nazionale", "Via dei Fori Imperiali", "Viale Trastevere", "Via Appia Nuova", "Via Tuscolana", "Corso Vittorio Emanuele II", "Via Veneto"],
-  Torino: ["Via Roma", "Corso Francia", "Corso Vittorio Emanuele II", "Via Po", "Corso Giulio Cesare", "Via Nizza", "Corso Vinzaglio", "Via Garibaldi"],
-  Bologna: ["Via Indipendenza", "Via Rizzoli", "Via Ugo Bassi", "Viale Masini", "Via San Felice", "Via Marconi", "Strada Maggiore", "Via Zamboni"],
-  Firenze: ["Via Roma", "Via dei Calzaiuoli", "Borgo Ognissanti", "Via Tornabuoni", "Lungarno Vespucci", "Viale Belfiore", "Via del Corso", "Piazza della Repubblica"],
-  Napoli: ["Via Toledo", "Corso Umberto I", "Via Caracciolo", "Via Chiaia", "Via dei Tribunali", "Corso Vittorio Emanuele", "Via Partenope", "Via Santa Lucia"],
-  Venezia: ["Strada Nova", "Lista di Spagna", "Calle Larga", "Fondamenta delle Zattere", "Riva degli Schiavoni", "Calle Lunga San Barnaba", "Rio Terra San Leonardo", "Salizada San Lio"],
-  Verona: ["Via Mazzini", "Corso Porta Nuova", "Via Roma", "Corso Porta Borsari", "Via Cappello", "Lungadige Rubele", "Via Leoncino", "Corso Cavour"],
-  Genova: ["Via XX Settembre", "Via Balbi", "Via Garibaldi", "Corso Italia", "Via San Lorenzo", "Corso Buenos Aires", "Via Roma", "Corso Aurelio Saffi"],
-  Palermo: ["Via Maqueda", "Via Roma", "Corso Vittorio Emanuele", "Via Liberta", "Via Ruggero Settimo", "Via Notarbartolo", "Corso Calatafimi", "Via Strasburgo"],
-  Catania: ["Via Etnea", "Corso Italia", "Via Umberto", "Via Vittorio Emanuele II", "Via Pacini", "Viale Regina Margherita", "Via Plebiscito", "Corso Sicilia"],
-  Bari: ["Corso Vittorio Emanuele II", "Via Sparano", "Lungomare Nazario Sauro", "Via Argiro", "Corso Cavour", "Via Melo", "Via Putignani", "Via Dante Alighieri"],
-  Cagliari: ["Via Roma", "Largo Carlo Felice", "Viale Regina Margherita", "Via Garibaldi", "Corso Vittorio Emanuele II", "Via Manno", "Viale Trieste", "Via San Benedetto"],
-  Padova: ["Via Roma", "Corso del Popolo", "Via San Francesco", "Via Zabarella", "Via Dante", "Corso Milano", "Via Cavour", "Riviera Tito Livio"],
-  Brescia: ["Corso Zanardelli", "Via dei Musei", "Corso Palestro", "Via Vittorio Emanuele II", "Corso Giuseppe Garibaldi", "Viale Venezia", "Via Trieste", "Via XX Settembre"],
-  Rimini: ["Viale Vespucci", "Corso d'Augusto", "Via Garibaldi", "Viale Regina Elena", "Via Roma", "Viale Principe Amedeo", "Piazzale Kennedy", "Via Tempio Malatestiano"],
-};
-
-const GENERIC_STREETS = ["Via Garibaldi", "Viale Roma", "Corso Vittorio Emanuele", "Via Mazzini", "Piazza Dante", "Via Verdi", "Corso Italia"];
-
-// Genera nome italiano casuale
-function generateRandomName(): string {
-  return randomElement(ITALIAN_FIRST_NAMES);
-}
-
-// Genera cognome italiano casuale
-function generateRandomSurname(): string {
-  return randomElement(ITALIAN_LAST_NAMES);
-}
-
-// Genera email basata su nome e cognome (sempre @test.it)
-function generateEmail(name: string, surname: string, index?: number): string {
-  // Rimuovi apostrofi, spazi e caratteri speciali
-  const nameClean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const surnameClean = surname.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const suffix = index !== undefined ? index : "";
-  return `${nameClean}${suffix}@test.it`;
-}
-
-// Genera username casuale (max 20 caratteri, solo alfanumerici e underscore)
-function generateUsername(name: string, surname: string, index?: number): string {
-  // Rimuovi apostrofi, spazi e caratteri speciali
-  const nameClean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const surnameClean = surname.toLowerCase().replace(/[^a-z0-9]/g, "");
-  
-  const patterns = [
-    `${nameClean}_${surnameClean}`,
-    `${nameClean}${randomInt(10, 99)}`,
-    `${surnameClean}_${nameClean.charAt(0)}`,
-    `${nameClean.substring(0, 4)}_${surnameClean.substring(0, 4)}`,
-    `${nameClean.substring(0, 6)}${randomInt(1, 999)}`,
-  ];
-  
-  let base = randomElement(patterns);
-  if (index !== undefined && base.length < 15) {
-    base = `${base}${index}`;
-  }
-  
-  // Assicura che non superi i 20 caratteri
-  if (base.length > 20) {
-    base = base.substring(0, 20);
-  }
-  
-  return base;
-}
-
-// Genera indirizzo casuale con vie reali
-function generateAddress(): { address: string; city: string; lat: number; lng: number } {
-  const city = randomElement(CITIES);
-  const cityCoords: { [key: string]: { lat: number; lng: number } } = {
-    Milano: { lat: 45.4642, lng: 9.1900 },
-    Roma: { lat: 41.9028, lng: 12.4964 },
-    Torino: { lat: 45.0703, lng: 7.6869 },
-    Bologna: { lat: 44.4949, lng: 11.3426 },
-    Firenze: { lat: 43.7696, lng: 11.2558 },
-    Napoli: { lat: 40.8518, lng: 14.2681 },
-    Venezia: { lat: 45.4408, lng: 12.3155 },
-    Verona: { lat: 45.4384, lng: 10.9916 },
-    Genova: { lat: 44.4056, lng: 8.9463 },
-    Palermo: { lat: 38.1157, lng: 13.3615 },
-    Catania: { lat: 37.5079, lng: 15.0830 },
-    Bari: { lat: 41.1171, lng: 16.8719 },
-    Cagliari: { lat: 39.2238, lng: 9.1217 },
-    Padova: { lat: 45.4064, lng: 11.8768 },
-    Brescia: { lat: 45.5416, lng: 10.2118 },
-    Rimini: { lat: 44.0678, lng: 12.5695 },
-    Parma: { lat: 44.8015, lng: 10.3279 },
-    Modena: { lat: 44.6471, lng: 10.9252 },
-    "Reggio Emilia": { lat: 44.6989, lng: 10.6297 },
-    Trieste: { lat: 45.6495, lng: 13.7768 },
-    Piacenza: { lat: 45.0526, lng: 9.6929 },
-    Perugia: { lat: 43.1107, lng: 12.3908 },
-    Ancona: { lat: 43.6158, lng: 13.5189 },
-    Como: { lat: 45.8080, lng: 9.0852 },
-    Lecce: { lat: 40.3515, lng: 18.1750 },
-    Bergamo: { lat: 45.6983, lng: 9.6773 },
-    Salerno: { lat: 40.6824, lng: 14.7681 },
-    Ravenna: { lat: 44.4184, lng: 12.2035 },
-    Ferrara: { lat: 44.8381, lng: 11.6198 },
-    Pescara: { lat: 42.4618, lng: 14.2169 },
-  };
-
-  const coords = cityCoords[city] || { lat: 45.0 + Math.random() * 5, lng: 9.0 + Math.random() * 5 };
-  const lat = coords.lat + (Math.random() - 0.5) * 0.02;
-  const lng = coords.lng + (Math.random() - 0.5) * 0.02;
-
-  // Usa vie reali della città se disponibili, altrimenti vie generiche
-  const streets = CITY_STREETS[city] || GENERIC_STREETS;
-  const street = randomElement(streets);
-  const number = randomInt(1, 200);
-
-  return {
-    address: `${street}, ${number}`,
-    city,
-    lat,
-    lng,
-  };
-}
-
-// Genera descrizione struttura
-function generateStrutturaDescription(): string {
-  const templates = [
-    "Centro sportivo moderno con campi professionali e servizi completi",
-    "Struttura all'avanguardia per gli amanti del beach volley",
-    "Campi beach volley di alta qualità con illuminazione notturna",
-    "Arena sportiva con servizi premium e area relax",
-    "Centro polisportivo con campi regolamentari e area bar",
-    "Struttura coperta e scoperta per giocare tutto l'anno",
-    "Beach volley club con sabbia finissima importata",
-    "Complesso sportivo con vista panoramica",
-    "Centro beach volley con spazi eventi e tornei",
-    "Arena moderna dotata di tutti i comfort",
-  ];
-  return randomElement(templates);
-}
-
-// Genera nome struttura
-function generateStrutturaName(city: string, index: number): string {
-  const prefixes = ["Beach", "Volley", "Arena", "Sport", "Centro"];
-  const suffixes = ["Club", "Center", "Park", "Arena", "Village", "Beach", "Volley"];
-  const types = ["Beach Volley", "Sport", "Arena", "Experience", "Court"];
-
-  const patterns = [
-    `${randomElement(prefixes)} ${randomElement(types)} ${city}`,
-    `${city} ${randomElement(suffixes)}`,
-    `${randomElement(prefixes)} ${city} ${randomElement(suffixes)}`,
-    `${city} ${randomElement(types)} ${index}`,
-  ];
-
-  return randomElement(patterns);
-}
-
-// Genera contenuto post casuale
-function generatePostContent(isStruttura: boolean = false): string {
-  const userPosts = [
-    "Che bella partita oggi! 🏐",
-    "Cerco compagni per una partita domani sera",
-    "Qualcuno disponibile per un 2v2?",
-    "Miglior campo dove ho giocato! 🔥",
-    "Chi viene a giocare questo weekend?",
-    "Alla ricerca di un team per il torneo",
-    "Fantastica serata di beach volley!",
-    "Qualcuno per una partita veloce?",
-    "Ho bisogno di migliorare il mio servizio, consigli?",
-    "Beach volley sotto le stelle ⭐",
-    "Partita epica oggi!",
-    "Chi è pronto per l'estate? 🏖️",
-    "Nuovo record personale!",
-    "Grazie a tutti per la bella partita!",
-    "Non vedo l'ora di giocare ancora!",
-    "Match incredibile questa mattina!",
-    "Cercasi compagni di squadra per torneo",
-    "Primo posto nel torneo! 🏆",
-    "Allenamento intenso oggi",
-    "Chi gioca domani pomeriggio?",
-    "Bella vittoria con la squadra! 💪",
-    "Serve un quarto giocatore per stasera",
-    "Splendida giornata in spiaggia",
-    "Qualcuno ha esperienza come schiacciatore?",
-    "Torneo amatoriale questo weekend!",
-  ];
-
-  const strutturaPosts = [
-    "Nuovi orari disponibili per il weekend! 🎉",
-    "Torneo questo sabato, iscriviti ora!",
-    "Offerta speciale: sconto 20% su prenotazioni serali",
-    "I nostri campi sono pronti per voi! ☀️",
-    "Grazie a tutti per il vostro supporto!",
-    "Evento speciale in programma!",
-    "Nuova illuminazione LED installata!",
-    "Happy hour: prezzi ridotti dalle 18 alle 20",
-    "Weekend di beach volley: chi viene?",
-    "La stagione è iniziata alla grande!",
-    "Promozione estate: prenota ora!",
-    "Aperte le iscrizioni al torneo mensile",
-    "Nuovi servizi disponibili!",
-    "Campo rinnovato e pronto all'uso",
-    "Serata a tema questo venerdì!",
-    "Inaugurazione nuovo campo beach!",
-    "Clinic gratuito con professionisti",
-    "Offerta famiglia: sconti fino al 30%",
-    "Riapertura dopo manutenzione straordinaria",
-    "Evento charity: iscriviti e sostieni!",
-  ];
-
-  return isStruttura ? randomElement(strutturaPosts) : randomElement(userPosts);
-}
-
-// Genera commento casuale
-function generateComment(): string {
-  const comments = [
-    "Grande!", "Ci sono!", "Quando?", "Ottima idea!", "Conta su di me",
-    "Sono d'accordo", "Bellissimo!", "Perfetto!", "Interessante",
-    "Come posso prenotare?", "Fantastico!", "Ottimo!", "Ci sarò!",
-    "Grazie per l'info", "Quando inizia?", "Bravi!", "Complimenti!",
-    "Super!", "Wow!", "Mitico!", "Top!", "👍", "🔥", "💪", "⚡"
-  ];
-  return randomElement(comments);
-}
-
-// Genera nome evento
-function generateEventName(): string {
-  const types = ["Torneo", "Campionato", "Lega", "Amichevole", "Open Day", "Clinic"];
-  const adjectives = ["Estivo", "Invernale", "Primaverile", "Amatoriale", "Pro", "Open"];
-  const sports = ["Beach Volley", "Volley", "Beach"];
-  
-  return `${randomElement(types)} ${randomElement(adjectives)} ${randomElement(sports)}`;
-}
-
-// Genera descrizione evento
-function generateEventDescription(): string {
-  const templates = [
-    "Torneo amatoriale aperto a tutti i livelli con premi finali",
-    "Campionato a squadre per giocatori intermedi e avanzati",
-    "Partita amichevole per socializzare e divertirsi",
-    "Evento open con iscrizione gratuita",
-    "Clinic tecnico con allenatori professionisti",
-    "Torneo benefico: partecipa e sostieni la causa",
-    "Lega settimanale con classifica finale",
-    "Open day: prova i nostri campi gratuitamente",
-    "Evento speciale con DJ set e beach party",
-    "Allenamento intensivo per migliorare la tecnica",
-  ];
-  return randomElement(templates);
-}
 
 /**
  * ✅ Genera slot ogni 30 minuti
@@ -549,64 +236,37 @@ async function seed() {
     /* -------- USERS -------- */
     const password = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
 
-    console.log(`\n👥 Generazione ${NUM_PLAYERS} player e ${NUM_OWNERS} owner...`);
-    
-    const usersData: any[] = [];
-    const usedEmails = new Set<string>();
-    const usedUsernames = new Set<string>();
+    const usersData = [
+      // PLAYERS (20)
+      { name: "Mario", surname: "Rossi", email: "mario@test.it", username: "mario_rossi", role: "player" },
+      { name: "Giulia", surname: "Verdi", email: "giulia@test.it", username: "giulia_verdi", role: "player" },
+      { name: "Luca", surname: "Bianchi", email: "luca@test.it", username: "luca_b", role: "player" },
+      { name: "Anna", surname: "Ferrari", email: "anna@test.it", username: "anna_ferrari", role: "player" },
+      { name: "Marco", surname: "Esposito", email: "marco@test.it", username: "marco_esp", role: "player" },
+      { name: "Sofia", surname: "Romano", email: "sofia@test.it", username: "sofia_romano", role: "player" },
+      { name: "Alessandro", surname: "Gallo", email: "alex@test.it", username: "alex_gallo", role: "player" },
+      { name: "Chiara", surname: "Conti", email: "chiara@test.it", username: "chiara_c", role: "player" },
+      { name: "Matteo", surname: "Bruno", email: "matteo@test.it", username: "matteo_bruno", role: "player" },
+      { name: "Elena", surname: "Ricci", email: "elena@test.it", username: "elena_ricci", role: "player" },
+      { name: "Davide", surname: "Marino", email: "davide@test.it", username: "davide_m", role: "player" },
+      { name: "Francesca", surname: "Greco", email: "francesca@test.it", username: "franci_greco", role: "player" },
+      { name: "Simone", surname: "Lombardi", email: "simone@test.it", username: "simone_l", role: "player" },
+      { name: "Valentina", surname: "Costa", email: "valentina@test.it", username: "vale_costa", role: "player" },
+      { name: "Andrea", surname: "Fontana", email: "andrea@test.it", username: "andrea_f", role: "player" },
+      { name: "Martina", surname: "Serra", email: "martina@test.it", username: "martina_serra", role: "player" },
+      { name: "Lorenzo", surname: "Mancini", email: "lorenzo@test.it", username: "lorenzo_m", role: "player" },
+      { name: "Alessia", surname: "Villa", email: "alessia@test.it", username: "alessia_v", role: "player" },
+      { name: "Gabriele", surname: "Caruso", email: "gabriele@test.it", username: "gabri_caruso", role: "player" },
+      { name: "Beatrice", surname: "De Luca", email: "beatrice@test.it", username: "bea_deluca", role: "player" },
 
-    // Genera PLAYERS
-    for (let i = 0; i < NUM_PLAYERS; i++) {
-      const firstName = generateRandomName();
-      const lastName = generateRandomSurname();
-      let email = generateEmail(firstName, lastName, i);
-      let username = generateUsername(firstName, lastName, i);
-
-      // Assicura unicità email e username
-      while (usedEmails.has(email)) {
-        email = generateEmail(firstName, lastName, randomInt(100, 9999));
-      }
-      while (usedUsernames.has(username)) {
-        username = generateUsername(firstName, lastName, randomInt(100, 9999));
-      }
-
-      usedEmails.add(email);
-      usedUsernames.add(username);
-
-      usersData.push({
-        name: firstName,
-        surname: lastName,
-        email,
-        username,
-        role: "player",
-      });
-    }
-
-    // Genera OWNERS
-    for (let i = 0; i < NUM_OWNERS; i++) {
-      const firstName = generateRandomName();
-      const lastName = generateRandomSurname();
-      let email = generateEmail(firstName, lastName, NUM_PLAYERS + i);
-      let username = generateUsername(firstName, lastName, NUM_PLAYERS + i);
-
-      while (usedEmails.has(email)) {
-        email = generateEmail(firstName, lastName, randomInt(10000, 99999));
-      }
-      while (usedUsernames.has(username)) {
-        username = generateUsername(firstName, lastName, randomInt(10000, 99999));
-      }
-
-      usedEmails.add(email);
-      usedUsernames.add(username);
-
-      usersData.push({
-        name: firstName,
-        surname: lastName,
-        email,
-        username,
-        role: "owner",
-      });
-    }
+      // OWNERS (6)
+      { name: "Paolo", surname: "Proprietario", email: "paolo@test.it", username: "paolo_owner", role: "owner" },
+      { name: "Sara", surname: "Gestore", email: "sara@test.it", username: "sara_owner", role: "owner" },
+      { name: "Roberto", surname: "Beach", email: "roberto@test.it", username: "roberto_beach", role: "owner" },
+      { name: "Laura", surname: "Sport", email: "laura@test.it", username: "laura_sport", role: "owner" },
+      { name: "Antonio", surname: "Centro", email: "antonio@test.it", username: "antonio_centro", role: "owner" },
+      { name: "Federica", surname: "Arena", email: "federica@test.it", username: "fede_arena", role: "owner" },
+    ];
 
     const users = await User.insertMany(
       usersData.map((u, index) => ({
@@ -626,8 +286,8 @@ async function seed() {
               }
             : undefined,
 
-        // ~10% profili privati
-        profilePrivacy: u.role === "player" && Math.random() < 0.1 ? "private" : "public",
+        // Alcuni profili privati per test (Luca, Anna, Sofia, Chiara)
+        profilePrivacy: u.role === "player" && (index === 2 || index === 3 || index === 5 || index === 7) ? "private" : "public",
       }))
     );
 
@@ -635,9 +295,6 @@ async function seed() {
     const owners = users.filter((u: any) => u.role === "owner");
 
     console.log(`✅ Creati ${users.length} utenti (${players.length} player, ${owners.length} owner)`);
-    console.log(`   - Profili privati: ${players.filter((p: any) => p.profilePrivacy === "private").length}`);
-    console.log(`   - Primi 5 player: ${players.slice(0, 5).map((p: any) => p.email).join(", ")}`);
-    console.log(`   - Primi 3 owner: ${owners.slice(0, 3).map((o: any) => o.email).join(", ")}`);
 
     /* -------- PLAYER PROFILES -------- */
     await PlayerProfile.insertMany(
@@ -652,6 +309,8 @@ async function seed() {
     console.log(`✅ Creati ${players.length} player profiles`);
 
     /* -------- USER PREFERENCES -------- */
+    const cities = ["Milano", "Roma", "Torino", "Bologna", "Firenze"];
+
     await UserPreferences.insertMany(
       players.map((p: any) => ({
         user: p._id,
@@ -659,10 +318,10 @@ async function seed() {
         darkMode: Math.random() > 0.5,
         privacyLevel: randomElement(["public", "friends", "private"]),
         preferredLocation: {
-          city: randomElement(CITIES),
+          city: randomElement(cities),
           lat: 45.4642 + Math.random() * 2,
           lng: 9.19 + Math.random() * 2,
-          radius: randomInt(20, 50),
+          radius: 30,
         },
         favoriteStrutture: [],
         favoriteSports: [randomElement(["Beach Volley", "Volley"])],
@@ -673,96 +332,262 @@ async function seed() {
     console.log(`✅ Create ${players.length} user preferences`);
 
     /* -------- FRIENDSHIPS -------- */
-    console.log(`\n🤝 Generazione amicizie...`);
     const friendships: any[] = [];
-    const friendshipKeys = new Set<string>();
 
-    // Helper per evitare duplicati
-    const makeFriendshipKey = (user1: string, user2: string) => {
-      const sorted = [user1, user2].sort();
-      return `${sorted[0]}-${sorted[1]}`;
-    };
+    // Legenda:
+    // Mario (0), Giulia (1), Luca (2-PRIVATO), Anna (3-PRIVATO), Marco (4),
+    // Sofia (5-PRIVATO), Alessandro (6), Chiara (7-PRIVATO), Matteo (8), Elena (9)
 
-    // Ogni player ha 5-15 amicizie casuali
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i] as any;
-      const numFriendships = randomInt(5, 15);
+    // === SCENARI DI TEST SPECIFICI ===
 
-      for (let j = 0; j < numFriendships; j++) {
-        const friend: any = randomElement(players as any[]);
-        
-        // Non creare amicizia con se stesso
-        if (friend._id.toString() === player._id.toString()) continue;
+    // 1. Mario → Luca: pending (Mario ha richiesto a Luca che è privato)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[2]._id, // Luca (privato)
+      status: "pending",
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    });
 
-        const key = makeFriendshipKey(player._id.toString(), friend._id.toString());
-        if (friendshipKeys.has(key)) continue;
+    // 2. Luca → Mario: accepted (Luca segue Mario - direzione opposta)
+    friendships.push({
+      requester: players[2]._id, // Luca
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    });
 
-        friendshipKeys.add(key);
+    // 3. Anna → Mario: pending (Anna privata ha richiesto Mario)
+    friendships.push({
+      requester: players[3]._id, // Anna (privato)
+      recipient: players[0]._id, // Mario
+      status: "pending",
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    });
 
-        const status = Math.random() > 0.2 ? "accepted" : "pending";
-        const createdDate = new Date(Date.now() - randomInt(1, 90) * 24 * 60 * 60 * 1000);
+    // 4. Mario → Sofia: accepted (Mario segue Sofia privata - lei ha accettato)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[5]._id, // Sofia (privato)
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
 
+    // 5. Sofia → Mario: accepted (follow reciproco)
+    friendships.push({
+      requester: players[5]._id, // Sofia
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
+
+    // 6. Mario → Chiara: pending (Mario ha richiesto Chiara privata)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[7]._id, // Chiara (privato)
+      status: "pending",
+      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    });
+
+    // 7. Chiara → Mario: pending (anche Chiara ha richiesto Mario)
+    friendships.push({
+      requester: players[7]._id, // Chiara
+      recipient: players[0]._id, // Mario
+      status: "pending",
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    });
+
+    // === AMICIZIE NORMALI TRA ALTRI UTENTI ===
+
+    // Giulia e Marco: amici reciproci
+    friendships.push(
+      {
+        requester: players[1]._id, // Giulia
+        recipient: players[4]._id, // Marco
+        status: "accepted",
+        acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        requester: players[4]._id, // Marco
+        recipient: players[1]._id, // Giulia
+        status: "accepted",
+        acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      }
+    );
+
+    // Alessandro segue Mario (pubblico, auto-accepted)
+    friendships.push({
+      requester: players[6]._id, // Alessandro
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // Mario segue Giulia (pubblico, auto-accepted)
+    friendships.push({
+      requester: players[0]._id, // Mario
+      recipient: players[1]._id, // Giulia
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    });
+
+    // Matteo segue Mario
+    friendships.push({
+      requester: players[8]._id, // Matteo
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    });
+
+    // Elena segue Mario
+    friendships.push({
+      requester: players[9]._id, // Elena
+      recipient: players[0]._id, // Mario
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    });
+
+    // Amicizie tra altri player (network più ampio)
+    for (let i = 10; i < 15; i++) {
+      if (players[i]) {
+        // Alcuni seguono Mario
         friendships.push({
-          requester: player._id,
-          recipient: friend._id,
-          status,
-          createdAt: createdDate,
-          acceptedAt: status === "accepted" ? createdDate : undefined,
+          requester: players[i]._id,
+          recipient: players[0]._id,
+          status: "accepted",
+          acceptedAt: new Date(Date.now() - randomInt(1, 20) * 24 * 60 * 60 * 1000),
         });
 
-        // Se accepted, crea anche la relazione inversa (follow reciproco)
-        if (status === "accepted" && Math.random() > 0.3) {
-          friendships.push({
-            requester: friend._id,
-            recipient: player._id,
-            status: "accepted",
-            createdAt: createdDate,
-            acceptedAt: createdDate,
-          });
+        // Alcuni hanno amicizie reciproche tra loro
+        if (i < 14 && players[i + 1]) {
+          friendships.push(
+            {
+              requester: players[i]._id,
+              recipient: players[i + 1]._id,
+              status: "accepted",
+              acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
+            },
+            {
+              requester: players[i + 1]._id,
+              recipient: players[i]._id,
+              status: "accepted",
+              acceptedAt: new Date(Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000),
+            }
+          );
         }
       }
     }
 
     await Friendship.insertMany(friendships);
     console.log(`✅ Create ${friendships.length} amicizie`);
-    console.log(`   - Accepted: ${friendships.filter(f => f.status === "accepted").length}`);
-    console.log(`   - Pending: ${friendships.filter(f => f.status === "pending").length}`);
+    console.log(`   - Scenari di test per privacy e stati diversi`);
+    console.log(`   - Mario ha richieste pending verso: Luca, Chiara`);
+    console.log(`   - Mario ha richieste incoming da: Anna, Chiara`);
+    console.log(`   - Mario segue: Sofia (privata, accettata), Giulia`);
+    console.log(`   - Mario è seguito da: Luca, Alessandro, Matteo, Elena, altri...`);
 
-    /* -------- STRUTTURE -------- */
-    console.log(`\n🏟️ Generazione ${NUM_STRUTTURE} strutture...`);
-    const struttureData: any[] = [];
-
-    for (let i = 0; i < NUM_STRUTTURE; i++) {
-      const location = generateAddress();
-      const owner: any = randomElement(owners as any[]);
-      const amenities: string[] = [];
-
-      // Genera amenities casuali
-      const possibleAmenities = ["toilets", "lockerRoom", "showers", "parking", "bar", "restaurant"];
-      const numAmenities = randomInt(2, possibleAmenities.length);
-      for (let j = 0; j < numAmenities; j++) {
-        const amenity = possibleAmenities[j];
-        if (!amenities.includes(amenity)) amenities.push(amenity);
-      }
-
-      struttureData.push({
-        name: generateStrutturaName(location.city, i + 1),
-        description: generateStrutturaDescription(),
-        owner: owner._id,
-        city: location.city,
-        lat: location.lat,
-        lng: location.lng,
-        address: location.address,
-        amenities,
-        rating: parseFloat((3.5 + Math.random() * 1.5).toFixed(1)), // 3.5 - 5.0
-        count: randomInt(10, 100),
-        isFeatured: Math.random() > 0.7, // 30% featured
-      });
-    }
+    /* -------- STRUTTURE (8) -------- */
+    const struttureData = [
+      {
+        name: "Beach Volley Milano Centro",
+        description: "Centro beach volley professionale con 4 campi regolamentari e illuminazione notturna",
+        owner: owners[0]._id,
+        city: "Milano",
+        lat: 45.4642,
+        lng: 9.19,
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "bar", "restaurant"],
+        rating: 4.8,
+        count: 45,
+        isFeatured: true,
+      },
+      {
+        name: "Beach Roma Ostia",
+        description: "Campi beach volley vista mare con area relax e bar",
+        owner: owners[1]._id,
+        city: "Roma",
+        lat: 41.735,
+        lng: 12.285,
+        amenities: ["toilets", "showers", "parking", "bar"],
+        rating: 4.7,
+        count: 38,
+        isFeatured: true,
+      },
+      {
+        name: "Torino Beach Arena",
+        description: "Arena beach volley coperta e scoperta, ideale per tutto l'anno",
+        owner: owners[2]._id,
+        city: "Torino",
+        lat: 45.0703,
+        lng: 7.6869,
+        amenities: ["toilets", "lockerRoom", "showers", "parking"],
+        rating: 4.5,
+        count: 22,
+        isFeatured: false,
+      },
+      {
+        name: "Bologna Volley Club",
+        description: "Centro sportivo con campi beach e indoor",
+        owner: owners[3]._id,
+        city: "Bologna",
+        lat: 44.4949,
+        lng: 11.3426,
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "bar"],
+        rating: 4.6,
+        count: 31,
+        isFeatured: true,
+      },
+      {
+        name: "Firenze Beach Sport",
+        description: "Struttura moderna con 2 campi beach volley sabbia fine",
+        owner: owners[4]._id,
+        city: "Firenze",
+        lat: 43.7696,
+        lng: 11.2558,
+        amenities: ["toilets", "showers", "parking"],
+        rating: 4.3,
+        count: 18,
+        isFeatured: false,
+      },
+      {
+        name: "Milano Beach Park",
+        description: "Parco beach volley con 5 campi e area eventi",
+        owner: owners[5]._id,
+        city: "Milano",
+        lat: 45.452,
+        lng: 9.21,
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "bar", "restaurant"],
+        rating: 4.9,
+        count: 62,
+        isFeatured: true,
+      },
+      {
+        name: "Roma Nord Beach",
+        description: "Centro beach volley zona nord con illuminazione LED",
+        owner: owners[0]._id,
+        city: "Roma",
+        lat: 41.933,
+        lng: 12.466,
+        amenities: ["toilets", "showers", "parking", "bar"],
+        rating: 4.4,
+        count: 27,
+        isFeatured: false,
+      },
+      {
+        name: "Rimini Beach Experience",
+        description: "Struttura fronte mare con campi beach e servizi premium",
+        owner: owners[1]._id,
+        city: "Rimini",
+        lat: 44.0678,
+        lng: 12.5695,
+        amenities: ["toilets", "lockerRoom", "showers", "parking", "bar", "restaurant"],
+        rating: 4.7,
+        count: 41,
+        isFeatured: true,
+      },
+    ];
 
     const strutture = await Struttura.insertMany(
       struttureData.map((s, idx) => {
-        // Assegna randomicamente 2-4 immagini a ogni struttura
+        // ✅ Assegna randomicamente 2-4 immagini a ogni struttura
         const numImages = strutturaImageUrls.length > 0 ? randomInt(2, Math.min(4, strutturaImageUrls.length)) : 0;
         const strutturaImages: string[] = [];
         
@@ -776,7 +601,7 @@ async function seed() {
           description: s.description,
           owner: s.owner,
           location: {
-            address: s.address,
+            address: `Via Test ${randomInt(1, 100)}`,
             city: s.city,
             lat: s.lat,
             lng: s.lng,
@@ -797,18 +622,16 @@ async function seed() {
           isActive: true,
           isFeatured: s.isFeatured,
           isDeleted: false,
-          // ~20% strutture con split dei costi abilitato
-          isCostSplittingEnabled: Math.random() > 0.8,
+          // Abilita split dei costi per le prime 2 strutture (per test)
+          isCostSplittingEnabled: idx < 2,
         };
       })
     );
 
     console.log(`✅ Create ${strutture.length} strutture`);
-    console.log(`   - Featured: ${strutture.filter((s: any) => s.isFeatured).length}`);
-    console.log(`   - Con split costi: ${strutture.filter((s: any) => s.isCostSplittingEnabled).length}`);
     if (strutturaImageUrls.length > 0) {
       const totImagesAssigned = strutture.reduce((acc: number, s: any) => acc + s.images.length, 0);
-      console.log(`   - Immagini assegnate: ${totImagesAssigned}`);
+      console.log(`   📸 ${totImagesAssigned} immagini assegnate alle strutture (2-4 per struttura)`);
     }
 
     /* -------- STRUTTURA FOLLOWERS -------- */
@@ -920,96 +743,298 @@ async function seed() {
     console.log(`✅ Creati ${userFollowers.length} UserFollower (strutture seguono utenti)`);
 
     /* -------- POSTS -------- */
-    console.log(`\n🚀 Creazione Post (${NUM_USER_POSTS} utenti + ${NUM_STRUTTURA_POSTS} strutture)...`);
+    console.log(`\n🚀 Inizio creazione Post...`);
     const posts: any[] = [];
 
-    // POST UTENTI
-    console.log(`📝 Generazione ${NUM_USER_POSTS} post utenti...`);
-    for (let i = 0; i < NUM_USER_POSTS; i++) {
-      if (i % 20 === 0) console.log(`   - Post utente ${i}/${NUM_USER_POSTS}...`);
+    // POST UTENTI (15 post)
+    console.log(`📝 Preparazione post utenti...`);
+    const postContents = [
+      "Che bella partita oggi! 🏐",
+      "Cerco compagni per una partita domani sera",
+      "Qualcuno disponibile per un 2v2?",
+      "Miglior campo dove ho giocato! 🔥",
+      "Chi viene a giocare questo weekend?",
+      "Alla ricerca di un team per il torneo",
+      "Fantastica serata di beach volley!",
+      "Qualcuno per una partita veloce?",
+      "Ho bisogno di migliorare il mio servizio, consigli?",
+      "Beach volley sotto le stelle ⭐",
+      "Partita epica oggi!",
+      "Chi è pronto per l'estate? 🏖️",
+      "Nuovo record personale!",
+      "Grazie a tutti per la bella partita!",
+      "Non vedo l'ora di giocare ancora!",
+    ];
 
-      const author = randomElement(players as any[]);
-      const content = generatePostContent(false);
-      const likesCount = randomInt(0, 30);
-      const likesUsers = new Set<string>();
+    console.log(`📊 Creazione ${15} post utenti con likes e commenti...`);
+    try {
+      for (let i = 0; i < 15; i++) {
+        try {
+          if (i % 5 === 0) console.log(`   - Creato post utente ${i}/15...`);
 
-      while (likesUsers.size < likesCount && likesUsers.size < players.length) {
-        const randomPlayer = randomElement(players as any[]);
-        likesUsers.add(randomPlayer._id.toString());
+          const author = randomElement(players as any[]);
+          const content = randomElement(postContents);
+          const likesCount = randomInt(0, 15);
+          const likesUsers = new Set<string>();
+
+          while (likesUsers.size < likesCount) {
+            const randomPlayer = randomElement(players as any[]);
+            likesUsers.add(randomPlayer._id.toString());
+          }
+
+          const commentsCount = randomInt(0, 5);
+          const comments: any[] = [];
+
+          for (let c = 0; c < commentsCount; c++) {
+            const commenter = randomElement(players as any[]);
+            comments.push({
+              _id: new mongoose.Types.ObjectId(),
+              user: commenter._id,
+              text: randomElement([
+                "Grande!",
+                "Ci sono!",
+                "Quando?",
+                "Ottima idea!",
+                "Conta su di me",
+                "Sono d'accordo",
+                "Bellissimo!",
+              ]),
+              createdAt: new Date(Date.now() - randomInt(1, 10) * 60 * 60 * 1000),
+            });
+          }
+
+          posts.push({
+            user: author._id,
+            content,
+            likes: Array.from(likesUsers),
+            comments,
+            isStrutturaPost: false,
+            createdAt: new Date(Date.now() - randomInt(1, 20) * 24 * 60 * 60 * 1000),
+          });
+        } catch (err) {
+          console.error(`❌ Errore durante la creazione del post utente index=${i}:`, err);
+        }
       }
-
-      const commentsCount = randomInt(0, 10);
-      const comments: any[] = [];
-
-      for (let c = 0; c < commentsCount; c++) {
-        const commenter = randomElement(players as any[]);
-        comments.push({
-          _id: new mongoose.Types.ObjectId(),
-          user: commenter._id,
-          text: generateComment(),
-          createdAt: new Date(Date.now() - randomInt(1, 20) * 60 * 60 * 1000),
-        });
-      }
-
-      posts.push({
-        user: author._id,
-        content,
-        likes: Array.from(likesUsers),
-        comments,
-        isStrutturaPost: false,
-        createdAt: new Date(Date.now() - randomInt(1, 60) * 24 * 60 * 60 * 1000),
-      });
+      console.log(`✅ Preparati ${posts.length} post utenti`);
+    } catch (err) {
+      console.error('❌ Errore nella sezione creazione post utenti:', err);
     }
 
-    // POST STRUTTURE
-    console.log(`📝 Generazione ${NUM_STRUTTURA_POSTS} post strutture...`);
-    for (let i = 0; i < NUM_STRUTTURA_POSTS; i++) {
-      if (i % 10 === 0) console.log(`   - Post struttura ${i}/${NUM_STRUTTURA_POSTS}...`);
+    // POST STRUTTURE (10 post)
+    console.log(`📝 Preparazione post strutture...`);
+    const strutturaPostContents = [
+      "Nuovi orari disponibili per il weekend! 🎉",
+      "Torneo questo sabato, iscriviti ora!",
+      "Offerta speciale: sconto 20% su prenotazioni serali",
+      "I nostri campi sono pronti per voi! ☀️",
+      "Grazie a tutti per il vostro supporto!",
+      "Evento speciale in programma!",
+      "Nuova illuminazione LED installata!",
+      "Happy hour: prezzi ridotti dalle 18 alle 20",
+      "Weekend di beach volley: chi viene?",
+      "La stagione è iniziata alla grande!",
+    ];
 
-      const struttura = randomElement(strutture as any[]);
-      const content = generatePostContent(true);
-      const likesCount = randomInt(5, 40);
-      const likesUsers = new Set<string>();
+    console.log(`📊 Creazione ${10} post strutture con likes e commenti...`);
+    let savedPosts: any[] = [];
+    try {
+      for (let i = 0; i < 10; i++) {
+        try {
+          if (i % 3 === 0) console.log(`   - Creato post struttura ${i}/10...`);
 
-      while (likesUsers.size < likesCount && likesUsers.size < players.length) {
-        const randomPlayer = randomElement(players as any[]);
-        likesUsers.add(randomPlayer._id.toString());
+          const struttura = randomElement(strutture as any[]);
+          const content = randomElement(strutturaPostContents);
+          const maxLikes = (players as any[]).length;
+          const likesCount = Math.min(randomInt(5, 25), maxLikes);
+          const likesUsers = new Set<string>();
+
+          while (likesUsers.size < likesCount) {
+            const randomPlayer = randomElement(players as any[]);
+            likesUsers.add(randomPlayer._id.toString());
+          }
+
+          const commentsCount = randomInt(0, 8);
+          const comments: any[] = [];
+
+          for (let c = 0; c < commentsCount; c++) {
+            const commenter = randomElement(players as any[]);
+            const isStrutturaComment = Math.random() > 0.7; // 30% commenti dalla struttura
+
+            comments.push({
+              _id: new mongoose.Types.ObjectId(),
+              user: commenter._id,
+              struttura: isStrutturaComment ? struttura._id : undefined,
+              text: randomElement([
+                "Ottimo!",
+                "Ci sarò!",
+                "Interessante",
+                "Grazie per l'info",
+                "Perfetto!",
+                "Come posso prenotare?",
+                "Fantastico!",
+                "Quando inizia?",
+              ]),
+              createdAt: new Date(Date.now() - randomInt(1, 15) * 60 * 60 * 1000),
+            });
+          }
+
+          posts.push({
+            user: struttura.owner,
+            content,
+            struttura: struttura._id,
+            isStrutturaPost: true,
+            likes: Array.from(likesUsers),
+            comments,
+            createdAt: new Date(Date.now() - randomInt(1, 15) * 24 * 60 * 60 * 1000),
+          });
+        } catch (err) {
+          console.error(`❌ Errore durante la creazione del post struttura index=${i}:`, err);
+        }
       }
 
-      const commentsCount = randomInt(0, 15);
-      const comments: any[] = [];
-
-      for (let c = 0; c < commentsCount; c++) {
-        const commenter = randomElement(players as any[]);
-        const isStrutturaComment = Math.random() > 0.7;
-
-        comments.push({
-          _id: new mongoose.Types.ObjectId(),
-          user: commenter._id,
-          struttura: isStrutturaComment ? struttura._id : undefined,
-          text: generateComment(),
-          createdAt: new Date(Date.now() - randomInt(1, 30) * 60 * 60 * 1000),
-        });
-      }
-
-      posts.push({
-        user: struttura.owner,
-        content,
-        struttura: struttura._id,
-        isStrutturaPost: true,
-        likes: Array.from(likesUsers),
-        comments,
-        createdAt: new Date(Date.now() - randomInt(1, 45) * 24 * 60 * 60 * 1000),
-      });
-    }
+    console.log(`✅ Preparati ${posts.length} post totali (utenti + strutture)`);
 
     console.log(`💾 Inserimento ${posts.length} post nel database...`);
-    const savedPosts = await Post.insertMany(posts);
-    console.log(`✅ Creati ${savedPosts.length} post (${posts.filter(p => !p.isStrutturaPost).length} utenti, ${posts.filter(p => p.isStrutturaPost).length} strutture)`);
+    try {
+      savedPosts = await Post.insertMany(posts);
+      console.log(`✅ Creati ${savedPosts.length} post (${posts.filter(p => !p.isStrutturaPost).length} utenti, ${posts.filter(p => p.isStrutturaPost).length} strutture)`);
+    } catch (err) {
+      console.error('❌ Errore durante Post.insertMany:', err);
+    }
+    } catch (err) {
+      console.error('❌ Errore nella sezione creazione post strutture:', err);
+    }
 
-    /* -------- EVENTS (RIMOSSI) -------- */
-    // Eventi e Community Events rimossi su richiesta utente
-    console.log(`\nℹ️ Eventi e Community Events non generati (rimossi su richiesta)`);
+    /* -------- EVENTS (4) -------- */
+    console.log(`\n🎉 Creazione Eventi...`);
+    const eventsData = [
+      {
+        name: "Torneo Beach Volley Milano",
+        description: "Torneo amatoriale 2x2 con gironi e finali.",
+        type: "tournament",
+        organizer: owners[0]._id,
+        struttura: strutture[0]._id,
+        startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        sport: "beach volley",
+        maxParticipants: 16,
+        isPublic: true,
+        participants: [players[0]._id, players[1]._id, players[2]._id],
+        status: "open",
+      },
+      {
+        name: "Lega Volley Indoor Roma",
+        description: "Campionato a squadre 6x6 per livello intermedio.",
+        type: "league",
+        organizer: owners[1]._id,
+        struttura: strutture[1]._id,
+        startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000),
+        sport: "volley",
+        maxParticipants: 24,
+        isPublic: false,
+        participants: [players[3]._id, players[4]._id, players[5]._id],
+        status: "open",
+      },
+      {
+        name: "Amichevole Beach Torino",
+        description: "Partita amichevole per nuovi iscritti.",
+        type: "friendly",
+        organizer: owners[2]._id,
+        struttura: strutture[2]._id,
+        startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        sport: "beach volley",
+        isPublic: true,
+        participants: [players[6]._id, players[7]._id],
+        status: "open",
+      },
+      {
+        name: "Torneo Estivo Rimini",
+        description: "Evento open per tutti i livelli.",
+        type: "tournament",
+        organizer: owners[1]._id,
+        struttura: strutture[7]._id,
+        startDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sport: "beach volley",
+        maxParticipants: 20,
+        isPublic: true,
+        participants: [players[8]._id, players[9]._id, players[10]._id],
+        status: "open",
+      },
+    ];
+
+    const events = await Event.insertMany(eventsData);
+    console.log(`✅ Creati ${events.length} eventi`);
+
+    /* -------- COMMUNITY EVENTS (5) -------- */
+    console.log(`\n🎊 Creazione Community Events...`);
+    const communityEventsData = [
+      {
+        title: "Torneo Beach Volley Amatoriale",
+        description: "Torneo aperto a tutti i livelli. Iscrizione gratuita!",
+        date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        location: "Milano Beach Arena",
+        organizer: players[0]._id,
+        participants: [players[1]._id, players[2]._id, players[3]._id],
+        maxParticipants: 16,
+        status: "upcoming",
+        struttura: strutture[0]._id,
+        isStrutturaEvent: false,
+      },
+      {
+        title: "Open Day Struttura",
+        description: "Vieni a provare i nostri campi gratuitamente!",
+        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        location: strutture[1].name,
+        organizer: owners[1]._id,
+        participants: [players[4]._id, players[5]._id],
+        maxParticipants: 30,
+        status: "upcoming",
+        struttura: strutture[1]._id,
+        isStrutturaEvent: true,
+      },
+      {
+        title: "Clinic con Professionisti",
+        description: "Allenamento tecnico con coach professionista",
+        date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        location: strutture[5].name,
+        organizer: owners[5]._id,
+        participants: [players[6]._id, players[7]._id, players[8]._id],
+        maxParticipants: 12,
+        status: "upcoming",
+        struttura: strutture[5]._id,
+        isStrutturaEvent: true,
+      },
+      {
+        title: "Beach Party & Volley",
+        description: "Serata di beach volley e divertimento con DJ set",
+        date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        location: "Rimini Beach",
+        organizer: players[9]._id,
+        participants: [players[10]._id, players[11]._id],
+        maxParticipants: 50,
+        status: "upcoming",
+        struttura: strutture[7]._id,
+        isStrutturaEvent: false,
+      },
+      {
+        title: "Campionato Estivo",
+        description: "Campionato a squadre - Iscrizioni aperte",
+        date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+        location: "Bologna Volley Club",
+        organizer: owners[3]._id,
+        participants: [],
+        maxParticipants: 24,
+        status: "upcoming",
+        struttura: strutture[3]._id,
+        isStrutturaEvent: true,
+      },
+    ];
+
+    const communityEvents = await CommunityEvent.insertMany(communityEventsData);
+    console.log(`✅ Creati ${communityEvents.length} community events`);
 
     /* -------- CAMPI (20) -------- */
     const campiData: any[] = [];
@@ -1029,13 +1054,13 @@ async function seed() {
           const baseOne = randomInt(30, 45);
           const baseOneHalf = randomInt(42, 63);
 
-          // ✅ Abilita playerCountPricing per TUTTI i campi beach volley (2v2, 3v3, 4v4)
+          // ✅ Abilita playerCountPricing per TUTTI i campi beach volley (non solo prime 2 strutture)
           const enablePlayerPricing = isBeach;
           const playerPrices = enablePlayerPricing
             ? [
                 {
                   count: 4,
-                  label: "4 giocatori (2v2)",
+                  label: "4 giocatori",
                   prices: {
                     oneHour: Math.max(8, Math.round(pricePerHour / 4)),
                     oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
@@ -1043,7 +1068,7 @@ async function seed() {
                 },
                 {
                   count: 6,
-                  label: "6 giocatori (3v3)",
+                  label: "6 giocatori",
                   prices: {
                     oneHour: Math.max(6, Math.round(pricePerHour / 6)),
                     oneHourHalf: Math.max(8, Math.round((pricePerHour * 1.4) / 6)),
@@ -1051,7 +1076,7 @@ async function seed() {
                 },
                 {
                   count: 8,
-                  label: "8 giocatori (4v4)",
+                  label: "8 giocatori",
                   prices: {
                     oneHour: Math.max(5, Math.round(pricePerHour / 8)),
                     oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 8)),
@@ -1060,8 +1085,7 @@ async function seed() {
               ]
             : [];
 
-          // Beach volley: 8 giocatori (4v4), Volley indoor: 10 giocatori (5v5)
-          const campoMaxPlayers = isBeach ? 8 : 10;
+          const campoMaxPlayers = isBeach ? randomInt(4, 8) : 10;
 
           // ✅ Pricing avanzato con esempi realistici
           const enableTimeSlot = Math.random() > 0.5;
@@ -1183,18 +1207,14 @@ async function seed() {
     await CampoCalendarDay.insertMany(calendarDocs);
     console.log(`✅ Creati ${calendarDocs.length} giorni di calendario (${campi.length} campi × ${dates.length} giorni)`);
 
-    /* -------- BOOKINGS -------- */
-    console.log(`\n📝 Generazione prenotazioni (${NUM_BOOKINGS_PAST} passate + ${NUM_BOOKINGS_FUTURE} future)...`);
+    /* -------- BOOKINGS (50) -------- */
     const bookings: any[] = [];
     const today = new Date();
 
-    // Prenotazioni passate
-    console.log(`   - Generazione ${NUM_BOOKINGS_PAST} prenotazioni passate...`);
-    for (let i = 0; i < NUM_BOOKINGS_PAST; i++) {
-      if (i % 50 === 0) console.log(`     ${i}/${NUM_BOOKINGS_PAST}...`);
-
+    // Prenotazioni passate (ultimi 30 giorni)
+    for (let i = 0; i < 30; i++) {
       const pastDate = new Date(today);
-      pastDate.setDate(pastDate.getDate() - randomInt(1, 90));
+      pastDate.setDate(pastDate.getDate() - randomInt(1, 30));
 
       const campo: any = randomElement(campi as any[]);
       const player: any = randomElement(players as any[]);
@@ -1205,15 +1225,10 @@ async function seed() {
       const endMinutes = duration === 1.5 ? "30" : "00";
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled;
-      
-      const bookingType = canBePublic && Math.random() > 0.3 ? "public" : "private";
+      const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
       const paymentMode = bookingType === "public" ? "split" : "full";
-      const totalPrice = randomInt(30, 70);
-      // Mix di 2v2, 3v3, 4v4 per partite beach
-      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomElement([4, 6, 8]) : undefined;
+      const totalPrice = randomInt(30, 50);
+      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomInt(4, 6) : undefined;
       const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
 
       bookings.push({
@@ -1230,17 +1245,14 @@ async function seed() {
         status: "confirmed",
         bookingType,
         paymentMode,
-        ownerEarnings: totalPrice,
+        ownerEarnings: totalPrice, // Owner guadagna 100% del prezzo
       });
     }
 
-    // Prenotazioni future
-    console.log(`   - Generazione ${NUM_BOOKINGS_FUTURE} prenotazioni future...`);
-    for (let i = 0; i < NUM_BOOKINGS_FUTURE; i++) {
-      if (i % 25 === 0) console.log(`     ${i}/${NUM_BOOKINGS_FUTURE}...`);
-
+    // Prenotazioni future (prossimi 10 giorni)
+    for (let i = 0; i < 20; i++) {
       const futureDate = new Date(today);
-      futureDate.setDate(futureDate.getDate() + randomInt(0, 30));
+      futureDate.setDate(futureDate.getDate() + randomInt(0, 10));
 
       const campo: any = randomElement(campi as any[]);
       const player: any = randomElement(players as any[]);
@@ -1251,15 +1263,10 @@ async function seed() {
       const endMinutes = duration === 1.5 ? "30" : "00";
       const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
 
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled;
-      
-      const bookingType = canBePublic && Math.random() > 0.3 ? "public" : "private";
+      const bookingType = Math.random() > 0.3 ? "public" : "private"; // 70% pubbliche, 30% private
       const paymentMode = bookingType === "public" ? "split" : "full";
-      const totalPrice = randomInt(30, 70);
-      // Mix di 2v2, 3v3, 4v4 per partite beach
-      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomElement([4, 6, 8]) : undefined;
+      const totalPrice = randomInt(30, 50);
+      const numPeople = bookingType === "public" && campo.sport === "beach volley" ? randomInt(4, 6) : undefined;
       const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
 
       bookings.push({
@@ -1276,16 +1283,12 @@ async function seed() {
         status: "confirmed",
         bookingType,
         paymentMode,
-        ownerEarnings: totalPrice,
+        ownerEarnings: totalPrice, // Owner guadagna 100% del prezzo
       });
     }
 
-    console.log(`💾 Inserimento ${bookings.length} prenotazioni nel database...`);
     const savedBookings = await Booking.insertMany(bookings);
     console.log(`✅ Create ${savedBookings.length} prenotazioni`);
-    console.log(`   - Con split payment: ${bookings.filter(b => b.paymentMode === "split").length}`);
-    console.log(`   - Pubbliche: ${bookings.filter(b => b.bookingType === "public").length}`);
-    console.log(`   - Private: ${bookings.filter(b => b.bookingType === "private").length}`);
 
     // ✅ Disabilita gli slot prenotati nel calendario
     for (const booking of savedBookings as any[]) {
@@ -1347,21 +1350,12 @@ async function seed() {
 
     const matches: any[] = [];
     const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
-    const processedBookings = new Set<string>(); // Track tutti i booking processati
 
-    // 1. MATCH PASSATI COMPLETATI (con risultato) - 15 match con mix di partecipanti
-    for (let i = 0; i < Math.min(15, pastBookings.length); i++) {
+    // 1. MATCH PASSATI COMPLETATI (con risultato) - 10 match
+    for (let i = 0; i < Math.min(10, pastBookings.length); i++) {
       const booking = pastBookings[i];
-      processedBookings.add(booking._id.toString()); // Traccia subito
       const creator = booking.user;
-      const campo: any = campi.find((c: any) => c._id.toString() === booking.campo.toString());
-      
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === booking.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled && booking.bookingType === "public";
-      
-      // Mix di partecipanti: 4, 6, 8 giocatori (2v2, 3v3, 4v4 per beach)
-      const maxPlayers = randomElement([4, 6, 8]);
+
       const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
 
@@ -1374,8 +1368,8 @@ async function seed() {
         respondedAt: new Date(booking.date),
       });
 
-      // Altri giocatori casuali con respondedAt - alternando tra team A e B
-      for (let j = 1; j < maxPlayers; j++) {
+      // Altri 3 giocatori casuali con respondedAt
+      for (let j = 1; j < 4; j++) {
         let player: any;
         do {
           player = randomElement(players as any[]);
@@ -1385,15 +1379,12 @@ async function seed() {
         const joinDate = new Date(booking.date);
         joinDate.setHours(joinDate.getHours() - randomInt(1, 24)); // Joined prima del match
         
-        // Alterna tra team A e B: indici dispari -> A, pari -> B
-        const team = (j % 2 === 1) ? "B" : "A";
-        
         matchPlayers.push({
           user: player._id,
-          team: team,
+          team: j < 2 ? "A" : "B",
           status: "confirmed",
           joinedAt: joinDate,
-          respondedAt: joinDate,
+          respondedAt: joinDate, // ✅ Aggiunto respondedAt
         });
       }
 
@@ -1418,8 +1409,8 @@ async function seed() {
         booking: booking._id,
         createdBy: creator,
         players: matchPlayers,
-        maxPlayers: maxPlayers,
-        isPublic: canBePublic,
+        maxPlayers: 4,
+        isPublic: true,
         score: { sets },
         winner: winsA > winsB ? "A" : "B",
         playedAt: new Date(booking.date),
@@ -1428,18 +1419,11 @@ async function seed() {
       matchCounters.completed++;
     }
 
-    // 2. MATCH PASSATI SENZA RISULTATO - 10 match (per testare inserimento risultato)
-    for (let i = 15; i < Math.min(25, pastBookings.length); i++) {
+    // 2. MATCH PASSATI SENZA RISULTATO - 5 match (per testare inserimento risultato)
+    for (let i = 10; i < Math.min(15, pastBookings.length); i++) {
       const booking = pastBookings[i];
-      processedBookings.add(booking._id.toString()); // Traccia subito
       const creator = booking.user;
-      
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === booking.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled && booking.bookingType === "public";
-      
-      // Mix di partecipanti (2v2, 3v3, 4v4 per beach)
-      const maxPlayers = randomElement([4, 6, 8]);
+
       const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
 
@@ -1451,7 +1435,7 @@ async function seed() {
         respondedAt: new Date(booking.date),
       });
 
-      for (let j = 1; j < maxPlayers; j++) {
+      for (let j = 1; j < 4; j++) {
         let player: any;
         do {
           player = randomElement(players as any[]);
@@ -1461,15 +1445,12 @@ async function seed() {
         const joinDate = new Date(booking.date);
         joinDate.setHours(joinDate.getHours() - randomInt(1, 48));
         
-        // Alterna tra team A e B: indici dispari -> B, pari -> A
-        const team = (j % 2 === 1) ? "B" : "A";
-        
         matchPlayers.push({
           user: player._id,
-          team: team,
+          team: j < 2 ? "A" : "B",
           status: "confirmed",
           joinedAt: joinDate,
-          respondedAt: joinDate,
+          respondedAt: joinDate, // ✅ Aggiunto respondedAt
         });
       }
 
@@ -1477,8 +1458,8 @@ async function seed() {
         booking: booking._id,
         createdBy: creator,
         players: matchPlayers,
-        maxPlayers: maxPlayers,
-        isPublic: canBePublic,
+        maxPlayers: 4,
+        isPublic: true,
         playedAt: new Date(booking.date),
         status: "completed",
       });
@@ -1492,11 +1473,6 @@ async function seed() {
     for (let i = 0; i < 2; i++) {
       const inProgressCampo: any = randomElement(campi as any[]);
       const creator: any = randomElement(players as any[]);
-      const maxPlayers = randomElement([4, 6, 8]);
-
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === inProgressCampo.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled;
 
       // Orario: iniziato 30 minuti fa, finisce tra 30 minuti
       const startHour = currentHour - 1;
@@ -1512,14 +1488,11 @@ async function seed() {
         endTime,
         duration: 1.5,
         price: 40,
-        numberOfPeople: maxPlayers,
         status: "confirmed",
-        bookingType: canBePublic ? "public" : "private",
-        paymentMode: canBePublic ? "split" : "full",
-        ownerEarnings: 40,
+        bookingType: "public",
+        paymentMode: "split",
+        ownerEarnings: 40, // Owner guadagna 100% del prezzo
       });
-      
-      processedBookings.add(inProgressBooking._id.toString()); // Traccia il booking appena creato
 
       const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator._id.toString()];
@@ -1532,7 +1505,7 @@ async function seed() {
         respondedAt: now,
       });
 
-      for (let j = 1; j < maxPlayers; j++) {
+      for (let j = 1; j < 4; j++) {
         let player: any;
         do {
           player = randomElement(players as any[]);
@@ -1541,26 +1514,19 @@ async function seed() {
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
-          team: j < (maxPlayers / 2) ? "A" : "B",
+          team: j < 2 ? "A" : "B",
           status: "confirmed",
           joinedAt: now,
           respondedAt: now,
         });
       }
 
-      // Verifica che il creator sia nel team A
-      const creatorInTeamA = matchPlayers.find(p => p.user.toString() === creator._id.toString());
-      if (!creatorInTeamA || creatorInTeamA.team !== "A") {
-        console.warn(`⚠️ Match in progress: creator non è nel team A`);
-        continue;
-      }
-
       matches.push({
         booking: inProgressBooking._id,
         createdBy: creator._id,
         players: matchPlayers,
-        maxPlayers: maxPlayers,
-        isPublic: canBePublic,
+        maxPlayers: 4,
+        isPublic: true,
         status: "full",
       });
       matchCounters.inProgress++;
@@ -1603,25 +1569,11 @@ async function seed() {
 
     console.log(`✅ Guadagni totali assegnati a ${ownerEarningsMap.size} owner`);
 
-    // 4. MATCH FUTURI APERTI (open) - 100 match con stati misti e vari numeri di partecipanti
-    for (let i = 0; i < Math.min(100, futureBookings.length); i++) {
+    // 4. MATCH FUTURI APERTI (open) - 5 match con stati misti
+    for (let i = 0; i < Math.min(5, futureBookings.length); i++) {
       const booking = futureBookings[i];
-      processedBookings.add(booking._id.toString()); // Traccia subito
-      
-      // ✅ SKIP: Se la prenotazione non è pubblica, salta questo match aperto
-      if (booking.bookingType !== "public") continue;
-      
       const creator = booking.user;
-      
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === booking.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled;
-      
-      // ✅ Se non può essere pubblico, salta questo match
-      if (!canBePublic) continue;
-      
-      const maxPlayers = randomElement([4, 6, 8]);
-      
+
       const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
 
@@ -1633,59 +1585,63 @@ async function seed() {
         respondedAt: new Date(),
       });
 
-      // 70% delle partite sono complete, 30% sono incomplete
-      const isComplete = Math.random() > 0.3;
-      const numConfirmed = isComplete ? maxPlayers - 1 : Math.floor(maxPlayers * (0.3 + Math.random() * 0.4));
+      // ✅ Match con mix di stati: 1 confirmed, 1 pending, 1 declined (2 slot liberi)
+      const statuses = ["confirmed", "pending"];
       
-      for (let j = 0; j < numConfirmed; j++) {
+      for (let j = 0; j < 2; j++) {
         let player: any;
         do {
           player = randomElement(players as any[]);
         } while (selectedPlayers.includes(player._id.toString()));
 
         selectedPlayers.push(player._id.toString());
-        const status = Math.random() > 0.3 ? "confirmed" : "pending";
+        const status = statuses[j];
         const joinDate = new Date();
         joinDate.setHours(joinDate.getHours() - randomInt(1, 12));
         
         matchPlayers.push({
           user: player._id,
-          team: (j + 1) < (maxPlayers / 2) ? "A" : "B",
+          team: j === 0 ? "A" : "B",
           status: status,
           joinedAt: joinDate,
-          respondedAt: status === "confirmed" ? joinDate : undefined,
+          respondedAt: status === "confirmed" ? joinDate : undefined, // Solo confirmed ha respondedAt
         });
       }
 
-      // Verifica che il creator sia nel team A
-      const creatorInTeamA = matchPlayers.find(p => p.user.toString() === creator.toString());
-      if (!creatorInTeamA || creatorInTeamA.team !== "A") {
-        console.warn(`⚠️ Match open: creator non è nel team A`);
-        continue;
+      // Aggiungi anche un declined player per test
+      if (Math.random() > 0.5) {
+        let declinedPlayer: any;
+        do {
+          declinedPlayer = randomElement(players as any[]);
+        } while (selectedPlayers.includes(declinedPlayer._id.toString()));
+
+        const declineDate = new Date();
+        declineDate.setHours(declineDate.getHours() - randomInt(1, 6));
+        
+        matchPlayers.push({
+          user: declinedPlayer._id,
+          team: "B",
+          status: "declined",
+          joinedAt: declineDate,
+          respondedAt: declineDate,
+        });
       }
 
       matches.push({
         booking: booking._id,
         createdBy: creator,
         players: matchPlayers,
-        maxPlayers: maxPlayers,
+        maxPlayers: 4,
         isPublic: true,
         status: "open",
       });
       matchCounters.open++;
     }
 
-    // 5. MATCH FUTURI COMPLETI (full) - 8 match con vari numeri di partecipanti
-    for (let i = 8; i < Math.min(16, futureBookings.length); i++) {
+    // 5. MATCH FUTURI COMPLETI (full) - 5 match
+    for (let i = 5; i < Math.min(10, futureBookings.length); i++) {
       const booking = futureBookings[i];
-      processedBookings.add(booking._id.toString()); // Traccia subito
       const creator = booking.user;
-      
-      // ✅ Verifica se la struttura ha split payment abilitato
-      const struttura: any = strutture.find((s: any) => s._id.toString() === booking.struttura.toString());
-      const canBePublic = struttura && struttura.isCostSplittingEnabled && booking.bookingType === "public";
-      
-      const maxPlayers = randomElement([4, 6, 8]);
 
       const matchPlayers: any[] = [];
       const selectedPlayers: string[] = [creator.toString()];
@@ -1698,7 +1654,7 @@ async function seed() {
         respondedAt: new Date(),
       });
 
-      for (let j = 1; j < maxPlayers; j++) {
+      for (let j = 1; j < 4; j++) {
         let player: any;
         do {
           player = randomElement(players as any[]);
@@ -1707,51 +1663,43 @@ async function seed() {
         selectedPlayers.push(player._id.toString());
         matchPlayers.push({
           user: player._id,
-          team: j < (maxPlayers / 2) ? "A" : "B",
+          team: j < 2 ? "A" : "B",
           status: "confirmed",
           joinedAt: new Date(),
           respondedAt: new Date(),
         });
       }
 
-      // Verifica che il creator sia nel team A
-      const creatorInTeamA = matchPlayers.find(p => p.user.toString() === creator.toString());
-      if (!creatorInTeamA || creatorInTeamA.team !== "A") {
-        console.warn(`⚠️ Match full: creator non è nel team A`);
-        continue;
-      }
-
       matches.push({
         booking: booking._id,
         createdBy: creator,
         players: matchPlayers,
-        maxPlayers: maxPlayers,
-        isPublic: canBePublic,
+        maxPlayers: 4,
+        isPublic: true,
         status: "full",
       });
       matchCounters.full++;
     }
 
     // 6. MATCH PER TUTTI I BOOKING RIMANENTI (draft/privati)
-    const bookingsWithoutMatch = (savedBookings as any[]).filter((b) => !processedBookings.has(b._id.toString()));
+    const bookingsWithMatch = matches.map((m) => m.booking.toString());
+    const bookingsWithoutMatch = (savedBookings as any[]).filter((b) => !bookingsWithMatch.includes(b._id.toString()));
 
     console.log(`\n📝 Creazione match per i ${bookingsWithoutMatch.length} booking rimanenti...`);
 
     for (const booking of bookingsWithoutMatch) {
-      const maxPlayers = randomElement([4, 6, 8]);
       matches.push({
         booking: booking._id,
         createdBy: booking.user,
         players: [
           {
             user: booking.user,
-            team: "A",
             status: "confirmed",
             joinedAt: new Date(),
             respondedAt: new Date(),
           },
         ],
-        maxPlayers: maxPlayers,
+        maxPlayers: 4,
         isPublic: false,
         status: "draft",
       });
@@ -1947,6 +1895,8 @@ async function seed() {
     console.log(`   - Aperti (con inviti): ${matchCounters.open}`);
     console.log(`   - Completi: ${matchCounters.full}`);
     console.log(`   - In bozza: ${matchCounters.draft}`);
+    console.log(`🎉 Eventi: ${events.length}`);
+    console.log(`🎊 Community Events: ${communityEvents.length}`);
     console.log(`🔔 Notifiche: ${savedNotifications.length}`);
     console.log(`💬 Conversazioni: ${savedConversations.length}`);
     console.log(`📨 Messaggi: ${savedMessages.length}`);
@@ -1967,69 +1917,6 @@ async function seed() {
     console.log(`   - Advanced pricing: fasce orarie weekend/feriali, eventi speciali`);
     console.log(`   - Match states: pending invites, declined, confirmed, mix`);
     console.log("=".repeat(60) + "\n");
-
-    /* -------- GENERA FILE CON LISTA PLAYER E OWNER -------- */
-    console.log("\n📄 Generazione file con lista utenti...");
-    
-    const outputLines: string[] = [];
-    outputLines.push("=".repeat(80));
-    outputLines.push("LISTA COMPLETA UTENTI - BEACH VOLLEY APP");
-    outputLines.push("=".repeat(80));
-    outputLines.push("");
-    outputLines.push(`Data generazione: ${new Date().toLocaleString('it-IT')}`);
-    outputLines.push(`Password per tutti gli utenti: ${DEFAULT_PASSWORD}`);
-    outputLines.push("");
-    outputLines.push("=".repeat(80));
-    outputLines.push(`PLAYERS (${players.length} utenti)`);
-    outputLines.push("=".repeat(80));
-    outputLines.push("");
-    
-    players.forEach((player: any, index: number) => {
-      outputLines.push(`${String(index + 1).padStart(4, ' ')}. ${player.name} ${player.surname}`);
-      outputLines.push(`      Email: ${player.email}`);
-      outputLines.push(`      Username: ${player.username}`);
-      outputLines.push(`      Role: ${player.role}`);
-      if (player.avatarUrl) {
-        outputLines.push(`      Avatar: ${player.avatarUrl.substring(0, 60)}...`);
-      }
-      outputLines.push("");
-    });
-    
-    outputLines.push("");
-    outputLines.push("=".repeat(80));
-    outputLines.push(`OWNERS (${owners.length} utenti)`);
-    outputLines.push("=".repeat(80));
-    outputLines.push("");
-    
-    owners.forEach((owner: any, index: number) => {
-      outputLines.push(`${String(index + 1).padStart(4, ' ')}. ${owner.name} ${owner.surname}`);
-      outputLines.push(`      Email: ${owner.email}`);
-      outputLines.push(`      Username: ${owner.username}`);
-      outputLines.push(`      Role: ${owner.role}`);
-      if (owner.avatarUrl) {
-        outputLines.push(`      Avatar: ${owner.avatarUrl.substring(0, 60)}...`);
-      }
-      outputLines.push("");
-    });
-    
-    outputLines.push("");
-    outputLines.push("=".repeat(80));
-    outputLines.push("RIEPILOGO");
-    outputLines.push("=".repeat(80));
-    outputLines.push(`Totale utenti: ${users.length}`);
-    outputLines.push(`- Players: ${players.length}`);
-    outputLines.push(`- Owners: ${owners.length}`);
-    outputLines.push(`Strutture: ${strutture.length}`);
-    outputLines.push(`Campi: ${campi.length}`);
-    outputLines.push(`Prenotazioni: ${savedBookings.length}`);
-    outputLines.push(`Match: ${matches.length}`);
-    outputLines.push("=".repeat(80));
-    
-    const outputFilePath = path.join(process.cwd(), 'lista_utenti.txt');
-    fs.writeFileSync(outputFilePath, outputLines.join('\n'), 'utf-8');
-    
-    console.log(`✅ File generato: ${outputFilePath}`);
-    console.log(`   Contiene ${players.length} player e ${owners.length} owner`);
 
     process.exit(0);
   } catch (err) {

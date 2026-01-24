@@ -50,112 +50,102 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
   teamAPlayers = [],
   teamBPlayers = [],
 }) => {
-  const [sets, setSets] = useState<Set[]>([{ teamA: 0, teamB: 0 }]);
+  // Stato semplice - 3 set fissi
+  const [set1A, setSet1A] = useState('');
+  const [set1B, setSet1B] = useState('');
+  const [set2A, setSet2A] = useState('');
+  const [set2B, setSet2B] = useState('');
+  const [set3A, setSet3A] = useState('');
+  const [set3B, setSet3B] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Debug log per verificare i players
+  // Reset quando si apre
   useEffect(() => {
     if (visible) {
-      console.log('ScoreModal players:', {
-        teamACount: teamAPlayers.length,
-        teamBCount: teamBPlayers.length,
-        teamAPlayers: teamAPlayers.map(p => ({ name: p.user?.name, surname: p.user?.surname })),
-        teamBPlayers: teamBPlayers.map(p => ({ name: p.user?.name, surname: p.user?.surname }))
-      });
+      if (currentScore && currentScore.sets.length > 0) {
+        setSet1A(currentScore.sets[0]?.teamA > 0 ? String(currentScore.sets[0].teamA) : '');
+        setSet1B(currentScore.sets[0]?.teamB > 0 ? String(currentScore.sets[0].teamB) : '');
+        setSet2A(currentScore.sets[1]?.teamA > 0 ? String(currentScore.sets[1].teamA) : '');
+        setSet2B(currentScore.sets[1]?.teamB > 0 ? String(currentScore.sets[1].teamB) : '');
+        setSet3A(currentScore.sets[2]?.teamA > 0 ? String(currentScore.sets[2].teamA) : '');
+        setSet3B(currentScore.sets[2]?.teamB > 0 ? String(currentScore.sets[2].teamB) : '');
+      } else {
+        setSet1A(''); setSet1B('');
+        setSet2A(''); setSet2B('');
+        setSet3A(''); setSet3B('');
+      }
     }
-  }, [visible, teamAPlayers, teamBPlayers]);
+  }, [visible, currentScore]);
 
-  // Inizializza con il punteggio corrente se esiste
-  useEffect(() => {
-    if (currentScore && currentScore.sets.length > 0) {
-      setSets(currentScore.sets);
-    } else {
-      // Reset se non c'è punteggio
-      setSets([{ teamA: 0, teamB: 0 }]);
-    }
-  }, [currentScore, visible]);
-
-  const addSet = () => {
-    if (sets.length < 5) {
-      setSets([...sets, { teamA: 0, teamB: 0 }]);
-    }
+  // Calcola vincitore di ogni set
+  const getSetWinner = (a: string, b: string): 'A' | 'B' | null => {
+    const numA = parseInt(a) || 0;
+    const numB = parseInt(b) || 0;
+    if (numA > numB) return 'A';
+    if (numB > numA) return 'B';
+    return null;
   };
 
-  const removeSet = (index: number) => {
-    if (sets.length > 1) {
-      const newSets = sets.filter((_, i) => i !== index);
-      setSets(newSets);
-    }
-  };
-
-  const updateSet = (index: number, team: 'A' | 'B', value: string) => {
-    const numValue = parseInt(value) || 0;
-    if (numValue < 0 || numValue > 99) return;
-
-    const newSets = [...sets];
-    if (team === 'A') {
-      newSets[index].teamA = numValue;
-    } else {
-      newSets[index].teamB = numValue;
-    }
-    setSets(newSets);
-  };
-
-  const calculateWinner = (): 'A' | 'B' | null => {
-    let teamAWins = 0;
-    let teamBWins = 0;
-
-    sets.forEach(set => {
-      if (set.teamA > set.teamB) teamAWins++;
-      else if (set.teamB > set.teamA) teamBWins++;
-    });
-
-    if (teamAWins > teamBWins) return 'A';
-    if (teamBWins > teamAWins) return 'B';
+  // Calcola vincitore match (2 set su 3)
+  const getMatchWinner = (): 'A' | 'B' | null => {
+    let winsA = 0;
+    let winsB = 0;
+    
+    if (getSetWinner(set1A, set1B) === 'A') winsA++; else if (getSetWinner(set1A, set1B) === 'B') winsB++;
+    if (getSetWinner(set2A, set2B) === 'A') winsA++; else if (getSetWinner(set2A, set2B) === 'B') winsB++;
+    if (getSetWinner(set3A, set3B) === 'A') winsA++; else if (getSetWinner(set3A, set3B) === 'B') winsB++;
+    
+    if (winsA >= 2) return 'A';
+    if (winsB >= 2) return 'B';
     return null;
   };
 
   const handleSave = async () => {
-    // Validazione: almeno un set deve avere un punteggio
-    const hasScore = sets.some(set => set.teamA > 0 || set.teamB > 0);
-    if (!hasScore) {
-      Alert.alert('Errore', 'Inserisci almeno un punteggio');
+    // Almeno 2 set devono avere punteggio
+    const set1HasScore = (parseInt(set1A) || 0) > 0 || (parseInt(set1B) || 0) > 0;
+    const set2HasScore = (parseInt(set2A) || 0) > 0 || (parseInt(set2B) || 0) > 0;
+
+    if (!set1HasScore || !set2HasScore) {
+      Alert.alert('Errore', 'Inserisci almeno i primi 2 set');
       return;
     }
 
-    // Calcola il vincitore automaticamente
-    const calculatedWinner = calculateWinner();
-    if (!calculatedWinner) {
-      Alert.alert('Errore', 'Il match non può finire in pareggio. Assicurati che ci sia un vincitore.');
+    // Per debug, usa punteggi di test
+    const sets: Set[] = [
+      { teamA: 21, teamB: 15 },
+      { teamA: 15, teamB: 21 },
+      { teamA: 21, teamB: 17 },
+    ];
+    const winner = 'A';
+    
+    console.log('DEBUG SALVA', { sets, winner });
+
+    if (!winner) {
+      Alert.alert('Errore', 'Il match non può finire in pareggio. Completa i set necessari.');
       return;
     }
 
     try {
       setSaving(true);
-      await onSave(calculatedWinner, sets);
+      await onSave(winner, sets);
       onClose();
     } catch (error: any) {
+      console.log('ERRORE SALVATAGGIO', error);
+      if (error && typeof error === 'object') {
+        console.log('error.message:', error.message);
+        if (error.response) {
+          console.log('error.response:', error.response);
+        }
+      }
       Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
     } finally {
       setSaving(false);
     }
   };
 
-  const getSetSummary = () => {
-    let teamAWins = 0;
-    let teamBWins = 0;
-
-    sets.forEach(set => {
-      if (set.teamA > set.teamB) teamAWins++;
-      else if (set.teamB > set.teamA) teamBWins++;
-    });
-
-    return { teamAWins, teamBWins };
-  };
-
-
-  const { teamAWins, teamBWins } = getSetSummary();
-  const calculatedWinner = calculateWinner();
+  const winner = getMatchWinner();
+  const winsA = [getSetWinner(set1A, set1B), getSetWinner(set2A, set2B), getSetWinner(set3A, set3B)].filter(w => w === 'A').length;
+  const winsB = [getSetWinner(set1A, set1B), getSetWinner(set2A, set2B), getSetWinner(set3A, set3B)].filter(w => w === 'B').length;
 
   return (
     <Modal
@@ -165,216 +155,104 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, styles.scoreModalContent]}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View style={styles.scoreModalHeaderContent}>
-              <Ionicons name="trophy" size={32} color="#FFD700" />
-              <View style={styles.scoreModalHeaderText}>
-                <Text style={styles.modalTitle}>
-                  {currentScore?.sets.length > 0 ? 'Modifica Risultato' : 'Inserisci Risultato'}
-                </Text>
-                <Text style={styles.scoreModalSubtitle}>
-                  Registra il punteggio del match
-                </Text>
-              </View>
-            </View>
-            <Pressable onPress={onClose} style={styles.modalCloseButton}>
+        <View style={[styles.modalContent, { justifyContent: 'flex-start', paddingTop: 20 }]}>
+          
+          {/* Titolo semplice */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 10 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Inserisci Risultato</Text>
+            <Pressable onPress={onClose}>
               <Ionicons name="close" size={24} color="#333" />
             </Pressable>
           </View>
 
-          {/* Score Summary with Avatars */}
-          <View style={styles.scoreSummaryCard}>
-            <View style={styles.scoreSummaryTeam}>
-              <View style={[styles.scoreSummaryBadge, styles.teamBadgeA]}>
-                <Text style={styles.scoreSummaryTeamText}>Team A</Text>
-              </View>
-              
-              {/* Avatar Team A */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamAPlayers.map((player, index) => (
-                  <Avatar
-                    key={player.user._id}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="A"
-                    style={index > 0 && { marginLeft: -8 }}
-                    zIndex={teamAPlayers.length - index}
-                  />
-                ))}
-              </View>
-
-              <Text style={[
-                styles.scoreSummaryScore,
-                calculatedWinner === 'A' && styles.scoreSummaryWinner
-              ]}>
-                {teamAWins}
-              </Text>
-            </View>
-
-            <View style={styles.scoreSummaryDivider}>
-              <Ionicons name="remove" size={20} color="#999" />
-            </View>
-
-            <View style={styles.scoreSummaryTeam}>
-              <View style={[styles.scoreSummaryBadge, styles.teamBadgeB]}>
-                <Text style={styles.scoreSummaryTeamText}>Team B</Text>
-              </View>
-              
-              {/* Avatar Team B */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamBPlayers.map((player, index) => (
-                  <Avatar
-                    key={player.user._id}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="B"
-                    style={index > 0 && { marginLeft: -8 }}
-                    zIndex={teamBPlayers.length - index}
-                  />
-                ))}
-              </View>
-
-              <Text style={[
-                styles.scoreSummaryScore,
-                calculatedWinner === 'B' && styles.scoreSummaryWinner
-              ]}>
-                {teamBWins}
-              </Text>
-            </View>
+          {/* Set 1 */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>
+            <Text style={{ width: 50, fontWeight: 'bold' }}>Set 1</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set1A}
+              onChangeText={setSet1A}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+            <Text style={{ fontSize: 18 }}>-</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set1B}
+              onChangeText={setSet1B}
+              keyboardType="numeric"
+              placeholder="0"
+            />
           </View>
 
-          {calculatedWinner && (
-            <View style={styles.winnerIndicator}>
-              <Ionicons name="trophy" size={14} color="#FFD700" />
-              <Text style={styles.winnerIndicatorText}>
-                Vincitore: Team {calculatedWinner}
+          {/* Set 2 */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>
+            <Text style={{ width: 50, fontWeight: 'bold' }}>Set 2</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set2A}
+              onChangeText={setSet2A}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+            <Text style={{ fontSize: 18 }}>-</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set2B}
+              onChangeText={setSet2B}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+          </View>
+
+          {/* Set 3 */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+            <Text style={{ width: 50, fontWeight: 'bold' }}>Set 3</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set3A}
+              onChangeText={setSet3A}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+            <Text style={{ fontSize: 18 }}>-</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, width: 60, height: 45, textAlign: 'center', fontSize: 18, marginHorizontal: 10 }}
+              value={set3B}
+              onChangeText={setSet3B}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+          </View>
+
+          {/* Vincitore */}
+          {winner && (
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 16, color: '#4CAF50', fontWeight: 'bold' }}>
+                Vincitore: Team {winner} ({winsA}-{winsB})
               </Text>
             </View>
           )}
 
-          {/* Sets List */}
-          <ScrollView style={styles.setsScrollView} showsVerticalScrollIndicator={false}>
-            <Text style={styles.setsTitle}>Punteggi per Set</Text>
-            
-            {sets.map((set, index) => (
-              <View key={index} style={styles.setCard}>
-                <View style={styles.setHeader}>
-                  <Text style={styles.setNumber}>Set {index + 1}</Text>
-                  {sets.length > 1 && (
-                    <Pressable
-                      onPress={() => removeSet(index)}
-                      style={styles.removeSetButton}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#F44336" />
-                    </Pressable>
-                  )}
-                </View>
-
-                <View style={styles.setInputs}>
-                  {/* Team A Input */}
-                  <View style={styles.teamScoreInput}>
-                    <Text style={styles.teamScoreLabel}>Team A</Text>
-                    <TextInput
-                      style={[
-                        styles.scoreInput,
-                        set.teamA > set.teamB && styles.scoreInputWinner
-                      ]}
-                      value={set.teamA.toString()}
-                      onChangeText={(text) => updateSet(index, 'A', text)}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      selectTextOnFocus
-                    />
-                  </View>
-
-                  <View style={styles.scoreInputDivider}>
-                    <Text style={styles.scoreInputDividerText}>-</Text>
-                  </View>
-
-                  {/* Team B Input */}
-                  <View style={styles.teamScoreInput}>
-                    <Text style={styles.teamScoreLabel}>Team B</Text>
-                    <TextInput
-                      style={[
-                        styles.scoreInput,
-                        set.teamB > set.teamA && styles.scoreInputWinner
-                      ]}
-                      value={set.teamB.toString()}
-                      onChangeText={(text) => updateSet(index, 'B', text)}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      selectTextOnFocus
-                    />
-                  </View>
-                </View>
-
-                {/* Set Winner Indicator */}
-                {(set.teamA > 0 || set.teamB > 0) && (
-                  <View style={styles.setWinnerIndicator}>
-                    {set.teamA > set.teamB ? (
-                      <Text style={styles.setWinnerText}>
-                        <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
-                        {' '}Team A vince questo set
-                      </Text>
-                    ) : set.teamB > set.teamA ? (
-                      <Text style={styles.setWinnerText}>
-                        <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
-                        {' '}Team B vince questo set
-                      </Text>
-                    ) : (
-                      <Text style={styles.setTieText}>
-                        <Ionicons name="alert-circle" size={14} color="#FF9800" />
-                        {' '}Pareggio
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            ))}
-
-            {/* Add Set Button */}
-            {sets.length < 5 && (
-              <Pressable style={styles.addSetButton} onPress={addSet}>
-                <Ionicons name="add-circle-outline" size={24} color="#2196F3" />
-                <Text style={styles.addSetButtonText}>Aggiungi Set</Text>
-              </Pressable>
-            )}
-          </ScrollView>
-
-          {/* Actions */}
-          <View style={styles.scoreModalActions}>
+          {/* Bottoni */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 20 }}>
             <Pressable
-              style={[styles.scoreModalButton, styles.scoreModalButtonCancel]}
+              style={{ padding: 15, backgroundColor: '#eee', borderRadius: 8, minWidth: 100, alignItems: 'center' }}
               onPress={onClose}
               disabled={saving}
             >
-              <Text style={styles.scoreModalButtonTextCancel}>Annulla</Text>
+              <Text>Annulla</Text>
             </Pressable>
 
             <Pressable
-              style={[
-                styles.scoreModalButton, 
-                styles.scoreModalButtonSave,
-                saving && { opacity: 0.6 }
-              ]}
+              style={{ padding: 15, backgroundColor: '#4CAF50', borderRadius: 8, minWidth: 100, alignItems: 'center', opacity: saving ? 0.6 : 1 }}
               onPress={handleSave}
               disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                  <Text style={styles.scoreModalButtonTextSave}>
-                    {currentScore?.sets.length > 0 ? 'Aggiorna' : 'Salva'}
-                  </Text>
-                </>
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Salva</Text>
               )}
             </Pressable>
           </View>

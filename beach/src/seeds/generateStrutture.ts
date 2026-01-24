@@ -1,0 +1,91 @@
+
+// seeds/generateStrutture.ts
+import Struttura from "../models/Strutture";
+
+import { generateStrutturaDescription } from "./strutturaUtils";
+import { randomInt, randomElement } from "./config";
+import fs from "fs";
+import cloudinary from "../config/cloudinary";
+
+export async function generateStrutture(owners: any[]) {
+  // Leggi strutture statiche
+  const staticPath = require('path').join(__dirname, 'strutture_statiche.txt');
+  const lines = fs.readFileSync(staticPath, 'utf-8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+  // Recupera immagini da Cloudinary (cartella images/struttura-images)
+  let strutturaImageUrls: string[] = [];
+  try {
+    const result = await cloudinary.search
+      .expression('folder:images/struttura-images')
+      .sort_by('public_id','desc')
+      .max_results(200)
+      .execute();
+    strutturaImageUrls = result.resources.map((r: any) => r.secure_url);
+    console.log(`✅ Recuperate ${strutturaImageUrls.length} immagini da Cloudinary per le strutture`);
+  } catch (err) {
+    console.error('Errore nel recupero immagini da Cloudinary:', err);
+    strutturaImageUrls = [];
+  }
+
+  if (strutturaImageUrls.length === 0) {
+    console.warn('⚠️ Nessuna immagine disponibile, le strutture non avranno foto');
+  }
+
+  let currentCity = '';
+  const struttureData = [];
+  let idx = 0;
+  for (const line of lines) {
+    if (!line.includes(' - ')) {
+      currentCity = line;
+      continue;
+    }
+    // Esempio: Via dei Fori Imperiali, 1 - 41.8925, 12.4853 - Palestra Colosseo Fitness
+    const [addressPart, coordsPart, name] = line.split(' - ');
+    const [lat, lng] = coordsPart.split(',').map(s => parseFloat(s.trim()));
+    const ownerIndex = idx % owners.length;
+    const imageCount = strutturaImageUrls.length > 0 ? randomInt(1, 5) : 0;
+    const images = [];
+    for (let j = 0; j < imageCount; j++) {
+      const randomIdx = randomInt(0, strutturaImageUrls.length - 1);
+      images.push(strutturaImageUrls[randomIdx]);
+    }
+    const amenitiesList = randomElement([
+      ["bar", "docce", "spogliatoi"],
+      ["bar", "parcheggio"],
+      ["docce", "spogliatoi"],
+      ["bar", "docce", "spogliatoi", "parcheggio"],
+    ]);
+    struttureData.push({
+      name: name,
+      description: generateStrutturaDescription(),
+      owner: owners[ownerIndex]._id,
+      location: {
+        address: addressPart,
+        city: currentCity,
+        lat,
+        lng,
+        coordinates: [lng, lat],
+      },
+      amenities: amenitiesList,
+      openingHours: {
+        opening: "08:00",
+        closing: "23:00"
+      },
+      images,
+      rating: {
+        average: randomInt(3, 5),
+        count: randomInt(5, 100)
+      },
+      isActive: true,
+      isFeatured: Math.random() > 0.8,
+      isDeleted: false,
+      isCostSplittingEnabled: Math.random() > 0.5,
+    });
+    idx++;
+  }
+
+  console.log(`👷 Creazione ${struttureData.length} strutture statiche...`);
+  const strutture = await Struttura.insertMany(struttureData);
+  console.log(`✅ ${strutture.length} strutture create`);
+  return strutture;
+}

@@ -162,18 +162,25 @@ export const submitMatchScore = async (
   sets: { teamA: number; teamB: number }[],
   token: string
 ) => {
-  const res = await fetch(`${API_URL}/matches/${matchId}/score`, {
+  const res = await fetch(`${API_URL}/matches/${matchId}/result`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ winner, sets }),
+    body: JSON.stringify({ score: { sets } }),
   });
 
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || "Errore nel salvataggio del risultato");
+    let errorText = await res.text();
+    let errorJson;
+    try {
+      errorJson = JSON.parse(errorText);
+    } catch (e) {
+      errorJson = { message: errorText };
+    }
+    console.log('BACKEND ERROR RESPONSE', errorJson);
+    throw new Error(errorJson.message || "Errore nel salvataggio del risultato");
   }
 
   return true;

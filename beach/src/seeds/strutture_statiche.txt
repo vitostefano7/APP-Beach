@@ -1,0 +1,141 @@
+# Lista strutture statiche per seed
+
+Roma
+Via dei Fori Imperiali, 1 - 41.8925, 12.4853 - Palestra Colosseo Fitness
+Piazza del Colosseo, 1 - 41.8902, 12.4922 - Centro Sportivo Gladiatori
+Via Veneto, 50 - 41.9075, 12.4897 - Veneto Sport Club
+Piazza di Spagna, 31 - 41.9058, 12.4823 - Fitness Plaza Roma
+Via del Corso, 100 - 41.9028, 12.4797 - Palestra Olimpia Corso
+
+Milano
+Piazza del Duomo, 14 - 45.4642, 9.1900 - Duomo Fitness Center
+Via Monte Napoleone, 8 - 45.4686, 9.1953 - Monte Napoleone Gym
+Corso Buenos Aires, 35 - 45.4781, 9.2064 - Buenos Aires Sport
+Via Torino, 55 - 45.4603, 9.1856 - Torino Wellness Center
+Viale Monza, 140 - 45.4981, 9.2219 - Monza Sport Village
+
+Napoli
+Via Toledo, 256 - 40.8411, 14.2486 - Toledo Fitness Point
+Piazza del Plebiscito, 1 - 40.8359, 14.2486 - Plebiscito Sport Center
+Via San Gregorio Armeno, 8 - 40.8508, 14.2569 - San Gregorio Gym
+Via Chiaia, 149 - 40.8392, 14.2453 - Chiaia Wellness
+Via Partenope, 48 - 40.8314, 14.2456 - Partenope Beach Sport
+
+Torino
+Via Roma, 101 - 45.0703, 7.6869 - Roma Fitness Torino
+Piazza Castello, 191 - 45.0708, 7.6858 - Castello Sport Club
+Via Po, 45 - 45.0681, 7.6914 - Po River Gym
+Piazza San Carlo, 156 - 45.0689, 7.6853 - San Carlo Wellness
+Via Pietro Micca, 22 - 45.0714, 7.6836 - Micca Gym Center
+
+Firenze
+Piazza del Duomo, 17 - 43.7731, 11.2569 - Duomo Fitness Firenze
+Via dei Calzaiuoli, 56 - 43.7711, 11.2547 - Calzaiuoli Sport
+Piazza della Signoria, 5 - 43.7695, 11.2558 - Signoria Athletic Club
+Ponte Vecchio, 3 - 43.7679, 11.2531 - Arno Fitness Center
+Via Tornabuoni, 64 - 43.7719, 11.2508 - Tornabuoni Wellness
+
+Venezia
+Piazza San Marco, 1 - 45.4342, 12.3386 - San Marco Fitness
+Riva degli Schiavoni, 4171 - 45.4336, 12.3428 - Riva Fitness Point
+Calle Larga XXII Marzo, 2403 - 45.4336, 12.3339 - Marzo Sport Club
+Fondamenta delle Zattere, 1414 - 45.4289, 12.3283 - Zattere Wellness
+Campo San Polo, 2128 - 45.4375, 12.3289 - San Polo Sport
+
+Bologna
+Piazza Maggiore, 6 - 44.4938, 11.3428 - Maggiore Sport Center
+Via dell'Indipendenza, 71 - 44.4983, 11.3436 - Indipendenza Fitness
+Via Rizzoli, 5 - 44.4953, 11.3461 - Rizzoli Gym
+Via Zamboni, 33 - 44.4972, 11.3525 - Zamboni Athletic Club
+Piazza Santo Stefano, 24 - 44.4922, 11.3486 - Santo Stefano Gym
+
+Palermo
+Via Maqueda, 172 - 40.1189, 13.3597 - Maqueda Sport Center
+Corso Vittorio Emanuele, 436 - 40.1167, 13.3639 - Corso Fitness Club
+Via Roma, 111 - 40.1214, 13.3625 - Roma Palermo Gym
+Piazza Politeama, 9 - 40.1244, 13.3564 - Politeama Sport
+Via Libertà, 12 - 40.1253, 13.3544 - Libertà Fitness
+
+Genova
+Via XX Settembre, 41 - 44.4072, 8.9394 - Settembre Sport Center
+Piazza De Ferrari, 1 - 44.4075, 8.9336 - De Ferrari Fitness
+Via Garibaldi, 9 - 44.4086, 8.9311 - Garibaldi Athletic Club
+Via San Lorenzo, 17 - 44.4078, 8.9311 - San Lorenzo Sport
+Corso Italia, 1 - 44.3956, 8.9536 - Corso Italia Beach Gym
+
+Verona
+Piazza Bra, 1 - 45.4392, 10.9928 - Arena Fitness Center
+Via Mazzini, 32 - 45.4414, 10.9961 - Mazzini Sport Club
+Via Cappello, 23 - 45.4417, 10.9989 - Giulietta Gym
+Piazza delle Erbe, 17 - 45.4431, 10.9981 - Erbe Fitness
+Corso Porta Nuova, 96 - 45.4336, 10.9878 - Porta Nuova Athletic
+
+Bari
+Lungomare Nazario Sauro, 4 - 41.1171, 16.8689 - Lungomare Fitness Bari
+Corso Cavour, 2 - 41.1189, 16.8733 - Cavour Sport Center
+Via Sparano da Bari, 27 - 41.1210, 16.8664 - Sparano Athletic Club
+Piazza del Ferrarese, 1 - 41.1178, 16.8730 - Ferrarese Gym
+Via Andrea da Bari, 12 - 41.1195, 16.8660 - Andrea Fitness Hub
+
+Catania
+Via Etnea, 285 - 37.5020, 15.0875 - Etnea Sport Center
+Piazza Duomo, 1 - 37.5023, 15.0877 - Duomo Athletic Club
+Via Vittorio Emanuele II, 130 - 37.5032, 15.0850 - Vittorio Gym
+Via Crociferi, 45 - 37.5038, 15.0892 - Crociferi Wellness
+Corso Italia, 55 - 37.4998, 15.0870 - Corso Italia Fitness
+
+Padova
+Prato della Valle, 1 - 45.4064, 11.8768 - Prato Running Club
+Via Roma, 64 - 45.4075, 11.8810 - Roma Padova Gym
+Piazza delle Erbe, 7 - 45.4069, 11.8812 - Erbe Sport Center
+Via VIII Febbraio, 5 - 45.4055, 11.8776 - Febbraio Fitness
+Corso del Popolo, 40 - 45.4060, 11.8830 - Popolo Athletic Club
+
+Trieste
+Piazza Unità d'Italia, 4 - 45.6495, 13.7768 - Unità Fitness Trieste
+Riva Nazario Sauro, 3 - 45.6500, 13.7735 - Riva Sport Club
+Via Carducci, 2 - 45.6482, 13.7739 - Carducci Gym
+Via San Nicolò, 30 - 45.6490, 13.7760 - San Nicolò Wellness
+Viale XX Settembre, 10 - 45.6498, 13.7790 - XX Settembre Athletic
+
+Perugia
+Corso Vannucci, 4 - 43.1107, 12.3899 - Vannucci Sport Center
+Piazza IV Novembre, 1 - 43.1122, 12.3891 - IV Novembre Gym
+Via della Viola, 8 - 43.1102, 12.3896 - Viola Fitness
+Via dei Priori, 28 - 43.1110, 12.3895 - Priori Athletic Club
+Strada San Costanzo, 12 - 43.1105, 12.3910 - San Costanzo Sport
+
+Modena
+Piazza Grande, 1 - 44.6471, 10.9252 - Piazza Grande Fitness
+Via Emilia Centro, 72 - 44.6478, 10.9259 - Emilia Sport Club
+Corso Canalgrande, 16 - 44.6469, 10.9267 - Canalgrande Gym
+Via Giuseppe Garibaldi, 45 - 44.6459, 10.9260 - Garibaldi Athletic
+Viale Ciro Menotti, 22 - 44.6448, 10.9320 - Menotti Wellness Center
+
+Reggio Emilia
+Piazza Prampolini, 2 - 44.6983, 10.6315 - Prampolini Sport Center
+Corso Garibaldi, 11 - 44.6988, 10.6302 - Garibaldi Fitness
+Via Emilia San Pietro, 50 - 44.6995, 10.6268 - Emilia San Pietro Gym
+Viale Timavo, 6 - 44.6980, 10.6310 - Timavo Athletic Club
+Via Roma, 9 - 44.6989, 10.6318 - Roma Reggio Gym
+
+Livorno
+Terrazza Mascagni, 1 - 43.5428, 10.3106 - Mascagni Fitness Terrace
+Via Grande, 45 - 43.5467, 10.3090 - Via Grande Sport
+Piazza della Repubblica, 5 - 43.5480, 10.3045 - Repubblica Gym
+Viale Italia, 28 - 43.5362, 10.3270 - Italia Wellness Center
+Via Roma, 121 - 43.5485, 10.3160 - Roma Livorno Athletic
+
+Salerno
+Lungomare Trieste, 10 - 40.6776, 14.7590 - Lungomare Trieste Fitness
+Corso Vittorio Emanuele, 1 - 40.6806, 14.7588 - Corso Sport Center
+Piazza Portanova, 6 - 40.6792, 14.7581 - Portanova Gym
+Via Roma, 107 - 40.6810, 14.7595 - Roma Salerno Athletic
+Via Tasso, 18 - 40.6765, 14.7602 - Tasso Wellness Club
+
+Bergamo
+Città Alta, Piazza Vecchia, 1 - 45.8270, 9.8840 - Piazza Vecchia Sport
+Via XX Settembre, 47 - 45.6981, 9.6710 - XX Settembre Gym
+Viale Papa Giovanni XXIII, 50 - 45.6940, 9.6774 - Papa Giovanni Fitness
+Via Sant'Alessandro, 7 - 45.6985, 9.6648 - Sant'Alessandro Athletic
+Piazza Matteotti, 5 - 45.6987, 9.6732 - Matteotti Sport Center

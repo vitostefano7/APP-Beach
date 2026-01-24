@@ -959,18 +959,29 @@ export default function HomeScreen() {
 
         {/* Carosello Ultime Partite */}
         {completedMatches.length > 0 ? (
-          <RecentMatchesCarousel
-            matches={completedMatches.slice(0, 10)}
-            userId={user?.id}
-            onPressMatch={(bookingId) => {
-              if (bookingId) {
-                navigation.navigate("DettaglioPrenotazione", {
-                  bookingId,
-                });
-              }
-            }}
-            onViewAll={() => navigation.navigate("Storico", { initialFilter: "past" })}
-          />
+          (() => {
+            const matchesToShow = completedMatches.slice(0, 10);
+            console.log(
+              "======== DEBUG ULTIME PARTITE =========\n" +
+              "Numero partite mostrate: ", matchesToShow.length,
+              "\nID partite: ", matchesToShow.map(m => m._id),
+              "\nTotale partite concluse con risultato: ", completedMatches.length
+            );
+            return (
+              <RecentMatchesCarousel
+                matches={matchesToShow}
+                userId={user?.id}
+                onPressMatch={(bookingId) => {
+                  if (bookingId) {
+                    navigation.navigate("DettaglioPrenotazione", {
+                      bookingId,
+                    });
+                  }
+                }}
+                onViewAll={() => navigation.navigate("Storico", { initialFilter: "past" })}
+              />
+            );
+          })()
         ) : recentMatches.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>

@@ -180,6 +180,9 @@ export default function CercaPartitaScreen() {
   const [isLoadingGPS, setIsLoadingGPS] = useState(false);
   const cityInputRef = useRef<TextInput>(null);
 
+  // Add state to track visited structures
+  const [visitedStruttureIds, setVisitedStruttureIds] = useState<string[]>([]);
+
   const loadMatches = useCallback(async () => {
     try {
       setError(null);
@@ -261,9 +264,39 @@ export default function CercaPartitaScreen() {
     }
   }, [token, user?.id]);
 
+  const loadVisitedStrutture = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      console.log("🏟️ [CercaPartita] Caricamento strutture visitate...");
+      const res = await fetch(`${API_URL}/bookings/my?status=completed`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const bookings = await res.json();
+        const struttureIds = new Set<string>();
+
+        (Array.isArray(bookings) ? bookings : bookings.data || []).forEach((booking: any) => {
+          const strutturaId = booking.campo?.struttura?._id || booking.campo?.struttura;
+          if (strutturaId) {
+            struttureIds.add(typeof strutturaId === 'string' ? strutturaId : strutturaId.toString());
+          }
+        });
+
+        const ids = Array.from(struttureIds);
+        setVisitedStruttureIds(ids);
+        console.log(`✅ [CercaPartita] ${ids.length} strutture visitate trovate`);
+      }
+    } catch (error) {
+      console.error("❌ [CercaPartita] Errore caricamento strutture visitate:", error);
+    }
+  }, [token]);
+
   useEffect(() => {
     loadUserPreferences();
-  }, [token]);
+    loadVisitedStrutture();
+  }, [token, loadVisitedStrutture]);
 
   useEffect(() => {
     // Chiedi GPS dopo che lo screen è caricato (delay di 500ms)
@@ -569,7 +602,7 @@ export default function CercaPartitaScreen() {
       const dateB = parseMatchStart(b)?.getTime() ?? 0;
       return dateA - dateB;
     });
-  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences]);
+  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences, manualCityCoords, visitedStruttureIds]);
 
   // Debounced city suggestion fetch
   const fetchCitySuggestions = useCallback(async (text: string) => {

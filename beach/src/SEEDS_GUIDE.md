@@ -40,7 +40,7 @@ Questo file genera dati di test per l'app Beach Volley, popolando il database Mo
 ## 6. Strutture
 - 100 strutture con owner casuale
 - Nome, descrizione, città, indirizzo, coordinate, amenities random (ma l'indirizzo, città e coordinate devono essere coerenti e reali)
-- 30% featured, ~20% con split costi abilitato
+- ~50% con split costi abilitato
 - 2-4 immagini random per struttura (se disponibili)
 
 ## 7. Followers
@@ -66,7 +66,7 @@ Questo file genera dati di test per l'app Beach Volley, popolando il database Mo
 
 ## 11. Prenotazioni
 - 1000 passate, 500 future
-- Pubbliche (split payment) solo se la struttura lo consente
+- Pubbliche (split payment) solo se la struttura ha lo split payment
 - Numero giocatori variabile per beach volley
 - Slot prenotati disabilitati nel calendario
 
