@@ -255,6 +255,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         players: [
           {
             user: creator,
+            team: "A",
             status: "confirmed",
             joinedAt: new Date(),
             respondedAt: new Date(),
@@ -275,6 +276,16 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       delete m.winner;
     }
   }
+
+  // Controllo: ogni match deve avere almeno l'organizzatore in un team
+  const invalidMatches = matches.filter(m => m.players.length === 0 || !m.players.some((p: any) => p.user.toString() === m.createdBy.toString()));
+  if (invalidMatches.length > 0) {
+    console.log(`❌ Trovati ${invalidMatches.length} match senza organizzatore o privi di giocatori`);
+    invalidMatches.forEach(m => console.log(`   - Match ${m._id || 'nuovo'} per booking ${m.booking}`));
+  } else {
+    console.log(`✅ Tutti i match hanno almeno l'organizzatore`);
+  }
+
   const savedMatches = await Match.insertMany(matches);
   console.log(`✅ Creati ${savedMatches.length} match:`);
   console.log(`   - ${matchCounters.completed} completati con risultato (beach)`);

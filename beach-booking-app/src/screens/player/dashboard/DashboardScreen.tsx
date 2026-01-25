@@ -937,7 +937,7 @@ export default function HomeScreen() {
       })() : "La tua prossima partita"}
     </Text>
             
-            <Pressable onPress={() => navigation.navigate("LeMiePrenotazioni")}>
+            <Pressable onPress={() => navigation.navigate("LeMiePrenotazioni", { fromDashboard: true })}>
               <Text style={styles.sectionLink}>Calendario</Text>
             </Pressable>
           </View>

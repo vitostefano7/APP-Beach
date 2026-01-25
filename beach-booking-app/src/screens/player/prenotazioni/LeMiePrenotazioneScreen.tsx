@@ -73,6 +73,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const initialFilter = route?.params?.initialFilter || "upcoming";
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">(initialFilter);
+  const fromDashboard = route?.params?.fromDashboard || false;
 
   // Stati per il modal personalizzato
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
@@ -260,6 +261,11 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     return bDate - aDate; // Di default, più recenti prima
   });
 
+  // Calcola i conteggi per i filtri
+  const upcomingCount = bookings.filter(b => isUpcomingBooking(b) || isOngoingBooking(b)).length;
+  const pastCount = bookings.filter(b => isPastBooking(b)).length;
+  const allCount = bookings.length;
+
   /* =========================
      RENDER CARD
   ========================= */
@@ -271,6 +277,9 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     // Può inserire risultato se: è passata, confermata, ha un match ma non ha risultato
     const canInsertResult = isPast && item.status === "confirmed" && item.hasMatch && !item.matchSummary;
     const timeStatus = getTimeStatus(item);
+
+    // Calcola il formato della partita basato su maxPlayers
+    const matchFormat = item.maxPlayers && item.maxPlayers % 2 === 0 ? `${item.maxPlayers / 2}v${item.maxPlayers / 2}` : null;
 
     return (
       <Pressable
@@ -320,6 +329,14 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   color={isOngoing ? "#FFF" : isPast ? "#FFF" : "#FFF"} 
                 />
                 <Text style={styles.timeBadgeText}>{timeStatus}</Text>
+              </View>
+            )}
+
+            {/* Formato partita */}
+            {matchFormat && (
+              <View style={styles.formatBadge}>
+                <Ionicons name="people" size={12} color="#FF9800" />
+                <Text style={styles.formatText}>{matchFormat}</Text>
               </View>
             )}
 
@@ -471,48 +488,61 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.safe}>
         {/* HEADER */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
-            <Text style={styles.headerSubtitle}>
-              {filter === "upcoming" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione futura" : "prenotazioni future"}`}
-              {filter === "past" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione conclusa" : "prenotazioni passate"}`}
-              {filter === "all" && `${sortedBookings.length} ${sortedBookings.length === 1 ? "prenotazione totale" : "prenotazioni totali"}`}
-            </Text>
-          </View>
-        </View>
-
-        {/* FILTERS */}
-        <View style={styles.filters}>
-          {[
-            { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
-            { key: "past", label: "Concluse", icon: "time-outline" },
-            { key: "all", label: "Tutte", icon: "list-outline" },
-          ].map((f) => (
-            <Pressable
-              key={f.key}
-              style={[
-                styles.filterBtn,
-                filter === f.key && styles.filterBtnActive,
-              ]}
-              onPress={() => setFilter(f.key as any)}
-            >
-              <Ionicons 
-                name={f.icon as any} 
-                size={16} 
-                color={filter === f.key ? "white" : "#666"} 
-              />
-              <Text
-                style={[
-                  styles.filterText,
-                  filter === f.key && styles.filterTextActive,
-                ]}
-              >
-                {f.label}
-              </Text>
+        {fromDashboard ? (
+          <View style={styles.backHeader}>
+            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
             </Pressable>
-          ))}
-        </View>
+            <Text style={styles.backHeaderTitle}>Le mie prenotazioni</Text>
+            <View style={{ width: 24 }} />
+          </View>
+        ) : (
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
+            </View>
+
+            {/* FILTERS */}
+            <View style={styles.filters}>
+              {[
+                { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
+                { key: "past", label: "Concluse", icon: "time-outline" },
+                { key: "all", label: "Tutte", icon: "list-outline" },
+              ].map((f) => (
+                <Pressable
+                  key={f.key}
+                  style={[
+                    styles.filterBtn,
+                    filter === f.key && styles.filterBtnActive,
+                  ]}
+                  onPress={() => setFilter(f.key as any)}
+                >
+                  <Ionicons 
+                    name={f.icon as any} 
+                    size={16} 
+                    color={filter === f.key ? "white" : "#666"} 
+                  />
+                  <Text
+                    style={[
+                      styles.filterText,
+                      filter === f.key && styles.filterTextActive,
+                    ]}
+                  >
+                    {f.label}{" "}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.filterNumber,
+                      filter === f.key && styles.filterNumberActive,
+                    ]}
+                  >
+                    {f.key === "upcoming" ? upcomingCount : f.key === "past" ? pastCount : allCount}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* LIST */}
         {loading ? (
@@ -663,24 +693,48 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa" 
   },
 
-  header: {
-    padding: 20,
+  backHeader: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     backgroundColor: "white",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    textAlign: "center",
+    flex: 1,
+  },
+
+  header: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 1,
+    backgroundColor: "white",
+    flexDirection: "column",
+    alignItems: "stretch",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   headerTitle: { 
-    fontSize: 24, 
+    fontSize: 18, 
     fontWeight: "800",
     color: "#1a1a1a",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 2,
+    textAlign: "center",
   },
   refreshBtn: {
     width: 44,
@@ -693,9 +747,9 @@ const styles = StyleSheet.create({
 
   filters: {
     flexDirection: "row",
-    padding: 16,
+    paddingVertical: 16,
     gap: 10,
-    backgroundColor: "white",
+    backgroundColor: "transparent",
   },
   filterBtn: {
     flex: 1,
@@ -721,6 +775,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   filterTextActive: { color: "white" },
+  filterNumber: { 
+    fontWeight: "800", 
+    color: "#2196F3",
+    fontSize: 13,
+  },
+  filterNumberActive: { color: "white" },
 
   loadingContainer: {
     flex: 1,
@@ -866,6 +926,20 @@ const styles = StyleSheet.create({
     fontWeight: "700", 
     color: "#2196F3",
     textTransform: "capitalize",
+  },
+  formatBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  formatText: { 
+    fontSize: 11, 
+    fontWeight: "700", 
+    color: "#FF9800",
   },
   timeBadge: {
     flexDirection: "row",

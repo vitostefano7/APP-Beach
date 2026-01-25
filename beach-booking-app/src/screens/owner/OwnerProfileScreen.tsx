@@ -871,14 +871,14 @@ export default function OwnerProfileScreen() {
             </View>
           ) : (
             strutture.map((struttura, index) => {
-              const isOpen = struttura.status === 'open' || struttura.isOpen;
+              const isOpen = struttura.isActive;
               const mainImage = struttura.images?.[0] || struttura.imageUrl;
               
               return (
                 <Pressable 
                   key={struttura.id || `struttura-${index}`}
                   style={styles.strutturaCard}
-                  onPress={() => navigation.navigate("StrutturaDetail", { id: struttura.id })}
+                  onPress={() => navigation.navigate("StrutturaDashboard", { strutturaId: struttura._id || struttura.id })}
                 >
                   <Image
                     source={{ uri: mainImage || 'https://via.placeholder.com/100x80' }}
@@ -897,7 +897,7 @@ export default function OwnerProfileScreen() {
                       color={isOpen ? "#4CAF50" : "#FF9800"} 
                     />
                     <Text style={isOpen ? styles.statusTextOpen : styles.statusTextMaintenance}>
-                      {isOpen ? "Aperto" : "Chiuso"}
+                      {isOpen ? "Attiva" : "Chiuso"}
                     </Text>
                   </View>
                 </Pressable>

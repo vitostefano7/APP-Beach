@@ -64,6 +64,18 @@ export default function StrutturaDashboardScreen() {
   const { token } = useContext(AuthContext);
   const { strutturaId } = route.params;
 
+  // Controllo se strutturaId è presente
+  if (!strutturaId) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={56} color="#ddd" />
+          <Text style={styles.errorText}>ID struttura mancante</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const [loading, setLoading] = useState(true);
   const [struttura, setStruttura] = useState<Struttura | null>(null);
   const [campi, setCampi] = useState<Campo[]>([]);
@@ -99,6 +111,9 @@ export default function StrutturaDashboardScreen() {
       const strutturaRes = await fetch(strutturaUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!strutturaRes.ok) {
+        throw new Error(`Errore caricamento struttura: ${strutturaRes.status}`);
+      }
       const strutturaData = await strutturaRes.json();
       setStruttura(strutturaData);
 
@@ -107,9 +122,13 @@ export default function StrutturaDashboardScreen() {
       const campiRes = await fetch(campiUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
-      const campiData = await campiRes.json();
-      setCampi(campiData);
+      if (!campiRes.ok) {
+        console.warn(`Errore caricamento campi: ${campiRes.status}`);
+        setCampi([]);
+      } else {
+        const campiData = await campiRes.json();
+        setCampi(Array.isArray(campiData) ? campiData : []);
+      }
 
       // Carica prenotazioni per questa struttura
       try {
@@ -225,7 +244,7 @@ export default function StrutturaDashboardScreen() {
     );
   }
 
-  const campiAttivi = campi.filter((c) => c.isActive);
+  const campiAttivi = Array.isArray(campi) ? campi.filter((c) => c.isActive) : [];
 
   // ✅ URL immagine corrente
   const currentImageUri = struttura.images?.length

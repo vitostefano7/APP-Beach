@@ -137,7 +137,7 @@ const getRegistrationCloseStatus = (booking: Booking): string => {
     const registrationCloseDateTime = new Date(bookingStartDateTime.getTime() - 60 * 60 * 1000);
     const now = new Date();
     const diffMs = registrationCloseDateTime.getTime() - now.getTime();
-    if (diffMs <= 0) return "Chiusura registrazione scaduta";
+    if (diffMs <= 0) return "Tempo di registrazione scaduto";
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     if (diffHours > 0) {
@@ -304,7 +304,7 @@ export default function OwnerBookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "ongoing">("upcoming");
+  const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "ongoing">(route.params?.filterDate ? "all" : "upcoming");
   
   const [filterUsername, setFilterUsername] = useState("");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
@@ -477,179 +477,184 @@ export default function OwnerBookingsScreen() {
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.headerIconContainer}>
-              <Ionicons name="calendar" size={26} color="#2196F3" />
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              {route.params?.fromDashboard && (
+                <Pressable
+                  onPress={() => navigation.goBack()}
+                  style={styles.backButton}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#2196F3" />
+                </Pressable>
+              )}
+              <View style={styles.headerIconContainer}>
+                <Ionicons name="calendar" size={26} color="#2196F3" />
+              </View>
             </View>
-            <View>
+            <View style={styles.headerCenter}>
               <Text style={styles.title}>Prenotazioni</Text>
-              <Text style={styles.subtitle}>
-                {sortedBookings.length} {sortedBookings.length === 1 ? 'prenotazione' : 'prenotazioni'}
-              </Text>
             </View>
-          </View>
-          <Pressable
-            onPress={async () => {
-              await loadOwnerData();
-              await loadBookings();
-            }}
-            disabled={refreshing}
-            style={styles.refreshButton}
-          >
-            <Ionicons
-              name={refreshing ? "hourglass-outline" : "refresh"}
-              size={24}
-              color="#2196F3"
-            />
-          </Pressable>
-        </View>
-
-
-
-        {/* FILTER TABS - ORIZZONTALI E COMPATTI */}
-        <View style={styles.filterTabsWrapperCompact}>
-          <Pressable
-            style={[styles.filterTabCompact, filter === "ongoing" && styles.filterTabOngoing]}
-            onPress={() => setFilter("ongoing")}
-          >
-            <Text style={[styles.filterTabTextCompact, filter === "ongoing" && styles.filterTabTextActive]}>
-              In corso
-            </Text>
-            <View style={[styles.filterBadgeCompact, filter === "ongoing" && styles.filterBadgeActive]}>
-              <Text style={[styles.filterBadgeTextCompact, filter === "ongoing" && styles.filterBadgeTextActive]}>
-                {getFilteredCount("ongoing")}
-              </Text>
-            </View>
-          </Pressable>
-          <Pressable
-            style={[styles.filterTabCompact, filter === "upcoming" && styles.filterTabActive]}
-            onPress={() => setFilter("upcoming")}
-          >
-            <Text style={[styles.filterTabTextCompact, filter === "upcoming" && styles.filterTabTextActive]}>
-              Prossime
-            </Text>
-            <View style={[styles.filterBadgeCompact, filter === "upcoming" && styles.filterBadgeActive]}>
-              <Text style={[styles.filterBadgeTextCompact, filter === "upcoming" && styles.filterBadgeTextActive]}>
-                {getFilteredCount("upcoming")}
-              </Text>
-            </View>
-          </Pressable>
-          <Pressable
-            style={[styles.filterTabCompact, filter === "past" && styles.filterTabActive]}
-            onPress={() => setFilter("past")}
-          >
-            <Text style={[styles.filterTabTextCompact, filter === "past" && styles.filterTabTextActive]}>
-              Concluse
-            </Text>
-            <View style={[styles.filterBadgeCompact, filter === "past" && styles.filterBadgeActive]}>
-              <Text style={[styles.filterBadgeTextCompact, filter === "past" && styles.filterBadgeTextActive]}>
-                {getFilteredCount("past")}
-              </Text>
-            </View>
-          </Pressable>
-          <Pressable
-            style={[styles.filterTabCompact, filter === "all" && styles.filterTabActive]}
-            onPress={() => setFilter("all")}
-          >
-            <Text style={[styles.filterTabTextCompact, filter === "all" && styles.filterTabTextActive]}>
-              Tutte
-            </Text>
-            <View style={[styles.filterBadgeCompact, filter === "all" && styles.filterBadgeActive]}>
-              <Text style={[styles.filterBadgeTextCompact, filter === "all" && styles.filterBadgeTextActive]}>
-                {getFilteredCount("all")}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
-
-        {/* ADDITIONAL FILTERS */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScroll}
-          contentContainerStyle={styles.filtersScrollContent}
-        >
-          {/* CHIP RICERCA NOME - PRIMO CHIP */}
-          <Pressable
-            style={[styles.filterChip, filterUsername && styles.filterChipActive]}
-            onPress={() => setShowSearchModal(true)}
-          >
-            <Ionicons
-              name="search"
-              size={16}
-              color={filterUsername ? "white" : "#666"}
-            />
-            <Text style={[styles.filterChipText, filterUsername && styles.filterChipTextActive]}>
-              {filterUsername ? filterUsername : "Cliente"}
-            </Text>
-            {filterUsername.length > 0 && (
-              <Pressable onPress={() => setFilterUsername("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={filterUsername ? "white" : "#999"} />
-              </Pressable>
-            )}
-          </Pressable>
-
-          {/* CHIP DATA */}
-          <Pressable
-            style={[styles.filterChip, filterDate && styles.filterChipActive]}
-            onPress={() => setShowCalendarModal(true)}
-          >
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={filterDate ? "white" : "#666"}
-            />
-            <Text style={[styles.filterChipText, filterDate && styles.filterChipTextActive]}>
-              {filterDate
-                ? new Date(filterDate + "T12:00:00").toLocaleDateString("it-IT", {
-                    day: "numeric",
-                    month: "short",
-                  })
-                : "Data"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.filterChip, filterStruttura && styles.filterChipActive]}
-            onPress={() => setShowStrutturaModal(true)}
-          >
-            <Ionicons
-              name="business-outline"
-              size={16}
-              color={filterStruttura ? "white" : "#666"}
-            />
-            <Text style={[styles.filterChipText, filterStruttura && styles.filterChipTextActive]}>
-              {filterStruttura
-                ? strutture.find((s) => s._id === filterStruttura)?.name || "Struttura"
-                : "Struttura"}
-            </Text>
-          </Pressable>
-
-          {filterStruttura && campiFiltered.length > 0 && (
             <Pressable
-              style={[styles.filterChip, filterCampo && styles.filterChipActive]}
-              onPress={() => setShowCampoModal(true)}
+              onPress={async () => {
+                await loadOwnerData();
+                await loadBookings();
+              }}
+              disabled={refreshing}
+              style={styles.refreshButton}
             >
               <Ionicons
-                name="basketball-outline"
-                size={16}
-                color={filterCampo ? "white" : "#666"}
+                name={refreshing ? "hourglass-outline" : "refresh"}
+                size={24}
+                color="#2196F3"
               />
-              <Text style={[styles.filterChipText, filterCampo && styles.filterChipTextActive]}>
-                {filterCampo
-                  ? campiFiltered.find((c) => c._id === filterCampo)?.name || "Campo"
-                  : "Campo"}
+            </Pressable>
+          </View>
+
+          {/* FILTER TABS - ORIZZONTALI E COMPATTI */}
+          <View style={styles.filterTabsWrapperCompact}>
+            <Pressable
+              style={[styles.filterTabCompact, filter === "ongoing" && styles.filterTabOngoing]}
+              onPress={() => setFilter("ongoing")}
+            >
+              <Text style={[styles.filterTabTextCompact, filter === "ongoing" && styles.filterTabTextActive]}>
+                In corso
+              </Text>
+              <View style={[styles.filterBadgeCompact, filter === "ongoing" && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeTextCompact, filter === "ongoing" && styles.filterBadgeTextActive]}>
+                  {getFilteredCount("ongoing")}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              style={[styles.filterTabCompact, filter === "upcoming" && styles.filterTabActive]}
+              onPress={() => setFilter("upcoming")}
+            >
+              <Text style={[styles.filterTabTextCompact, filter === "upcoming" && styles.filterTabTextActive]}>
+                Prossime
+              </Text>
+              <View style={[styles.filterBadgeCompact, filter === "upcoming" && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeTextCompact, filter === "upcoming" && styles.filterBadgeTextActive]}>
+                  {getFilteredCount("upcoming")}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              style={[styles.filterTabCompact, filter === "past" && styles.filterTabActive]}
+              onPress={() => setFilter("past")}
+            >
+              <Text style={[styles.filterTabTextCompact, filter === "past" && styles.filterTabTextActive]}>
+                Concluse
+              </Text>
+              <View style={[styles.filterBadgeCompact, filter === "past" && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeTextCompact, filter === "past" && styles.filterBadgeTextActive]}>
+                  {getFilteredCount("past")}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              style={[styles.filterTabCompact, filter === "all" && styles.filterTabActive]}
+              onPress={() => setFilter("all")}
+            >
+              <Text style={[styles.filterTabTextCompact, filter === "all" && styles.filterTabTextActive]}>
+                Tutte
+              </Text>
+              <View style={[styles.filterBadgeCompact, filter === "all" && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeTextCompact, filter === "all" && styles.filterBadgeTextActive]}>
+                  {getFilteredCount("all")}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* ADDITIONAL FILTERS */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filtersScroll}
+            contentContainerStyle={styles.filtersScrollContent}
+          >
+            {/* CHIP RICERCA NOME - PRIMO CHIP */}
+            <Pressable
+              style={[styles.filterChip, filterUsername && styles.filterChipActive]}
+              onPress={() => setShowSearchModal(true)}
+            >
+              <Ionicons
+                name="search"
+                size={16}
+                color={filterUsername ? "white" : "#666"}
+              />
+              <Text style={[styles.filterChipText, filterUsername && styles.filterChipTextActive]}>
+                {filterUsername ? filterUsername : "Cliente"}
+              </Text>
+              {filterUsername.length > 0 && (
+                <Pressable onPress={() => setFilterUsername("")} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={filterUsername ? "white" : "#999"} />
+                </Pressable>
+              )}
+            </Pressable>
+
+            {/* CHIP DATA */}
+            <Pressable
+              style={[styles.filterChip, filterDate && styles.filterChipActive]}
+              onPress={() => setShowCalendarModal(true)}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color={filterDate ? "white" : "#666"}
+              />
+              <Text style={[styles.filterChipText, filterDate && styles.filterChipTextActive]}>
+                {filterDate
+                  ? new Date(filterDate + "T12:00:00").toLocaleDateString("it-IT", {
+                      day: "numeric",
+                      month: "short",
+                    })
+                  : "Data"}
               </Text>
             </Pressable>
-          )}
 
-          {hasActiveFilters && (
-            <Pressable style={styles.filterChipReset} onPress={clearFilters}>
-              <Ionicons name="close" size={16} color="#E53935" />
-              <Text style={styles.filterChipResetText}>Reset</Text>
+            <Pressable
+              style={[styles.filterChip, filterStruttura && styles.filterChipActive]}
+              onPress={() => setShowStrutturaModal(true)}
+            >
+              <Ionicons
+                name="business-outline"
+                size={16}
+                color={filterStruttura ? "white" : "#666"}
+              />
+              <Text style={[styles.filterChipText, filterStruttura && styles.filterChipTextActive]}>
+                {filterStruttura
+                  ? strutture.find((s) => s._id === filterStruttura)?.name || "Struttura"
+                  : "Struttura"}
+              </Text>
             </Pressable>
-          )}
-        </ScrollView>
+
+            {filterStruttura && campiFiltered.length > 0 && (
+              <Pressable
+                style={[styles.filterChip, filterCampo && styles.filterChipActive]}
+                onPress={() => setShowCampoModal(true)}
+              >
+                <Ionicons
+                  name="basketball-outline"
+                  size={16}
+                  color={filterCampo ? "white" : "#666"}
+                />
+                <Text style={[styles.filterChipText, filterCampo && styles.filterChipTextActive]}>
+                  {filterCampo
+                    ? campiFiltered.find((c) => c._id === filterCampo)?.name || "Campo"
+                    : "Campo"}
+                </Text>
+              </Pressable>
+            )}
+
+            {hasActiveFilters && (
+              <Pressable style={styles.filterChipReset} onPress={clearFilters}>
+                <Ionicons name="close" size={16} color="#E53935" />
+                <Text style={styles.filterChipResetText}>Reset</Text>
+              </Pressable>
+            )}
+          </ScrollView>
+        </View>
 
         {/* MODAL RICERCA NOME CLIENTE - CENTRATO */}
         <Modal visible={showSearchModal} animationType="fade" transparent>
@@ -906,23 +911,31 @@ const styles = StyleSheet.create({
 
   // HEADER
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
     backgroundColor: "white",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    paddingBottom: 8,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerIconContainer: {
     width: 36,
@@ -952,6 +965,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+
   // SEARCH
   // SEARCH MODAL INPUT
   searchInputModal: {
@@ -971,9 +994,9 @@ const styles = StyleSheet.create({
   filterTabsWrapperCompact: {
     flexDirection: "row",
     gap: 4,
-    paddingHorizontal: 8,
-    marginTop: 10,
-    marginBottom: 6,
+    paddingHorizontal: 16,
+    marginTop: 0,
+    marginBottom: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1036,7 +1059,6 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     height: 40,
-    marginBottom: 8,
   },
   filtersScrollContent: {
     paddingHorizontal: 16,
@@ -1099,7 +1121,7 @@ const styles = StyleSheet.create({
   // LIST
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 60, // Maggiore spazio per la tab bar
   },
 

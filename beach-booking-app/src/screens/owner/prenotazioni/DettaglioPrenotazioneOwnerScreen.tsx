@@ -246,11 +246,13 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   if (!booking) return null;
 
   const isCancelled = booking.status === "cancelled";
-  const bookingDate = new Date(booking.date + "T00:00:00");
-  const today = new Date(new Date().setHours(0, 0, 0, 0));
-  const isUpcoming = bookingDate >= today;
-  const isPast = bookingDate < today;
-  const canInsertResult = !isCancelled && isPast && !booking.match;
+  const startDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
+  const endDateTime = new Date(`${booking.date}T${booking.endTime}:00`);
+  const now = new Date();
+  const isFuture = now < startDateTime;
+  const isInProgress = now >= startDateTime && now <= endDateTime;
+  const isPastBooking = now > endDateTime;
+  const canInsertResult = !isCancelled && isPastBooking && !booking.match;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -298,7 +300,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             }}>
               <Ionicons 
                 name={booking.status === 'confirmed' 
-                  ? (isPast ? 'checkmark-done-circle' : 'time') 
+                  ? (isPastBooking ? 'checkmark-done-circle' : isInProgress ? 'play-circle' : 'time') 
                   : 'close-circle'
                 } 
                 size={18} 
@@ -310,7 +312,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 color: booking.status === 'confirmed' ? '#2E7D32' : '#C62828'
               }}>
                 {booking.status === 'confirmed' ? (
-                  isPast ? 'Conclusa' : 'In corso'
+                  isPastBooking ? 'Conclusa' : isInProgress ? 'In corso' : 'Prenotata'
                 ) : 'Cancellata'}
               </Text>
             </View>
@@ -639,7 +641,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             </AnimatedButton>
           ) : null}
 
-          {!isCancelled && isUpcoming && (
+          {!isCancelled && isFuture && (
             <FadeInView delay={400}>
               <AnimatedButton style={styles.cancelButton} onPress={handleCancel}>
                 <Ionicons name="trash-outline" size={20} color="white" />

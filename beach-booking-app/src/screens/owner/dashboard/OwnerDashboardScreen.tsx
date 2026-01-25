@@ -404,7 +404,10 @@ export default function OwnerDashboardScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Prenotazioni Oggi</Text>
               <Pressable
-                onPress={() => navigation.navigate("OwnerBookings")}
+                onPress={() => navigation.navigate("OwnerBookings", {
+                  filterDate: new Date().toISOString().split('T')[0],
+                  fromDashboard: true
+                })}
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Vedi tutte</Text>
