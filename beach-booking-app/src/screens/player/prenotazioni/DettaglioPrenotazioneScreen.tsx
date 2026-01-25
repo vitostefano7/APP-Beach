@@ -340,8 +340,7 @@ export default function DettaglioPrenotazioneScreen() {
       isWithin24Hours: isWithin24Hours(),
       bookingStatus: booking.status
     });
-    // TEMPORANEO: sempre true per testare
-    return true; // isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
+    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
   };
 
   const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
@@ -749,8 +748,29 @@ export default function DettaglioPrenotazioneScreen() {
       return;
     }
 
+    // Alert di conferma per unione via slot
+    if (team) {
+      showCustomAlert(
+        "Conferma unione",
+        `Vuoi unirti al Team ${team}?`,
+        [
+          { text: "Annulla", style: "cancel" },
+          {
+            text: "Sì, Unisciti",
+            onPress: () => performJoinMatch(team)
+          }
+        ]
+      );
+      return;
+    }
+
+    // Per il pulsante generale senza team specificato
+    await performJoinMatch(team);
+  };
+
+  const performJoinMatch = async (team?: "A" | "B") => {
     try {
-      const res = await fetch(`${API_URL}/matches/${booking.matchId}/join`, {
+      const res = await fetch(`${API_URL}/matches/${booking!.matchId}/join`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1175,7 +1195,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         onLeave={handleLeaveMatch}
                         currentTeam="A"
                         isEmptySlot={!player}
-                        onInviteToSlot={() => handleInviteToTeam("A", slotNumber)}
+                        onInviteToSlot={!player ? (isCreator ? () => handleInviteToTeam("A", slotNumber) : () => handleJoinMatch("A")) : undefined}
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
                         isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
@@ -1224,7 +1244,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
                         onLeave={handleLeaveMatch}
                         currentTeam="B"
                         isEmptySlot={!player}
-                        onInviteToSlot={() => handleInviteToTeam("B", slotNumber)}
+                        onInviteToSlot={!player ? (isCreator ? () => handleInviteToTeam("B", slotNumber) : () => handleJoinMatch("B")) : undefined}
                         slotNumber={slotNumber}
                         matchStatus={getMatchStatus()}
                         isOrganizer={player?.user?._id === booking.match?.createdBy?._id}

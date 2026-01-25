@@ -619,6 +619,16 @@ export default function CercaPartitaScreen() {
     return finalResult;
   }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, userPreferences, manualCityCoords, visitedStruttureIds, playersFilter]);
 
+  const visitedMatches = useMemo(() => {
+    const visited = matches.filter((match) => {
+      const strutturaId = typeof match.booking?.campo?.struttura === 'object' 
+        ? (match.booking?.campo?.struttura as any)?._id 
+        : match.booking?.campo?.struttura;
+      return strutturaId && visitedStruttureIds.includes(strutturaId);
+    }).slice(0, 3); // Limita a 3 partite
+    return visited;
+  }, [matches, visitedStruttureIds]);
+
   // Debounced city suggestion fetch
   const fetchCitySuggestions = useCallback(async (text: string) => {
     if (!text.trim()) {
@@ -1052,6 +1062,25 @@ export default function CercaPartitaScreen() {
                         ))}
                       </View>
                     )}
+                  </View>
+                )}
+                {visitedMatches.length > 0 && (
+                  <View style={styles.visitedSection}>
+                    <Text style={styles.visitedTitle}>Partite nelle tue strutture visitate</Text>
+                    {visitedMatches.map((match) => (
+                      <OpenMatchCard
+                        key={match._id}
+                        match={match}
+                        onPress={() => {
+                          const bookingId = match.booking?._id;
+                          if (!bookingId) {
+                            Alert.alert("Errore", "ID prenotazione non disponibile");
+                            return;
+                          }
+                          navigation.navigate("DettaglioPrenotazione", { bookingId });
+                        }}
+                      />
+                    ))}
                   </View>
                 )}
               </>
@@ -1737,5 +1766,16 @@ const styles = StyleSheet.create({
   },
   timeSlotTextActive: {
     color: "#2196F3",
+  },
+  visitedSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  visitedTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
 });
