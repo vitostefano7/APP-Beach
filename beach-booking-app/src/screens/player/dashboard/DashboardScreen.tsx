@@ -95,6 +95,8 @@ export default function HomeScreen() {
   // Hook per il filtraggio geografico
   const {
     userPreferences,
+    visitedStruttureIds,
+    gpsCoords,
     loadUserPreferences,
     loadVisitedStrutture,
     requestGPSLocation,
@@ -131,6 +133,17 @@ export default function HomeScreen() {
     }, [])
   );
 
+  // Carica i match aperti quando cambiano le preferenze geografiche
+  React.useEffect(() => {
+    if (preferencesLoaded) {
+      console.log("🔄 [Dashboard] Preferenze geografiche cambiate, ricarico match aperti...");
+      console.log("🔄 [Dashboard] GPS:", gpsCoords ? "presente" : "assente");
+      console.log("🔄 [Dashboard] Preferenze:", userPreferences?.preferredLocation?.city || "nessuna");
+      console.log("🔄 [Dashboard] Strutture visitate:", visitedStruttureIds?.length || 0);
+      loadOpenMatches();
+    }
+  }, [gpsCoords, userPreferences, visitedStruttureIds, preferencesLoaded]);
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -147,12 +160,11 @@ export default function HomeScreen() {
       console.log("✅ Preferenze e strutture caricate, ora carico i match...");
       setPreferencesLoaded(true);
 
-      // Poi carica tutto il resto inclusi i match aperti
+      // Carica tutto il resto TRANNE i match aperti (li carica il useEffect)
       await Promise.all([
         loadNextBooking(),
         loadPendingInvites(),
         loadRecentMatchesAndStats(),
-        loadOpenMatches(),
       ]);
 
     } catch (error) {
@@ -381,18 +393,83 @@ export default function HomeScreen() {
         return;
       }
 
+      // *** FILTRO GEOGRAFICO OBBLIGATORIO ***
+      console.log("🌍 [Dashboard] Applicazione filtro geografico obbligatorio...");
+      console.log("🌍 [Dashboard] GPS coords:", gpsCoords);
+      console.log("🌍 [Dashboard] User preferences:", userPreferences?.preferredLocation);
+      console.log("🌍 [Dashboard] Visited structures:", visitedStruttureIds?.length || 0);
+      
+      // Determina modalità di filtro geografico
+      let referenceLat: number | null = null;
+      let referenceLng: number | null = null;
+      let searchRadius = 30;
+      let filterMode: 'gps' | 'preferred' | 'visited' | 'none' = 'none';
+      
+      if (gpsCoords) {
+        referenceLat = gpsCoords.lat;
+        referenceLng = gpsCoords.lng;
+        searchRadius = 30;
+        filterMode = 'gps';
+        console.log("📍 [Dashboard] Filtro GPS attivo - raggio 30km");
+      } else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
+        referenceLat = userPreferences.preferredLocation.lat;
+        referenceLng = userPreferences.preferredLocation.lng;
+        searchRadius = userPreferences.preferredLocation.radius || 30;
+        filterMode = 'preferred';
+        console.log("📍 [Dashboard] Filtro città preferita attivo -", userPreferences.preferredLocation.city, "raggio", searchRadius, "km");
+      } else if (visitedStruttureIds && visitedStruttureIds.length > 0) {
+        filterMode = 'visited';
+        console.log("📍 [Dashboard] Filtro strutture visitate attivo -", visitedStruttureIds.length, "strutture");
+      } else {
+        console.log("⚠️ [Dashboard] Nessun criterio geografico disponibile - nessun risultato");
+        setOpenMatches([]);
+        return;
+      }
+      
+      // Applica il filtro geografico
+      const geoFiltered = rawMatches.filter((match: any) => {
+        const structureLat = match.booking?.campo?.struttura?.location?.lat;
+        const structureLng = match.booking?.campo?.struttura?.location?.lng;
+        const strutturaId = typeof match.booking?.campo?.struttura === 'object'
+          ? match.booking?.campo?.struttura?._id
+          : match.booking?.campo?.struttura;
+        
+        if (filterMode === 'gps' || filterMode === 'preferred') {
+          if (referenceLat !== null && referenceLng !== null && structureLat && structureLng) {
+            const R = 6371; // Raggio della Terra in km
+            const dLat = (structureLat - referenceLat) * Math.PI / 180;
+            const dLng = (structureLng - referenceLng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(referenceLat * Math.PI / 180) * Math.cos(structureLat * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            console.log(`📏 [Dashboard] ${match.booking?.campo?.struttura?.name || 'N/A'}: ${distance.toFixed(2)}km`);
+            return distance <= searchRadius;
+          }
+          return false;
+        } else if (filterMode === 'visited') {
+          return visitedStruttureIds.includes(strutturaId);
+        }
+        return false;
+      });
+      
+      if (geoFiltered.length === 0) {
+        console.log("⚠️ [Dashboard] Nessun match trovato dopo filtro geografico");
+        setOpenMatches([]);
+        return;
+      }
+      
+      console.log(`✅ [Dashboard] ${geoFiltered.length} match dopo filtro geografico`);
+
       const now = new Date();
-      const filtered = rawMatches.filter((match: any) => {
+      const filtered = geoFiltered.filter((match: any) => {
         if (!match?._id || match.status && ['completed', 'cancelled', 'full'].includes(match.status)) return false;
         if (match.isPublic === false) return false;
 
         const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
         const maxPlayers = match.maxPlayers || 0;
         if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
-
-        const start = match.booking?.date && match.booking?.startTime ? 
-          new Date(`${match.booking.date}T${match.booking.startTime}`) : null;
-        if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) return false;
 
         const alreadyJoined = match.players?.some((p: any) => p.user?._id === user?.id);
         if (alreadyJoined) return false;
@@ -408,31 +485,8 @@ export default function HomeScreen() {
         return;
       }
 
-      // Applica filtro geografico usando il hook
-      const geoResult = filterMatchesByGeography(filtered, 'Dashboard');
-
-      console.log(`📍 [Dashboard] Filtro geografico applicato: mode=${geoResult.filterMode}, raggio=${geoResult.searchRadius}km`);
-      console.log(`📍 [Dashboard] Match dopo filtro geo: ${geoResult.filteredMatches.length}`);
-
-      // Se il filtro geografico ha restituito 0 risultati, potrebbe essere un problema
-      if (geoResult.filteredMatches.length === 0 && filtered.length > 0) {
-        console.warn("⚠️ [Dashboard] ATTENZIONE: Il filtro geografico ha escluso tutti i match!");
-        console.warn("⚠️ [Dashboard] Possibile causa: preferenze non caricate o nessuna struttura visitata");
-        // Fallback: mostra almeno qualche match anche senza filtro geografico
-        console.log("🔄 [Dashboard] Fallback: mostro i primi 5 match senza filtro geografico");
-        const fallbackMatches = filtered.slice(0, 5).sort((a, b) => {
-          const dateA = a.booking?.date && a.booking?.startTime ? 
-            new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
-          const dateB = b.booking?.date && b.booking?.startTime ? 
-            new Date(`${b.booking.date}T${b.booking.startTime}`).getTime() : 0;
-          return dateA - dateB;
-        });
-        setOpenMatches(fallbackMatches);
-        return;
-      }
-
-      // Ordinamento per data
-      const sorted = geoResult.filteredMatches.sort((a, b) => {
+      // Ordinamento per data crescente
+      const sorted = filtered.sort((a, b) => {
         const dateA = a.booking?.date && a.booking?.startTime ? 
           new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
         const dateB = b.booking?.date && b.booking?.startTime ? 
@@ -442,8 +496,7 @@ export default function HomeScreen() {
 
       // Log della logica di filtraggio e ordinamento
       console.log(`🎯 [Dashboard] Logica match aperti suggeriti:`);
-      console.log(`   - Filtrati: partite aperte, pubbliche, non piene, non già iniziate (<30min), non già joined`);
-      console.log(`   - Filtrati geograficamente: ${geoResult.filterMode} (raggio: ${geoResult.searchRadius}km)`);
+      console.log(`   - Filtrati: filtro geografico OBBLIGATORIO, partite aperte, pubbliche, non piene, non già joined`);
       console.log(`   - Ordinati: per data crescente`);
       console.log(`   - Mostrati: primi 10 match`);
 
@@ -451,7 +504,17 @@ export default function HomeScreen() {
       setOpenMatches(finalMatches);
       
       // Log dettagliato per ogni card mostrata
-      logFilteredMatchesDetails(finalMatches, 'dashboard', geoResult.filterMode, geoResult.searchRadius);
+      console.log(`📋 Dettagli match dashboard mostrati (${finalMatches.length}):`);
+      finalMatches.forEach((match, index) => {
+        const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
+        const maxPlayers = match.maxPlayers || 0;
+        const struttura = match.booking?.campo?.struttura?.name || 'N/A';
+        const citta = match.booking?.campo?.struttura?.location?.city || 'N/A';
+        const dataOra = match.booking?.date && match.booking?.startTime ?
+          `${match.booking.date} ${match.booking.startTime}` : 'N/A';
+
+        console.log(`   ${index + 1}. Match ${match._id?.slice(-6)} - ${struttura} (${citta}) - ${dataOra} - ${confirmedPlayers}/${maxPlayers} giocatori`);
+      });
       
       console.log(`✅ [Dashboard] ${finalMatches.length} partite caricate e visualizzate`);
     } catch (error) {
@@ -799,6 +862,15 @@ export default function HomeScreen() {
     );
   }
 
+  const handleJoinMatch = async (match: any) => {
+    const bookingId = match.booking?._id;
+    if (!bookingId) {
+      Alert.alert("Errore", "ID prenotazione non disponibile");
+      return;
+    }
+    navigation.navigate('DettaglioPrenotazione', { bookingId, openJoinModal: true });
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: 'white' }]} edges={['top']}>
       <StatusBar backgroundColor="white" barStyle="dark-content" />
@@ -912,6 +984,7 @@ export default function HomeScreen() {
                         navigation.navigate('DettaglioPrenotazione', { bookingId });
                       }
                     }}
+                    onJoin={() => handleJoinMatch(item)}
                   />
                 </View>
               )}

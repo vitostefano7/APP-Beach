@@ -697,6 +697,27 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  openMatchFooter: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  joinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 6,
+  },
+  joinButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 
   // ==================== INVITES ====================
   inviteCountBadge: {

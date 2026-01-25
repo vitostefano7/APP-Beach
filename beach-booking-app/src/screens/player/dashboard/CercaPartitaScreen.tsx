@@ -895,6 +895,15 @@ export default function CercaPartitaScreen() {
     </View>
   );
 
+  const handleJoinMatch = async (match: MatchItem) => {
+    const bookingId = match.booking?._id;
+    if (!bookingId) {
+      Alert.alert("Errore", "ID prenotazione non disponibile");
+      return;
+    }
+    navigation.navigate("DettaglioPrenotazione", { bookingId, openJoinModal: true });
+  };
+
   const renderMatchCard = ({ item }: { item: MatchItem }) => {
     const bookingId = item.booking?._id;
 
@@ -908,6 +917,7 @@ export default function CercaPartitaScreen() {
           }
           navigation.navigate("DettaglioPrenotazione", { bookingId });
         }}
+        onJoin={() => handleJoinMatch(item)}
       />
     );
   };
@@ -1079,6 +1089,7 @@ export default function CercaPartitaScreen() {
                           }
                           navigation.navigate("DettaglioPrenotazione", { bookingId });
                         }}
+                        onJoin={() => handleJoinMatch(match)}
                       />
                     ))}
                   </View>

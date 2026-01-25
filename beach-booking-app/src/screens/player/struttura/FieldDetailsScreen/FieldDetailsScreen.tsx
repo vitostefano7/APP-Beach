@@ -356,6 +356,15 @@ export default function FieldDetailsScreen() {
     );
   }
 
+  const handleJoinMatch = async (match: any) => {
+    const bookingId = match.booking?._id;
+    if (!bookingId) {
+      Alert.alert("Errore", "ID prenotazione non disponibile");
+      return;
+    }
+    navigation.navigate('DettaglioPrenotazione', { bookingId, openJoinModal: true });
+  };
+
   return (
     <View style={styles.safe}>
       <ScrollView
@@ -1727,6 +1736,7 @@ export default function FieldDetailsScreen() {
                         alert('ID prenotazione non disponibile');
                       }
                     }}
+                    onJoin={() => handleJoinMatch(item)}
                   />
                 )}
                 scrollEnabled={false}

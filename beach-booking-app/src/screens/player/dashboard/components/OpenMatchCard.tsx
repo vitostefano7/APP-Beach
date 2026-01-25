@@ -8,6 +8,7 @@ import { styles } from '../styles';
 interface OpenMatchCardProps {
   match: any;
   onPress: () => void;
+  onJoin?: () => void;
 }
 
 const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
@@ -16,7 +17,7 @@ const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
   return players.filter((player) => player.status === status).length;
 };
 
-const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
+const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin }) => {
   const confirmedPlayers = getPlayersCount(match.players, 'confirmed');
   const maxPlayers = match.maxPlayers || 0;
   const available = Math.max(maxPlayers - confirmedPlayers, 0);
@@ -206,6 +207,16 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
               })}
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Footer con tasto Unisci */}
+      {onJoin && (
+        <View style={styles.openMatchFooter}>
+          <Pressable style={styles.joinButton} onPress={onJoin}>
+            <Ionicons name="person-add-outline" size={16} color="white" />
+            <Text style={styles.joinButtonText}>Unisci alla partita</Text>
+          </Pressable>
         </View>
       )}
     </Pressable>

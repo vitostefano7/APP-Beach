@@ -10,7 +10,7 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState, useMemo } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -57,7 +57,7 @@ export default function DettaglioPrenotazioneScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   console.log('🔍 [DettaglioPrenotazione] Route object:', route);
-  const { bookingId, openScoreModal } = route?.params || {};
+  const { bookingId, openScoreModal, openJoinModal } = route?.params || {};
 
   // Funzione helper per ottenere ID utente sicuro
   const getUserId = (user: any) => {
@@ -140,6 +140,37 @@ export default function DettaglioPrenotazioneScreen() {
   const [customAlertMessage, setCustomAlertMessage] = useState("");
   const [customAlertButtons, setCustomAlertButtons] = useState<Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}>>([]);
 
+  // Variabili calcolate basate su booking
+  const isCreator = booking?.match?.createdBy?._id === getUserId(user);
+  const currentUserPlayer = booking?.match?.players?.find(p => p.user._id === getUserId(user));
+  const isPendingInvite = currentUserPlayer?.status === "pending";
+  const isDeclined = currentUserPlayer?.status === "declined";
+  const isConfirmed = currentUserPlayer?.status === "confirmed";
+  const isInMatch = !!currentUserPlayer;
+  const isRegistrationOpen = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    // Deadline: 45 minuti prima dell'inizio
+    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
+    return now < deadlineTime;
+  };
+
+  const canJoin = useMemo(() => {
+    if (!booking?.match) return false;
+    return !isInMatch && booking.match.status === "open" && isRegistrationOpen();
+  }, [booking, isInMatch]);
+
+  // Variabili aggiuntive per renderMatchSection
+  const confirmedPlayers = booking?.match?.players?.filter(p => p.status === "confirmed") || [];
+  const pendingPlayers = booking?.match?.players?.filter(p => p.status === "pending") || [];
+  const maxPlayersPerTeam = booking?.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
+  const teamAPlayers = booking?.match?.players?.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
+  const teamBPlayers = booking?.match?.players?.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
+  const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
+  const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
+  const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
+
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
       setError('ID prenotazione non valido');
@@ -158,6 +189,13 @@ export default function DettaglioPrenotazioneScreen() {
       setScoreModalVisible(true);
     }
   }, [openScoreModal, booking, loading]);
+
+  // Apri il modal join se richiesto dai params
+  useEffect(() => {
+    if (openJoinModal && booking && !loading && canJoin) {
+      setTeamSelectionModalVisible(true);
+    }
+  }, [openJoinModal, booking, loading, canJoin]);
 
   const loadBooking = async () => {
     try {
@@ -285,15 +323,6 @@ export default function DettaglioPrenotazioneScreen() {
     const diffMs = matchStartTime.getTime() - now.getTime();
     const hoursDiff = diffMs / (1000 * 60 * 60);
     return hoursDiff <= 24 && hoursDiff > 0;
-  };
-
-  const isRegistrationOpen = () => {
-    if (!booking) return false;
-    const now = new Date();
-    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
-    // Deadline: 45 minuti prima dell'inizio
-    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
-    return now < deadlineTime;
   };
 
   // Helper functions for team colors
@@ -878,38 +907,6 @@ export default function DettaglioPrenotazioneScreen() {
     );
   }
 
-  // SOSTITUISCI QUESTE VARIABILI NELLA PARTE INIZIALE DEL COMPONENTE:
-const isCreator = booking.match?.createdBy?._id === getUserId(user);
-const currentUserPlayer = booking.match?.players?.find(p => p.user._id === getUserId(user));
-const isPendingInvite = currentUserPlayer?.status === "pending";
-const isDeclined = currentUserPlayer?.status === "declined";
-const isConfirmed = currentUserPlayer?.status === "confirmed";
-const isInMatch = !!currentUserPlayer;
-
-console.log('🔍 [DettaglioPrenotazione] Variabili calcolate:', {
-  isCreator,
-  currentUserPlayer: currentUserPlayer ? { status: currentUserPlayer.status, team: currentUserPlayer.team } : null,
-  isPendingInvite,
-  isDeclined,
-  isConfirmed,
-  isInMatch,
-  userId: getUserId(user),
-  createdById: booking.match?.createdBy?._id
-});
-
-const maxPlayersPerTeam = booking.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
-const teamAPlayers = booking.match?.players.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
-const teamBPlayers = booking.match?.players.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
-
-console.log(`🎯 [DettaglioPrenotazione] Conteggio team aggiornato: Team A: ${teamAPlayers}/${maxPlayersPerTeam}, Team B: ${teamBPlayers}/${maxPlayersPerTeam}`);
-
-const confirmedPlayers = booking.match?.players.filter(p => p.status === "confirmed") || [];
-const pendingPlayers = booking.match?.players.filter(p => p.status === "pending") || [];
-const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
-
-const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
-const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
-
   const getMatchStatusInfo = () => {
     const match = booking.match;
     if (!match) return { color: "#999", text: "Nessun Match", icon: "help-circle" as const };
@@ -969,7 +966,7 @@ const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
   
   const statusInfo = getMatchStatusInfo();
   const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "draft" && effectiveStatus !== "in_progress" && isRegistrationOpen();
-  const canJoin = !isInMatch && match.status === "open" && isRegistrationOpen();
+  // const canJoin = !isInMatch && match.status === "open" && isRegistrationOpen(); // Ora definito globalmente
   // Tutti i giocatori confermati possono inserire il risultato dopo la fine del match
   const canSubmitScore = isInMatch && isMatchPassed() && effectiveStatus !== "cancelled";
 
