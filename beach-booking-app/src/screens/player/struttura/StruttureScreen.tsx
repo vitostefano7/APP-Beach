@@ -15,6 +15,7 @@ import {
   Alert,
   Linking,
   PanResponder,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -66,6 +67,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
+  const [isLoadingStrutture, setIsLoadingStrutture] = useState(false);
   
   const [activeCity, setActiveCity] = useState<string | null>(null);
   const [activeRadius, setActiveRadius] = useState<number | null>(null);
@@ -216,6 +218,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const loadStrutture = useCallback(async () => {
     if (isLoadingStruttureRef.current) return;
     isLoadingStruttureRef.current = true;
+    setIsLoadingStrutture(true);
     console.log('🏗️ Iniziando caricamento strutture...');
     try {
       // Costruisci URL con parametri di query per filtri data/fascia oraria
@@ -355,8 +358,44 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       console.error("Errore caricamento strutture:", error);
     } finally {
       isLoadingStruttureRef.current = false;
+      setIsLoadingStrutture(false);
     }
   }, [filters, userClearedCity]);
+
+  const geocodeAndCenterMap = useCallback(async (city: string) => {
+    try {
+      const geocodeUrl = 
+        `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(city)},Italia&` +
+        `format=json&limit=1`;
+      
+      const geocodeRes = await fetch(geocodeUrl, {
+        headers: { 'User-Agent': 'SportBookingApp/1.0' },
+      });
+      
+      const geocodeData = await geocodeRes.json();
+      console.log("🗺️ Geocode per centrare mappa:", geocodeData);
+      
+      if (geocodeData && geocodeData.length > 0) {
+        const lat = parseFloat(geocodeData[0].lat);
+        const lng = parseFloat(geocodeData[0].lon);
+        
+        const newRegion: Region = {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.5,
+          longitudeDelta: 0.5,
+        };
+        
+        lastRegionRef.current = newRegion;
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
+        console.log("🗺️ Mappa centrata su:", city, { lat, lng });
+      }
+    } catch (error) {
+      console.error("❌ Errore geocoding per mappa:", error);
+    }
+  }, []);
 
   const formatDate = (date: Date | null) => {
     if (!date) return null;
@@ -371,6 +410,13 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       console.log('🗺️ Vista mappa: Pulsante Lista visibile a top 30, FAB geolocalizzazione a bottom 75');
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode === "map" && filters.city) {
+      console.log('🗺️ Cambio città filtro in vista mappa:', filters.city);
+      geocodeAndCenterMap(filters.city);
+    }
+  }, [filters.city, viewMode, geocodeAndCenterMap]);
 
   useFocusEffect(
     useCallback(() => {
@@ -919,6 +965,20 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           renderItem={renderCard}
           keyExtractor={(item) => item._id}
           ListHeaderComponent={renderListHeader}
+          ListEmptyComponent={
+            isLoadingStrutture ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2979ff" />
+                <Text style={styles.loadingText}>Caricamento strutture...</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>Nessuna struttura trovata</Text>
+                <Text style={styles.emptySubtext}>Prova a modificare i filtri</Text>
+              </View>
+            )
+          }
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           onScroll={Animated.event(
@@ -932,6 +992,12 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         />
       ) : (
         <View style={styles.mapContainer}>
+          {isLoadingStrutture && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#2979ff" />
+              <Text style={styles.loadingText}>Caricamento strutture...</Text>
+            </View>
+          )}
             <MapView
               ref={mapRef}
               style={styles.map}
