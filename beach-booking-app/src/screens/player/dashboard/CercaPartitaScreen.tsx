@@ -31,6 +31,7 @@ import SportIcon from '../../../components/SportIcon';
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import Avatar from "../../../components/Avatar/Avatar";
+import OpenMatchCard from "./components/OpenMatchCard";
 
 type UserPreferences = {
   preferredLocation?: {
@@ -184,6 +185,9 @@ export default function CercaPartitaScreen() {
   const [visitedStruttureIds, setVisitedStruttureIds] = useState<string[]>([]);
   const [playersFilter, setPlayersFilter] = useState<string | null>(null);
   const [showPlayersPicker, setShowPlayersPicker] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [activeFilterMode, setActiveFilterMode] = useState<'manual' | 'gps' | 'preferred' | 'visited' | 'none'>('none');
+  const [activeFilterInfo, setActiveFilterInfo] = useState<string>('');
 
   const loadMatches = useCallback(async () => {
     try {
@@ -251,7 +255,8 @@ export default function CercaPartitaScreen() {
         return dateA - dateB;
       });
 
-      console.log(`✅ [CercaPartita] ${sorted.length} match dopo filtri - tutto OK, impostando state`);
+      console.log(`✅ [CercaPartita] Partite caricate inizialmente: ${rawMatches.length}`);
+      console.log(`✅ [CercaPartita] Partite dopo filtro iniziale (aperte, pubbliche, posti liberi, non unite): ${sorted.length}`);
 
       setMatches(sorted);
       console.log(`✅ [CercaPartita] State impostato con successo`);
@@ -352,6 +357,10 @@ export default function CercaPartitaScreen() {
           
           if (city) {
             setCityFilter(city);
+            setGpsCoords({
+              lat: location.coords.latitude,
+              lng: location.coords.longitude,
+            });
             console.log("✅ [CercaPartita] Città da GPS impostata:", city);
           }
         }
@@ -446,26 +455,63 @@ export default function CercaPartitaScreen() {
   };
 
   const filteredMatches = useMemo(() => {
-    console.log("🔍 [CercaPartita] Filtro partite - cityFilter:", cityFilter);
+    console.log("🔍 [CercaPartita] === INIZIO FILTRAGGIO ===");
+    console.log("🔍 [CercaPartita] Partite totali da filtrare:", matches.length);
+    console.log("🔍 [CercaPartita] Filtri attivi: città=" + (cityFilter || "nessuno") + ", data=" + (dateFilter ? formatDate(dateFilter) : "nessuno") + ", orario=" + (timeFilter || "nessuno") + ", sport=" + (sportFilter || "nessuno") + ", giocatori=" + (playersFilter || "nessuno"));
     console.log("🔍 [CercaPartita] Città preferita:", preferences?.preferredLocation);
+    console.log("🔍 [CercaPartita] GPS coords:", gpsCoords);
+    console.log("🔍 [CercaPartita] Manual coords:", manualCityCoords);
+    console.log("🔍 [CercaPartita] Strutture visitate:", visitedStruttureIds.length);
     
-    // Determina la città di riferimento e il raggio
+    // Determina la città di riferimento e il raggio con priorità corrette
     let referenceLat: number | null = null;
     let referenceLng: number | null = null;
     let searchRadius = 30; // Default 30km
+    let filterMode: 'manual' | 'gps' | 'preferred' | 'visited' | 'none' = 'none';
     
+    // PRIORITÀ 1: Città manuale (inserita dall'utente)
     if (cityFilter.trim() && manualCityCoords) {
-      // Se l'utente ha selezionato una città manualmente e abbiamo le coordinate
       referenceLat = manualCityCoords.lat;
       referenceLng = manualCityCoords.lng;
       searchRadius = 30;
-      console.log("📍 [CercaPartita] Città manuale:", cityFilter, "Coordinate:", manualCityCoords, "Raggio: 30km");
-    } else if (preferences?.preferredLocation?.lat && preferences?.preferredLocation?.lng) {
-      // Se non c'è filtro città, usa la città preferita
+      filterMode = 'manual';
+      setActiveFilterMode('manual');
+      setActiveFilterInfo(`${cityFilter} (30 km)`);
+      console.log("📍 [CercaPartita] PRIORITÀ 1 - Città manuale:", cityFilter, "Raggio: 30km");
+    }
+    // PRIORITÀ 2: GPS (se l'utente ha usato il GPS)
+    else if (gpsCoords) {
+      referenceLat = gpsCoords.lat;
+      referenceLng = gpsCoords.lng;
+      searchRadius = 30;
+      filterMode = 'gps';
+      setActiveFilterMode('gps');
+      setActiveFilterInfo(`${cityFilter || 'Posizione GPS'} (30 km)`);
+      console.log("📍 [CercaPartita] PRIORITÀ 2 - GPS:", gpsCoords, "Raggio: 30km");
+    }
+    // PRIORITÀ 3: Città preferita (dalle preferenze utente)
+    else if (preferences?.preferredLocation?.lat && preferences?.preferredLocation?.lng) {
       referenceLat = preferences.preferredLocation.lat;
       referenceLng = preferences.preferredLocation.lng;
       searchRadius = preferences.preferredLocation.radius || 30;
-      console.log("📍 [CercaPartita] Città preferita:", preferences.preferredLocation.city, "Raggio:", searchRadius, "km");
+      filterMode = 'preferred';
+      setActiveFilterMode('preferred');
+      setActiveFilterInfo(`${preferences.preferredLocation.city} (${searchRadius} km - città preferita)`);
+      console.log("📍 [CercaPartita] PRIORITÀ 3 - Città preferita:", preferences.preferredLocation.city, "Raggio:", searchRadius, "km");
+    }
+    // FALLBACK: Strutture visitate (se nessuna posizione disponibile)
+    else if (visitedStruttureIds.length > 0) {
+      filterMode = 'visited';
+      setActiveFilterMode('visited');
+      setActiveFilterInfo(`Strutture dove hai già giocato (${visitedStruttureIds.length})`);
+      console.log("📍 [CercaPartita] FALLBACK - Strutture visitate:", visitedStruttureIds.length, "strutture");
+    }
+    else {
+      setActiveFilterMode('none');
+      setActiveFilterInfo('');
+      console.log("⚠️ [CercaPartita] Nessun filtro geografico disponibile - nessun risultato");
+      // Se non c'è nessun criterio geografico, non mostrare nulla
+      return [];
     }
 
     // Filtra le partite
@@ -474,8 +520,11 @@ export default function CercaPartitaScreen() {
       const structureCity = match.booking?.campo?.struttura?.location?.city || "";
       const structureLat = match.booking?.campo?.struttura?.location?.lat;
       const structureLng = match.booking?.campo?.struttura?.location?.lng;
+      const strutturaId = typeof match.booking?.campo?.struttura === 'object' 
+        ? (match.booking?.campo?.struttura as any)?._id 
+        : match.booking?.campo?.struttura;
       
-      // Filtro raggio: se c'è un riferimento (città scelta o preferita)
+      // Filtro raggio: se c'è un riferimento geografico (manuale, GPS o preferita)
       if (referenceLat !== null && referenceLng !== null) {
         if (structureLat && structureLng) {
           const distance = calculateDistance(referenceLat, referenceLng, structureLat, structureLng);
@@ -500,6 +549,15 @@ export default function CercaPartitaScreen() {
             // Nessun modo di verificare, escludi
             return false;
           }
+        }
+      }
+      // Filtro strutture visitate: se nessun riferimento geografico
+      else if (filterMode === 'visited') {
+        if (!strutturaId || !visitedStruttureIds.includes(strutturaId)) {
+          console.log(`🏟️ [CercaPartita] ${structureName}: escluso (struttura non visitata)`);
+          return false;
+        } else {
+          console.log(`✅ [CercaPartita] ${structureName}: incluso (struttura visitata)`);
         }
       }
 
@@ -536,10 +594,16 @@ export default function CercaPartitaScreen() {
       return true;
     });
 
-    console.log(`✅ [CercaPartita] ${filtered.length} match dopo filtri con raggio ${searchRadius}km`);
+    if (filterMode === 'manual' || filterMode === 'gps' || filterMode === 'preferred') {
+      console.log(`✅ [CercaPartita] ${filtered.length} match dopo filtro ${filterMode} con raggio ${searchRadius}km`);
+    } else if (filterMode === 'visited') {
+      console.log(`✅ [CercaPartita] ${filtered.length} match dopo filtro strutture visitate`);
+    } else {
+      console.log(`✅ [CercaPartita] ${filtered.length} match senza filtro geografico`);
+    }
 
-    // Se nessun risultato e c'è un riferimento, amplia il raggio a 50km
-    if (filtered.length === 0 && referenceLat !== null && referenceLng !== null && searchRadius < 50) {
+    // Se nessun risultato e c'è un riferimento geografico, amplia il raggio a 50km
+    if (filtered.length === 0 && (filterMode === 'manual' || filterMode === 'gps' || filterMode === 'preferred') && referenceLat !== null && referenceLng !== null && searchRadius < 50) {
       console.log("⚠️ [CercaPartita] Nessun risultato, amplio il raggio a 50km");
       searchRadius = 50;
       
@@ -627,11 +691,13 @@ export default function CercaPartitaScreen() {
 
     // Ordinamento normale per data
     console.log("📍 [CercaPartita] Ordinamento normale per data");
-    return filtered.sort((a, b) => {
+    const finalResult = filtered.sort((a, b) => {
       const dateA = parseMatchStart(a)?.getTime() ?? 0;
       const dateB = parseMatchStart(b)?.getTime() ?? 0;
       return dateA - dateB;
     });
+    console.log(`✅ [CercaPartita] === FINE FILTRAGGIO === Partite finali mostrate: ${finalResult.length}`);
+    return finalResult;
   }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences, manualCityCoords, visitedStruttureIds, playersFilter]);
 
   // Debounced city suggestion fetch
@@ -750,10 +816,11 @@ export default function CercaPartitaScreen() {
           if (city) {
             setTempCity(city);
             setCityFilter(city);
-            setManualCityCoords({
+            setGpsCoords({
               lat: location.coords.latitude,
               lng: location.coords.longitude,
             });
+            setManualCityCoords(null); // Reset città manuale quando uso GPS
             setIsCityEditing(false);
             console.log("✅ [CercaPartita] Città da GPS impostata:", city);
           }
@@ -805,6 +872,7 @@ export default function CercaPartitaScreen() {
                 event.stopPropagation();
                 setCityFilter("");
                 setManualCityCoords(null);
+                setGpsCoords(null); // Reset anche GPS coords
               }}
             >
               <Ionicons name="close" size={12} color="white" />
@@ -944,18 +1012,11 @@ export default function CercaPartitaScreen() {
   );
 
   const renderMatchCard = ({ item }: { item: MatchItem }) => {
-    const confirmedPlayers = getPlayersCount(item.players, "confirmed");
-    const pendingPlayers = getPlayersCount(item.players, "pending");
-    const maxPlayers = item.maxPlayers || 0;
-    const available = Math.max(maxPlayers - confirmedPlayers, 0);
-    const maxPerTeam = maxPlayers > 0 ? Math.ceil(maxPlayers / 2) : 0;
-    const teamAPlayers = item.players?.filter((player) => player.team === "A" && player.status === "confirmed") || [];
-    const teamBPlayers = item.players?.filter((player) => player.team === "B" && player.status === "confirmed") || [];
     const bookingId = item.booking?._id;
 
     return (
-      <Pressable
-        style={styles.card}
+      <OpenMatchCard
+        match={item}
         onPress={() => {
           if (!bookingId) {
             Alert.alert("Errore", "ID prenotazione non disponibile");
@@ -963,135 +1024,7 @@ export default function CercaPartitaScreen() {
           }
           navigation.navigate("DettaglioPrenotazione", { bookingId });
         }}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>
-              {item.booking?.campo?.struttura?.name || "Struttura"}
-              {item.booking?.campo?.struttura?.location?.city &&
-                ` - ${item.booking.campo.struttura.location.city}`}
-            </Text>
-            <View style={styles.badgeContainer}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{available} posti</Text>
-              </View>
-              {item.booking?.startTime && (() => {
-                const { text, color } = getTimeLeft(item);
-                return (
-                  <View style={[styles.timerBadge, { backgroundColor: color + '20', borderColor: color }]}>
-                    <Ionicons name="timer-outline" size={12} color={color} />
-                    <Text style={[styles.timerBadgeText, { color }]}>
-                      {text}
-                    </Text>
-                  </View>
-                );
-              })()}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.infoText}>
-            {item.booking?.date || "Data da definire"}
-          </Text>
-          <Ionicons name="time-outline" size={16} color="#666" style={styles.infoIcon} />
-          <Text style={styles.infoText}>
-            {item.booking?.startTime || "--:--"}
-            {item.booking?.endTime ? ` - ${item.booking.endTime}` : ""}
-          </Text>
-        </View>
-        <View style={styles.infoRow}>
-          <SportIcon sport={item.booking?.campo?.sport || 'beach_volley'} size={16} color="#666" />
-          <Text style={styles.infoText}>
-            {getSportLabel(item.booking?.campo?.sport)}
-          </Text>
-        </View>
-
-        {/* Visualizzazione Team Grafica */}
-        {maxPlayers > 2 && (
-          <View style={styles.teamsVisual}>
-            {/* Team A */}
-            <View style={styles.teamVisualContainer}>
-              <View style={[styles.teamVisualHeader, styles.teamAHeader]}>
-                <Ionicons name="shield" size={16} color="white" />
-                <Text style={styles.teamVisualTitle}>Team A</Text>
-              </View>
-              <View style={styles.teamVisualSlots}>
-                {Array(maxPerTeam).fill(null).map((_, index) => {
-                  const player = teamAPlayers[index];
-                  const hasPlayer = index < teamAPlayers.length;
-                  return (
-                    <View 
-                      key={`teamA-${index}`} 
-                      style={[
-                        styles.teamVisualSlot,
-                        hasPlayer ? styles.teamVisualSlotFilled : styles.teamVisualSlotEmpty,
-                        hasPlayer && styles.teamASlot
-                      ]}
-                    >
-                      {hasPlayer && player?.user ? (
-                        <Avatar
-                          name={player.user.name}
-                          surname={player.user.surname}
-                          avatarUrl={player.user.avatarUrl}
-                          size={32}
-                          backgroundColor="#E3F2FD"
-                          textColor="#333"
-                        />
-                      ) : (
-                        <Ionicons name="person-outline" size={14} color="#ccc" />
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Divisore VS */}
-            <View style={styles.teamVisualDivider}>
-              <Text style={styles.teamVisualVs}>VS</Text>
-            </View>
-
-            {/* Team B */}
-            <View style={styles.teamVisualContainer}>
-              <View style={[styles.teamVisualHeader, styles.teamBHeader]}>
-                <Ionicons name="shield-outline" size={16} color="white" />
-                <Text style={styles.teamVisualTitle}>Team B</Text>
-              </View>
-              <View style={styles.teamVisualSlots}>
-                {Array(maxPerTeam).fill(null).map((_, index) => {
-                  const player = teamBPlayers[index];
-                  const hasPlayer = index < teamBPlayers.length;
-                  return (
-                    <View 
-                      key={`teamB-${index}`} 
-                      style={[
-                        styles.teamVisualSlot,
-                        hasPlayer ? styles.teamVisualSlotFilled : styles.teamVisualSlotEmpty,
-                        hasPlayer && styles.teamBSlot
-                      ]}
-                    >
-                      {hasPlayer && player?.user ? (
-                        <Avatar
-                          name={player.user.name}
-                          surname={player.user.surname}
-                          avatarUrl={player.user.avatarUrl}
-                          size={32}
-                          backgroundColor="#FFEBEE"
-                          textColor="#333"
-                        />
-                      ) : (
-                        <Ionicons name="person-outline" size={14} color="#ccc" />
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        )}
-      </Pressable>
+      />
     );
   };
 
@@ -1117,6 +1050,14 @@ export default function CercaPartitaScreen() {
           <View style={styles.headerSpacer} />
         </View>
         {renderFilters()}
+        {activeFilterMode !== 'none' && activeFilterInfo && (
+          <View style={styles.filterInfoContainer}>
+            <Ionicons name="location" size={14} color="#666" />
+            <Text style={styles.filterInfoText}>
+              Ricerca vicino a: <Text style={styles.filterInfoValue}>{activeFilterInfo}</Text>
+            </Text>
+          </View>
+        )}
       </View>
 
       {error ? (
@@ -1548,6 +1489,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
     flexDirection: "row",
+  },
+  filterInfoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  filterInfoText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  filterInfoValue: {
+    fontWeight: "700",
+    color: "#2196F3",
   },
   filterChip: {
     flexDirection: "row",
