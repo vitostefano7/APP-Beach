@@ -432,7 +432,7 @@ export default function OwnerDashboardScreen() {
         )}
 
         {/* Partite in Corso / Prossime */}
-        <View style={[styles.section, { marginBottom: 24 }]}>
+        <View style={[styles.section, { marginBottom: 1 }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Partite in Programma</Text>
             <View style={styles.sectionTitle}>

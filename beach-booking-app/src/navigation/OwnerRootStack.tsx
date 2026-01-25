@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import OwnerTabs from "./OwnerTabs";
-import StrutturaDashboardScreen from "../screens/owner/StrutturaDashboardScreen";
+import StrutturaDashboardScreen from "../screens/owner/struttura/StrutturaDashboardScreen";
 import CreaStrutturaScreen from "../screens/owner/struttura/CreaStruttura/CreaStrutturaScreen";
 import AggiungiCampoScreen from "../screens/owner/AggiungiCampoScreen";
 import ModificaStrutturaScreen from "../screens/owner/struttura/ModificaStrutturaScreen";
@@ -15,7 +15,7 @@ import ConfiguraPrezziCampoScreen from "../screens/owner/campo/configuraPrezziCa
 import ChatScreen from "../screens/owner/Comunicazioni/ChatScreen";
 import GestisciImmaginiStruttura from "../screens/owner/struttura/GestisciImmaginiStruttura";
 import GroupChatScreen from "../screens/owner/Comunicazioni/GroupChatScreen";
-import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
+import OwnerStruttureScreen from "../screens/owner/struttura/OwnerStruttureScreen";
 import OwnerCreatePostScreen from "../screens/owner/OwnerCreatePostScreen";
 import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen";
 import OwnerCercaAmiciScreen from "../screens/owner/OwnerCercaAmiciScreen";

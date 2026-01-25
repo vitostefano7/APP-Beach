@@ -7,15 +7,19 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface Campo {
   _id: string;
@@ -37,12 +41,34 @@ const SPORT_MAP: { [key: string]: string } = {
   volley: "Volley",
 };
 
+const SPORT_ICONS: { [key: string]: keyof typeof Ionicons.glyphMap } = {
+  beach_volley: "football-outline",
+  padel: "tennisball-outline",
+  tennis: "tennisball-outline",
+  volley: "football-outline",
+};
+
+const SPORT_COLORS: { [key: string]: readonly [string, string] } = {
+  beach_volley: ["#FF9800", "#FB8C00"],
+  padel: ["#2196F3", "#1976D2"],
+  tennis: ["#4CAF50", "#43A047"],
+  volley: ["#F44336", "#E53935"],
+};
+
 const SURFACE_MAP: { [key: string]: string } = {
   sand: "Sabbia",
   hardcourt: "Cemento",
   grass: "Erba",
   pvc: "PVC",
   cement: "Cemento",
+};
+
+const SURFACE_ICONS: { [key: string]: keyof typeof Ionicons.glyphMap } = {
+  sand: "sunny-outline",
+  hardcourt: "grid-outline",
+  grass: "leaf-outline",
+  pvc: "layers-outline",
+  cement: "grid-outline",
 };
 
 export default function DettaglioCampoScreen() {
@@ -53,6 +79,8 @@ export default function DettaglioCampoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [campo, setCampo] = useState<Campo | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadCampo = useCallback(async () => {
     try {
@@ -67,6 +95,11 @@ export default function DettaglioCampoScreen() {
 
       const data = await response.json();
       setCampo(data);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
     } catch (error) {
       Alert.alert("Errore", "Impossibile caricare il campo", [
         { text: "OK", onPress: () => navigation.goBack() },
@@ -78,6 +111,7 @@ export default function DettaglioCampoScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fadeAnim.setValue(0);
       loadCampo();
     }, [loadCampo])
   );
@@ -111,7 +145,17 @@ export default function DettaglioCampoScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator size="large" style={{ marginTop: 100 }} />
+        <LinearGradient
+          colors={["#2196F3", "#1976D2"]}
+          style={styles.loadingContainer}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="white" />
+            <Text style={styles.loadingText}>Caricamento campo...</Text>
+          </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
@@ -119,14 +163,20 @@ export default function DettaglioCampoScreen() {
   if (!campo) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.errorText}>Campo non trovato</Text>
+        <LinearGradient
+          colors={["#2196F3", "#1976D2"]}
+          style={styles.loadingContainer}
+        >
+          <Ionicons name="alert-circle-outline" size={60} color="white" />
+          <Text style={styles.errorText}>Campo non trovato</Text>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      {/* HEADER CON GRADIENTE */}
+      {/* HEADER */}
       <LinearGradient
         colors={["#2196F3", "#1976D2"]}
         style={styles.header}
@@ -137,207 +187,222 @@ export default function DettaglioCampoScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Text style={styles.back}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="white" />
         </Pressable>
-        <Text style={styles.headerTitle}>Dettaglio Campo</Text>
+        <Text style={styles.headerTitle}>{campo.name}</Text>
         <View style={{ width: 40 }} />
       </LinearGradient>
 
-      <ScrollView
-        style={styles.container}
+      <Animated.ScrollView
+        style={[styles.container, { opacity: fadeAnim }]}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
-        {/* HEADER CAMPO CON CARD */}
-        <View style={styles.campoHeaderCard}>
-          <View style={styles.campoHeaderContent}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.campoName}>{campo.name}</Text>
-              <View style={styles.sportRow}>
-                <View style={styles.sportBadge}>
-                  <Text style={styles.sportText}>
-                    {SPORT_MAP[campo.sport]}
-                  </Text>
-                </View>
-                <View style={styles.surfaceBadge}>
-                  <Text style={styles.surfaceText}>
-                    {SURFACE_MAP[campo.surface]}
-                  </Text>
-                </View>
-              </View>
-            </View>
 
-            <View
-              style={[
-                styles.statusBadge,
-                campo.isActive ? styles.statusActive : styles.statusInactive,
-              ]}
-            >
-              <View style={styles.statusIconContainer}>
-                <Text style={styles.statusIcon}>
-                  {campo.isActive ? "✓" : "✕"}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.statusText,
-                  campo.isActive
-                    ? styles.statusTextActive
-                    : styles.statusTextInactive,
-                ]}
+        {/* QUICK STATS */}
+        <View style={styles.quickStatsContainer}>
+          <View style={styles.quickStatsRow}>
+            <View style={styles.quickStatCard}>
+              <LinearGradient
+                colors={["#F44336", "#E53935"]}
+                style={styles.quickStatGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
-                {campo.isActive ? "Attivo" : "Non attivo"}
+                <Ionicons name="people-outline" size={24} color="white" />
+              </LinearGradient>
+              <Text style={styles.quickStatValue}>{campo.maxPlayers}</Text>
+              <Text style={styles.quickStatLabel}>Giocatori max</Text>
+            </View>
+
+            <View style={styles.quickStatCard}>
+              <LinearGradient
+                colors={["#2196F3", "#1976D2"]}
+                style={styles.quickStatGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons
+                  name={campo.indoor ? "home-outline" : "sunny-outline"}
+                  size={24}
+                  color="white"
+                />
+              </LinearGradient>
+              <Text style={styles.quickStatValue}>
+                {campo.indoor ? "Indoor" : "Outdoor"}
               </Text>
+              <Text style={styles.quickStatLabel}>Ambiente</Text>
+            </View>
+          </View>
+
+          <View style={styles.quickStatsRow}>
+            <View style={styles.quickStatCard}>
+              <LinearGradient
+                colors={SPORT_COLORS[campo.sport] || ["#2196F3", "#1976D2"]}
+                style={styles.quickStatGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name={SPORT_ICONS[campo.sport] || "football-outline"} size={24} color="white" />
+              </LinearGradient>
+              <Text style={styles.quickStatValue}>{SPORT_MAP[campo.sport]}</Text>
+              <Text style={styles.quickStatLabel}>Sport</Text>
+            </View>
+
+            <View style={styles.quickStatCard}>
+              <LinearGradient
+                colors={["#FF9800", "#FB8C00"]}
+                style={styles.quickStatGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name={SURFACE_ICONS[campo.surface] || "ellipse-outline"} size={24} color="white" />
+              </LinearGradient>
+              <Text style={styles.quickStatValue}>{SURFACE_MAP[campo.surface]}</Text>
+              <Text style={styles.quickStatLabel}>Materiale</Text>
             </View>
           </View>
         </View>
 
-        {/* INFO */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconCircle}>
-              <Text style={styles.cardIcon}>📋</Text>
-            </View>
-            <Text style={styles.cardTitle}>Informazioni Campo</Text>
-          </View>
 
-          <View style={styles.infoGrid}>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>🏃</Text>
-              <Text style={styles.infoLabel}>Sport</Text>
-              <Text style={styles.infoValue}>{SPORT_MAP[campo.sport]}</Text>
+        {/* SEZIONE PREZZI */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <LinearGradient
+                colors={["#FF9800", "#FB8C00"]}
+                style={styles.sectionIconGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="pricetag-outline" size={18} color="white" />
+              </LinearGradient>
             </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>🏖️</Text>
-              <Text style={styles.infoLabel}>Superficie</Text>
-              <Text style={styles.infoValue}>
-                {SURFACE_MAP[campo.surface]}
-              </Text>
+            <View style={styles.sectionHeaderText}>
+              <Text style={styles.sectionTitle}>Tariffe e Prezzi</Text>
+              <Text style={styles.sectionSubtitle}>Configurazione pricing attiva</Text>
             </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>
-                {campo.indoor ? "🏠" : "☀️"}
-              </Text>
-              <Text style={styles.infoLabel}>Tipo</Text>
-              <Text style={styles.infoValue}>
-                {campo.indoor ? "Coperto" : "All'aperto"}
-              </Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>👥</Text>
-              <Text style={styles.infoLabel}>Max giocatori</Text>
-              <Text style={styles.infoValue}>{campo.maxPlayers}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* PREZZI DETTAGLIATI */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardIconCircle, { backgroundColor: "#FFF3E0" }]}>
-              <Text style={styles.cardIcon}>💰</Text>
-            </View>
-            <Text style={styles.cardTitle}>Prezzi</Text>
           </View>
 
           {/* Se FLAT MODE */}
           {campo.pricingRules?.mode === "flat" && (
-            <View style={styles.priceModeContainer}>
-              <View style={styles.priceModeHeader}>
-                <Text style={styles.priceModeLabel}>💵 Tariffa Fissa</Text>
+            <View style={styles.pricingCard}>
+              <View style={styles.pricingModeTag}>
+                <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                <Text style={styles.pricingModeText}>Tariffa Fissa</Text>
               </View>
-              <View style={styles.priceDetailRow}>
-                <Text style={styles.priceDetailDuration}>⏱️ 1 ora</Text>
-                <Text style={styles.priceDetailValue}>
-                  €{campo.pricingRules.flatPrices?.oneHour || campo.pricePerHour || 20}
-                </Text>
-              </View>
-              <View style={styles.priceDetailRow}>
-                <Text style={styles.priceDetailDuration}>⏱️ 1.5 ore</Text>
-                <Text style={styles.priceDetailValue}>
-                  €{campo.pricingRules.flatPrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
-                </Text>
+              <View style={styles.priceRowsContainer}>
+                <View style={styles.priceRow}>
+                  <View style={styles.priceRowLeft}>
+                    <Ionicons name="time-outline" size={18} color="#2196F3" />
+                    <Text style={styles.priceRowLabel}>1 ora</Text>
+                  </View>
+                  <Text style={styles.priceRowValue}>
+                    €{campo.pricingRules.flatPrices?.oneHour || campo.pricePerHour || 20}
+                  </Text>
+                </View>
+                <View style={styles.priceRowDivider} />
+                <View style={styles.priceRow}>
+                  <View style={styles.priceRowLeft}>
+                    <Ionicons name="time-outline" size={18} color="#2196F3" />
+                    <Text style={styles.priceRowLabel}>1.5 ore</Text>
+                  </View>
+                  <Text style={styles.priceRowValue}>
+                    €{campo.pricingRules.flatPrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
+                  </Text>
+                </View>
               </View>
             </View>
           )}
 
           {/* Se ADVANCED MODE */}
           {campo.pricingRules?.mode === "advanced" && (
-            <>
+            <View style={styles.advancedPricingContainer}>
               {/* Date Speciali */}
               {campo.pricingRules.dateOverrides?.enabled &&
                 campo.pricingRules.dateOverrides.dates?.length > 0 && (
-                  <>
-                    <Text style={styles.priceHierarchyTitle}>📅 Date Speciali (Priorità 1)</Text>
+                  <View style={styles.pricingCategory}>
+                    <View style={styles.pricingCategoryHeader}>
+                      <View style={[styles.priorityBadge, { backgroundColor: "#F44336" }]}>
+                        <Text style={styles.priorityBadgeText}>P1</Text>
+                      </View>
+                      <Text style={styles.pricingCategoryTitle}>Date Speciali</Text>
+                    </View>
                     {campo.pricingRules.dateOverrides.dates.map(
                       (dateOv: any, index: number) => (
-                        <View key={index} style={styles.priceSection}>
-                          <View style={styles.priceSectionHeader}>
-                            <Text style={styles.priceSectionTitle}>
-                              {dateOv.label}
-                            </Text>
-                            <Text style={styles.priceSectionDate}>{dateOv.date}</Text>
+                        <View key={index} style={styles.pricingItem}>
+                          <View style={styles.pricingItemHeader}>
+                            <Ionicons name="calendar" size={16} color="#F44336" />
+                            <Text style={styles.pricingItemTitle}>{dateOv.label}</Text>
+                            <Text style={styles.pricingItemBadge}>{dateOv.date}</Text>
                           </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1 ora</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{dateOv.prices?.oneHour || 20}
-                            </Text>
-                          </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{dateOv.prices?.oneHourHalf || 28}
-                            </Text>
+                          <View style={styles.pricingItemPrices}>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1h</Text>
+                              <Text style={styles.miniPriceValue}>€{dateOv.prices?.oneHour || 20}</Text>
+                            </View>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1.5h</Text>
+                              <Text style={styles.miniPriceValue}>€{dateOv.prices?.oneHourHalf || 28}</Text>
+                            </View>
                           </View>
                         </View>
                       )
                     )}
-                  </>
+                  </View>
                 )}
 
               {/* Periodi Speciali */}
               {campo.pricingRules.periodOverrides?.enabled &&
                 campo.pricingRules.periodOverrides.periods?.length > 0 && (
-                  <>
-                    <Text style={styles.priceHierarchyTitle}>📆 Periodi Speciali (Priorità 2)</Text>
+                  <View style={styles.pricingCategory}>
+                    <View style={styles.pricingCategoryHeader}>
+                      <View style={[styles.priorityBadge, { backgroundColor: "#2196F3" }]}>
+                        <Text style={styles.priorityBadgeText}>P2</Text>
+                      </View>
+                      <Text style={styles.pricingCategoryTitle}>Periodi Speciali</Text>
+                    </View>
                     {campo.pricingRules.periodOverrides.periods.map(
                       (period: any, index: number) => (
-                        <View key={index} style={styles.priceSection}>
-                          <View style={styles.priceSectionHeader}>
-                            <Text style={styles.priceSectionTitle}>
-                              {period.label}
-                            </Text>
-                            <Text style={styles.priceSectionDate}>
-                              {period.startDate} → {period.endDate}
-                            </Text>
+                        <View key={index} style={styles.pricingItem}>
+                          <View style={styles.pricingItemHeader}>
+                            <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                            <Text style={styles.pricingItemTitle}>{period.label}</Text>
                           </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1 ora</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{period.prices?.oneHour || 20}
-                            </Text>
-                          </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{period.prices?.oneHourHalf || 28}
-                            </Text>
+                          <Text style={styles.pricingItemDateRange}>
+                            {period.startDate} → {period.endDate}
+                          </Text>
+                          <View style={styles.pricingItemPrices}>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1h</Text>
+                              <Text style={styles.miniPriceValue}>€{period.prices?.oneHour || 20}</Text>
+                            </View>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1.5h</Text>
+                              <Text style={styles.miniPriceValue}>€{period.prices?.oneHourHalf || 28}</Text>
+                            </View>
                           </View>
                         </View>
                       )
                     )}
-                  </>
+                  </View>
                 )}
 
               {/* Fasce Orarie */}
               {campo.pricingRules.timeSlotPricing?.enabled &&
                 campo.pricingRules.timeSlotPricing.slots?.length > 0 && (
-                  <>
-                    <Text style={styles.priceHierarchyTitle}>⏰ Fasce Orarie (Priorità 3-4)</Text>
+                  <View style={styles.pricingCategory}>
+                    <View style={styles.pricingCategoryHeader}>
+                      <View style={[styles.priorityBadge, { backgroundColor: "#4CAF50" }]}>
+                        <Text style={styles.priorityBadgeText}>P3</Text>
+                      </View>
+                      <Text style={styles.pricingCategoryTitle}>Fasce Orarie</Text>
+                    </View>
                     {campo.pricingRules.timeSlotPricing.slots.map(
                       (slot: any, index: number) => {
                         const daysLabels = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
@@ -347,117 +412,146 @@ export default function DettaglioCampoScreen() {
                           : "Tutti i giorni";
 
                         return (
-                          <View key={index} style={styles.priceSection}>
-                            <View style={styles.priceSectionHeader}>
-                              <Text style={styles.priceSectionTitle}>
-                                {slot.label} ({slot.start}-{slot.end})
+                          <View key={index} style={styles.pricingItem}>
+                            <View style={styles.pricingItemHeader}>
+                              <Ionicons name="time" size={16} color="#4CAF50" />
+                              <Text style={styles.pricingItemTitle}>
+                                {slot.label}
                               </Text>
-                              <Text style={styles.priceSectionDays}>{daysText}</Text>
-                            </View>
-                            <View style={styles.priceDetailRow}>
-                              <Text style={styles.priceDetailDuration}>1 ora</Text>
-                              <Text style={styles.priceDetailValue}>
-                                €{slot.prices?.oneHour || 20}
+                              <Text style={styles.pricingItemTime}>
+                                {slot.start}-{slot.end}
                               </Text>
                             </View>
-                            <View style={styles.priceDetailRow}>
-                              <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                              <Text style={styles.priceDetailValue}>
-                                €{slot.prices?.oneHourHalf || 28}
-                              </Text>
+                            <Text style={styles.pricingItemDays}>{daysText}</Text>
+                            <View style={styles.pricingItemPrices}>
+                              <View style={styles.miniPriceBox}>
+                                <Text style={styles.miniPriceLabel}>1h</Text>
+                                <Text style={styles.miniPriceValue}>€{slot.prices?.oneHour || 20}</Text>
+                              </View>
+                              <View style={styles.miniPriceBox}>
+                                <Text style={styles.miniPriceLabel}>1.5h</Text>
+                                <Text style={styles.miniPriceValue}>€{slot.prices?.oneHourHalf || 28}</Text>
+                              </View>
                             </View>
                           </View>
                         );
                       }
                     )}
-                  </>
+                  </View>
                 )}
 
               {/* Prezzo Base */}
-              <Text style={styles.priceHierarchyTitle}>💵 Prezzo Base (Priorità 5)</Text>
-              <View style={styles.priceSection}>
-                <Text style={styles.priceSectionSubtitle}>
-                  Quando nessuna regola specifica si applica
-                </Text>
-                <View style={styles.priceDetailRow}>
-                  <Text style={styles.priceDetailDuration}>1 ora</Text>
-                  <Text style={styles.priceDetailValue}>
-                    €{campo.pricingRules.basePrices?.oneHour || campo.pricePerHour || 20}
-                  </Text>
+              <View style={styles.pricingCategory}>
+                <View style={styles.pricingCategoryHeader}>
+                  <View style={[styles.priorityBadge, { backgroundColor: "#A8A8A8" }]}>
+                    <Text style={styles.priorityBadgeText}>P5</Text>
+                  </View>
+                  <Text style={styles.pricingCategoryTitle}>Prezzo Base</Text>
                 </View>
-                <View style={styles.priceDetailRow}>
-                  <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                  <Text style={styles.priceDetailValue}>
-                    €{campo.pricingRules.basePrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
+                <View style={styles.basePriceCard}>
+                  <Text style={styles.basePriceNote}>
+                    Applicato quando nessuna regola specifica corrisponde
                   </Text>
+                  <View style={styles.pricingItemPrices}>
+                    <View style={[styles.miniPriceBox, styles.miniPriceBoxBase]}>
+                      <Text style={styles.miniPriceLabel}>1h</Text>
+                      <Text style={styles.miniPriceValue}>
+                        €{campo.pricingRules.basePrices?.oneHour || campo.pricePerHour || 20}
+                      </Text>
+                    </View>
+                    <View style={[styles.miniPriceBox, styles.miniPriceBoxBase]}>
+                      <Text style={styles.miniPriceLabel}>1.5h</Text>
+                      <Text style={styles.miniPriceValue}>
+                        €{campo.pricingRules.basePrices?.oneHourHalf || (campo.pricePerHour * 1.4) || 28}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
               {/* Prezzi per Numero Giocatori */}
               {campo.pricingRules.playerCountPricing?.enabled &&
                 campo.pricingRules.playerCountPricing.prices?.length > 0 && (
-                  <>
-                    <Text style={styles.priceHierarchyTitle}>👥 Prezzi per Numero Giocatori</Text>
-                    <Text style={styles.priceSectionSubtitle}>
-                      Prezzi specifici in base al numero di partecipanti alla partita
-                    </Text>
+                  <View style={styles.pricingCategory}>
+                    <View style={styles.pricingCategoryHeader}>
+                      <View style={[styles.priorityBadge, { backgroundColor: "#F44336" }]}>
+                        <Ionicons name="people" size={10} color="white" />
+                      </View>
+                      <Text style={styles.pricingCategoryTitle}>Per Numero Giocatori</Text>
+                    </View>
                     {campo.pricingRules.playerCountPricing.prices
                       .sort((a: any, b: any) => a.count - b.count)
                       .map((playerPrice: any, index: number) => (
-                        <View key={index} style={styles.priceSection}>
-                          <View style={styles.priceSectionHeader}>
-                            <Text style={styles.priceSectionTitle}>
-                              👥 {playerPrice.label}
-                            </Text>
-                            <Text style={styles.priceSectionDays}>
-                              {playerPrice.count} giocatori
-                            </Text>
+                        <View key={index} style={styles.pricingItem}>
+                          <View style={styles.pricingItemHeader}>
+                            <Ionicons name="people-outline" size={16} color="#F44336" />
+                            <Text style={styles.pricingItemTitle}>{playerPrice.label}</Text>
+                            <View style={styles.playerCountBadge}>
+                              <Text style={styles.playerCountText}>{playerPrice.count}</Text>
+                            </View>
                           </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1 ora</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{playerPrice.prices?.oneHour || 20}
-                            </Text>
-                          </View>
-                          <View style={styles.priceDetailRow}>
-                            <Text style={styles.priceDetailDuration}>1.5 ore</Text>
-                            <Text style={styles.priceDetailValue}>
-                              €{playerPrice.prices?.oneHourHalf || 28}
-                            </Text>
+                          <View style={styles.pricingItemPrices}>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1h</Text>
+                              <Text style={styles.miniPriceValue}>€{playerPrice.prices?.oneHour || 20}</Text>
+                            </View>
+                            <View style={styles.miniPriceBox}>
+                              <Text style={styles.miniPriceLabel}>1.5h</Text>
+                              <Text style={styles.miniPriceValue}>€{playerPrice.prices?.oneHourHalf || 28}</Text>
+                            </View>
                           </View>
                         </View>
                       ))}
-                  </>
+                  </View>
                 )}
-            </>
+            </View>
           )}
 
           {/* Fallback vecchio sistema */}
           {!campo.pricingRules && (
-            <View style={styles.priceModeContainer}>
-              <View style={styles.priceDetailRow}>
-                <Text style={styles.priceDetailDuration}>Prezzo orario</Text>
-                <Text style={styles.priceDetailValue}>€{campo.pricePerHour}</Text>
+            <View style={styles.pricingCard}>
+              <View style={styles.pricingModeTag}>
+                <Ionicons name="information-circle" size={14} color="#FF9800" />
+                <Text style={[styles.pricingModeText, { color: "#FF9800" }]}>Sistema Legacy</Text>
+              </View>
+              <View style={styles.priceRowsContainer}>
+                <View style={styles.priceRow}>
+                  <View style={styles.priceRowLeft}>
+                    <Ionicons name="time-outline" size={18} color="#2196F3" />
+                    <Text style={styles.priceRowLabel}>Tariffa oraria</Text>
+                  </View>
+                  <Text style={styles.priceRowValue}>€{campo.pricePerHour}</Text>
+                </View>
               </View>
             </View>
           )}
         </View>
 
-        {/* AZIONI */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardIconCircle, { backgroundColor: "#F3E5F5" }]}>
-              <Text style={styles.cardIcon}>🛠️</Text>
+        {/* SEZIONE AZIONI */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <LinearGradient
+                colors={["#2196F3", "#1976D2"]}
+                style={styles.sectionIconGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="settings-outline" size={18} color="white" />
+              </LinearGradient>
             </View>
-            <Text style={styles.cardTitle}>Azioni</Text>
+            <View style={styles.sectionHeaderText}>
+              <Text style={styles.sectionTitle}>Gestione Campo</Text>
+              <Text style={styles.sectionSubtitle}>Azioni rapide disponibili</Text>
+            </View>
           </View>
 
-          {/* 📅 CALENDARIO ANNUALE - PULSANTE PRINCIPALE */}
+          {/* CALENDARIO - AZIONE PRINCIPALE */}
           <Pressable
             style={({ pressed }) => [
-              styles.actionButton,
-              styles.actionButtonPrimary,
-              pressed && styles.actionButtonPressed,
+              styles.actionCard,
+              styles.actionCardPrimary,
+              pressed && styles.actionCardPressed,
             ]}
             onPress={() =>
               navigation.navigate("CampoCalendarioGestione", {
@@ -467,88 +561,84 @@ export default function DettaglioCampoScreen() {
               })
             }
           >
-            <View style={styles.actionButtonLeft}>
-              <View style={[styles.actionButtonIcon, styles.actionButtonIconPrimary]}>
-                <Text style={styles.actionButtonIconText}>📅</Text>
+            <LinearGradient
+              colors={["#2196F3", "#1976D2"]}
+              style={styles.actionCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.actionCardContent}>
+                <View style={styles.actionCardIconLarge}>
+                  <Ionicons name="calendar" size={28} color="white" />
+                </View>
+                <View style={styles.actionCardTextContainer}>
+                  <Text style={styles.actionCardTitlePrimary}>
+                    Calendario Annuale
+                  </Text>
+                  <Text style={styles.actionCardDescPrimary}>
+                    Gestisci disponibilità e prenotazioni
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.7)" />
               </View>
-              <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-                Gestisci Calendario Annuale
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#2196F3" style={styles.actionButtonChevron} />
+            </LinearGradient>
           </Pressable>
 
-          {/* 💰 GESTIONE PREZZI */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.actionButtonSecondary,
-              pressed && styles.actionButtonPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("ConfiguraPrezziCampo", {
-                campoId: campo._id,
-                campoName: campo.name,
-                campoSport: campo.sport,
-              })
-            }
-          >
-            <View style={styles.actionButtonLeft}>
-              <View style={[styles.actionButtonIcon, styles.actionButtonIconSecondary]}>
-                <Text style={styles.actionButtonIconText}>💰</Text>
+          {/* ALTRE AZIONI */}
+          <View style={styles.actionGrid}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionGridItem,
+                pressed && styles.actionCardPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("ConfiguraPrezziCampo", {
+                  campoId: campo._id,
+                  campoName: campo.name,
+                  campoSport: campo.sport,
+                })
+              }
+            >
+              <View style={[styles.actionGridIcon, { backgroundColor: "#E8F5E9" }]}>
+                <Ionicons name="cash-outline" size={22} color="#4CAF50" />
               </View>
-              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
-                Gestisci Prezzi
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#4CAF50" style={styles.actionButtonChevron} />
-          </Pressable>
+              <Text style={styles.actionGridTitle}>Prezzi</Text>
+              <Text style={styles.actionGridDesc}>Configura tariffe</Text>
+            </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              pressed && styles.actionButtonPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("ModificaCampo", { campoId: campo._id })
-            }
-          >
-            <View style={styles.actionButtonLeft}>
-              <View style={styles.actionButtonIcon}>
-                <Text style={styles.actionButtonIconText}>✏️</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionGridItem,
+                pressed && styles.actionCardPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("ModificaCampo", { campoId: campo._id })
+              }
+            >
+              <View style={[styles.actionGridIcon, { backgroundColor: "#E3F2FD" }]}>
+                <Ionicons name="create-outline" size={22} color="#2196F3" />
               </View>
-              <Text style={styles.actionButtonText}>Modifica Info Campo</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#999" style={styles.actionButtonChevron} />
-          </Pressable>
+              <Text style={styles.actionGridTitle}>Modifica</Text>
+              <Text style={styles.actionGridDesc}>Informazioni campo</Text>
+            </Pressable>
+          </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.actionButtonDanger,
-              pressed && styles.actionButtonPressed,
-            ]}
-            onPress={handleDelete}
-          >
-            <View style={styles.actionButtonLeft}>
-              <View style={[styles.actionButtonIcon, styles.actionButtonIconDanger]}>
-                <Text style={styles.actionButtonIconText}>🗑️</Text>
-              </View>
-              <Text
-                style={[
-                  styles.actionButtonText,
-                  styles.actionButtonDangerText,
-                ]}
-              >
-                Elimina Campo
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#FF3B30" style={styles.actionButtonChevron} />
-          </Pressable>
+          {/* DANGER ZONE */}
+          <View style={styles.dangerZone}>
+            <Text style={styles.dangerZoneTitle}>Zona Pericolosa</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.dangerButton,
+                pressed && styles.dangerButtonPressed,
+              ]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+              <Text style={styles.dangerButtonText}>Elimina Campo</Text>
+            </Pressable>
+          </View>
         </View>
-
-        <View style={{ height: 20 }} />
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -556,70 +646,88 @@ export default function DettaglioCampoScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#F8FAFC",
   },
+  
+  // LOADING & ERROR
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingContent: {
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+  errorText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "white",
+    fontWeight: "600",
+  },
+
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 3,
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  back: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "white",
-  },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "700",
     color: "white",
-  },
-  container: {
-    flex: 1,
-    padding: 14,
-  },
-  errorText: {
-    textAlign: "center",
-    marginTop: 50,
-    fontSize: 14,
-    color: "#666",
   },
 
-  // HEADER CAMPO
+  // MAIN CONTAINER
+  container: {
+    flex: 1,
+  },
+
+  // CAMPO HEADER CARD
   campoHeaderCard: {
     backgroundColor: "white",
-    borderRadius: 18,
-    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 20,
     marginBottom: 16,
+    borderRadius: 18,
+    padding: 18,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
@@ -628,35 +736,41 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   campoName: {
-    fontSize: 19,
-    fontWeight: "800",
+    fontSize: 14,
+    fontWeight: "600",
     color: "#1a1a1a",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   sportRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     flexWrap: "wrap",
   },
   sportBadge: {
-    backgroundColor: "#EEF6FF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   sportText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: "#2196F3",
   },
   surfaceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: "#FFF3E0",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   surfaceText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: "#FF9800",
   },
@@ -687,7 +801,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   statusTextActive: {
@@ -697,252 +811,426 @@ const styles = StyleSheet.create({
     color: "#F44336",
   },
 
-  // CARDS
-  card: {
+  // QUICK STATS
+  quickStatsContainer: {
+    flexDirection: "column",
+    paddingHorizontal: 16,
+    paddingTop: 25,
+    gap: 10,
+  },
+  quickStatsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  quickStatCard: {
+    flex: 1,
     backgroundColor: "white",
     borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 10,
-  },
-  cardIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#EEF6FF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardIcon: {
-    fontSize: 20,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    flex: 1,
-  },
-
-  // INFO GRID
-  infoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  infoBox: {
-    flex: 1,
-    minWidth: "45%",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E8EAED",
-  },
-  infoIcon: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  infoLabel: {
-    fontSize: 10,
-    color: "#666",
-    marginBottom: 3,
-    textAlign: "center",
-  },
-  infoValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    textAlign: "center",
-  },
-
-  // PREZZI
-  priceModeContainer: {
-    marginTop: 4,
-  },
-  priceModeHeader: {
-    backgroundColor: "#F8F9FA",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  priceModeLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#333",
-  },
-  priceValue: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#2196F3",
-  },
-  priceHierarchyTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#2196F3",
-    marginTop: 16,
-    marginBottom: 10,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: "#EEF6FF",
-  },
-  priceSection: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  priceSectionHeader: {
-    marginBottom: 6,
-  },
-  priceSectionTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 3,
-  },
-  priceSectionDate: {
-    fontSize: 10,
-    color: "#2196F3",
-    fontWeight: "600",
-  },
-  priceSectionDays: {
-    fontSize: 10,
-    color: "#FF9800",
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  priceSectionSubtitle: {
-    fontSize: 10,
-    color: "#666",
-    fontStyle: "italic",
-    marginBottom: 6,
-  },
-  priceDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  priceDetailLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#333",
-  },
-  priceDetailDuration: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
-  },
-  priceDetailValue: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2196F3",
-  },
-
-  // ACTION BUTTONS - STILE MODERNO
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    borderRadius: 16,
     padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.02,
-        shadowRadius: 2,
+        shadowColor: "#2196F3",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 1,
+        elevation: 4,
       },
     }),
   },
-  actionButtonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.99 }],
-  },
-  actionButtonPrimary: {
-    backgroundColor: "#EEF6FF",
-    borderColor: "#2196F3",
-  },
-  actionButtonSecondary: {
-    backgroundColor: "#E8F5E9",
-    borderColor: "#4CAF50",
-  },
-  actionButtonDanger: {
-    backgroundColor: "#FFF5F5",
-    borderColor: "#FFCDD2",
-  },
-  actionButtonLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  actionButtonIcon: {
+  quickStatGradient: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    marginBottom: 10,
   },
-  actionButtonIconPrimary: {
-    backgroundColor: "#2196F3",
-    borderColor: "#2196F3",
+  quickStatValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
   },
-  actionButtonIconSecondary: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
+  quickStatLabel: {
+    fontSize: 9,
+    fontWeight: "500",
+    color: "#999",
+    textAlign: "center",
   },
-  actionButtonIconDanger: {
-    backgroundColor: "#FF3B30",
-    borderColor: "#FF3B30",
+
+  // SECTIONS
+  sectionContainer: {
+    marginTop: 20,
+    paddingHorizontal: 16,
   },
-  actionButtonIconText: {
-    fontSize: 16,
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 12,
   },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#333",
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  sectionIconGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sectionHeaderText: {
     flex: 1,
   },
-  actionButtonTextPrimary: {
-    color: "#2196F3",
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1a1a1a",
   },
-  actionButtonTextSecondary: {
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
+
+  // PRICING CARD (FLAT MODE)
+  pricingCard: {
+    backgroundColor: "white",
+    borderRadius: 18,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  pricingModeTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  pricingModeText: {
+    fontSize: 12,
+    fontWeight: "600",
     color: "#4CAF50",
   },
-  actionButtonDangerText: {
-    color: "#FF3B30",
+  priceRowsContainer: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  actionButtonChevron: {
-    marginLeft: 8,
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+  },
+  priceRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  priceRowLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4A5568",
+  },
+  priceRowValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+  priceRowDivider: {
+    height: 1,
+    backgroundColor: "#E8ECF4",
+    marginHorizontal: 14,
+  },
+
+  // ADVANCED PRICING
+  advancedPricingContainer: {
+    gap: 16,
+  },
+  pricingCategory: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  pricingCategoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  priorityBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  priorityBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "white",
+  },
+  pricingCategoryTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    flex: 1,
+  },
+  pricingItem: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  pricingItemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  pricingItemTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    flex: 1,
+  },
+  pricingItemBadge: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#2196F3",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pricingItemTime: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#4CAF50",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pricingItemDateRange: {
+    fontSize: 11,
+    color: "#999",
+    marginBottom: 8,
+  },
+  pricingItemDays: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  pricingItemPrices: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  miniPriceBox: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E8ECF4",
+  },
+  miniPriceBoxBase: {
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E8ECF4",
+  },
+  miniPriceLabel: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "#999",
+    marginBottom: 2,
+  },
+  miniPriceValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#2196F3",
+  },
+  basePriceCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 14,
+  },
+  basePriceNote: {
+    fontSize: 11,
+    color: "#999",
+    fontStyle: "italic",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  playerCountBadge: {
+    backgroundColor: "#FCE4EC",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  playerCountText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#F44336",
+  },
+
+  // ACTION CARDS
+  actionCard: {
+    borderRadius: 18,
+    overflow: "hidden",
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#2196F3",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  actionCardPrimary: {},
+  actionCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  actionCardGradient: {
+    padding: 20,
+  },
+  actionCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  actionCardIconLarge: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionCardTextContainer: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  actionCardTitlePrimary: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
+  },
+  actionCardDescPrimary: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 3,
+  },
+
+  // ACTION GRID
+  actionGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionGridItem: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 18,
+    padding: 18,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  actionGridIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  actionGridTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
+  },
+  actionGridDesc: {
+    fontSize: 11,
+    color: "#999",
+    textAlign: "center",
+  },
+
+  // DANGER ZONE
+  dangerZone: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
+    borderStyle: "dashed",
+  },
+  dangerZoneTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FF3B30",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  dangerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
+  },
+  dangerButtonPressed: {
+    backgroundColor: "#FFEBEE",
+  },
+  dangerButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FF3B30",
   },
 });

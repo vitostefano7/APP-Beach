@@ -9,11 +9,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback, useEffect } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-import API_URL from "../../config/api";
+import API_URL from "../../../config/api";
 
 /* =========================
    STRUTTURA CARD
@@ -158,6 +158,7 @@ export default function OwnerStruttureScreen() {
   const { token } = useContext(AuthContext);
   const [strutture, setStrutture] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const navigation = useNavigation<any>();
 
   const loadStrutture = useCallback(async () => {
@@ -196,17 +197,47 @@ export default function OwnerStruttureScreen() {
     setRefreshing(false);
   }, [loadStrutture]);
 
+  const filteredStrutture = strutture.filter(item => {
+    if (filter === 'active') return item.isActive;
+    if (filter === 'inactive') return !item.isActive;
+    return true;
+  });
+
+  const totalCount = strutture.length;
+  const activeCount = strutture.filter(s => s.isActive).length;
+  const inactiveCount = strutture.filter(s => !s.isActive).length;
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Le mie strutture</Text>
-            <Text style={styles.subtitle}>
-              {strutture.length}{" "}
-              {strutture.length === 1 ? "struttura" : "strutture"}
-            </Text>
+          <View style={styles.titleContainer}>
+            <View style={styles.titleRow}>
+              <Ionicons name="home" size={18} color="#2196F3" />
+              <Text style={styles.title}>Le mie strutture</Text>
+            </View>
+
+            <View style={styles.filterContainer}>
+              <Pressable
+                style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+                onPress={() => setFilter('all')}
+              >
+                <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Tutte</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.filterButton, filter === 'active' && styles.filterButtonActive]}
+                onPress={() => setFilter('active')}
+              >
+                <Text style={[styles.filterText, filter === 'active' && styles.filterTextActive]}>Attive</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.filterButton, filter === 'inactive' && styles.filterButtonActive]}
+                onPress={() => setFilter('inactive')}
+              >
+                <Text style={[styles.filterText, filter === 'inactive' && styles.filterTextActive]}>Non attive</Text>
+              </Pressable>
+            </View>
           </View>
 
           <Pressable
@@ -219,9 +250,10 @@ export default function OwnerStruttureScreen() {
 
         {/* LISTA */}
         <FlatList
-          data={strutture}
+          data={filteredStrutture}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => <StrutturaCard item={item} />}
+          numColumns={2}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -240,21 +272,23 @@ export default function OwnerStruttureScreen() {
               />
               <Text style={styles.emptyTitle}>Nessuna struttura</Text>
               <Text style={styles.emptyText}>
-                Crea la tua prima struttura per iniziare
+                {filter === 'all' ? 'Crea la tua prima struttura per iniziare' : 'Nessuna struttura corrisponde al filtro selezionato'}
               </Text>
-              <Pressable
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate("CreaStruttura")}
-              >
-                <Ionicons
-                  name="add-circle"
-                  size={14}
-                  color="white"
-                />
-                <Text style={styles.emptyButtonText}>
-                  Crea struttura
-                </Text>
-              </Pressable>
+              {filter === 'all' && (
+                <Pressable
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate("CreaStruttura")}
+                >
+                  <Ionicons
+                    name="add-circle"
+                    size={14}
+                    color="white"
+                  />
+                  <Text style={styles.emptyButtonText}>
+                    Crea struttura
+                  </Text>
+                </Pressable>
+              )}
             </View>
           }
         />
@@ -285,6 +319,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 2,
     elevation: 1,
+  },
+
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  filterContainer: {
+    flexDirection: "row",
+    marginTop: 8,
+    gap: 6,
+  },
+
+  filterButton: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  filterButtonActive: {
+    backgroundColor: "#2196F3",
+  },
+
+  filterText: {
+    fontSize: 10,
+    color: "#666",
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  filterTextActive: {
+    color: "white",
   },
 
   title: {
@@ -322,17 +396,19 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 18,
     marginBottom: 8,
+    marginHorizontal: 4,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 3,
     elevation: 1,
+    flex: 1,
   },
 
   cardImage: {
     width: "100%",
-    height: 110,
+    height: 80,
     backgroundColor: "#f8f8f8",
   },
 

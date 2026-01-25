@@ -335,6 +335,8 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 3,
     elevation: 1,
+    justifyContent: "space-between",
+    minHeight: 180,
   },
 
   strutturaImage: {
@@ -371,6 +373,7 @@ export const styles = StyleSheet.create({
 
   strutturaInfo: {
     padding: 9,
+    flex: 1,
   },
 
   strutturaName: {
@@ -408,6 +411,24 @@ export const styles = StyleSheet.create({
   strutturaBookingsText: {
     fontSize: 10,
     color: "#2196F3",
+    fontWeight: "600",
+  },
+
+  dettagliButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    backgroundColor: "#2196F3",
+    borderRadius: 6,
+    marginHorizontal: 9,
+    marginBottom: 9,
+  },
+
+  dettagliButtonText: {
+    fontSize: 11,
+    color: "white",
     fontWeight: "600",
   },
 

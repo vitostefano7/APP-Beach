@@ -9,6 +9,7 @@ interface Struttura {
   name: string;
   location: {
     city: string;
+    address: string;
   };
   images: string[];
   isActive: boolean;
@@ -72,6 +73,11 @@ export default function StrutturaQuickCard({
           </View>
         )}
       </View>
+
+      <Pressable style={styles.dettagliButton} onPress={onPress}>
+        <Text style={styles.dettagliButtonText}>Dettagli</Text>
+        <Ionicons name="chevron-forward" size={14} color="white" />
+      </Pressable>
     </Pressable>
   );
 }
