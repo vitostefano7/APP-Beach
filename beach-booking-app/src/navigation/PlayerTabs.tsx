@@ -40,7 +40,6 @@ export default function PlayerTabs() {
 
   const getTabBarStyle = (route: any) => {
     const routeName = getFocusedRouteNameFromRoute(route) ?? "";
-    console.log('🔍 DEBUG getTabBarStyle - routeName:', routeName);
     
     if (routeName === "Chat" || routeName === "GroupChat") {
       console.log('✅ Hiding tab bar for Chat');
@@ -52,7 +51,6 @@ export default function PlayerTabs() {
       return { display: "none" };
     }
     
-    console.log('❌ Showing tab bar');
     return undefined;
   };
 
@@ -82,7 +80,6 @@ export default function PlayerTabs() {
           },
         animation: 'none', // Disabilita animazioni
         tabBarIcon: ({ color, size, focused }) => {
-          console.log(`🎨 TabBarIcon render - route: ${route.name}, focused: ${focused}, color: ${color}`);
           let iconName: any;
           // Usa sempre le icone filled per garantire altezza uniforme
           if (route.name === "Dashboard") iconName = "home";

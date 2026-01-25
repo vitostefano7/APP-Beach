@@ -49,6 +49,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
 
   const friendId = friendData._id;
   const friendName = friendData.name || "Utente";
+  const friendSurname = friendData.surname || "";
   const avatarUrl = friendData.avatarUrl;
   
   // Estrai metriche dalla struttura corretta del backend
@@ -162,6 +163,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         <View style={styles.friendCardHeader}>
           <Text style={styles.friendCardName} numberOfLines={1}>
             {friendName}
+            {friendSurname ? ` ${friendSurname}` : ""}
           </Text>
           {badge && (
             <View style={[styles.friendBadge, { backgroundColor: badge.color + '15' }]}>

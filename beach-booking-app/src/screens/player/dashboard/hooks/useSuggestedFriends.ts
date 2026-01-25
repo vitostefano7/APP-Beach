@@ -8,6 +8,7 @@ interface SuggestedFriend {
   user: {
     _id: string;
     name: string;
+    surname?: string;
     username: string;
     avatarUrl?: string;
     preferredSports?: string[];

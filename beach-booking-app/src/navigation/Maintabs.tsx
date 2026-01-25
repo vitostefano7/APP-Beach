@@ -32,11 +32,9 @@ export default function MainTabs() {
           console.log('✅ Hiding tab bar');
           setHideTabBar(true);
         } else {
-          console.log('❌ Showing tab bar');
           setHideTabBar(false);
         }
       } else {
-        console.log('❌ No nested state, showing tab bar');
         setHideTabBar(false);
       }
     });

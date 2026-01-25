@@ -855,7 +855,7 @@ export const styles = StyleSheet.create({
   matchHistoryCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    height: 200,
+    height: 260,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -1064,15 +1064,14 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F5F5F5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   matchTimeText: {
     fontSize: 11,
-    color: '#999',
-    fontWeight: '600',
+    color: '#666',
+    fontWeight: '500',
   },
   matchHistoryInfo: {
     flex: 1,

@@ -77,8 +77,12 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     let winsB = 0;
     for (let s = 0; s < 3; s++) {
       if (winsA === 2 || winsB === 2) break;
-      const teamA = randomInt(15, 25);
-      const teamB = randomInt(15, 25);
+      // Beach volley: max 21 punti per squadra, no pareggi
+      let teamA, teamB;
+      do {
+        teamA = randomInt(15, 21);
+        teamB = randomInt(15, 21);
+      } while (teamA === teamB); // no pareggi
       sets.push({ teamA, teamB });
       if (teamA > teamB) winsA++;
       else winsB++;

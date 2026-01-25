@@ -13,6 +13,7 @@ interface SuggestedUser {
   user: {
     _id: Types.ObjectId;
     name: string;
+    surname?: string;
     username: string;
     avatarUrl?: string;
     preferredSports?: string[];
@@ -107,8 +108,8 @@ export const friendshipController = {
 
       // Popola i dati per la risposta
       await friendship.populate([
-        { path: "requester", select: "name username avatarUrl" },
-        { path: "recipient", select: "name username avatarUrl profilePrivacy" },
+        { path: "requester", select: "name surname username avatarUrl" },
+        { path: "recipient", select: "name surname username avatarUrl profilePrivacy" },
       ]);
 
       // Se è pubblico, verifica se è reciproco
@@ -220,8 +221,8 @@ export const friendshipController = {
 
       // Popola i dati per la risposta
       await friendship.populate([
-        { path: "requester", select: "name username avatarUrl" },
-        { path: "recipient", select: "name username avatarUrl" },
+        { path: "requester", select: "name surname username avatarUrl" },
+        { path: "recipient", select: "name surname username avatarUrl" },
       ]);
 
       res.json({
@@ -482,7 +483,7 @@ export const friendshipController = {
           .populate([
             { 
               path: "requester", 
-              select: "name username avatarUrl",
+              select: "name surname username avatarUrl",
               match: { 
                 $or: [
                   { name: searchRegex },
@@ -492,7 +493,7 @@ export const friendshipController = {
             },
             { 
               path: "recipient", 
-              select: "name username avatarUrl",
+              select: "name surname username avatarUrl",
               match: { 
                 $or: [
                   { name: searchRegex },
@@ -948,7 +949,7 @@ export const friendshipController = {
 
       const users = await User.find(
         { _id: { $in: opponentIds } },
-        "name username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports"
       );
 
       // Crea suggerimenti
@@ -977,6 +978,7 @@ export const friendshipController = {
           user: {
             _id: user._id,
             name: user.name,
+            surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports,
@@ -1088,7 +1090,7 @@ export const friendshipController = {
       const userIds = potentialFriends.map(pf => pf._id);
       const users = await User.find(
         { _id: { $in: userIds } },
-        "name username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports"
       );
 
       const userMap = new Map(users.map(user => [user._id.toString(), user]));
@@ -1107,6 +1109,7 @@ export const friendshipController = {
           user: {
             _id: user._id,
             name: user.name,
+            surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports,
@@ -1229,7 +1232,7 @@ export const friendshipController = {
       const userIds = otherUsersBookings.map(booking => booking.userId);
       const users = await User.find(
         { _id: { $in: userIds } },
-        "name username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports"
       );
 
       const strutturaDetails = await Struttura.find(
@@ -1271,6 +1274,7 @@ export const friendshipController = {
           user: {
             _id: user._id,
             name: user.name,
+            surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports,
@@ -1384,6 +1388,7 @@ export const friendshipController = {
         {
           $project: {
             name: 1,
+            surname: 1,
             username: 1,
             avatarUrl: 1,
             preferredSports: 1,
@@ -1418,6 +1423,7 @@ export const friendshipController = {
           user: {
             _id: user._id,
             name: user.name,
+            surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports,

@@ -28,6 +28,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
   // Get players for each team
   const teamAPlayers = match.players.filter((p: any) => p.team === 'A');
   const teamBPlayers = match.players.filter((p: any) => p.team === 'B');
+  const maxPlayers = match.maxPlayers || (teamAPlayers.length + teamBPlayers.length);
+  const maxPerTeam = maxPlayers > 0 ? Math.ceil(maxPlayers / 2) : Math.max(teamAPlayers.length, teamBPlayers.length);
 
   const handlePress = () => {
     if (match.booking?._id) {
@@ -109,7 +111,15 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                   {isWinner ? 'VITTORIA' : 'SCONFITTA'}
                 </Text>
                 <Text style={styles.matchDateSubtext}>
-                  {formatMatchDate(match.playedAt || match.createdAt)}
+                  {match.booking?.date
+                    ? (() => {
+                        const date = new Date(match.booking.date);
+                        const day = date.getDate();
+                        const month = date.toLocaleString('it-IT', { month: 'long' });
+                        const year = date.getFullYear();
+                        return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+                      })()
+                    : ''}
                 </Text>
               </View>
             </View>
@@ -126,131 +136,520 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
           <View style={styles.matchTeamsContainer}>
             {/* Team A */}
             <View style={styles.matchTeamSection}>
-              <View style={[
-                styles.matchTeamLabelContainer,
-                myPlayer?.team === 'A' && styles.matchTeamLabelContainerMy
-              ]}>
-                <Text style={[
-                  styles.matchTeamLabel,
-                  myPlayer?.team === 'A' && styles.matchTeamLabelMy
-                ]}>
+              <View style={[styles.matchTeamLabelContainer, { backgroundColor: '#2196F3' }]}> 
+                <Text style={[styles.matchTeamLabel, { color: '#fff' }]}> 
                   TEAM A
                 </Text>
               </View>
-              <View style={styles.matchTeamAvatars}>
-                {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <Pressable
-                    key={player._id || player.user?._id || `teamA-${idx}`}
-                    onPress={() => openUserProfile(player.user?._id)}
-                    style={idx > 0 && { marginLeft: -8, zIndex: 2 - idx }}
-                  >
-                    <Avatar
-                      name={player.user?.name}
-                      surname={player.user?.surname}
-                      avatarUrl={player.user?.avatarUrl}
-                      size="small"
-                      teamColor="A"
-                    />
-                  </Pressable>
-                ))}
+              <View style={[styles.openMatchTeamSlots, { flexWrap: 'wrap', height: undefined }]}> 
+                {(() => {
+                  const sport = match.booking?.sport || match.booking?.campo?.sport || '';
+                  const lowerSport = sport.toLowerCase();
+                  const isBeachVolley = lowerSport.includes('beach') && lowerSport.includes('volley');
+                  const teamSize = teamAPlayers.length;
+                  // 2v2: una riga, 3v3: due righe (2 sopra, 1 sotto centrato)
+                  if (isBeachVolley && teamSize === 2) {
+                    // Una sola riga
+                    return (
+                      <View style={{ flexDirection: 'row' }}>
+                        {Array(2).fill(null).map((_, idx) => {
+                          const player = teamAPlayers[idx];
+                          const hasPlayer = idx < teamAPlayers.length;
+                          return (
+                            <View
+                              key={`teamA-${idx}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                idx > 0 ? { marginLeft: -4 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={32}
+                                      backgroundColor="#E3F2FD"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  } else if (isBeachVolley && teamSize === 3) {
+                    // Due sopra, uno sotto centrato
+                    return (
+                      <View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 4, paddingHorizontal: 18 }}>
+                          {Array(2).fill(null).map((_, idx) => {
+                            const player = teamAPlayers[idx];
+                            const hasPlayer = idx < teamAPlayers.length;
+                            return (
+                              <View
+                                key={`teamA-${idx}`}
+                                style={[
+                                  styles.openMatchTeamSlot,
+                                  hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                  idx > 0 ? { marginLeft: -4 } : null,
+                                ]}
+                              >
+                                {hasPlayer && player?.user ? (
+                                  <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                    <View style={{
+                                      borderRadius: 20,
+                                      borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                      borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                      padding: player.user?._id === userId ? 2 : 0,
+                                    }}>
+                                      <Avatar
+                                        name={player.user?.name}
+                                        surname={player.user?.surname}
+                                        avatarUrl={player.user?.avatarUrl}
+                                        size={32}
+                                        backgroundColor="#E3F2FD"
+                                        textColor="#333"
+                                      />
+                                    </View>
+                                  </Pressable>
+                                ) : (
+                                  <Ionicons name="person-outline" size={12} color="#ccc" />
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', paddingHorizontal: 18 }}>
+                          <View style={styles.openMatchTeamSlot}>
+                            {teamAPlayers[2]?.user ? (
+                              <Pressable onPress={() => openUserProfile(teamAPlayers[2].user?._id)}>
+                                <View style={{
+                                  borderRadius: 20,
+                                  borderWidth: teamAPlayers[2].user?._id === userId ? 2.5 : 0,
+                                  borderColor: teamAPlayers[2].user?._id === userId ? '#4CAF50' : 'transparent',
+                                  padding: teamAPlayers[2].user?._id === userId ? 2 : 0,
+                                }}>
+                                  <Avatar
+                                    name={teamAPlayers[2].user?.name}
+                                    surname={teamAPlayers[2].user?.surname}
+                                    avatarUrl={teamAPlayers[2].user?.avatarUrl}
+                                    size={32}
+                                    backgroundColor="#E3F2FD"
+                                    textColor="#333"
+                                  />
+                                </View>
+                              </Pressable>
+                            ) : (
+                              <Ionicons name="person-outline" size={12} color="#ccc" />
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  } else if (isBeachVolley && teamSize === 4) {
+                    // Due righe da 2
+                    return [0, 1].map(row => (
+                      <View key={row} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: row === 0 ? 4 : 0, paddingHorizontal: 18 }}>
+                        {Array(2).fill(null).map((_, col) => {
+                          const idx = row * 2 + col;
+                          const player = teamAPlayers[idx];
+                          const hasPlayer = idx < teamAPlayers.length;
+                          return (
+                            <View
+                              key={`teamA-${idx}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                col > 0 ? { marginLeft: -4 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={32}
+                                      backgroundColor="#E3F2FD"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ));
+                  } else {
+                    // Default: due righe da 4
+                    return [0, 1].map(row => (
+                      <View key={row} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: row === 0 ? 4 : 0, paddingHorizontal: 18 }}>
+                        {Array(4).fill(null).map((_, col) => {
+                          const index = row * 4 + col;
+                          const player = teamAPlayers[index];
+                          const hasPlayer = index < teamAPlayers.length;
+                          return (
+                            <View
+                              key={`teamA-${index}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                col > 0 ? { marginLeft: -10 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={32}
+                                      backgroundColor="#E3F2FD"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ));
+                  }
+                })()}
               </View>
-              {teamAPlayers.length > 0 && (
-                <View style={styles.matchPlayerNames}>
-                  {teamAPlayers.slice(0, 2).map((player: any, idx: number) => (
-                    <Text 
-                      key={`nameA-${idx}`}
-                      style={[
-                        styles.matchPlayerName,
-                        player.user?._id === userId && styles.matchPlayerNameMy
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {getPlayerName(player)}
-                    </Text>
-                  ))}
-                </View>
-              )}
             </View>
 
             {/* Score */}
             <View style={styles.matchScoreMainContainer}>
-              <View style={styles.matchScoreContainer}>
-                <Text style={styles.matchScoreLarge}>
-                  {getTeamScore(myPlayer?.team === 'A' ? 'A' : 'B')}
-                </Text>
-                <Text style={styles.matchScoreSeparator}>-</Text>
-                <Text style={styles.matchScoreLarge}>
-                  {getTeamScore(myPlayer?.team === 'A' ? 'B' : 'A')}
-                </Text>
-              </View>
               {match.score?.sets && match.score.sets.length > 0 && (
-                <View style={styles.matchSetsContainer}>
-                  {/* Risultati dei set rimossi per risparmiare spazio */}
+                <View style={{ flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  {match.score.sets.map((set: any, idx: number) => {
+                    const teamAWon = set.teamA > set.teamB;
+                    const teamBWon = set.teamB > set.teamA;
+                    return (
+                      <View key={idx} style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        gap: 8,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        backgroundColor: '#F5F5F5',
+                        borderRadius: 12,
+                      }}>
+                        <Text style={{ 
+                          fontSize: 9, 
+                          fontWeight: '700', 
+                          color: '#999',
+                          letterSpacing: 0.5,
+                          textTransform: 'uppercase'
+                        }}>
+                          Set {idx + 1}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: teamAWon ? '#2196F3' : 'transparent',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: teamAWon ? 0 : 2,
+                            borderColor: '#2196F3',
+                          }}>
+                            <Text style={{ 
+                              fontSize: 14, 
+                              fontWeight: '800', 
+                              color: teamAWon ? '#FFFFFF' : '#2196F3'
+                            }}>
+                              {set.teamA}
+                            </Text>
+                          </View>
+                          <Text style={{ 
+                            fontSize: 14, 
+                            fontWeight: '600', 
+                            color: '#ccc' 
+                          }}>
+                            -
+                          </Text>
+                          <View style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: teamBWon ? '#F44336' : 'transparent',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: teamBWon ? 0 : 2,
+                            borderColor: '#F44336',
+                          }}>
+                            <Text style={{ 
+                              fontSize: 14, 
+                              fontWeight: '800', 
+                              color: teamBWon ? '#FFFFFF' : '#F44336'
+                            }}>
+                              {set.teamB}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
             </View>
 
             {/* Team B */}
             <View style={styles.matchTeamSection}>
-              <View style={[
-                styles.matchTeamLabelContainer,
-                myPlayer?.team === 'B' && styles.matchTeamLabelContainerMy
-              ]}>
-                <Text style={[
-                  styles.matchTeamLabel,
-                  myPlayer?.team === 'B' && styles.matchTeamLabelMy
-                ]}>
+              <View style={[styles.matchTeamLabelContainer, { backgroundColor: '#F44336' }]}> 
+                <Text style={[styles.matchTeamLabel, { color: '#fff' }]}> 
                   TEAM B
                 </Text>
               </View>
-              <View style={styles.matchTeamAvatars}>
-                {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
-                  <Pressable
-                    key={player._id || player.user?._id || `teamB-${idx}`}
-                    onPress={() => openUserProfile(player.user?._id)}
-                    style={idx > 0 && { marginLeft: -8, zIndex: 2 - idx }}
-                  >
-                    <Avatar
-                      name={player.user?.name}
-                      surname={player.user?.surname}
-                      avatarUrl={player.user?.avatarUrl}
-                      size="small"
-                      teamColor="B"
-                    />
-                  </Pressable>
-                ))}
+              <View style={[styles.openMatchTeamSlots, { flexWrap: 'wrap', height: undefined }]}> 
+                {(() => {
+                  const sport = match.booking?.sport || match.booking?.campo?.sport || '';
+                  const lowerSport = sport.toLowerCase();
+                  const isBeachVolley = lowerSport.includes('beach') && lowerSport.includes('volley');
+                  const teamSize = teamBPlayers.length;
+                  if (isBeachVolley && teamSize === 2) {
+                    // Una sola riga
+                    return (
+                      <View style={{ flexDirection: 'row' }}>
+                        {Array(2).fill(null).map((_, idx) => {
+                          const player = teamBPlayers[idx];
+                          const hasPlayer = idx < teamBPlayers.length;
+                          return (
+                            <View
+                              key={`teamB-${idx}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                idx > 0 ? { marginLeft: -4 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={32}
+                                      backgroundColor="#FFEBEE"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  } else if (isBeachVolley && teamSize === 3) {
+                    // Due sopra, uno sotto centrato
+                    return (
+                      <View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 4, paddingHorizontal: 18 }}>
+                          {Array(2).fill(null).map((_, idx) => {
+                            const player = teamBPlayers[idx];
+                            const hasPlayer = idx < teamBPlayers.length;
+                            return (
+                              <View
+                                key={`teamB-${idx}`}
+                                style={[
+                                  styles.openMatchTeamSlot,
+                                  hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                  idx > 0 ? { marginLeft: -4 } : null,
+                                ]}
+                              >
+                                {hasPlayer && player?.user ? (
+                                  <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                    <View style={{
+                                      borderRadius: 20,
+                                      borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                      borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                      padding: player.user?._id === userId ? 2 : 0,
+                                    }}>
+                                      <Avatar
+                                        name={player.user?.name}
+                                        surname={player.user?.surname}
+                                        avatarUrl={player.user?.avatarUrl}
+                                        size={32}
+                                        backgroundColor="#FFEBEE"
+                                        textColor="#333"
+                                      />
+                                    </View>
+                                  </Pressable>
+                                ) : (
+                                  <Ionicons name="person-outline" size={12} color="#ccc" />
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', paddingHorizontal: 18 }}>
+                          <View style={styles.openMatchTeamSlot}>
+                            {teamBPlayers[2]?.user ? (
+                              <Pressable onPress={() => openUserProfile(teamBPlayers[2].user?._id)}>
+                                <View style={{
+                                  borderRadius: 20,
+                                  borderWidth: teamBPlayers[2].user?._id === userId ? 2.5 : 0,
+                                  borderColor: teamBPlayers[2].user?._id === userId ? '#4CAF50' : 'transparent',
+                                  padding: teamBPlayers[2].user?._id === userId ? 2 : 0,
+                                }}>
+                                  <Avatar
+                                    name={teamBPlayers[2].user?.name}
+                                    surname={teamBPlayers[2].user?.surname}
+                                    avatarUrl={teamBPlayers[2].user?.avatarUrl}
+                                    size={32}
+                                    backgroundColor="#FFEBEE"
+                                    textColor="#333"
+                                  />
+                                </View>
+                              </Pressable>
+                            ) : (
+                              <Ionicons name="person-outline" size={12} color="#ccc" />
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  } else if (isBeachVolley && teamSize === 4) {
+                    // Due righe da 2
+                    return [0, 1].map(row => (
+                      <View key={row} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: row === 0 ? 4 : 0, paddingHorizontal: 18 }}>
+                        {Array(2).fill(null).map((_, col) => {
+                          const idx = row * 2 + col;
+                          const player = teamBPlayers[idx];
+                          const hasPlayer = idx < teamBPlayers.length;
+                          return (
+                            <View
+                              key={`teamB-${idx}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                col > 0 ? { marginLeft: -4 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={32}
+                                      backgroundColor="#FFEBEE"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ));
+                  } else {
+                    // Default: due righe da 4
+                    return [0, 1].map(row => (
+                      <View key={row} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: row === 0 ? 4 : 0, paddingHorizontal: 18 }}>
+                        {Array(4).fill(null).map((_, col) => {
+                          const index = row * 4 + col;
+                          const player = teamBPlayers[index];
+                          const hasPlayer = index < teamBPlayers.length;
+                          return (
+                            <View
+                              key={`teamB-${index}`}
+                              style={[
+                                styles.openMatchTeamSlot,
+                                hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
+                                col > 0 ? { marginLeft: -10 } : null,
+                              ]}
+                            >
+                              {hasPlayer && player?.user ? (
+                                <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                                  <View style={{
+                                    borderRadius: 20,
+                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
+                                    padding: player.user?._id === userId ? 2 : 0,
+                                  }}>
+                                    <Avatar
+                                      name={player.user?.name}
+                                      surname={player.user?.surname}
+                                      avatarUrl={player.user?.avatarUrl}
+                                      size={24}
+                                      backgroundColor="#FFEBEE"
+                                      textColor="#333"
+                                    />
+                                  </View>
+                                </Pressable>
+                              ) : (
+                                <Ionicons name="person-outline" size={12} color="#ccc" />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ));
+                  }
+                })()}
               </View>
-              {teamBPlayers.length > 0 && (
-                <View style={styles.matchPlayerNames}>
-                  {teamBPlayers.slice(0, 2).map((player: any, idx: number) => (
-                    <Text 
-                      key={`nameB-${idx}`}
-                      style={[
-                        styles.matchPlayerName,
-                        player.user?._id === userId && styles.matchPlayerNameMy
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {getPlayerName(player)}
-                    </Text>
-                  ))}
-                </View>
-              )}
             </View>
           </View>
 
-          {/* Footer with location and time */}
+          {/* Footer with location */}
           <View style={styles.matchCardFooter}>
             <View style={styles.matchLocationContainer}>
               <Ionicons name="location" size={14} color="#2196F3" />
               <Text style={styles.matchLocationText} numberOfLines={1}>
                 {match.booking?.campo?.struttura?.name || 'Struttura'}
-              </Text>
-            </View>
-            <View style={styles.matchTimeContainer}>
-              <Ionicons name="time-outline" size={12} color="#999" />
-              <Text style={styles.matchTimeText}>
-                {match.booking?.startTime || '--:--'}
               </Text>
             </View>
           </View>
