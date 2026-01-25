@@ -143,19 +143,20 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     userFutureBookings.get(usrId)!.push(booking);
   }
 
-  // Per ogni utente, prendi l'ultimo booking futuro come "partita aperta"
+  // Per ogni utente, prendi gli ultimi due booking futuri come "partite aperte"
   const openMatchBookings: any[] = [];
   const regularFutureBookings: any[] = [];
   
   for (const [userId, userBookings] of userFutureBookings) {
-    // Ordina per data, l'ultimo è quello per la partita aperta
+    // Ordina per data, gli ultimi due sono quelli per le partite aperte
     userBookings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     if (userBookings.length > 0) {
-      // L'ultimo booking futuro è per la partita aperta
-      openMatchBookings.push(userBookings[userBookings.length - 1]);
+      // Gli ultimi quattro booking futuri sono per le partite aperte
+      const numOpen = Math.min(4, userBookings.length);
+      openMatchBookings.push(...userBookings.slice(-numOpen));
       // Il resto sono normali
-      regularFutureBookings.push(...userBookings.slice(0, -1));
+      regularFutureBookings.push(...userBookings.slice(0, -numOpen));
     }
   }
 

@@ -124,8 +124,8 @@ async function seed() {
     /* -------- FOLLOWERS -------- */
     const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
 
-    // /* -------- FRIENDSHIPS -------- */
-    // const friendships = await generateFriendships(players);
+    /* -------- FRIENDSHIPS -------- */
+    const friendships = await generateFriendships(players);
 
     // /* -------- CONVERSATIONS -------- */
     // const { conversations, messages } = await generateConversations(users, strutture, matches);
@@ -156,7 +156,7 @@ async function seed() {
     console.log(`📰 Post: ${posts.length}`);
     console.log(`👥 Follower strutture: ${strutturaFollowers.length}`);
     console.log(`👥 Follower utenti: ${userFollowers.length}`);
-    // console.log(`🤝 Amicizie: ${friendships.length}`);
+    console.log(`🤝 Amicizie: ${friendships.length}`);
     // console.log(`💬 Conversazioni: ${conversations.length}`);
     // console.log(`💬 Messaggi: ${messages.length}`);
     // console.log(`🔔 Notifiche: ${notifications.length}`);

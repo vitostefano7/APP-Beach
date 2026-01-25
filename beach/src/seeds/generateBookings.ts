@@ -98,9 +98,9 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
     }
 
     // ============================================
-    // 2 PRENOTAZIONI FUTURE (beach 6 o 8 giocatori)
+    // 4 PRENOTAZIONI FUTURE (beach 6 o 8 giocatori)
     // ============================================
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const futureDate = new Date(today);
       futureDate.setDate(futureDate.getDate() + randomInt(1, 10));
       const beachCampo: any = randomElement(beachCampi);
@@ -108,27 +108,13 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       const numPeople = randomElement([6, 8]);
       bookings.push(createBooking(player, beachCampo, struttura, futureDate, numPeople));
     }
-
-    // ============================================
-    // 1 PRENOTAZIONE FUTURA PER PARTITA APERTA
-    // (beach volley - organizzatore + 1 altro utente)
-    // ============================================
-    const openMatchDate = new Date(today);
-    openMatchDate.setDate(openMatchDate.getDate() + randomInt(1, 7));
-    const openBeachCampo: any = randomElement(beachCampi);
-    const openStruttura = strutture.find((s: any) => s._id.toString() === openBeachCampo.struttura.toString());
-    const openNumPeople = randomElement([6, 8]); // beach volley
-    bookings.push({
-      ...createBooking(player, openBeachCampo, openStruttura, openMatchDate, openNumPeople),
-      _isOpenMatch: true, // Flag per generateMatches
-    });
   }
 
   const savedBookings = await Booking.insertMany(bookings);
   console.log(`✅ Create ${savedBookings.length} prenotazioni`);
   console.log(`   - ${players.length * 4} passate (per utente: 3 beach + 1 volley)`);
   console.log(`   - ${players.length * 2} oggi`);
-  console.log(`   - ${players.length * 3} future (2 normali + 1 per partita aperta)`);
+  console.log(`   - ${players.length * 4} future`);
 
   // Disabilita gli slot prenotati nel calendario
   for (const booking of savedBookings) {

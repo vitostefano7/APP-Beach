@@ -92,6 +92,10 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
 
   const matchInProgress = isMatchInProgress();
 
+  const now = new Date();
+  const matchStart = new Date(`${booking.date}T${booking.startTime}:00`);
+  const hoursUntil = (matchStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
   // Debug players
   console.log("NextMatchCard - hasMatch:", booking.hasMatch);
   console.log("NextMatchCard - players:", booking.players);
@@ -111,18 +115,20 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
         
         <View style={[
           styles.matchTimeBadge,
-          matchInProgress && { backgroundColor: '#4CAF50' }
+          { backgroundColor: '#4CAF50' }
         ]}>
-          {matchInProgress ? (
-            <Text style={[styles.matchTimeText, { color: 'white' }]}>IN CORSO</Text>
-          ) : (
-
-            <Text style={[styles.matchTimeText, { color: 'white' }]}>
-              {displayDate === "Oggi" || displayDate === "Domani"
-                ? `Tra ${daysUntil === 0 ? '24' : daysUntil === 1 ? '24' : daysUntil * 24}h`
-                : `Tra ${daysUntil}g`}
-            </Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="time-outline" size={14} color="white" style={{ marginRight: 4 }} />
+            {matchInProgress ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>IN CORSO</Text>
+            ) : hoursUntil < 0 ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>PASSATA</Text>
+            ) : hoursUntil < 24 ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>Tra {Math.ceil(hoursUntil)}h</Text>
+            ) : (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>Tra {Math.ceil(hoursUntil / 24)}g</Text>
+            )}
+          </View>
         </View>
       </View>
 
