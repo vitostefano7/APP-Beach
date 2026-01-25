@@ -149,9 +149,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                   const teamSize = teamAPlayers.length;
                   // 2v2: una riga, 3v3: due righe (2 sopra, 1 sotto centrato)
                   if (isBeachVolley && teamSize === 2) {
-                    // Una sola riga
+                    // Una colonna
                     return (
-                      <View style={{ flexDirection: 'row' }}>
+                      <View style={{ flexDirection: 'column' }}>
                         {Array(2).fill(null).map((_, idx) => {
                           const player = teamAPlayers[idx];
                           const hasPlayer = idx < teamAPlayers.length;
@@ -161,14 +161,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                               style={[
                                 styles.openMatchTeamSlot,
                                 hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
-                                idx > 0 ? { marginLeft: -4 } : null,
+                                idx > 0 ? { marginTop: 8 } : null,
                               ]}
                             >
                               {hasPlayer && player?.user ? (
                                 <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                   <View style={{
                                     borderRadius: 20,
-                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderWidth: player.user?._id === userId ? 1.5 : 0,
                                     borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                     padding: player.user?._id === userId ? 2 : 0,
                                   }}>
@@ -176,7 +176,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                       name={player.user?.name}
                                       surname={player.user?.surname}
                                       avatarUrl={player.user?.avatarUrl}
-                                      size={32}
+                                      size={36}
                                       backgroundColor="#E3F2FD"
                                       textColor="#333"
                                     />
@@ -211,7 +211,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                   <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                     <View style={{
                                       borderRadius: 20,
-                                      borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                      borderWidth: player.user?._id === userId ? 1.5 : 0,
                                       borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                       padding: player.user?._id === userId ? 2 : 0,
                                     }}>
@@ -280,7 +280,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                   <View style={{
                                     borderRadius: 20,
-                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderWidth: player.user?._id === userId ? 1.5 : 0,
                                     borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                     padding: player.user?._id === userId ? 2 : 0,
                                   }}>
@@ -323,7 +323,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                   <View style={{
                                     borderRadius: 20,
-                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderWidth: player.user?._id === userId ? 1.5 : 0,
                                     borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                     padding: player.user?._id === userId ? 2 : 0,
                                   }}>
@@ -442,9 +442,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                   const isBeachVolley = lowerSport.includes('beach') && lowerSport.includes('volley');
                   const teamSize = teamBPlayers.length;
                   if (isBeachVolley && teamSize === 2) {
-                    // Una sola riga
+                    // Una colonna
                     return (
-                      <View style={{ flexDirection: 'row' }}>
+                      <View style={{ flexDirection: 'column' }}>
                         {Array(2).fill(null).map((_, idx) => {
                           const player = teamBPlayers[idx];
                           const hasPlayer = idx < teamBPlayers.length;
@@ -454,7 +454,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                               style={[
                                 styles.openMatchTeamSlot,
                                 hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
-                                idx > 0 ? { marginLeft: -4 } : null,
+                                idx > 0 ? { marginTop: 8 } : null,
                               ]}
                             >
                               {hasPlayer && player?.user ? (
@@ -469,7 +469,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                       name={player.user?.name}
                                       surname={player.user?.surname}
                                       avatarUrl={player.user?.avatarUrl}
-                                      size={32}
+                                      size={36}
                                       backgroundColor="#FFEBEE"
                                       textColor="#333"
                                     />
@@ -504,7 +504,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                   <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                     <View style={{
                                       borderRadius: 20,
-                                      borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                      borderWidth: player.user?._id === userId ? 1.5 : 0,
                                       borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                       padding: player.user?._id === userId ? 2 : 0,
                                     }}>
@@ -573,7 +573,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                   <View style={{
                                     borderRadius: 20,
-                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderWidth: player.user?._id === userId ? 1.5 : 0,
                                     borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                     padding: player.user?._id === userId ? 2 : 0,
                                   }}>
@@ -616,7 +616,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 <Pressable onPress={() => openUserProfile(player.user?._id)}>
                                   <View style={{
                                     borderRadius: 20,
-                                    borderWidth: player.user?._id === userId ? 2.5 : 0,
+                                    borderWidth: player.user?._id === userId ? 1.5 : 0,
                                     borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
                                     padding: player.user?._id === userId ? 2 : 0,
                                   }}>

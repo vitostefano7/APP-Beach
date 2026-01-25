@@ -9,8 +9,9 @@ function formatDate(date: Date) {
 
 export async function generateMatches(players: any[], campi: any[], savedBookings: any[], strutture: any[]) {
   const today = new Date();
-  const pastBookings = savedBookings.filter((b: any) => new Date(b.date) < today);
-  const futureBookings = savedBookings.filter((b: any) => new Date(b.date) >= today);
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // Inizio della giornata di oggi
+  const pastBookings = savedBookings.filter((b: any) => new Date(b.date) < todayStart);
+  const futureBookings = savedBookings.filter((b: any) => new Date(b.date) >= todayStart);
 
   const matches: any[] = [];
   const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
@@ -264,39 +265,6 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       });
       matchCounters.draft++;
     }
-  }
-
-  // ============================================
-  // MATCH PER BOOKING OGGI (draft/completi)
-  // ============================================
-  const todayBookings = savedBookings.filter((b: any) => {
-    const bDate = new Date(b.date);
-    return bDate.toDateString() === today.toDateString();
-  });
-
-  const bookingsWithMatch = matches.map((m) => m.booking.toString());
-  const todayWithoutMatch = todayBookings.filter((b: any) => !bookingsWithMatch.includes(b._id.toString()));
-
-  for (const booking of todayWithoutMatch) {
-    const creator = booking.user;
-    const maxPlayers = getMaxPlayers(booking);
-
-    matches.push({
-      booking: booking._id,
-      createdBy: creator,
-      players: [
-        {
-          user: creator,
-          status: "confirmed",
-          joinedAt: new Date(),
-          respondedAt: new Date(),
-        },
-      ],
-      maxPlayers: maxPlayers,
-      isPublic: false,
-      status: "draft",
-    });
-    matchCounters.draft++;
   }
 
   // Rimuovi score e winner da match non conclusi

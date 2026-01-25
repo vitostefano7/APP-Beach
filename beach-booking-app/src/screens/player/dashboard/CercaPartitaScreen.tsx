@@ -182,6 +182,8 @@ export default function CercaPartitaScreen() {
 
   // Add state to track visited structures
   const [visitedStruttureIds, setVisitedStruttureIds] = useState<string[]>([]);
+  const [playersFilter, setPlayersFilter] = useState<string | null>(null);
+  const [showPlayersPicker, setShowPlayersPicker] = useState(false);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -423,6 +425,26 @@ export default function CercaPartitaScreen() {
     return slots;
   }, []);
 
+  const playersOptions = useMemo(() => {
+    if (sportFilter === "beach_volley") {
+      return ["2v2", "3v3", "4v4"];
+    } else if (sportFilter === "volley") {
+      return ["5v5"];
+    } else {
+      return ["2v2", "3v3", "4v4", "5v5"];
+    }
+  }, [sportFilter]);
+
+  const getMaxPlayersFromFilter = (filter: string) => {
+    switch (filter) {
+      case "2v2": return 4;
+      case "3v3": return 6;
+      case "4v4": return 8;
+      case "5v5": return 10;
+      default: return 0;
+    }
+  };
+
   const filteredMatches = useMemo(() => {
     console.log("🔍 [CercaPartita] Filtro partite - cityFilter:", cityFilter);
     console.log("🔍 [CercaPartita] Città preferita:", preferences?.preferredLocation);
@@ -499,6 +521,14 @@ export default function CercaPartitaScreen() {
       if (sportFilter) {
         const matchSport = normalizeSport(match.booking?.campo?.sport);
         if (matchSport !== sportFilter) {
+          return false;
+        }
+      }
+
+      // Filtro giocatori
+      if (playersFilter) {
+        const expectedMax = getMaxPlayersFromFilter(playersFilter);
+        if (match.maxPlayers !== expectedMax) {
           return false;
         }
       }
@@ -602,7 +632,7 @@ export default function CercaPartitaScreen() {
       const dateB = parseMatchStart(b)?.getTime() ?? 0;
       return dateA - dateB;
     });
-  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences, manualCityCoords, visitedStruttureIds]);
+  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences, manualCityCoords, visitedStruttureIds, playersFilter]);
 
   // Debounced city suggestion fetch
   const fetchCitySuggestions = useCallback(async (text: string) => {
@@ -878,6 +908,37 @@ export default function CercaPartitaScreen() {
             </Pressable>
           )}
         </Pressable>
+
+        <Pressable
+          style={[
+            styles.filterChip,
+            playersFilter && styles.filterChipActive,
+          ]}
+          onPress={() => setShowPlayersPicker(true)}
+        >
+          <Ionicons 
+            name="people" 
+            size={14} 
+            color={playersFilter ? "white" : "#2196F3"} 
+          />
+          <Text style={[
+            styles.filterChipText,
+            playersFilter && styles.filterChipTextActive,
+          ]}>
+            {playersFilter || "#giocatori"}
+          </Text>
+          {playersFilter && (
+            <Pressable
+              style={styles.filterChipClear}
+              onPress={(event) => {
+                event.stopPropagation();
+                setPlayersFilter(null);
+              }}
+            >
+              <Ionicons name="close" size={12} color="white" />
+            </Pressable>
+          )}
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -1048,11 +1109,14 @@ export default function CercaPartitaScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Cerca una partita</Text>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerTop}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color="#333" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Cerca una partita</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        {renderFilters()}
       </View>
 
       {error ? (
@@ -1175,7 +1239,6 @@ export default function CercaPartitaScreen() {
                     )}
                   </View>
                 )}
-                {renderFilters()}
               </>
             }
             refreshControl={
@@ -1302,11 +1365,54 @@ export default function CercaPartitaScreen() {
                   Volley
                 </Text>
               </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showPlayersPicker}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowPlayersPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPlayersPicker(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Scegli formato</Text>
+              <Pressable onPress={() => setShowPlayersPicker(false)}>
+                <Ionicons name="close" size={22} color="#333" />
+              </Pressable>
+            </View>
+
+            <View style={{ gap: 10 }}>
+              {playersOptions.map((option) => (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.timeSlot,
+                    playersFilter === option && styles.timeSlotActive,
+                  ]}
+                  onPress={() => {
+                    setPlayersFilter(option);
+                    setShowPlayersPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.timeSlotText,
+                      playersFilter === option && styles.timeSlotTextActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              ))}
               <Pressable
                 style={styles.timeSlot}
                 onPress={() => {
-                  setSportFilter(null);
-                  setShowSportPicker(false);
+                  setPlayersFilter(null);
+                  setShowPlayersPicker(false);
                 }}
               >
                 <Text style={styles.timeSlotText}>Rimuovi filtro</Text>
@@ -1394,13 +1500,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
+    flexDirection: "column",
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   backButton: {
     width: 40,
@@ -1431,11 +1542,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   filtersContainer: {
-    backgroundColor: "white",
-    paddingVertical: 12,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingVertical: 8,
   },
   filtersScroll: {
     paddingHorizontal: 16,
