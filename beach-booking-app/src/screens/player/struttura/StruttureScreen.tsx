@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
@@ -381,9 +381,9 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   );
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !preferencesLoaded) return;
     loadStrutture();
-  }, [token, loadStrutture]);
+  }, [token, loadStrutture, preferencesLoaded]);
 
   const loadFavorites = useCallback(async () => {
     try {
@@ -715,7 +715,8 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
         <View style={styles.tagsRow}>
           {item.sports?.slice(0, 2).map((sport, idx) => (
-            <View key={idx} style={styles.sportTag}>
+            <View key={idx} style={[styles.sportTag, { flexDirection: 'row', alignItems: 'center' }]}>
+              <FontAwesome5 name="volleyball-ball" size={12} color="#666" style={{ marginRight: 5 }} />
               <Text style={styles.sportTagText}>{sport}</Text>
             </View>
           ))}
@@ -857,19 +858,30 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               Filtri attivi: {activeFiltersCount}
             </Text>
           </View>
-          {activeCity && activeRadius ? (
-            <View style={styles.locationBadge}>
-              <Ionicons name="location" size={14} color="#2979ff" />
-              <Text style={styles.locationBadgeText}>
-                {activeCity} ({activeRadius} km)
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.locationBadgeAll}>
-              <Ionicons name="globe-outline" size={14} color="#4CAF50" />
-              <Text style={styles.locationBadgeTextAll}>Tutta Italia</Text>
-            </View>
-          )}
+          {(() => {
+            console.log('🔍 DEBUG LABEL:', {
+              filtersCity: filters.city,
+              activeCity,
+              activeRadius,
+              userClearedCity,
+              prefCity: preferencesRef.current?.preferredLocation?.city
+            });
+            const shouldShowCity = filters.city;
+            console.log('Should show city:', shouldShowCity, 'filters.city truthy:', !!filters.city);
+            return shouldShowCity ? (
+              <View style={styles.locationBadge}>
+                <Ionicons name="location" size={14} color="#2979ff" />
+                <Text style={styles.locationBadgeText}>
+                  {filters.city}{activeRadius ? ` (${activeRadius} km)` : ''}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.locationBadgeAll}>
+                <Ionicons name="globe-outline" size={14} color="#4CAF50" />
+                <Text style={styles.locationBadgeTextAll}>Tutta Italia</Text>
+              </View>
+            );
+          })()}
         </View>
       </View>
     </>
@@ -916,6 +928,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          key={`${filters.city}-${activeCity}-${activeRadius}`}
         />
       ) : (
         <View style={styles.mapContainer}>
