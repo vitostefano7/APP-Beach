@@ -98,7 +98,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
   console.log("NextMatchCard - players length:", booking.players?.length);
 
   return (
-    <Pressable style={styles.nextMatchCard} onPress={onPress}>
+    <Pressable style={[styles.nextMatchCard, matchInProgress && { borderWidth: 2, borderColor: '#4CAF50' }]} onPress={onPress}>
       {/* Immagine in alto */}
       <View style={styles.matchImageContainer}>
         {booking.campo?.struttura?.images?.[0] && (
@@ -111,12 +111,13 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
         
         <View style={[
           styles.matchTimeBadge,
-          matchInProgress && { backgroundColor: 'rgba(76, 175, 80, 0.95)' }
+          matchInProgress && { backgroundColor: '#4CAF50' }
         ]}>
           {matchInProgress ? (
-            <Text style={styles.matchTimeText}>IN CORSO</Text>
+            <Text style={[styles.matchTimeText, { color: 'white' }]}>IN CORSO</Text>
           ) : (
-            <Text style={styles.matchTimeText}>
+
+            <Text style={[styles.matchTimeText, { color: 'white' }]}>
               {displayDate === "Oggi" || displayDate === "Domani"
                 ? `Tra ${daysUntil === 0 ? '24' : daysUntil === 1 ? '24' : daysUntil * 24}h`
                 : `Tra ${daysUntil}g`}
@@ -131,7 +132,10 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
           {/* Data, orario e location */}
           <View style={styles.matchInfoLeft}>
             <View style={styles.matchInfoSection}>
-              <Text style={styles.matchDay}>{displayDate}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginRight: 4 }} />
+                <Text style={styles.matchDay}>{displayDate}</Text>
+              </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={16} color="#666" style={{ marginRight: 4 }} />
                 <Text style={styles.matchTime}>
@@ -144,35 +148,69 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
             <View style={styles.matchLocation}>
               <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 4 }} />
               <Text style={styles.matchLocationText}>
-                {booking.campo?.struttura?.name}, {booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'}
+                {booking.campo?.struttura?.name}{'\n'}{booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'} {booking.campo?.struttura?.location?.city || ''}
               </Text>
             </View>
           </View>
 
           {/* Avatar partecipanti */}
           {booking.players && booking.players.length > 0 ? (
-            <View style={styles.playersAvatarContainer}>
-              {booking.players.slice(0, 4).map((player: any, index: number) => (
-                <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - index }]}>
-                  {player.user?.avatarUrl ? (
-                    <Image 
-                      source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
-                      <Text style={styles.avatarInitial}>
-                        {player.user?.name?.charAt(0).toUpperCase() || '?'}
-                      </Text>
+            <View style={[styles.playersAvatarContainer, { flexDirection: 'column' }]}>
+              {(() => {
+                const totalPlayers = booking.players.length;
+                const displayPlayers = booking.players.slice(0, Math.min(totalPlayers, 8));
+                const displayCount = displayPlayers.length;
+                const firstRowCount = displayCount <= 4 ? displayCount : Math.ceil(displayCount / 2);
+                const secondRowCount = displayCount - firstRowCount;
+                
+                return (
+                  <>
+                    <View style={{ flexDirection: 'row' }}>
+                      {displayPlayers.slice(0, firstRowCount).map((player: any, index: number) => (
+                        <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - index }]}>
+                          {player.user?.avatarUrl ? (
+                            <Image 
+                              source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
+                              style={styles.avatarImage}
+                            />
+                          ) : (
+                            <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
+                              <Text style={styles.avatarInitial}>
+                                {player.user?.name?.charAt(0).toUpperCase() || '?'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
                     </View>
-                  )}
-                </View>
-              ))}
-              {booking.players.length > 4 && (
-                <View style={[styles.playerAvatar, styles.morePlayersAvatar]}>
-                  <Text style={styles.morePlayersText}>+{booking.players.length - 4}</Text>
-                </View>
-              )}
+                    {secondRowCount > 0 && (
+                      <View style={{ flexDirection: 'row' }}>
+                        {displayPlayers.slice(firstRowCount).map((player: any, index: number) => (
+                          <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - (index + firstRowCount) }]}>
+                            {player.user?.avatarUrl ? (
+                              <Image 
+                                source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
+                                style={styles.avatarImage}
+                              />
+                            ) : (
+                              <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
+                                <Text style={styles.avatarInitial}>
+                                  {player.user?.name?.charAt(0).toUpperCase() || '?'}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                        {totalPlayers > 8 && (
+                          <View style={[styles.playerAvatar, styles.morePlayersAvatar]}>
+                            <Text style={styles.morePlayersText}>+{totalPlayers - 8}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
             </View>
           ) : null}
         </View>

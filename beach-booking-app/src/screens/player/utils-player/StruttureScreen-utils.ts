@@ -24,6 +24,7 @@ export type Struttura = {
   distance?: number;
   isCostSplittingEnabled?: boolean;
   hasOpenGames?: boolean;
+  openGamesCount?: number;
 };
 
 export type Cluster = {

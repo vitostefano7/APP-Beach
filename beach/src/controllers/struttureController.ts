@@ -3,6 +3,7 @@ import Struttura from "../models/Strutture";
 import Campo from "../models/Campo";
 import Booking from "../models/Booking";
 import CampoCalendarDay from "../models/campoCalendarDay";
+import Match from "../models/Match";
 import { AuthRequest } from "../middleware/authMiddleware";
 import axios from "axios";
 import cloudinary from "../config/cloudinary";
@@ -140,12 +141,25 @@ export const getStrutture = async (req: Request, res: Response) => {
 
         const indoor = campi.some((c) => c.indoor);
 
+        // Conta le partite aperte per questa struttura
+        const campoIds = campi.map(c => c._id);
+        const openMatchesCount = await Match.countDocuments({
+          booking: {
+            $in: await Booking.find({
+              campo: { $in: campoIds },
+              status: 'confirmed'
+            }).distinct('_id')
+          },
+          status: 'open'
+        });
+
         return {
           ...struttura,
           sports,
           pricePerHour,
           indoor,
-          hasOpenGames: campi.length > 0,
+          hasOpenGames: openMatchesCount > 0,
+          openGamesCount: openMatchesCount,
         };
       })
     );

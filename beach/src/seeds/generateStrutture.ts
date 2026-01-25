@@ -85,6 +85,26 @@ export async function generateStrutture(owners: any[]) {
   }
 
   console.log(`👷 Creazione ${struttureData.length} strutture statiche...`);
+
+  // Garantisci che ogni owner abbia almeno una struttura con isCostSplittingEnabled: true
+  const ownerMap = new Map<string, any[]>();
+  struttureData.forEach((struttura, index) => {
+    const ownerId = struttura.owner.toString();
+    if (!ownerMap.has(ownerId)) {
+      ownerMap.set(ownerId, []);
+    }
+    ownerMap.get(ownerId)!.push({ struttura, index });
+  });
+
+  for (const [ownerId, ownerStrutture] of ownerMap) {
+    const hasSplitEnabled = ownerStrutture.some(item => item.struttura.isCostSplittingEnabled);
+    if (!hasSplitEnabled) {
+      // Imposta isCostSplittingEnabled: true su una struttura casuale per questo owner
+      const randomIndex = Math.floor(Math.random() * ownerStrutture.length);
+      struttureData[ownerStrutture[randomIndex].index].isCostSplittingEnabled = true;
+    }
+  }
+
   const strutture = await Struttura.insertMany(struttureData);
   console.log(`✅ ${strutture.length} strutture create`);
   return strutture;

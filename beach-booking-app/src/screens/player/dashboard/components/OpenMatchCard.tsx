@@ -99,7 +99,8 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress }) => {
         </View>
         {match.booking?.campo?.struttura?.location?.address && (
           <Text style={styles.openMatchSubtitle} numberOfLines={1}>
-            {match.booking.campo.struttura.location.address}, {match.booking.campo.struttura.location.city}
+            <Ionicons name="location-outline" size={12} color="#666" />
+            {match.booking.campo.struttura.location.address} - {match.booking.campo.struttura.location.city}
           </Text>
         )}
       </View>

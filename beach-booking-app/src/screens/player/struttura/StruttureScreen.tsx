@@ -470,6 +470,25 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const filteredStrutture = filterStrutture(strutture, filters, query);
   const activeFiltersCount = countActiveFilters(filters);
 
+  // Log delle strutture filtrate con dettagli
+  console.log(`📋 Strutture filtrate: ${filteredStrutture.length}/${strutture.length}`);
+  if (filteredStrutture.length > 0) {
+    console.log("=== DETTAGLI STRUTTURE MOSTRATE ===");
+    filteredStrutture.forEach((struttura, index) => {
+      console.log(`${index + 1}. ${struttura.name}`);
+      console.log(`   📍 Città: ${struttura.location.city}`);
+      console.log(`   🏓 Sport: ${struttura.sport || 'N/A'}`);
+      console.log(`   💰 Rating: ${struttura.rating?.average || 'N/A'} (${struttura.rating?.count || 0} recensioni)`);
+      console.log(`   💳 Split Payment: ${struttura.isCostSplittingEnabled ? '✅' : '❌'}`);
+      console.log(`   🎯 Partite Aperte: ${struttura.openGamesCount || 0}`);
+      console.log(`   🖼️ Immagini: ${struttura.images?.length || 0}`);
+      if (struttura.distance !== undefined) {
+        console.log(`   📏 Distanza: ${struttura.distance.toFixed(1)} km`);
+      }
+      console.log('');
+    });
+  }
+
   const getMarkersForZoom = () => {
     const zoomLevel = region.latitudeDelta;
     

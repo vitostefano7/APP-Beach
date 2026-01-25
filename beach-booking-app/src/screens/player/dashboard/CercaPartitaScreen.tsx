@@ -1,4 +1,16 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+// Calcola la distanza tra due coordinate geografiche (Haversine formula)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Raggio della Terra in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 // Debounce utility
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
   let timeout: ReturnType<typeof setTimeout>;
@@ -14,12 +26,12 @@ import {
   FlatList,
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   Alert,
   TextInput,
   Modal,
   ScrollView,
 } from "react-native";
+import { RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -32,6 +44,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import Avatar from "../../../components/Avatar/Avatar";
 import OpenMatchCard from "./components/OpenMatchCard";
+import { useGeographicMatchFiltering } from './hooks/useGeographicMatchFiltering';
 
 type UserPreferences = {
   preferredLocation?: {
@@ -141,19 +154,6 @@ const getTimeLeft = (item: MatchItem) => {
   return { text, color };
 };
 
-// Calcola distanza tra due punti in km usando formula Haversine
-const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const R = 6371; // Raggio della Terra in km
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
 export default function CercaPartitaScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
@@ -170,24 +170,32 @@ export default function CercaPartitaScreen() {
   const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
   const [isLoadingCitySuggestions, setIsLoadingCitySuggestions] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeFilter, setTimeFilter] = useState<string | null>(null);
   const [sportFilter, setSportFilter] = useState<"beach_volley" | "volley" | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSportPicker, setShowSportPicker] = useState(false);
-  const [isLoadingGPS, setIsLoadingGPS] = useState(false);
   const cityInputRef = useRef<TextInput>(null);
 
-  // Add state to track visited structures
-  const [visitedStruttureIds, setVisitedStruttureIds] = useState<string[]>([]);
   const [playersFilter, setPlayersFilter] = useState<string | null>(null);
   const [showPlayersPicker, setShowPlayersPicker] = useState(false);
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [activeFilterMode, setActiveFilterMode] = useState<'manual' | 'gps' | 'preferred' | 'visited' | 'none'>('none');
   const [activeFilterInfo, setActiveFilterInfo] = useState<string>('');
+
+  // Hook per il filtraggio geografico
+  const {
+    userPreferences,
+    visitedStruttureIds,
+    gpsCoords,
+    isLoadingPreferences,
+    isLoadingGPS,
+    loadUserPreferences,
+    loadVisitedStrutture,
+    requestGPSLocation,
+    filterMatchesByGeography,
+    logFilteredMatchesDetails,
+  } = useGeographicMatchFiltering(token);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -271,48 +279,21 @@ export default function CercaPartitaScreen() {
     }
   }, [token, user?.id]);
 
-  const loadVisitedStrutture = useCallback(async () => {
-    if (!token) return;
 
-    try {
-      console.log("🏟️ [CercaPartita] Caricamento strutture visitate...");
-      const res = await fetch(`${API_URL}/bookings/my?status=completed`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const bookings = await res.json();
-        const struttureIds = new Set<string>();
-
-        (Array.isArray(bookings) ? bookings : bookings.data || []).forEach((booking: any) => {
-          const strutturaId = booking.campo?.struttura?._id || booking.campo?.struttura;
-          if (strutturaId) {
-            struttureIds.add(typeof strutturaId === 'string' ? strutturaId : strutturaId.toString());
-          }
-        });
-
-        const ids = Array.from(struttureIds);
-        setVisitedStruttureIds(ids);
-        console.log(`✅ [CercaPartita] ${ids.length} strutture visitate trovate`);
-      }
-    } catch (error) {
-      console.error("❌ [CercaPartita] Errore caricamento strutture visitate:", error);
-    }
-  }, [token]);
 
   useEffect(() => {
     loadUserPreferences();
     loadVisitedStrutture();
-  }, [token, loadVisitedStrutture]);
+  }, [loadUserPreferences, loadVisitedStrutture]);
 
   useEffect(() => {
     // Chiedi GPS dopo che lo screen è caricato (delay di 500ms)
     const timer = setTimeout(() => {
-      requestLocationAndSetCity();
+      requestGPSLocation();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [requestGPSLocation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -320,86 +301,9 @@ export default function CercaPartitaScreen() {
     }, [loadMatches])
   );
 
-  const requestLocationAndSetCity = async () => {
-    if (!token || cityFilter) return; // Non sovrascrivere se già impostato
 
-    console.log("📍 [CercaPartita] Richiesta posizione GPS...");
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status === "granted") {
-        console.log("✅ [CercaPartita] Permesso GPS concesso");
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        
-        console.log("📍 [CercaPartita] Coordinate GPS:", {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
 
-        // Reverse geocoding per ottenere la città
-        const reverseUrl = 
-          `https://nominatim.openstreetmap.org/reverse?` +
-          `lat=${location.coords.latitude}&` +
-          `lon=${location.coords.longitude}&` +
-          `format=json`;
-        
-        const geoRes = await fetch(reverseUrl, {
-          headers: { 'User-Agent': 'SportBookingApp/1.0' },
-        });
-        
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          const city = geoData.address?.city || 
-                      geoData.address?.town || 
-                      geoData.address?.village;
-          
-          if (city) {
-            setCityFilter(city);
-            setGpsCoords({
-              lat: location.coords.latitude,
-              lng: location.coords.longitude,
-            });
-            console.log("✅ [CercaPartita] Città da GPS impostata:", city);
-          }
-        }
-      } else {
-        console.log("⚠️ [CercaPartita] Permesso GPS negato");
-      }
-    } catch (gpsError) {
-      console.log("⚠️ [CercaPartita] Errore GPS:", gpsError);
-    }
-  };
 
-  const loadUserPreferences = async () => {
-    if (!token) {
-      setIsLoadingPreferences(false);
-      return;
-    }
-
-    try {
-      console.log("📍 [CercaPartita] Caricamento preferenze...");
-      const res = await fetch(`${API_URL}/users/preferences`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const prefs: UserPreferences = await res.json();
-        setPreferences(prefs);
-        
-        // Imposta la città dalle preferenze solo se non è già stata impostata
-        if (prefs.preferredLocation?.city && !cityFilter) {
-          setCityFilter(prefs.preferredLocation.city);
-          console.log("✅ [CercaPartita] Città da preferenze:", prefs.preferredLocation.city);
-        }
-      }
-    } catch (error) {
-      console.error("❌ [CercaPartita] Errore caricamento preferenze:", error);
-    } finally {
-      setIsLoadingPreferences(false);
-    }
-  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -458,7 +362,7 @@ export default function CercaPartitaScreen() {
     console.log("🔍 [CercaPartita] === INIZIO FILTRAGGIO ===");
     console.log("🔍 [CercaPartita] Partite totali da filtrare:", matches.length);
     console.log("🔍 [CercaPartita] Filtri attivi: città=" + (cityFilter || "nessuno") + ", data=" + (dateFilter ? formatDate(dateFilter) : "nessuno") + ", orario=" + (timeFilter || "nessuno") + ", sport=" + (sportFilter || "nessuno") + ", giocatori=" + (playersFilter || "nessuno"));
-    console.log("🔍 [CercaPartita] Città preferita:", preferences?.preferredLocation);
+    console.log("🔍 [CercaPartita] Città preferita:", userPreferences?.preferredLocation);
     console.log("🔍 [CercaPartita] GPS coords:", gpsCoords);
     console.log("🔍 [CercaPartita] Manual coords:", manualCityCoords);
     console.log("🔍 [CercaPartita] Strutture visitate:", visitedStruttureIds.length);
@@ -490,14 +394,14 @@ export default function CercaPartitaScreen() {
       console.log("📍 [CercaPartita] PRIORITÀ 2 - GPS:", gpsCoords, "Raggio: 30km");
     }
     // PRIORITÀ 3: Città preferita (dalle preferenze utente)
-    else if (preferences?.preferredLocation?.lat && preferences?.preferredLocation?.lng) {
-      referenceLat = preferences.preferredLocation.lat;
-      referenceLng = preferences.preferredLocation.lng;
-      searchRadius = preferences.preferredLocation.radius || 30;
+    else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
+      referenceLat = userPreferences.preferredLocation.lat;
+      referenceLng = userPreferences.preferredLocation.lng;
+      searchRadius = userPreferences.preferredLocation.radius || 30;
       filterMode = 'preferred';
       setActiveFilterMode('preferred');
-      setActiveFilterInfo(`${preferences.preferredLocation.city} (${searchRadius} km - città preferita)`);
-      console.log("📍 [CercaPartita] PRIORITÀ 3 - Città preferita:", preferences.preferredLocation.city, "Raggio:", searchRadius, "km");
+      setActiveFilterInfo(`${userPreferences.preferredLocation.city} (${searchRadius} km - città preferita)`);
+      console.log("📍 [CercaPartita] PRIORITÀ 3 - Città preferita:", userPreferences.preferredLocation.city, "Raggio:", searchRadius, "km");
     }
     // FALLBACK: Strutture visitate (se nessuna posizione disponibile)
     else if (visitedStruttureIds.length > 0) {
@@ -540,9 +444,9 @@ export default function CercaPartitaScreen() {
             if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
               return false;
             }
-          } else if (preferences?.preferredLocation?.city) {
+          } else if (userPreferences?.preferredLocation?.city) {
             // Se usiamo città preferita, controlla la corrispondenza testuale
-            if (!structureCity.toLowerCase().includes(preferences.preferredLocation.city.toLowerCase())) {
+            if (!structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
               return false;
             }
           } else {
@@ -627,8 +531,8 @@ export default function CercaPartitaScreen() {
             if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
               return false;
             }
-          } else if (preferences?.preferredLocation?.city) {
-            if (!structureCity.toLowerCase().includes(preferences.preferredLocation.city.toLowerCase())) {
+          } else if (userPreferences?.preferredLocation?.city) {
+            if (!structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
               return false;
             }
           } else {
@@ -665,8 +569,8 @@ export default function CercaPartitaScreen() {
     }
 
     // Ordinamento: se NON c'è filtro città manuale, ordina mettendo prima i match della città preferita
-    if (!cityFilter.trim() && preferences?.preferredLocation?.city) {
-      const preferredCity = preferences.preferredLocation.city.toLowerCase();
+    if (!cityFilter.trim() && userPreferences?.preferredLocation?.city) {
+      const preferredCity = userPreferences.preferredLocation.city.toLowerCase();
       console.log("📍 [CercaPartita] Ordinamento con città preferita:", preferredCity);
       
       const sorted = filtered.sort((a, b) => {
@@ -696,9 +600,24 @@ export default function CercaPartitaScreen() {
       const dateB = parseMatchStart(b)?.getTime() ?? 0;
       return dateA - dateB;
     });
+    
+    // Log dettagliato per ogni card mostrata
+    console.log(`📋 Dettagli match cercapartita mostrati (${finalResult.length}):`);
+    finalResult.forEach((match, index) => {
+      const confirmedPlayers = getPlayersCount(match.players, 'confirmed');
+      const maxPlayers = match.maxPlayers || 0;
+      const struttura = match.booking?.campo?.struttura?.name || 'N/A';
+      const citta = match.booking?.campo?.struttura?.location?.city || 'N/A';
+      const dataOra = match.booking?.date && match.booking?.startTime ? 
+        `${match.booking.date} ${match.booking.startTime}` : 'N/A';
+      
+      console.log(`   ${index + 1}. Match ${match._id?.slice(-6)} - ${struttura} (${citta}) - ${dataOra} - ${confirmedPlayers}/${maxPlayers} giocatori`);
+      console.log(`      ✅ Criteri soddisfatti: ${filterMode === 'manual' ? 'città manuale' : filterMode === 'gps' ? 'posizione GPS' : filterMode === 'preferred' ? 'città preferita' : filterMode === 'visited' ? 'strutture visitate' : 'nessun filtro geografico'}`);
+    });
+    
     console.log(`✅ [CercaPartita] === FINE FILTRAGGIO === Partite finali mostrate: ${finalResult.length}`);
     return finalResult;
-  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, preferences, manualCityCoords, visitedStruttureIds, playersFilter]);
+  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, userPreferences, manualCityCoords, visitedStruttureIds, playersFilter]);
 
   // Debounced city suggestion fetch
   const fetchCitySuggestions = useCallback(async (text: string) => {
@@ -781,59 +700,14 @@ export default function CercaPartitaScreen() {
 
   const handleUseGPS = async () => {
     console.log("📍 [CercaPartita] Richiesta posizione GPS dall'input...");
-    setIsLoadingGPS(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status === "granted") {
-        console.log("✅ [CercaPartita] Permesso GPS concesso");
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        
-        console.log("📍 [CercaPartita] Coordinate GPS:", {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
-
-        // Reverse geocoding per ottenere la città
-        const reverseUrl = 
-          `https://nominatim.openstreetmap.org/reverse?` +
-          `lat=${location.coords.latitude}&` +
-          `lon=${location.coords.longitude}&` +
-          `format=json`;
-        
-        const geoRes = await fetch(reverseUrl, {
-          headers: { 'User-Agent': 'SportBookingApp/1.0' },
-        });
-        
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          const city = geoData.address?.city || 
-                      geoData.address?.town || 
-                      geoData.address?.village;
-          
-          if (city) {
-            setTempCity(city);
-            setCityFilter(city);
-            setGpsCoords({
-              lat: location.coords.latitude,
-              lng: location.coords.longitude,
-            });
-            setManualCityCoords(null); // Reset città manuale quando uso GPS
-            setIsCityEditing(false);
-            console.log("✅ [CercaPartita] Città da GPS impostata:", city);
-          }
-        }
-      } else {
-        Alert.alert("Permesso GPS negato", "Per usare la posizione GPS devi consentire l'accesso alla posizione.");
-        console.log("⚠️ [CercaPartita] Permesso GPS negato");
-      }
+      await requestGPSLocation();
+      setManualCityCoords(null); // Reset manual city when using GPS
+      setIsCityEditing(false);
+      // Optionally, set city name if available from GPS (not handled here)
     } catch (gpsError) {
       Alert.alert("Errore GPS", "Impossibile ottenere la posizione. Riprova.");
       console.log("⚠️ [CercaPartita] Errore GPS:", gpsError);
-    } finally {
-      setIsLoadingGPS(false);
     }
   };
 
@@ -872,7 +746,7 @@ export default function CercaPartitaScreen() {
                 event.stopPropagation();
                 setCityFilter("");
                 setManualCityCoords(null);
-                setGpsCoords(null); // Reset anche GPS coords
+                // GPS coords are managed by the hook, no manual reset
               }}
             >
               <Ionicons name="close" size={12} color="white" />
@@ -1182,9 +1056,8 @@ export default function CercaPartitaScreen() {
                 )}
               </>
             }
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
+            onRefresh={onRefresh}
+            refreshing={!!refreshing}
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Ionicons name="search-outline" size={56} color="#ccc" />

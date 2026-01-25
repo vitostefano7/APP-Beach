@@ -124,6 +124,9 @@ export default function ProfileScreen() {
       console.log("Dati profilo ricevuti:", json);
       console.log("avatarUrl dal backend:", json.user?.avatarUrl);
 
+      // ✅ Log completo delle informazioni utente
+      console.log("Informazioni utente complete:", JSON.stringify(json.user, null, 2));
+
       const parsed: ProfileResponse = {
         profile: {
           matchesPlayed: json.profile?.matchesPlayed ?? 0,

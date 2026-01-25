@@ -1,7 +1,6 @@
 import React, { useState, useContext, useRef, useCallback } from 'react';
 import {
   ScrollView,
-  RefreshControl,
   View,
   Pressable,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import { useSuggestedFriends } from './hooks/useSuggestedFriends';
+import { useGeographicMatchFiltering } from './hooks/useGeographicMatchFiltering';
 import Header from "./components/Header";
 // import StatsRow from "./components/StatsRow";
 import NextMatchCard from "./components/NextMatchCard";
@@ -90,6 +90,17 @@ export default function HomeScreen() {
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  
+  // Hook per il filtraggio geografico
+  const {
+    userPreferences,
+    loadUserPreferences,
+    loadVisitedStrutture,
+    requestGPSLocation,
+    filterMatchesByGeography,
+    logFilteredMatchesDetails,
+  } = useGeographicMatchFiltering(token);
   
   const friendsCarouselRef = useRef<FlatList>(null);
 
@@ -113,6 +124,10 @@ export default function HomeScreen() {
       console.log("HomeScreen focus - caricamento dati...");
       loadDashboardData();
       refreshSuggestions();
+      // Richiedi GPS dopo un breve delay
+      setTimeout(() => {
+        requestGPSLocation();
+      }, 500);
     }, [])
   );
 
@@ -123,6 +138,16 @@ export default function HomeScreen() {
       console.log("User ID:", user?.id);
       console.log("User name:", user?.name);
 
+      // Carica prima le preferenze e le strutture visitate
+      await Promise.all([
+        loadUserPreferences(),
+        loadVisitedStrutture(),
+      ]);
+      
+      console.log("✅ Preferenze e strutture caricate, ora carico i match...");
+      setPreferencesLoaded(true);
+
+      // Poi carica tutto il resto inclusi i match aperti
       await Promise.all([
         loadNextBooking(),
         loadPendingInvites(),
@@ -333,116 +358,107 @@ export default function HomeScreen() {
 
   const loadOpenMatches = async () => {
     try {
+      console.log("🔄 [Dashboard] Inizio caricamento match aperti...");
+      
       const res = await fetch(`${API_URL}/matches?status=open`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
-        
-        const now = new Date();
-        const filtered = rawMatches.filter((match: any) => {
-          if (!match?._id || match.status && ['completed', 'cancelled', 'full'].includes(match.status)) return false;
-          if (match.isPublic === false) return false;
+      if (!res.ok) {
+        console.error(`❌ [Dashboard] Errore risposta server: ${res.status}`);
+        setOpenMatches([]);
+        return;
+      }
 
-          const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
-          const maxPlayers = match.maxPlayers || 0;
-          if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
+      const data = await res.json();
+      const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
+      
+      console.log(`✅ [Dashboard] ${rawMatches.length} match grezzi trovati`);
 
-          const start = match.booking?.date && match.booking?.startTime ? 
-            new Date(`${match.booking.date}T${match.booking.startTime}`) : null;
-          if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) return false;
+      if (rawMatches.length === 0) {
+        console.log("ℹ️ [Dashboard] Nessun match aperto dal server");
+        setOpenMatches([]);
+        return;
+      }
 
-          const alreadyJoined = match.players?.some((p: any) => p.user?._id === user?.id);
-          if (alreadyJoined) return false;
+      const now = new Date();
+      const filtered = rawMatches.filter((match: any) => {
+        if (!match?._id || match.status && ['completed', 'cancelled', 'full'].includes(match.status)) return false;
+        if (match.isPublic === false) return false;
 
-          return true;
-        });
+        const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
+        const maxPlayers = match.maxPlayers || 0;
+        if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
 
-        // Carica città preferita e strutture dove ha già giocato
-        let preferredCity = '';
-        let playedStructures: string[] = [];
+        const start = match.booking?.date && match.booking?.startTime ? 
+          new Date(`${match.booking.date}T${match.booking.startTime}`) : null;
+        if (start && start.getTime() - now.getTime() <= 30 * 60 * 1000) return false;
 
-        try {
-          // Carica preferenze utente
-          const prefsRes = await fetch(`${API_URL}/users/preferences`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (prefsRes.ok) {
-            const prefs = await prefsRes.json();
-            preferredCity = prefs.preferredLocation?.city?.toLowerCase() || '';
-            console.log('📍 Città preferita caricata:', preferredCity || 'NESSUNA');
-          }
+        const alreadyJoined = match.players?.some((p: any) => p.user?._id === user?.id);
+        if (alreadyJoined) return false;
 
-          // Carica storico match per ottenere strutture dove ha già giocato
-          const historyRes = await fetch(`${API_URL}/matches/me?limit=50`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (historyRes.ok) {
-            const historyData = await historyRes.json();
-            const historyMatches = Array.isArray(historyData) ? historyData : 
-                                  Array.isArray(historyData.matches) ? historyData.matches : [];
-            playedStructures = [...new Set(
-              historyMatches
-                .filter((m: any) => m.booking?.campo?.struttura?._id)
-                .map((m: any) => m.booking.campo.struttura._id)
-            )];
-            console.log('🏟️ Strutture dove hai giocato:', playedStructures.length);
-          }
-        } catch (err) {
-          console.warn('Errore caricamento preferenze/storico per ordinamento:', err);
-        }
+        return true;
+      });
 
-        // Filtra solo partite nella città preferita o nelle strutture già visitate
-        const priorityMatches = filtered.filter((match: any) => {
-          const city = (match.booking?.campo?.struttura?.location?.city || '').toLowerCase();
-          const structureId = match.booking?.campo?.struttura?._id || '';
-          
-          const isPreferredCity = preferredCity && city.includes(preferredCity);
-          const isPlayedStructure = playedStructures.includes(structureId);
-          
-          return isPreferredCity || isPlayedStructure;
-        });
+      console.log(`✅ [Dashboard] Partite dopo filtro iniziale: ${filtered.length}`);
 
-        console.log(`🔍 Partite filtrate: ${priorityMatches.length} su ${filtered.length} totali`);
-        console.log(`  - Città preferita: ${preferredCity || 'nessuna'}`);
-        console.log(`  - Strutture visitate: ${playedStructures.length}`);
+      if (filtered.length === 0) {
+        console.log("ℹ️ [Dashboard] Nessun match disponibile dopo filtri base");
+        setOpenMatches([]);
+        return;
+      }
 
-        // Ordinamento per data
-        const sorted = priorityMatches.sort((a: any, b: any) => {
-          const cityA = (a.booking?.campo?.struttura?.location?.city || '').toLowerCase();
-          const cityB = (b.booking?.campo?.struttura?.location?.city || '').toLowerCase();
-          const structureA = a.booking?.campo?.struttura?._id || '';
-          const structureB = b.booking?.campo?.struttura?._id || '';
+      // Applica filtro geografico usando il hook
+      const geoResult = filterMatchesByGeography(filtered, 'Dashboard');
 
-          // 1. Prima città preferita
-          const aIsPreferredCity = preferredCity && cityA.includes(preferredCity);
-          const bIsPreferredCity = preferredCity && cityB.includes(preferredCity);
-          
-          if (aIsPreferredCity && !bIsPreferredCity) return -1;
-          if (!aIsPreferredCity && bIsPreferredCity) return 1;
+      console.log(`📍 [Dashboard] Filtro geografico applicato: mode=${geoResult.filterMode}, raggio=${geoResult.searchRadius}km`);
+      console.log(`📍 [Dashboard] Match dopo filtro geo: ${geoResult.filteredMatches.length}`);
 
-          // 2. Poi strutture dove ha già giocato
-          const aIsPlayedStructure = playedStructures.includes(structureA);
-          const bIsPlayedStructure = playedStructures.includes(structureB);
-          
-          if (aIsPlayedStructure && !bIsPlayedStructure) return -1;
-          if (!aIsPlayedStructure && bIsPlayedStructure) return 1;
-
-          // 3. Ordina per data
+      // Se il filtro geografico ha restituito 0 risultati, potrebbe essere un problema
+      if (geoResult.filteredMatches.length === 0 && filtered.length > 0) {
+        console.warn("⚠️ [Dashboard] ATTENZIONE: Il filtro geografico ha escluso tutti i match!");
+        console.warn("⚠️ [Dashboard] Possibile causa: preferenze non caricate o nessuna struttura visitata");
+        // Fallback: mostra almeno qualche match anche senza filtro geografico
+        console.log("🔄 [Dashboard] Fallback: mostro i primi 5 match senza filtro geografico");
+        const fallbackMatches = filtered.slice(0, 5).sort((a, b) => {
           const dateA = a.booking?.date && a.booking?.startTime ? 
             new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
           const dateB = b.booking?.date && b.booking?.startTime ? 
             new Date(`${b.booking.date}T${b.booking.startTime}`).getTime() : 0;
           return dateA - dateB;
         });
-
-        setOpenMatches(sorted.slice(0, 10));
-        console.log(`✅ ${sorted.length} partite prioritarie caricate`);
+        setOpenMatches(fallbackMatches);
+        return;
       }
+
+      // Ordinamento per data
+      const sorted = geoResult.filteredMatches.sort((a, b) => {
+        const dateA = a.booking?.date && a.booking?.startTime ? 
+          new Date(`${a.booking.date}T${a.booking.startTime}`).getTime() : 0;
+        const dateB = b.booking?.date && b.booking?.startTime ? 
+          new Date(`${b.booking.date}T${b.booking.startTime}`).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      // Log della logica di filtraggio e ordinamento
+      console.log(`🎯 [Dashboard] Logica match aperti suggeriti:`);
+      console.log(`   - Filtrati: partite aperte, pubbliche, non piene, non già iniziate (<30min), non già joined`);
+      console.log(`   - Filtrati geograficamente: ${geoResult.filterMode} (raggio: ${geoResult.searchRadius}km)`);
+      console.log(`   - Ordinati: per data crescente`);
+      console.log(`   - Mostrati: primi 10 match`);
+
+      const finalMatches = sorted.slice(0, 10);
+      setOpenMatches(finalMatches);
+      
+      // Log dettagliato per ogni card mostrata
+      logFilteredMatchesDetails(finalMatches, 'dashboard', geoResult.filterMode, geoResult.searchRadius);
+      
+      console.log(`✅ [Dashboard] ${finalMatches.length} partite caricate e visualizzate`);
     } catch (error) {
-      console.error('Errore caricamento partite aperte:', error);
+      console.error('❌ [Dashboard] Errore caricamento partite aperte:', error);
+      console.error('❌ [Dashboard] Stack:', (error as Error).stack);
+      // In caso di errore, assicurati che la lista sia vuota
+      setOpenMatches([]);
     }
   };
 
@@ -789,11 +805,13 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
         contentContainerStyle={{ paddingBottom: 100 }}
       >
+        {refreshing && (
+          <View style={{ paddingVertical: 10, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color="#2196F3" />
+          </View>
+        )}
         <Header user={user} pendingInvites={validPendingInvites} />
 
         {__DEV__ && validPendingInvites.length > 0 && (
@@ -906,19 +924,19 @@ export default function HomeScreen() {
             <EmptyStateCard
               icon="search-outline"
               title={
-                user?.preferences?.preferredLocation?.city 
-                  ? `Non ci sono partite aperte intorno a ${user.preferences.preferredLocation.city} o in strutture in cui hai già giocato`
+                userPreferences?.preferredLocation?.city 
+                  ? `Non ci sono partite aperte intorno a ${userPreferences.preferredLocation.city} o in strutture in cui hai già giocato`
                   : "Non ci sono partite aperte in strutture in cui hai già giocato"
               }
               subtitle={
-                user?.preferences?.preferredLocation?.city
+                userPreferences?.preferredLocation?.city
                   ? "Cerca tra tutte le partite disponibili"
                   : "Cerca tra tutte le partite o imposta una città preferita"
               }
               buttonText="Cerca partite"
               onPress={() => navigation.navigate('CercaPartita')}
-              secondaryButtonText={!user?.preferences?.preferredLocation?.city ? "Preferenze" : undefined}
-              onSecondaryPress={!user?.preferences?.preferredLocation?.city ? () => navigation.navigate('Preferenze') : undefined}
+              secondaryButtonText={!userPreferences?.preferredLocation?.city ? "Preferenze" : undefined}
+              onSecondaryPress={!userPreferences?.preferredLocation?.city ? () => navigation.navigate('Preferenze') : undefined}
               type="match"
             />
           )}
