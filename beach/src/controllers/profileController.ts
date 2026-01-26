@@ -455,15 +455,32 @@ export const changePassword = async (
  */
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const { q, filter } = req.query;
+    const { q, filter, followedBy } = req.query;
     const currentUserId = req.user!.id;
+    const currentUserRole = req.user!.role;
 
     if (!q || typeof q !== "string" || q.length < 2) {
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
     }
 
+    // Parse followedBy as array of user IDs
+    let followedByIds: string[] = [];
+    if (followedBy) {
+      if (Array.isArray(followedBy)) {
+        followedByIds = followedBy.map(id => id.toString());
+      } else if (typeof followedBy === 'string') {
+        followedByIds = followedBy.split(',').map(id => id.trim());
+      }
+    }
+
+    // Ricerca più flessibile: username, name, surname, o email
     let query: any = {
-      username: { $regex: q.toLowerCase(), $options: "i" },
+      $or: [
+        { username: { $regex: q.toLowerCase(), $options: "i" } },
+        { name: { $regex: q, $options: "i" } },
+        { surname: { $regex: q, $options: "i" } },
+        { email: { $regex: q.toLowerCase(), $options: "i" } },
+      ],
       isActive: true,
       role: { $ne: 'owner' }, // Escludi owner dalla ricerca
     };
@@ -484,6 +501,12 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     } else if (filter === 'public') {
       // Solo profili pubblici
       query.profilePrivacy = 'public';
+    } else if (filter === 'all' && currentUserRole === 'owner') {
+      // Gli owner possono vedere tutti i giocatori per aggiungerli ai match
+      // Non aggiungiamo restrizioni sul profilePrivacy
+    } else if (currentUserRole === 'owner') {
+      // Gli owner possono vedere tutti i giocatori per aggiungerli ai match
+      // Non aggiungiamo restrizioni sul profilePrivacy
     } else {
       // Default: profili pubblici se nessun filtro specificato
       query.profilePrivacy = 'public';
@@ -533,10 +556,14 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
           targetUserFriendIds.includes(id)
         ).length;
 
+        // Check if user is followed by any of the followedBy users
+        const isFollowed = followedByIds.length > 0 && targetUserFriendIds.some(id => followedByIds.includes(id));
+
         return {
           ...user.toObject(),
           commonMatchesCount,
-          mutualFriendsCount
+          mutualFriendsCount,
+          isFollowed
         };
       })
     );

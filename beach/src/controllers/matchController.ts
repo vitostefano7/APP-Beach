@@ -172,9 +172,25 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Solo createdBy può invitare
-    if (match.createdBy.toString() !== userId) {
-      return res.status(403).json({ message: "Solo il creatore può invitare" });
+    // Controlla se l'utente è il creatore o l'owner della struttura
+    const isCreator = match.createdBy.toString() === userId;
+    
+    // Trova la prenotazione per ottenere l'owner della struttura
+    const booking = await Booking.findById(match.booking).populate({
+      path: 'campo',
+      populate: {
+        path: 'struttura'
+      }
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Prenotazione non trovata" });
+    }
+    
+    const strutturaOwner = (booking.campo as any).struttura.owner.toString();
+    const isOwner = strutturaOwner === userId;
+    
+    if (!isCreator && !isOwner) {
+      return res.status(403).json({ message: "Solo il creatore o l'owner della struttura possono invitare" });
     }
 
     // Match deve essere draft o open
@@ -212,15 +228,43 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     }
 
     // Aggiungi player con team opzionale
+    // Se è l'owner ad invitare, aggiungi direttamente come confirmed
+    const playerStatus = isOwner ? "confirmed" : "pending";
+    
     match.players.push({
       user: userToInvite._id,
-      status: "pending",
+      status: playerStatus,
       team: team || undefined,
       joinedAt: new Date(),
     });
 
     await match.save();
     await match.populate("players.user", "username name surname avatarUrl");
+
+    // Invia notifica diversa in base a chi invita
+    if (isOwner) {
+      // Notifica di aggiunta diretta da parte dell'owner
+      await createNotification(
+        userToInvite._id,
+        new mongoose.Types.ObjectId(userId),
+        "match_join",
+        "Aggiunto a una partita",
+        `Sei stato aggiunto a una partita presso ${(booking.campo as any).struttura.name}`,
+        match._id,
+        "Match"
+      );
+    } else {
+      // Notifica di invito normale da parte del creator
+      await createNotification(
+        userToInvite._id,
+        new mongoose.Types.ObjectId(userId),
+        "match_invite",
+        "Invito a partita",
+        `Sei stato invitato a una partita`,
+        match._id,
+        "Match"
+      );
+    }
 
     res.json(match);
   } catch (err) {
@@ -513,9 +557,25 @@ export const removePlayer = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Solo createdBy può rimuovere
-    if (match.createdBy.toString() !== userId) {
-      return res.status(403).json({ message: "Non autorizzato" });
+    // Controlla se l'utente è il creatore o l'owner della struttura
+    const isCreator = match.createdBy.toString() === userId;
+    
+    // Trova la prenotazione per ottenere l'owner della struttura
+    const booking = await Booking.findById(match.booking).populate({
+      path: 'campo',
+      populate: {
+        path: 'struttura'
+      }
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Prenotazione non trovata" });
+    }
+    
+    const strutturaOwner = (booking.campo as any).struttura.owner.toString();
+    const isOwner = strutturaOwner === userId;
+    
+    if (!isCreator && !isOwner) {
+      return res.status(403).json({ message: "Solo il creatore o l'owner della struttura possono rimuovere giocatori" });
     }
 
     // Rimuovi player

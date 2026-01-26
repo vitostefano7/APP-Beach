@@ -7,9 +7,11 @@ import {
   Alert,
   Linking,
   Modal,
+  TextInput,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +19,7 @@ import API_URL from "../../../config/api";
 import { styles } from "../styles/DettaglioPrenotazioneOwnerScreen.styles";
 import { Avatar } from "../../../components/Avatar";
 import SportIcon from '../../../components/SportIcon';
+import { resolveAvatarUrl } from "../../../utils/avatar";
 
 // Componenti animati e gradients
 import {
@@ -30,6 +33,9 @@ import {
 import {
   SuccessGradient,
   WarningGradient,
+  WinnerGradient,
+  TeamAGradient,
+  TeamBGradient,
 } from "./DettaglioPrenotazione/components/GradientComponents";
 
 import BookingDetailsCard from "./DettaglioPrenotazione/components/BookingDetailsCard";
@@ -37,13 +43,8 @@ import { calculateDuration } from "./DettaglioPrenotazione/utils/DettaglioPrenot
 
 // Import componenti owner per la visualizzazione match
 import ScoreDisplay from "./DettaglioPrenotazione/components/ScoreDisplay";
-import {
-  TeamAGradient,
-  TeamBGradient,
-} from "./DettaglioPrenotazione/components/GradientComponents";
 import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import TeamSection from "./DettaglioPrenotazione/components/TeamSection";
-import AddPlayerModal from "./DettaglioPrenotazione/components/AddPlayerModal";
 
 export default function OwnerDettaglioPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
@@ -57,8 +58,114 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [showPlayerProfile, setShowPlayerProfile] = useState(false);
-  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
-  const [selectedTeamForAdd, setSelectedTeamForAdd] = useState<"A" | "B">("A");
+
+  // Stati per il modal invite
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [inviteToTeam, setInviteToTeam] = useState<"A" | "B" | null>(null);
+  const [inviteToSlot, setInviteToSlot] = useState<number | null>(null);
+  const suppressInvitePress = useRef(false);
+
+  // Debug log for modal visibility
+  useEffect(() => {
+    console.log('🔍 [Owner] inviteModalVisible changed to:', inviteModalVisible);
+  }, [inviteModalVisible]);
+
+  // Funzioni helper per match status
+  const isMatchInProgress = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+    const inProgress = now >= matchDateTime && now <= matchEndTime;
+    
+    console.log('🕐 Match Status Check:', {
+      now: now.toISOString(),
+      matchStart: matchDateTime.toISOString(),
+      matchEnd: matchEndTime.toISOString(),
+      inProgress,
+      bookingDate: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime
+    });
+    
+    return inProgress;
+  };
+
+  const isMatchPassed = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+    return now > matchEndTime;
+  };
+
+  const getTimeUntilRegistrationDeadline = () => {
+    if (!booking) return null;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    // Deadline: 45 minuti prima dell'inizio
+    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
+    const diffMs = deadlineTime.getTime() - now.getTime();
+
+    if (diffMs <= 0) return null; // Deadline passata
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  const getTeamFormationLabel = (maxPlayers: number) => {
+    if (maxPlayers === 2) return "1v1";
+    if (maxPlayers === 4) return "2v2";
+    if (maxPlayers === 6) return "3v3";
+    return `${maxPlayers/2}v${maxPlayers/2}`;
+  };
+
+  const getMatchStatus = () => {
+    const match = booking.match;
+    if (!match) return;
+
+    // Se il match è in corso, ritorna 'in_progress'
+    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") return "in_progress";
+
+    // Se il match è passato e ha un punteggio, consideralo completato
+    if (isMatchPassed() && match.score && match.score.sets.length > 0) return "completed";
+
+    return match.status;
+  };
+
+  const getMatchStatusInfo = () => {
+    const match = booking.match;
+    if (!match) return { text: "Nessun match", icon: "help-circle", color: "#666" };
+
+    const confirmedCount = match.players?.filter(p => p.status === "confirmed").length || 0;
+    const pendingCount = match.players?.filter(p => p.status === "pending").length || 0;
+
+    // Verifica se il match è in corso
+    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+      return { text: "In Corso", icon: "play-circle", color: "#4CAF50" };
+    }
+
+    switch (match.status) {
+      case "open":
+        return { text: "Aperto", icon: "people", color: "#2196F3" };
+      case "full":
+        return { text: "Completo", icon: "checkmark-circle", color: "#4CAF50" };
+      case "completed":
+        return { text: "Completato", icon: "trophy", color: "#FF9800" };
+      case "cancelled":
+        return { text: "Cancellato", icon: "close-circle", color: "#F44336" };
+      default:
+        return { text: match.status, icon: "help-circle", color: "#666" };
+    }
+  };
 
   useEffect(() => {
     loadBooking();
@@ -79,6 +186,10 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
       const data = await res.json();
       console.log("✅ Booking caricato:", data);
+      
+      // Add matchId for compatibility with search function
+      data.matchId = data.match._id;
+      
       setBooking(data);
     } catch (error) {
       console.error("❌ Errore caricamento booking:", error);
@@ -87,6 +198,225 @@ export default function OwnerDettaglioPrenotazioneScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to update booking state safely
+  const updateBookingState = (updater: (prevBooking: any) => any) => {
+    setBooking((prevBooking) => {
+      if (!prevBooking) return prevBooking;
+      return updater(prevBooking);
+    });
+  };
+
+  // Helper functions for team colors
+  const getTeamColors = (team: "A" | "B" | null) => {
+    if (team === "A") {
+      return {
+        primary: "#2196F3",
+        gradient: ["#2196F3", "#1976D2", "#1565C0"],
+        light: "#E3F2FD",
+        text: "white"
+      };
+    } else if (team === "B") {
+      return {
+        primary: "#F44336",
+        gradient: ["#F44336", "#E53935", "#D32F2F"],
+        light: "#FFEBEE",
+        text: "white"
+      };
+    }
+    return {
+      primary: "#667eea",
+      gradient: ["#667eea", "#764ba2"],
+      light: "#f0f2f5",
+      text: "white"
+    };
+  };
+
+  const getTeamIcon = (team: "A" | "B" | null) => {
+    return team === "A" ? "people" : team === "B" ? "people" : "person-add";
+  };
+
+  const isRegistrationOpen = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
+    // Deadline: 45 minuti prima dell'inizio
+    const deadlineTime = new Date(matchStartTime.getTime() - (45 * 60 * 1000));
+    return now < deadlineTime;
+  };
+
+  const handleSearchUsers = async (query: string) => {
+    console.log('🔍 [Owner] handleSearchUsers called with query:', query);
+    console.log('🔍 [Owner] booking.matchId:', booking?.matchId);
+    
+    if (query.length < 2 || !booking?.matchId) {
+      console.log('🔍 [Owner] Early return: query too short or no matchId');
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Get confirmed players IDs for followedBy
+      const confirmedPlayers = booking?.match?.players?.filter((p: any) => p.status === "confirmed") || [];
+      const followedByIds = confirmedPlayers.map((p: any) => p.user._id).join(',');
+
+      console.log('🔍 [Owner] Fetching users...');
+      
+      // Fetch all users for owner
+      const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}&filter=all&followedBy=${followedByIds}`, { headers });
+      
+      if (!res.ok) {
+        console.log('🔍 [Owner] Search fetch failed:', res.status);
+        setSearchResults([]);
+        return;
+      }
+      
+      const allUsers = await res.json();
+      console.log('🔍 [Owner] All users:', allUsers.length);
+
+      // Filter out users already in the match
+      const alreadyInMatch = booking.match?.players?.map((p: any) => p.user._id) || [];
+      console.log('🔍 [Owner] Already in match:', alreadyInMatch);
+      const filtered = allUsers.filter((u: any) => !alreadyInMatch.includes(u._id));
+      console.log('🔍 [Owner] Filtered users:', filtered.length);
+
+      // Sort: prioritize followed users, then by name/surname match, then alphabetical
+      const sorted = filtered.sort((a: any, b: any) => {
+        if (a.isFollowed && !b.isFollowed) return -1;
+        if (!a.isFollowed && b.isFollowed) return 1;
+        
+        // Prioritize names starting with query
+        const queryLower = query.toLowerCase();
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        const aSurname = (a.surname || '').toLowerCase();
+        const bSurname = (b.surname || '').toLowerCase();
+        
+        const aNameStarts = aName.startsWith(queryLower);
+        const bNameStarts = bName.startsWith(queryLower);
+        if (aNameStarts && !bNameStarts) return -1;
+        if (!aNameStarts && bNameStarts) return 1;
+        
+        // Then surnames starting with query
+        const aSurnameStarts = aSurname.startsWith(queryLower);
+        const bSurnameStarts = bSurname.startsWith(queryLower);
+        if (aSurnameStarts && !bSurnameStarts) return -1;
+        if (!aSurnameStarts && bSurnameStarts) return 1;
+        
+        // Finally, alphabetical by full name
+        const nameA = (a.name || '') + ' ' + (a.surname || '');
+        const nameB = (b.name || '') + ' ' + (b.surname || '');
+        return nameA.localeCompare(nameB);
+      });
+
+      setSearchResults(sorted);
+    } catch (error) {
+      console.error("❌ [Owner] Errore ricerca:", error);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleInvitePlayer = async (username: string) => {
+    if (!booking?.matchId) return;
+
+    try {
+      const body: any = { 
+        username,
+        ...(inviteToTeam && { team: inviteToTeam })
+      };
+      
+      const res = await fetch(`${API_URL}/matches/${booking.matchId}/invite`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore invito");
+      }
+
+      // Update local state instead of reloading
+      const invitedUser = searchResults.find(user => user.username === username);
+      if (invitedUser) {
+        updateBookingState((prevBooking) => ({
+          ...prevBooking,
+          match: {
+            ...prevBooking.match,
+            players: [
+              ...prevBooking.match.players,
+              {
+                user: invitedUser,
+                status: 'confirmed', // Owner invites are automatically confirmed
+                team: inviteToTeam || null,
+              }
+            ]
+          }
+        }));
+      }
+
+      Alert.alert("✅ Invito inviato!", "L'utente è stato invitato al match");
+      setInviteModalVisible(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      setInviteToTeam(null);
+      setInviteToSlot(null);
+    } catch (error: any) {
+      Alert.alert("Errore", error.message);
+    }
+  };
+
+  const handleRemovePlayer = async (playerUserId: string) => {
+    if (!booking?.matchId) return;
+
+    Alert.alert(
+      "Rimuovi giocatore",
+      "Sei sicuro di voler rimuovere questo giocatore dal match?",
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Rimuovi",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await fetch(`${API_URL}/matches/${booking.matchId}/players/${playerUserId}`, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Errore rimozione");
+              }
+
+              // Update local state instead of reloading
+              updateBookingState((prevBooking) => ({
+                ...prevBooking,
+                match: {
+                  ...prevBooking.match,
+                  players: prevBooking.match.players.filter(p => p.user._id !== playerUserId)
+                }
+              }));
+
+              Alert.alert("Successo", "Giocatore rimosso dal match");
+            } catch (error: any) {
+              Alert.alert("Errore", error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleCancel = () => {
@@ -199,37 +529,25 @@ export default function OwnerDettaglioPrenotazioneScreen() {
     setShowPlayerProfile(true);
   };
 
-  const handleAddPlayer = async (userId: string, team: "A" | "B") => {
-    if (!booking?.match?._id) {
-      throw new Error("Match non disponibile");
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/matches/${booking.match._id}/players`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, team }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Errore aggiunta giocatore");
-      }
-
-      // Ricarica i dati della prenotazione
-      await loadBooking();
-    } catch (error: any) {
-      throw error;
-    }
-  };
-
   const handleInviteToTeam = (team: "A" | "B", slotNumber: number) => {
-    console.log(`📝 Invito al Team ${team}, Slot ${slotNumber}`);
-    setSelectedTeamForAdd(team);
-    setShowAddPlayerModal(true);
+    if (isMatchInProgress()) {
+      Alert.alert(
+        "Match in corso",
+        "Non è possibile invitare giocatori durante il match. Attendi la fine della partita."
+      );
+      return;
+    }
+    if (!isRegistrationOpen()) {
+      Alert.alert(
+        "Registrazione chiusa",
+        "La deadline per le registrazioni è passata. Non è più possibile invitare giocatori."
+      );
+      return;
+    }
+    setInviteToTeam(team);
+    setInviteToSlot(slotNumber);
+    setInviteModalVisible(true);
+    console.log('🔍 [Owner] Modal opened for team:', team, 'slot:', slotNumber);
   };
 
   if (loading) {
@@ -237,7 +555,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Caricamento...</Text>
+          <Text style={[styles.loadingText, { fontSize: 14 }]}>Caricamento...</Text>
         </View>
       </SafeAreaView>
     );
@@ -254,14 +572,23 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const isPastBooking = now > endDateTime;
   const canInsertResult = !isCancelled && isPastBooking && !booking.match;
 
+  // Variabili calcolate basate su booking
+  const confirmedPlayers = booking?.match?.players?.filter(p => p.status === "confirmed") || [];
+  const pendingPlayers = booking?.match?.players?.filter(p => p.status === "pending") || [];
+  const maxPlayersPerTeam = booking?.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
+  const teamAPlayers = booking?.match?.players?.filter(p => p.team === "A" && p.status === "confirmed").length || 0;
+  const teamBPlayers = booking?.match?.players?.filter(p => p.team === "B" && p.status === "confirmed").length || 0;
+  const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
+  const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
+  const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header fisso con back button e status */}
       <View style={{ 
         backgroundColor: 'white', 
         borderBottomWidth: 1, 
         borderBottomColor: '#e0e0e0',
-        paddingBottom: 16,
+        paddingBottom: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -269,22 +596,22 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         elevation: 2
       }}>
         <View style={{ 
-          paddingHorizontal: 16, 
-          paddingTop: 12,
+          paddingHorizontal: 12, 
+          paddingTop: 8,
           flexDirection: 'row', 
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
             <View style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
               backgroundColor: '#F5F5F5',
               justifyContent: 'center',
               alignItems: 'center'
             }}>
-              <Ionicons name="arrow-back" size={20} color="#2196F3" />
+              <Ionicons name="arrow-back" size={18} color="#2196F3" />
             </View>
           </Pressable>
           
@@ -293,21 +620,21 @@ export default function OwnerDettaglioPrenotazioneScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: booking.status === 'confirmed' ? '#E8F5E9' : '#FFEBEE',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              gap: 6
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+              gap: 4
             }}>
               <Ionicons 
                 name={booking.status === 'confirmed' 
                   ? (isPastBooking ? 'checkmark-done-circle' : isInProgress ? 'play-circle' : 'time') 
                   : 'close-circle'
                 } 
-                size={18} 
+                size={14} 
                 color={booking.status === 'confirmed' ? '#4CAF50' : '#F44336'} 
               />
               <Text style={{
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: '600',
                 color: booking.status === 'confirmed' ? '#2E7D32' : '#C62828'
               }}>
@@ -318,49 +645,51 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             </View>
           </View>
 
-          <View style={{ width: 36 }} />
+          <View style={{ width: 32 }} />
         </View>
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={[styles.content, { paddingTop: 40 }]}>
+        <View style={[styles.content, { paddingTop: 30 }]}>
           <AnimatedCard delay={100}>
             <View style={styles.strutturaHeader}>
               <View style={styles.sportIconBox}>
                 <SportIcon
                   sport={booking.campo?.sport || 'beach_volley'}
-                  size={28}
+                  size={24}
                   color="#2196F3"
                 />
               </View>
               <View style={styles.strutturaInfo}>
-                <Text style={styles.strutturaName}>
+                <Text style={[styles.strutturaName, { fontSize: 16 }]}>
                   {booking.campo?.struttura?.name || "Struttura"}
                 </Text>
-                <Text style={styles.campoName}>{booking.campo?.name || "Campo"}</Text>
+                <Text style={[styles.campoName, { fontSize: 14 }]}>
+                  {booking.campo?.name || "Campo"}
+                </Text>
               </View>
             </View>
 
             <Pressable style={styles.locationCard} onPress={openMaps}>
               <View style={styles.locationIcon}>
-                <Ionicons name="location" size={20} color="#F44336" />
+                <Ionicons name="location" size={18} color="#F44336" />
               </View>
               <View style={styles.locationInfo}>
-                <Text style={styles.locationAddress}>
+                <Text style={[styles.locationAddress, { fontSize: 14 }]}>
                   {booking.campo?.struttura?.location?.address || "Indirizzo non disponibile"}
                 </Text>
-                <Text style={styles.locationCity}>
+                <Text style={[styles.locationCity, { fontSize: 12 }]}>
                   {booking.campo?.struttura?.location?.city || ""}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <Ionicons name="chevron-forward" size={18} color="#999" />
             </Pressable>
           </AnimatedCard>
 
           <AnimatedCard delay={150}>
             <View style={styles.cardHeader}>
-              <Ionicons name="person-outline" size={20} color="#2196F3" />
-              <Text style={styles.cardTitle}>Cliente</Text>
+              <Ionicons name="person-outline" size={18} color="#2196F3" />
+              <Text style={[styles.cardTitle, { fontSize: 16 }]}>Cliente</Text>
             </View>
 
             <View style={styles.clientCard}>
@@ -372,44 +701,27 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   name={booking.user?.name}
                   surname={booking.user?.surname}
                   avatarUrl={booking.user?.avatarUrl}
-                  size={48}
+                  size={40}
                   fallbackIcon="person"
                 />
                 <View style={styles.clientInfo}>
-                  <Text style={styles.clientName}>
+                  <Text style={[styles.clientName, { fontSize: 16 }]}>
                     {booking.user?.name || "Utente"} {booking.user?.surname || ""}
                   </Text>
                   {booking.user?.email && (
-                    <Text style={styles.clientEmail}>{booking.user.email}</Text>
+                    <Text style={[styles.clientEmail, { fontSize: 14 }]}>
+                      {booking.user.email}
+                    </Text>
                   )}
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
+                <Ionicons name="chevron-forward" size={18} color="#999" />
               </Pressable>
               
               <Pressable style={styles.chatButtonInline} onPress={openChat}>
-                <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+                <Ionicons name="chatbubble-outline" size={18} color="#2196F3" />
               </Pressable>
             </View>
           </AnimatedCard>
-
-          {booking.match && (
-            <FadeInView delay={200}>
-              <Pressable 
-                style={[styles.groupChatButton, loadingGroupChat && styles.groupChatButtonDisabled]} 
-                onPress={handleOpenGroupChat}
-                disabled={loadingGroupChat}
-              >
-                {loadingGroupChat ? (
-                  <ActivityIndicator size="small" color="#2196F3" />
-                ) : (
-                  <>
-                    <Ionicons name="people-outline" size={20} color="#2196F3" />
-                    <Text style={styles.groupChatButtonText}>Chat Gruppo Match</Text>
-                  </>
-                )}
-              </Pressable>
-            </FadeInView>
-          )}
 
           {/* NUOVA CARD DETTAGLI - USA BookingDetailsCard */}
           <AnimatedCard delay={200}>
@@ -424,233 +736,293 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           </AnimatedCard>
 
           {booking.match ? (
-            <>
-              {/* DEBUG LOG */}
-              {console.log('🔍 MATCH DATA:', {
-                maxPlayers: booking.match.maxPlayers,
-                status: booking.match.status,
-                playersTotal: booking.match.players?.length,
-                playersConfirmed: booking.match.players?.filter((p: any) => p.status === 'confirmed').length,
-                playersPending: booking.match.players?.filter((p: any) => p.status === 'pending').length,
-                teamA: booking.match.players?.filter((p: any) => p.team === 'A').length,
-                teamB: booking.match.players?.filter((p: any) => p.team === 'B').length,
-                noTeam: booking.match.players?.filter((p: any) => !p.team).length,
-                players: booking.match.players?.map((p: any) => ({
-                  name: p.user?.name,
-                  status: p.status,
-                  team: p.team
-                })),
-                hasScore: !!booking.match.sets,
-                scoreOnly: !booking.match.players && !!booking.match.sets
-              })}
-              
-              {/* MATCH SECTION CON GIOCATORI */}
-              {booking.match.players && (
-                <>
-                  <AnimatedCard delay={300}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="people" size={20} color="#2196F3" />
+            <AnimatedCard delay={200}>
+              {/* Header */}
+              <View style={styles.cardHeader}>
+                <FadeInView delay={300}>
                   <Text style={styles.cardTitle}>Match Details</Text>
+                </FadeInView>
+                
+                <View style={styles.matchHeaderActions}>
+                  <AnimatedButton
+                    style={styles.groupChatButton}
+                    onPress={handleOpenGroupChat}
+                    disabled={loadingGroupChat}
+                  >
+                    {loadingGroupChat ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <>
+                        <Ionicons name="chatbubbles" size={18} color="white" />
+                        <Text style={styles.groupChatButtonText}>Chat Partita</Text>
+                      </>
+                    )}
+                  </AnimatedButton>
                 </View>
+              </View>
 
-                {/* Match Status */}
-                <FadeInView delay={100}>
-                  <View style={styles.matchStatusCard}>
-                    <View style={styles.matchStatusRow}>
-                      <View style={[
-                        styles.matchStatusBadge,
-                        booking.match.status === "completed" && styles.matchStatusCompleted,
-                        booking.match.status === "open" && styles.matchStatusOpen,
-                        booking.match.status === "full" && styles.matchStatusFull,
-                        booking.match.status === "cancelled" && styles.matchStatusCancelled,
-                      ]}>
-                        <Text style={styles.matchStatusText}>
-                          {booking.match.status === 'completed' ? 'Completato' : 
-                           booking.match.status === 'open' ? 'Aperto' :
-                           booking.match.status === 'full' ? 'Completo' : 
-                           booking.match.status === 'cancelled' ? 'Cancellato' : booking.match.status}
+              {/* Match Status */}
+              <FadeInView delay={400}>
+                <View style={styles.matchStatusCard}>
+                  <View style={styles.matchStatusRow}>
+                    <View style={styles.matchStatusLeft}>
+                      <View style={[styles.matchStatusIcon, { backgroundColor: getMatchStatusInfo().color + '20' }]}>
+                        <Ionicons name={getMatchStatusInfo().icon} size={16} color={getMatchStatusInfo().color} />
+                      </View>
+                      <Text style={styles.matchStatusTitle}>Stato Partita</Text>
+                    </View>
+                    <View style={[
+                      styles.matchStatusBadge,
+                      booking.match.status === "completed" && styles.matchStatusCompleted,
+                      booking.match.status === "open" && styles.matchStatusOpen,
+                      booking.match.status === "full" && styles.matchStatusFull,
+                      booking.match.status === "cancelled" && styles.matchStatusCancelled,
+                      getMatchStatus() === "in_progress" && styles.matchStatusInProgress,
+                    ]}>
+                      <Text style={styles.matchStatusText}>{getMatchStatusInfo().text}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.matchStatsCompact}>
+                    <View style={styles.matchStatItem}>
+                      <View style={[styles.matchStatIcon, { backgroundColor: '#E8F5E920' }]}>
+                        <Ionicons name="people" size={12} color="#4CAF50" />
+                      </View>
+                      <Text style={styles.matchStatText}>{confirmedPlayers.length}/{booking.match.maxPlayers}</Text>
+                    </View>
+
+                    {pendingPlayers.length > 0 && (
+                      <View style={styles.matchStatItem}>
+                        <View style={[styles.matchStatIcon, { backgroundColor: '#FFF3E020' }]}>
+                          <Ionicons name="time" size={12} color="#FF9800" />
+                        </View>
+                        <Text style={styles.matchStatText}>{pendingPlayers.length}</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.matchStatItem}>
+                      <View style={[styles.matchStatIcon, { backgroundColor: '#2196F320' }]}>
+                        <Ionicons name="hourglass" size={12} color="#2196F3" />
+                      </View>
+                      <View>
+                        <Text style={[styles.matchStatText, { fontSize: 10, color: '#666', marginBottom: 2 }]}>
+                          Chiusura prenotazione
+                        </Text>
+                        <Text style={styles.matchStatText}>
+                          {getTimeUntilRegistrationDeadline() || 'Chiusa'}
                         </Text>
                       </View>
-
-                      <View style={styles.matchInfoRowContainer}>
-                        <View style={styles.matchInfoItem}>
-                          <Ionicons name="people" size={16} color="#2196F3" />
-                          <Text style={styles.matchInfoText}>
-                            {booking.match.players?.filter((p: any) => p.status === 'confirmed').length || 0}/{booking.match.maxPlayers}
-                          </Text>
-                        </View>
-                        
-                        {booking.match.players?.filter((p: any) => p.status === 'pending').length > 0 && (
-                          <View style={[styles.matchInfoItem, styles.pendingBadge]}>
-                            <Ionicons name="time" size={14} color="#FF9800" />
-                            <Text style={[styles.matchInfoText, { color: "#FF9800" }]}>
-                              {booking.match.players.filter((p: any) => p.status === 'pending').length} in attesa
-                            </Text>
-                          </View>
-                        )}
-                      </View>
                     </View>
                   </View>
-                </FadeInView>
-
-                {/* Match Info */}
-                <View style={styles.matchInfoBox}>
-                  <View style={styles.matchInfoRow}>
-                    <Text style={styles.matchInfoLabel}>Formato:</Text>
-                    <Text style={styles.matchInfoValue}>
-                      {booking.match.maxPlayers / 2}vs{booking.match.maxPlayers / 2}
-                    </Text>
-                  </View>
-                  {booking.match.createdBy && (
-                    <View style={styles.matchInfoRow}>
-                      <Text style={styles.matchInfoLabel}>Creato da:</Text>
-                      <Text style={styles.matchInfoValue}>
-                        {booking.match.createdBy.name} {booking.match.createdBy.surname || ''}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              </AnimatedCard>
+              </FadeInView>
 
               {/* Score Display */}
               {booking.match.score && booking.match.score.sets.length > 0 && (
-                <AnimatedCard delay={350}>
+                <FadeInView delay={600}>
                   <ScoreDisplay
                     score={booking.match.score}
                     isInMatch={false}
                     onEdit={() => {}}
-                    matchStatus={booking.match.status}
-                    teamAPlayers={booking.match.players?.filter((p: any) => p.team === 'A' && p.status === 'confirmed') || []}
-                    teamBPlayers={booking.match.players?.filter((p: any) => p.team === 'B' && p.status === 'confirmed') || []}
+                    matchStatus={getMatchStatus()}
+                    teamAPlayers={teamAConfirmed}
+                    teamBPlayers={teamBConfirmed}
                   />
-                </AnimatedCard>
+                </FadeInView>
               )}
 
-              {/* Teams Section - SEMPRE VISIBILE */}
-              <SlideInView delay={400} from="bottom">
-                <View style={styles.teamsContainer}>
-                  {/* Team A */}
-                  <TeamSection
-                    team="A"
-                    players={booking.match.players?.filter((p: any) => p.team === 'A' && p.status === 'confirmed') || []}
-                    isCreator={true}
-                    currentUserId={undefined}
-                    onRemovePlayer={() => {}}
-                    onAssignTeam={() => {}}
-                    maxPlayersPerTeam={Math.floor((booking.match.maxPlayers || 4) / 2)}
-                    onInviteToTeam={handleInviteToTeam}
-                    matchStatus={booking.match.status}
-                    onPlayerPress={handlePlayerPress}
-                  />
+              {/* Teams Section */}
+              {confirmedPlayers.length > 0 && (
+                <SlideInView delay={800} from="bottom">
+                  <View style={styles.teamsContainer}>
+                    {/* Team A */}
+                    <View style={styles.teamSection}>
+                      <TeamAGradient style={styles.teamHeader}>
+                        <Ionicons name="people-circle" size={20} color="white" />
+                        <Text style={[styles.teamTitle, { color: "white" }]}>
+                          Team A ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
+                        </Text>
+                        <View style={styles.teamHeaderRight}>
+                          <Text style={[styles.teamCount, { color: "white" }]}>
+                            {teamAConfirmed.length}/{maxPlayersPerTeam}
+                          </Text>
+                          {teamAConfirmed.length === maxPlayersPerTeam && (
+                            <ScaleInView delay={900}>
+                              <Ionicons name="checkmark-circle" size={16} color="white" />
+                            </ScaleInView>
+                          )}
+                        </View>
+                      </TeamAGradient>
 
-                  {/* Team B */}
-                  <TeamSection
-                    team="B"
-                    players={booking.match.players?.filter((p: any) => p.team === 'B' && p.status === 'confirmed') || []}
-                    isCreator={true}
-                    currentUserId={undefined}
-                    onRemovePlayer={() => {}}
-                    onAssignTeam={() => {}}
-                    maxPlayersPerTeam={Math.floor((booking.match.maxPlayers || 4) / 2)}
-                    onInviteToTeam={handleInviteToTeam}
-                    matchStatus={booking.match.status}
-                    onPlayerPress={handlePlayerPress}
-                  />
-                </View>
-              </SlideInView>
+                      <View style={styles.teamSlotsContainer}>
+                        {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
+                          const player = teamAConfirmed[index];
+                          const slotNumber = index + 1;
 
-              {/* Giocatori non assegnati */}
-              {booking.match.players?.filter((p: any) => !p.team && p.status === 'confirmed').length > 0 && (
-                <FadeInView delay={500}>
-                  <View style={[styles.unassignedSection, { marginTop: 16 }]}>
+                          return (
+                            <FadeInView key={`teamA-slot-${slotNumber}`} delay={1000 + index * 50}>
+                              <PlayerCardWithTeam
+                                player={player}
+                                isCreator={true}
+                                currentUserId={undefined}
+                                onRemove={() => player ? handleRemovePlayer(player.user._id) : undefined}
+                                onChangeTeam={() => {}}
+                                onLeave={() => {}}
+                                currentTeam="A"
+                                isEmptySlot={!player}
+                                onInviteToSlot={!player ? () => handleInviteToTeam("A", slotNumber) : undefined}
+                                slotNumber={slotNumber}
+                                matchStatus={getMatchStatus()}
+                                isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                                teamACount={teamAPlayers}
+                                teamBCount={teamBPlayers}
+                                maxPlayersPerTeam={maxPlayersPerTeam}
+                              />
+                            </FadeInView>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    {/* Team B */}
+                    <View style={styles.teamSection}>
+                      <TeamBGradient style={styles.teamHeader}>
+                        <Ionicons name="people" size={20} color="white" />
+                        <Text style={[styles.teamTitle, { color: "white" }]}>
+                          Team B ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
+                        </Text>
+                        <View style={styles.teamHeaderRight}>
+                          <Text style={[styles.teamCount, { color: "white" }]}>
+                            {teamBConfirmed.length}/{maxPlayersPerTeam}
+                          </Text>
+                          {teamBConfirmed.length === maxPlayersPerTeam && (
+                            <ScaleInView delay={900}>
+                              <Ionicons name="checkmark-circle" size={16} color="white" />
+                            </ScaleInView>
+                          )}
+                        </View>
+                      </TeamBGradient>
+
+                      <View style={styles.teamSlotsContainer}>
+                        {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
+                          const player = teamBConfirmed[index];
+                          const slotNumber = index + 1;
+
+                          return (
+                            <FadeInView key={`teamB-slot-${slotNumber}`} delay={1000 + index * 50}>
+                              <PlayerCardWithTeam
+                                player={player}
+                                isCreator={true}
+                                currentUserId={undefined}
+                                onRemove={() => player ? handleRemovePlayer(player.user._id) : undefined}
+                                onChangeTeam={() => {}}
+                                onLeave={() => {}}
+                                currentTeam="B"
+                                isEmptySlot={!player}
+                                onInviteToSlot={!player ? () => handleInviteToTeam("B", slotNumber) : undefined}
+                                slotNumber={slotNumber}
+                                matchStatus={getMatchStatus()}
+                                isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                                teamACount={teamAPlayers}
+                                teamBCount={teamBPlayers}
+                                maxPlayersPerTeam={maxPlayersPerTeam}
+                              />
+                            </FadeInView>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                </SlideInView>
+              )}
+
+              {/* Unassigned Players */}
+              {unassignedPlayers.length > 0 && (
+                <FadeInView delay={1100}>
+                  <View style={styles.unassignedSection}>
                     <Text style={styles.unassignedTitle}>Giocatori Non Assegnati</Text>
                     <Text style={styles.unassignedSubtitle}>
-                      Giocatori confermati in attesa di assegnazione
+                      Assegna questi giocatori ad un team
                     </Text>
                     <View style={styles.playersGrid}>
-                      {booking.match.players
-                        .filter((p: any) => !p.team && p.status === 'confirmed')
-                        .map((player: any, index: number) => (
-                          <FadeInView key={player.user._id} delay={550 + index * 50}>
-                            <PlayerCardWithTeam
-                              player={player}
-                              isCreator={false}
-                              currentUserId={undefined}
-                              onRemove={() => {}}
-                              onChangeTeam={() => {}}
-                              onLeave={() => {}}
-                              currentTeam={null}
-                              isPending={false}
-                              matchStatus={booking.match.status}
-                              isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
-                            />
-                          </FadeInView>
-                        ))}
+                      {unassignedPlayers.map((player, index) => (
+                        <SlideInView key={player.user._id} delay={1200 + index * 50} from="left">
+                          <PlayerCardWithTeam
+                            player={player}
+                            isCreator={true}
+                            currentUserId={undefined}
+                            onRemove={() => handleRemovePlayer(player.user._id)}
+                            onChangeTeam={() => {}}
+                            matchStatus={getMatchStatus()}
+                            isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                            teamACount={teamAPlayers}
+                            teamBCount={teamBPlayers}
+                            maxPlayersPerTeam={maxPlayersPerTeam}
+                          />
+                        </SlideInView>
+                      ))}
                     </View>
                   </View>
                 </FadeInView>
               )}
 
-              {/* Giocatori in attesa di risposta */}
-              {booking.match.players?.filter((p: any) => p.status === 'pending').length > 0 && (
-                <FadeInView delay={600}>
+              {/* Pending Players */}
+              {pendingPlayers.length > 0 && (
+                <FadeInView delay={1300}>
                   <View style={styles.pendingSection}>
-                    <Text style={styles.pendingTitle}>In Attesa di Risposta</Text>
-                    <Text style={styles.pendingSubtitle}>
-                      Questi giocatori devono ancora confermare
-                    </Text>
+                    <Text style={styles.pendingTitle}>In Attesa di Risposta ({pendingPlayers.length})</Text>
                     <View style={styles.playersGrid}>
-                      {booking.match.players
-                        .filter((p: any) => p.status === 'pending')
-                        .map((player: any, index: number) => (
-                          <FadeInView key={player.user._id} delay={650 + index * 50}>
-                            <PlayerCardWithTeam
-                              player={player}
-                              isCreator={false}
-                              currentUserId={undefined}
-                              onRemove={() => {}}
-                              onChangeTeam={() => {}}
-                              onLeave={() => {}}
-                              currentTeam={player.team || null}
-                              isPending={true}
-                              matchStatus={booking.match.status}
-                            />
-                          </FadeInView>
-                        ))}
+                      {pendingPlayers.map((player, index) => (
+                        <SlideInView key={player.user._id} delay={1400 + index * 50} from="left">
+                          <PlayerCardWithTeam
+                            player={player}
+                            isCreator={true}
+                            currentUserId={undefined}
+                            onRemove={() => handleRemovePlayer(player.user._id)}
+                            onChangeTeam={() => {}}
+                            isPending={true}
+                            matchStatus={getMatchStatus()}
+                            isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
+                            teamACount={teamAPlayers}
+                            teamBCount={teamBPlayers}
+                            maxPlayersPerTeam={maxPlayersPerTeam}
+                          />
+                        </SlideInView>
+                      ))}
                     </View>
                   </View>
                 </FadeInView>
               )}
-            </>
-          )}
-            </>
+            </AnimatedCard>
           ) : null}
+
+          <View style={{ height: 16 }} />
 
           {canInsertResult && !booking.match ? (
             <AnimatedButton style={styles.insertResultCard} onPress={goToInserisciRisultato}>
               <View style={styles.insertResultIcon}>
-                <Ionicons name="clipboard-outline" size={24} color="#2196F3" />
+                <Ionicons name="clipboard-outline" size={20} color="#2196F3" />
               </View>
               <View style={styles.insertResultContent}>
-                <Text style={styles.insertResultTitle}>Inserisci risultato</Text>
-                <Text style={styles.insertResultSubtitle}>
+                <Text style={[styles.insertResultTitle, { fontSize: 14 }]}>Inserisci risultato</Text>
+                <Text style={[styles.insertResultSubtitle, { fontSize: 12 }]}>
                   La partita è conclusa, inserisci il punteggio
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+              <Ionicons name="chevron-forward" size={20} color="#2196F3" />
             </AnimatedButton>
           ) : null}
 
           {!isCancelled && isFuture && (
             <FadeInView delay={400}>
               <AnimatedButton style={styles.cancelButton} onPress={handleCancel}>
-                <Ionicons name="trash-outline" size={20} color="white" />
-                <Text style={styles.cancelButtonText}>Annulla Prenotazione</Text>
+                <Ionicons name="trash-outline" size={18} color="white" />
+                <Text style={[styles.cancelButtonText, { fontSize: 14 }]}>Annulla Prenotazione</Text>
               </AnimatedButton>
             </FadeInView>
           )}
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 30 }} />
         </View>
       </ScrollView>
 
@@ -665,12 +1037,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           <View style={styles.modalContent}>
             {/* Header Modal */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Profilo Cliente</Text>
+              <Text style={[styles.modalTitle, { fontSize: 16 }]}>Profilo Cliente</Text>
               <Pressable
                 onPress={() => setShowClientProfile(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={20} color="#666" />
               </Pressable>
             </View>
 
@@ -681,45 +1053,45 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   name={booking?.user?.name}
                   surname={booking?.user?.surname}
                   avatarUrl={booking?.user?.avatarUrl}
-                  size={80}
+                  size={70}
                   fallbackIcon="person"
                 />
-                <Text style={styles.profileName}>
+                <Text style={[styles.profileName, { fontSize: 16 }]}>
                   {booking?.user?.name || "Utente"} {booking?.user?.surname || ""}
                 </Text>
                 {booking?.user?.username && (
-                  <Text style={styles.profileUsername}>@{booking.user.username}</Text>
+                  <Text style={[styles.profileUsername, { fontSize: 14 }]}>@{booking.user.username}</Text>
                 )}
               </View>
 
               {/* Informazioni di contatto */}
               <View style={styles.profileSection}>
-                <Text style={styles.profileSectionTitle}>Contatti</Text>
+                <Text style={[styles.profileSectionTitle, { fontSize: 16 }]}>Contatti</Text>
                 
                 {booking?.user?.email && (
                   <View style={styles.profileInfoRow}>
-                    <Ionicons name="mail-outline" size={20} color="#2196F3" />
-                    <Text style={styles.profileInfoText}>{booking.user.email}</Text>
+                    <Ionicons name="mail-outline" size={18} color="#2196F3" />
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>{booking.user.email}</Text>
                   </View>
                 )}
 
                 {booking?.user?.phone && (
                   <View style={styles.profileInfoRow}>
-                    <Ionicons name="call-outline" size={20} color="#2196F3" />
-                    <Text style={styles.profileInfoText}>{booking.user.phone}</Text>
+                    <Ionicons name="call-outline" size={18} color="#2196F3" />
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>{booking.user.phone}</Text>
                   </View>
                 )}
               </View>
 
               {/* Informazioni account */}
               <View style={styles.profileSection}>
-                <Text style={styles.profileSectionTitle}>Informazioni Account</Text>
+                <Text style={[styles.profileSectionTitle, { fontSize: 16 }]}>Informazioni Account</Text>
                 
                 <View style={styles.profileInfoRow}>
-                  <Ionicons name="calendar-outline" size={20} color="#666" />
+                  <Ionicons name="calendar-outline" size={18} color="#666" />
                   <View style={styles.profileInfoTextContainer}>
-                    <Text style={styles.profileInfoLabel}>Membro dal</Text>
-                    <Text style={styles.profileInfoText}>
+                    <Text style={[styles.profileInfoLabel, { fontSize: 12 }]}>Membro dal</Text>
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>
                       {booking?.user?.createdAt 
                         ? new Date(booking.user.createdAt).toLocaleDateString('it-IT', {
                             year: 'numeric',
@@ -733,10 +1105,10 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 </View>
 
                 <View style={styles.profileInfoRow}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color="#666" />
+                  <Ionicons name="shield-checkmark-outline" size={18} color="#666" />
                   <View style={styles.profileInfoTextContainer}>
-                    <Text style={styles.profileInfoLabel}>Stato account</Text>
-                    <Text style={styles.profileInfoText}>
+                    <Text style={[styles.profileInfoLabel, { fontSize: 12 }]}>Stato account</Text>
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>
                       {booking?.user?.isActive ? 'Attivo' : 'Non attivo'}
                     </Text>
                   </View>
@@ -752,8 +1124,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                     openChat();
                   }}
                 >
-                  <Ionicons name="chatbubble-outline" size={20} color="white" />
-                  <Text style={styles.profileActionButtonText}>Invia Messaggio</Text>
+                  <Ionicons name="chatbubble-outline" size={18} color="white" />
+                  <Text style={[styles.profileActionButtonText, { fontSize: 14 }]}>Invia Messaggio</Text>
                 </AnimatedButton>
 
                 {booking?.user?.phone && (
@@ -763,8 +1135,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                       Linking.openURL(`tel:${booking.user.phone}`);
                     }}
                   >
-                    <Ionicons name="call-outline" size={20} color="#2196F3" />
-                    <Text style={[styles.profileActionButtonText, styles.profileActionButtonTextSecondary]}>
+                    <Ionicons name="call-outline" size={18} color="#2196F3" />
+                    <Text style={[styles.profileActionButtonText, styles.profileActionButtonTextSecondary, { fontSize: 14 }]}>
                       Chiama
                     </Text>
                   </AnimatedButton>
@@ -786,12 +1158,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           <View style={styles.modalContent}>
             {/* Header Modal */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Profilo Giocatore</Text>
+              <Text style={[styles.modalTitle, { fontSize: 16 }]}>Profilo Giocatore</Text>
               <Pressable
                 onPress={() => setShowPlayerProfile(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={20} color="#666" />
               </Pressable>
             </View>
 
@@ -802,45 +1174,45 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   name={selectedPlayer?.user?.name}
                   surname={selectedPlayer?.user?.surname}
                   avatarUrl={selectedPlayer?.user?.avatarUrl}
-                  size={80}
+                  size={70}
                   fallbackIcon="person"
                 />
-                <Text style={styles.profileName}>
+                <Text style={[styles.profileName, { fontSize: 16 }]}>
                   {selectedPlayer?.user?.name || "Giocatore"} {selectedPlayer?.user?.surname || ""}
                 </Text>
                 {selectedPlayer?.user?.username && (
-                  <Text style={styles.profileUsername}>@{selectedPlayer.user.username}</Text>
+                  <Text style={[styles.profileUsername, { fontSize: 14 }]}>@{selectedPlayer.user.username}</Text>
                 )}
               </View>
 
               {/* Informazioni di contatto */}
               <View style={styles.profileSection}>
-                <Text style={styles.profileSectionTitle}>Contatti</Text>
+                <Text style={[styles.profileSectionTitle, { fontSize: 16 }]}>Contatti</Text>
                 
                 {selectedPlayer?.user?.email && (
                   <View style={styles.profileInfoRow}>
-                    <Ionicons name="mail-outline" size={20} color="#2196F3" />
-                    <Text style={styles.profileInfoText}>{selectedPlayer.user.email}</Text>
+                    <Ionicons name="mail-outline" size={18} color="#2196F3" />
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>{selectedPlayer.user.email}</Text>
                   </View>
                 )}
 
                 {selectedPlayer?.user?.phone && (
                   <View style={styles.profileInfoRow}>
-                    <Ionicons name="call-outline" size={20} color="#2196F3" />
-                    <Text style={styles.profileInfoText}>{selectedPlayer.user.phone}</Text>
+                    <Ionicons name="call-outline" size={18} color="#2196F3" />
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>{selectedPlayer.user.phone}</Text>
                   </View>
                 )}
               </View>
 
               {/* Informazioni account */}
               <View style={styles.profileSection}>
-                <Text style={styles.profileSectionTitle}>Informazioni Account</Text>
+                <Text style={[styles.profileSectionTitle, { fontSize: 16 }]}>Informazioni Account</Text>
                 
                 <View style={styles.profileInfoRow}>
-                  <Ionicons name="calendar-outline" size={20} color="#666" />
+                  <Ionicons name="calendar-outline" size={18} color="#666" />
                   <View style={styles.profileInfoTextContainer}>
-                    <Text style={styles.profileInfoLabel}>Membro dal</Text>
-                    <Text style={styles.profileInfoText}>
+                    <Text style={[styles.profileInfoLabel, { fontSize: 12 }]}>Membro dal</Text>
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>
                       {selectedPlayer?.user?.createdAt 
                         ? new Date(selectedPlayer.user.createdAt).toLocaleDateString('it-IT', {
                             year: 'numeric',
@@ -854,10 +1226,10 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 </View>
 
                 <View style={styles.profileInfoRow}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color="#666" />
+                  <Ionicons name="shield-checkmark-outline" size={18} color="#666" />
                   <View style={styles.profileInfoTextContainer}>
-                    <Text style={styles.profileInfoLabel}>Stato account</Text>
-                    <Text style={styles.profileInfoText}>
+                    <Text style={[styles.profileInfoLabel, { fontSize: 12 }]}>Stato account</Text>
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>
                       {selectedPlayer?.user?.isActive ? 'Attivo' : 'Non attivo'}
                     </Text>
                   </View>
@@ -867,12 +1239,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 <View style={styles.profileInfoRow}>
                   <Ionicons 
                     name={selectedPlayer?.status === 'confirmed' ? 'checkmark-circle-outline' : 'time-outline'} 
-                    size={20} 
+                    size={18} 
                     color="#666" 
                   />
                   <View style={styles.profileInfoTextContainer}>
-                    <Text style={styles.profileInfoLabel}>Stato nel match</Text>
-                    <Text style={styles.profileInfoText}>
+                    <Text style={[styles.profileInfoLabel, { fontSize: 12 }]}>Stato nel match</Text>
+                    <Text style={[styles.profileInfoText, { fontSize: 14 }]}>
                       {selectedPlayer?.status === 'confirmed' ? 'Confermato' : 
                        selectedPlayer?.status === 'pending' ? 'In attesa' : 'Rifiutato'}
                     </Text>
@@ -890,7 +1262,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                     }}
                   >
                     <Ionicons name="call-outline" size={20} color="#2196F3" />
-                    <Text style={[styles.profileActionButtonText, styles.profileActionButtonTextSecondary]}>
+                    <Text style={[styles.profileActionButtonText, styles.profileActionButtonTextSecondary, { fontSize: 14 }]}>
                       Chiama
                     </Text>
                   </AnimatedButton>
@@ -901,15 +1273,118 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         </View>
       </Modal>
 
-      {/* Modal Aggiungi Giocatore */}
-      <AddPlayerModal
-        visible={showAddPlayerModal}
-        onClose={() => setShowAddPlayerModal(false)}
-        onAddPlayer={handleAddPlayer}
-        token={token!}
-        apiUrl={API_URL}
-        initialTeam={selectedTeamForAdd}
-      />
+      {/* Invite Modal */}
+      <Modal
+        visible={inviteModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          console.log('🔍 [Owner] Modal closed via onRequestClose');
+          setInviteModalVisible(false);
+          setInviteToTeam(null);
+          setInviteToSlot(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <ScaleInView style={styles.modalContent}>
+            <View style={[styles.modalHeader, { backgroundColor: getTeamColors(inviteToTeam).primary }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons 
+                  name={getTeamIcon(inviteToTeam)} 
+                  size={24} 
+                  color="white" 
+                  style={{ marginRight: 12 }} 
+                />
+                <Text style={styles.modalTitle}>
+                  {inviteToTeam ? `Invita a Team ${inviteToTeam}` : 'Invita Giocatore'}
+                  {inviteToSlot && ` - Slot ${inviteToSlot}`}
+                </Text>
+              </View>
+              <AnimatedButton onPress={() => {
+                console.log('🔍 [Owner] Modal closed via close button');
+                setInviteModalVisible(false);
+                setInviteToTeam(null);
+                setInviteToSlot(null);
+              }} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color="white" />
+              </AnimatedButton>
+            </View>
+
+            <View style={styles.searchBox}>
+              <Ionicons name="search" size={20} color="#999" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Cerca per username..."
+                value={searchQuery}
+                onChangeText={(text) => {
+                  console.log('🔍 [Owner] TextInput onChangeText called with:', text);
+                  setSearchQuery(text);
+                  handleSearchUsers(text);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {console.log('🔍 [Owner] TextInput rendered, searchQuery:', searchQuery)}
+            </View>
+
+            <ScrollView style={styles.searchResults}>
+              {searching ? (
+                <ActivityIndicator size="small" color="#FF9800" style={{ marginTop: 20 }} />
+              ) : searchResults.length === 0 && searchQuery.length >= 2 ? (
+                <Text style={styles.noResults}>Nessun utente trovato</Text>
+              ) : (
+                searchResults.map((user, index) => (
+                  <FadeInView key={user._id} delay={index * 50}>
+                    <AnimatedButton
+                      style={styles.searchResultItem}
+                      onPress={() => {
+                        if (suppressInvitePress.current) {
+                          suppressInvitePress.current = false;
+                          return;
+                        }
+                        handleInvitePlayer(user.username);
+                      }}
+                    >
+                      <Pressable
+                        key="avatar"
+                        onPress={() => openUserProfile(user._id)}
+                        hitSlop={10}
+                        onPressIn={() => {
+                          suppressInvitePress.current = true;
+                        }}
+                        onPressOut={() => {
+                          setTimeout(() => {
+                            suppressInvitePress.current = false;
+                          }, 150);
+                        }}
+                      >
+                        {user.avatarUrl ? (
+                          <Image
+                            source={{ uri: resolveAvatarUrl(user.avatarUrl) || "" }}
+                            style={styles.resultAvatar}
+                          />
+                        ) : (
+                          <View style={styles.resultAvatarPlaceholder}>
+                            <Ionicons name="person" size={20} color="#999" />
+                          </View>
+                        )}
+                      </Pressable>
+                      <View key="info" style={styles.resultInfo}>
+                        <Text style={styles.resultName}>{user.name} {user.surname}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.resultUsername, { color: getTeamColors(inviteToTeam).primary }]}>@{user.username}</Text>
+                          
+                        </View>
+                      </View>
+                      <Ionicons key="add" name="add-circle" size={24} color={getTeamColors(inviteToTeam).primary} />
+                    </AnimatedButton>
+                  </FadeInView>
+                ))
+              )}
+            </ScrollView>
+          </ScaleInView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

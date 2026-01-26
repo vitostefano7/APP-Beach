@@ -56,7 +56,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   
   // Per l'owner, permetti di invitare se è il creatore
   const canChangeTeam = false;
-  const canRemove = false;
+  const canRemove = isCreator && player && matchStatus !== "completed" && matchStatus !== "cancelled" && matchStatus !== "in_progress";
   const canLeave = false;
   const canInvite = isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
 
@@ -158,6 +158,28 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           }
         />
       </View>
+
+      {/* Remove Button */}
+      {canRemove && (
+        <Pressable
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: 8,
+          }}
+          onPress={onRemove}
+          hitSlop={10}
+        >
+          <Ionicons
+            name="close-circle"
+            size={22}
+            color="#F44336"
+          />
+        </Pressable>
+      )}
     </Pressable>
   );
 };
