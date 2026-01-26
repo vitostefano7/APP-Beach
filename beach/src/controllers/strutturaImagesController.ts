@@ -39,32 +39,40 @@ export const upload = multer({
 // ✅ Upload immagine su Cloudinary
 export const addStrutturaImage = async (req: RequestConFile, res: Response) => {
     try {
-        console.log("📸 Upload immagine struttura");
         const strutturaId = req.params.id;
         const userId = (req as any).user?.id;
 
+        console.log('📌 [addStrutturaImage] Inizio:', { strutturaId, userId });
+        console.log("📸 Upload immagine struttura");
+
         if (!req.file) {
+            console.log('⚠️ [addStrutturaImage] Nessun file caricato');
             return res.status(400).json({ message: "Nessun file caricato" });
         }
 
         console.log("📁 File ricevuto:", req.file.originalname);
         console.log("📏 Dimensione:", req.file.size, "bytes");
 
+        console.log('🔍 [addStrutturaImage] Ricerca struttura');
         const struttura = await Struttura.findById(strutturaId);
 
         if (!struttura) {
+            console.log('⚠️ [addStrutturaImage] Struttura non trovata');
             return res.status(404).json({ message: "Struttura non trovata" });
         }
 
         if (struttura.owner.toString() !== userId) {
+            console.log('⚠️ [addStrutturaImage] Non autorizzato');
             return res.status(403).json({ message: "Non autorizzato" });
         }
 
         // Limite massimo immagini
         if (struttura.images.length >= MAX_IMAGES) {
+            console.log('⚠️ [addStrutturaImage] Limite immagini raggiunto');
             return res.status(400).json({ message: `Limite massimo di ${MAX_IMAGES} immagini raggiunto` });
         }
 
+        console.log('☁️ [addStrutturaImage] Caricamento su Cloudinary');
         // ✅ Upload su Cloudinary
         const base64 = req.file.buffer.toString("base64");
         const dataUri = `data:${req.file.mimetype};base64,${base64}`;
@@ -88,8 +96,11 @@ export const addStrutturaImage = async (req: RequestConFile, res: Response) => {
 
         const imageUrl = result.secure_url;
         struttura.images.push(imageUrl);
+
+        console.log('💾 [addStrutturaImage] Salvataggio struttura');
         await struttura.save();
 
+        console.log('✅ [addStrutturaImage] Immagine caricata');
         res.status(201).json({ 
             message: "Immagine caricata con successo", 
             image: imageUrl,
@@ -97,7 +108,7 @@ export const addStrutturaImage = async (req: RequestConFile, res: Response) => {
         });
 
     } catch (error) {
-        console.error("❌ Errore upload immagine struttura:", error);
+        console.error("❌ [addStrutturaImage] Errore:", error);
         res.status(500).json({ message: "Errore server durante l'upload" });
     }
 };
@@ -109,13 +120,18 @@ export const deleteStrutturaImage = async (req: Request, res: Response) => {
         const { imageUrl } = req.body;
         const userId = (req as any).user?.id;
 
+        console.log('📌 [deleteStrutturaImage] Inizio:', { id, imageUrl, userId });
+
+        console.log('🔍 [deleteStrutturaImage] Ricerca struttura');
         const struttura = await Struttura.findById(id);
 
         if (!struttura) {
+            console.log('⚠️ [deleteStrutturaImage] Struttura non trovata');
             return res.status(404).json({ message: "Struttura non trovata" });
         }
 
         if (struttura.owner.toString() !== userId) {
+            console.log('⚠️ [deleteStrutturaImage] Non autorizzato');
             return res.status(403).json({ message: "Non autorizzato" });
         }
 
@@ -123,10 +139,13 @@ export const deleteStrutturaImage = async (req: Request, res: Response) => {
         const imageIndex = struttura.images.indexOf(imageUrl);
         
         if (imageIndex === -1) {
+            console.log('⚠️ [deleteStrutturaImage] Immagine non trovata');
             return res.status(404).json({ message: "Immagine non trovata" });
         }
 
         struttura.images.splice(imageIndex, 1);
+
+        console.log('💾 [deleteStrutturaImage] Salvataggio struttura');
         await struttura.save();
 
         // ✅ Elimina da Cloudinary se è un URL Cloudinary
@@ -152,12 +171,13 @@ export const deleteStrutturaImage = async (req: Request, res: Response) => {
             }
         }
 
+        console.log('✅ [deleteStrutturaImage] Immagine eliminata');
         res.json({
             message: "Immagine eliminata con successo",
             images: struttura.images,
         });
     } catch (error) {
-        console.error("❌ Errore eliminazione immagine:", error);
+        console.error("❌ [deleteStrutturaImage] Errore:", error);
         res.status(500).json({ message: "Errore durante l'eliminazione" });
     }
 };
@@ -169,19 +189,25 @@ export const setMainStrutturaImage = async (req: Request, res: Response) => {
         const { imageUrl } = req.body;
         const userId = (req as any).user?.id;
 
+        console.log('📌 [setMainStrutturaImage] Inizio:', { id, imageUrl, userId });
+
+        console.log('🔍 [setMainStrutturaImage] Ricerca struttura');
         const struttura = await Struttura.findById(id);
 
         if (!struttura) {
+            console.log('⚠️ [setMainStrutturaImage] Struttura non trovata');
             return res.status(404).json({ message: "Struttura non trovata" });
         }
 
         if (struttura.owner.toString() !== userId) {
+            console.log('⚠️ [setMainStrutturaImage] Non autorizzato');
             return res.status(403).json({ message: "Non autorizzato" });
         }
 
         const imageIndex = struttura.images.indexOf(imageUrl);
         
         if (imageIndex === -1) {
+            console.log('⚠️ [setMainStrutturaImage] Immagine non trovata');
             return res.status(404).json({ message: "Immagine non trovata" });
         }
 
@@ -189,16 +215,18 @@ export const setMainStrutturaImage = async (req: Request, res: Response) => {
         struttura.images.splice(imageIndex, 1);
         struttura.images.unshift(imageUrl);
         
+        console.log('💾 [setMainStrutturaImage] Salvataggio struttura');
         await struttura.save();
 
         console.log("⭐ Immagine principale impostata:", imageUrl);
 
+        console.log('✅ [setMainStrutturaImage] Immagine principale impostata');
         res.json({
             message: "Immagine principale impostata",
             images: struttura.images,
         });
     } catch (error) {
-        console.error("❌ Errore impostazione immagine principale:", error);
+        console.error("❌ [setMainStrutturaImage] Errore:", error);
         res.status(500).json({ message: "Errore durante l'operazione" });
     }
 };

@@ -47,6 +47,7 @@ import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPren
 import TeamSection from "./DettaglioPrenotazione/components/TeamSection";
 
 export default function OwnerDettaglioPrenotazioneScreen() {
+  console.log('🔍 [Owner] OwnerDettaglioPrenotazioneScreen called');
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -75,6 +76,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   // Funzioni helper per match status
   const isMatchInProgress = () => {
+    console.log('🔍 [Owner] isMatchInProgress called');
     if (!booking) return false;
     const now = new Date();
     const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
@@ -95,6 +97,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   };
 
   const isMatchPassed = () => {
+    console.log('🔍 [Owner] isMatchPassed called');
     if (!booking) return false;
     const now = new Date();
     const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
@@ -102,6 +105,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   };
 
   const getTimeUntilRegistrationDeadline = () => {
+    console.log('🔍 [Owner] getTimeUntilRegistrationDeadline called');
     if (!booking) return null;
     const now = new Date();
     const matchStartTime = new Date(`${booking.date}T${booking.startTime}`);
@@ -122,6 +126,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   };
 
   const getTeamFormationLabel = (maxPlayers: number) => {
+    console.log('🔍 [Owner] getTeamFormationLabel called with maxPlayers:', maxPlayers);
     if (maxPlayers === 2) return "1v1";
     if (maxPlayers === 4) return "2v2";
     if (maxPlayers === 6) return "3v3";
@@ -1324,7 +1329,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              {console.log('🔍 [Owner] TextInput rendered, searchQuery:', searchQuery)}
             </View>
 
             <ScrollView style={styles.searchResults}>

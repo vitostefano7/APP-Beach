@@ -127,10 +127,21 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
   // Se è uno slot vuoto
   if (isEmptySlot) {
+    console.log('🔍 [EmptySlot] slotNumber:', slotNumber, 'isCreator:', isCreator, 'matchStatus:', matchStatus, 'onInviteToSlot defined:', !!onInviteToSlot);
+    
     return (
       <Pressable 
         style={[styles.playerCard, styles.emptySlotCard]}
-        onPress={onInviteToSlot}
+        onPress={() => {
+          console.log('🔍 [EmptySlot] Card pressed, onInviteToSlot:', !!onInviteToSlot);
+          if (onInviteToSlot) {
+            console.log('🔍 [EmptySlot] Calling onInviteToSlot');
+            onInviteToSlot();
+          } else {
+            console.log('⚠️ [EmptySlot] onInviteToSlot is undefined - cannot invite');
+          }
+        }}
+        disabled={!onInviteToSlot}
       >
         <View style={styles.emptySlotContent}>
           <View style={styles.emptySlotIconContainer}>
@@ -138,15 +149,12 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           </View>
           <View style={styles.emptySlotInfo}>
             <Text style={styles.emptySlotText}>Slot {slotNumber}</Text>
-            <Text style={styles.emptySlotSubtext}>Disponibile</Text>
+            <Text style={styles.emptySlotSubtext}>{onInviteToSlot ? 'Disponibile' : 'Non disponibile'}</Text>
           </View>
-          {isCreator && matchStatus !== "completed" && matchStatus !== "cancelled" && matchStatus !== "in_progress" && (
-            <Pressable 
-              style={styles.inviteSlotButton}
-              onPress={onInviteToSlot}
-            >
+          {onInviteToSlot && (
+            <View style={styles.inviteSlotButton}>
               <Ionicons name="add-circle" size={22} color="#4CAF50" />
-            </Pressable>
+            </View>
           )}
         </View>
       </Pressable>

@@ -71,12 +71,15 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Un owner non può prenotare" });
     }
 
+    console.log("🔍 Verificando campo esistente...");
     // 🔍 Verifica campo
     const campo = await Campo.findById(campoId).populate("struttura");
     if (!campo || !(campo as any).isActive) {
+      console.log("❌ Campo non trovato o non attivo:", campoId);
       return res.status(404).json({ message: "Campo non disponibile" });
     }
 
+    console.log("🔍 Verificando disponibilità slot nel calendario...");
     // 🔍 Verifica slot disponibile nel calendario
     const calendarDay = await CampoCalendarDay.findOne({
       campo: campoId,
@@ -84,6 +87,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     });
 
     if (!calendarDay) {
+      console.log("❌ Giorno non trovato nel calendario:", { campoId, date });
       return res.status(404).json({ message: "Giorno non trovato nel calendario" });
     }
 
@@ -97,6 +101,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Slot non disponibile" });
     }
 
+    console.log("⛔ Verificando conflitti prenotazione...");
     // ⛔ Verifica conflitto prenotazione
     const conflict = await Booking.findOne({
       campo: campoId,
@@ -106,6 +111,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     });
 
     if (conflict) {
+      console.log("❌ Conflitto prenotazione trovato:", conflict._id);
       return res.status(400).json({ message: "Orario già prenotato" });
     }
 
@@ -181,6 +187,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    console.log("💰 Calcolando prezzo prenotazione...");
     // 💰 Calcola prezzo usando il sistema deterministico (ora restituisce totalPrice/unitPrice)
     const priceResult = calculatePrice(
       (campo as any).pricingRules,
@@ -206,6 +213,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     // 💰 Calcola guadagno owner (100% del prezzo della prenotazione)
     const ownerEarnings = priceResult.totalPrice;
 
+    console.log("✅ Creando prenotazione nel database...");
     // ✅ Crea booking
     const booking = await Booking.create({
       bookingType,
@@ -224,6 +232,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       ownerEarnings,
     });
 
+    console.log("🔒 Disabilitando slot nel calendario...");
     // 🔒 Disabilita lo slot nel calendario
     slot.enabled = false;
     if (secondSlot) {
@@ -303,6 +312,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       ? Number(numberOfPeople)
       : (maxPlayers || getDefaultMaxPlayersForSport(sportType));
 
+    console.log("🆕 Creando match associato...");
     // 🆕 Crea automaticamente un Match associato
     const match = await Match.create({
       booking: new mongoose.Types.ObjectId(booking._id),
@@ -322,6 +332,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     console.log("✅ Match creato automaticamente:", match._id, `con ${finalMaxPlayers} giocatori max (${sportType})`);
 
+    console.log("📤 Popolando dati prenotazione per risposta...");
     // Popola i dati per la risposta
     const populatedBooking = await Booking.findById(booking._id)
       .populate({
@@ -333,6 +344,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       })
       .populate("user", "name email");
 
+    console.log("📤 Invio risposta prenotazione creata");
     res.status(201).json(populatedBooking);
   } catch (err) {
     console.error("❌ createBooking error:", err);
@@ -351,16 +363,23 @@ export const addPaymentToBooking = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { amount, method, status } = req.body;
 
+    console.log("💳 Aggiungendo pagamento a prenotazione:", { id, amount, method, status });
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ ID prenotazione non valido:", id);
       return res.status(400).json({ message: "ID prenotazione non valido" });
     }
 
+    console.log("🔍 Cercando prenotazione per pagamento...");
     const booking = await Booking.findById(id).populate({
       path: "campo",
       populate: { path: "struttura", select: "name location images" },
     });
 
-    if (!booking) return res.status(404).json({ message: "Prenotazione non trovata" });
+    if (!booking) {
+      console.log("❌ Prenotazione non trovata per pagamento:", id);
+      return res.status(404).json({ message: "Prenotazione non trovata" });
+    }
 
     // Minimal: accetta qualsiasi utente autenticato come pagatore.
     const payment = {
@@ -371,6 +390,7 @@ export const addPaymentToBooking = async (req: AuthRequest, res: Response) => {
       createdAt: new Date(),
     };
 
+    console.log("✅ Aggiungendo pagamento al database...");
     (booking as any).payments.push(payment);
     await booking.save();
 
@@ -381,6 +401,7 @@ export const addPaymentToBooking = async (req: AuthRequest, res: Response) => {
 
     const remainingAmount = Number((booking as any).price || 0) - paidAmount;
 
+    console.log("📤 Popolando dati aggiornati per risposta...");
     // Rispondi con lo stato aggiornato
     const populated = await Booking.findById(booking._id)
       .populate({ path: "campo", populate: { path: "struttura", select: "name location images" } })
@@ -390,6 +411,7 @@ export const addPaymentToBooking = async (req: AuthRequest, res: Response) => {
     responseObj.paidAmount = paidAmount;
     responseObj.remainingAmount = remainingAmount;
 
+    console.log("📤 Invio risposta pagamento aggiunto");
     res.status(201).json(responseObj);
   } catch (err) {
     console.error("❌ addPaymentToBooking error:", err);
@@ -416,6 +438,7 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     const userId = req.user!.id;
     console.log("📋 Caricamento prenotazioni utente:", userId);
 
+    console.log("🔍 Cercando match confermati dell'utente...");
     // 1. Trova tutti i match dove l'utente è un player confermato
     const myMatches = await Match.find({
       'players.user': userId,
@@ -427,6 +450,7 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     
     console.log(`✅ Trovati ${matchBookingIds.length} match confermati`);
 
+    console.log("🔍 Cercando prenotazioni dell'utente...");
     // 2. Trova tutte le prenotazioni:
     //    - create dall'utente OPPURE
     //    - associate a match dove l'utente è confermato
@@ -503,6 +527,7 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     console.log(`   - ${result.filter((b: any) => b.isMyBooking).length} create da te`);
     console.log(`   - ${result.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
     
+    console.log("📤 Invio lista prenotazioni utente");
     res.json(result);
   } catch (err) {
     console.error("❌ getMyBookings error:", err);
@@ -530,10 +555,14 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.id;
 
+    console.log("📋 Caricamento dettaglio prenotazione:", id);
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ ID prenotazione non valido:", id);
       return res.status(400).json({ message: "ID prenotazione non valido" });
     }
 
+    console.log("🔍 Cercando prenotazione...");
     // 🔍 Recupera prenotazione
     const booking = await Booking.findById(id)
       .populate({
@@ -546,12 +575,14 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       .populate("user", "name email");
 
     if (!booking) {
+      console.log("❌ Prenotazione non trovata:", id);
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
     // ✅ 1. Verifica se è il creatore della prenotazione
     const isOwner = (booking as any).user._id.toString() === userId;
 
+    console.log("🔍 Cercando match associato...");
     // 🔍 Recupera match associato (se esiste)
     const match = await Match.findOne({ booking: booking._id })
       .populate("players.user", "name surname username avatarUrl")
@@ -583,6 +614,7 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     // - Non è player
     // - E il booking/match NON sono pubblici
     if (!isOwner && !isPlayer && !(isPublicBooking && isPublicMatch)) {
+      console.log("❌ Accesso non autorizzato alla prenotazione:", id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
@@ -661,6 +693,7 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       };
     }
 
+    console.log("📤 Invio dettaglio prenotazione");
     res.json(responseData);
   } catch (err) {
     console.error("❌ getBookingById error:", err);
@@ -680,23 +713,29 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ ID non valido:", id);
       return res.status(400).json({ message: "ID non valido" });
     }
 
+    console.log("🔍 Cercando prenotazione da cancellare...");
     const booking = await Booking.findById(id);
 
     if (!booking) {
+      console.log("❌ Prenotazione non trovata:", id);
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
     if ((booking as any).user.toString() !== req.user!.id) {
+      console.log("❌ Non autorizzato a cancellare prenotazione:", id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
     if ((booking as any).status === "cancelled") {
+      console.log("❌ Prenotazione già cancellata:", id);
       return res.status(400).json({ message: "Prenotazione già cancellata" });
     }
 
+    console.log("✅ Cancellando prenotazione...");
     // Aggiorna status
     (booking as any).status = "cancelled";
     (booking as any).cancelledBy = "user";
@@ -760,6 +799,7 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
       // Non fallire la cancellazione per un errore di rimborso
     }
 
+    console.log("🔓 Riabilitando slot nel calendario...");
     // 🔓 Riabilita lo slot nel calendario
     const calendarDay = await CampoCalendarDay.findOne({
       campo: (booking as any).campo,
@@ -821,6 +861,7 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
 
     const ownerId = req.user!.id;
 
+    console.log("🔍 Cercando prenotazioni per strutture dell'owner...");
     const bookings = await Booking.find()
       .populate({
         path: "campo",
@@ -837,6 +878,7 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
     const filtered = bookings.filter((b) => (b as any).campo?.struttura);
 
     console.log(`✅ ${filtered.length} prenotazioni trovate`);
+    console.log("📤 Invio prenotazioni owner");
     res.json(filtered);
   } catch (err) {
     console.error("❌ getOwnerBookings error:", err);
@@ -853,7 +895,10 @@ export const getBookingsByCampo = async (req: AuthRequest, res: Response) => {
     const { campoId } = req.params;
     const { date } = req.query;
 
+    console.log("📋 Caricamento prenotazioni per campo:", campoId);
+
     if (!mongoose.Types.ObjectId.isValid(campoId)) {
+      console.log("❌ ID campo non valido:", campoId);
       return res.status(400).json({ message: "ID campo non valido" });
     }
 
@@ -866,10 +911,13 @@ export const getBookingsByCampo = async (req: AuthRequest, res: Response) => {
       query.date = date;
     }
 
+    console.log("🔍 Cercando prenotazioni per campo...");
     const bookings = await Booking.find(query)
       .populate("user", "name surname email")
       .sort({ startTime: 1 });
 
+    console.log(`✅ ${bookings.length} prenotazioni trovate per campo`);
+    console.log("📤 Invio prenotazioni campo");
     res.json(bookings);
   } catch (err) {
     console.error("❌ getBookingsByCampo error:", err);
@@ -889,9 +937,11 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
     console.log("📋 Caricamento dettaglio prenotazione owner:", id);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ ID non valido:", id);
       return res.status(400).json({ message: "ID non valido" });
     }
 
+    console.log("🔍 Cercando prenotazione owner...");
     const booking = await Booking.findById(id)
       .populate({
         path: "campo",
@@ -903,15 +953,18 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
       .populate("user", "name surname email avatarUrl");
 
     if (!booking) {
+      console.log("❌ Prenotazione non trovata:", id);
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
     // Verifica che l'owner sia proprietario della struttura
     const struttura = (booking as any).campo?.struttura;
     if (!struttura || struttura.owner.toString() !== ownerId) {
+      console.log("❌ Non autorizzato per prenotazione:", id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("🔍 Cercando match associato...");
     // Cerca il match associato con populate completo
     const match = await Match.findOne({ booking: booking._id })
       .populate("createdBy", "name surname username")
@@ -920,6 +973,7 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
         select: "name surname username avatarUrl",
       });
 
+    console.log("📤 Invio dettaglio prenotazione owner");
     res.json({
       ...booking.toObject(),
       match: match
@@ -953,9 +1007,11 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
     console.log("🗑️ Owner cancellazione prenotazione:", id);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ ID non valido:", id);
       return res.status(400).json({ message: "ID non valido" });
     }
 
+    console.log("🔍 Cercando prenotazione da cancellare owner...");
     const booking = await Booking.findById(id).populate({
       path: "campo",
       populate: {
@@ -965,6 +1021,7 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
     });
 
     if (!booking) {
+      console.log("❌ Prenotazione non trovata:", id);
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
@@ -972,13 +1029,16 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
     const struttura = (booking as any).campo?.struttura;
     const campo = (booking as any).campo;
     if (!struttura || struttura.owner.toString() !== ownerId) {
+      console.log("❌ Non autorizzato per cancellazione:", id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
     if ((booking as any).status === "cancelled") {
+      console.log("❌ Prenotazione già cancellata:", id);
       return res.status(400).json({ message: "Prenotazione già cancellata" });
     }
 
+    console.log("✅ Cancellando prenotazione owner...");
     // Aggiorna status
     (booking as any).status = "cancelled";
     (booking as any).cancelledBy = "owner";
@@ -1023,6 +1083,7 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
       // Non fallire la cancellazione per un errore di rimborso
     }
 
+    console.log("🔓 Riabilitando slot nel calendario...");
     // 🔓 Riabilita lo slot nel calendario
     const calendarDay = await CampoCalendarDay.findOne({
       campo: (booking as any).campo._id,
@@ -1090,6 +1151,7 @@ export const cancelOwnerBooking = async (req: AuthRequest, res: Response) => {
       console.error("❌ Errore invio notifica cancellazione:", notificationError);
     }
 
+    console.log("📤 Invio conferma cancellazione owner");
     res.json({ message: "Prenotazione cancellata con successo" });
   } catch (err) {
     console.error("❌ cancelOwnerBooking error:", err);

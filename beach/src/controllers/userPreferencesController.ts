@@ -11,18 +11,23 @@ import Campo from '../models/Campo';
  */
 export const getUserPreferences = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('📌 [getUserPreferences] Inizio:', { userId: req.user!.id });
+
+    console.log('🔍 [getUserPreferences] Ricerca preferenze');
     let preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     // Se non esistono, creale con valori default
     if (!preferences) {
+      console.log('⚠️ [getUserPreferences] Preferenze non trovate, creo default');
       preferences = await UserPreferences.create({
         user: req.user!.id,
       });
     }
 
+    console.log('✅ [getUserPreferences] Preferenze recuperate');
     res.json(preferences);
   } catch (err) {
-    console.error('Errore getUserPreferences:', err);
+    console.error('❌ [getUserPreferences] Errore:', err);
     res.status(500).json({ message: 'Errore caricamento preferenze' });
   }
 };
@@ -41,9 +46,13 @@ export const updateUserPreferences = async (req: AuthRequest, res: Response) => 
       preferredTimeSlot,
     } = req.body;
 
+    console.log('📌 [updateUserPreferences] Inizio:', { userId: req.user!.id, body: req.body });
+
+    console.log('🔍 [updateUserPreferences] Ricerca preferenze');
     let preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     if (!preferences) {
+      console.log('⚠️ [updateUserPreferences] Preferenze non trovate, creo nuove');
       preferences = new UserPreferences({ user: req.user!.id });
     }
 
@@ -54,14 +63,16 @@ export const updateUserPreferences = async (req: AuthRequest, res: Response) => 
     if (favoriteSports) preferences.favoriteSports = favoriteSports;
     if (preferredTimeSlot !== undefined) preferences.preferredTimeSlot = preferredTimeSlot;
 
+    console.log('💾 [updateUserPreferences] Salvataggio preferenze');
     await preferences.save();
 
+    console.log('✅ [updateUserPreferences] Preferenze aggiornate');
     res.json({
       message: 'Preferenze aggiornate con successo',
       preferences,
     });
   } catch (err) {
-    console.error('Errore updateUserPreferences:', err);
+    console.error('❌ [updateUserPreferences] Errore:', err);
     res.status(500).json({ message: 'Errore aggiornamento preferenze' });
   }
 };
@@ -74,15 +85,20 @@ export const updatePreferredLocation = async (req: AuthRequest, res: Response) =
   try {
     const { city, address, lat, lng, radius } = req.body;
 
+    console.log('📌 [updatePreferredLocation] Inizio:', { userId: req.user!.id, city, lat, lng });
+
     if (!city || !lat || !lng) {
+      console.log('⚠️ [updatePreferredLocation] Campi obbligatori mancanti');
       return res.status(400).json({
         message: 'City, lat e lng sono obbligatori',
       });
     }
 
+    console.log('🔍 [updatePreferredLocation] Ricerca preferenze');
     let preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     if (!preferences) {
+      console.log('⚠️ [updatePreferredLocation] Preferenze non trovate, creo nuove');
       preferences = new UserPreferences({ user: req.user!.id });
     }
 
@@ -94,14 +110,16 @@ export const updatePreferredLocation = async (req: AuthRequest, res: Response) =
       radius: radius || 10,
     };
 
+    console.log('💾 [updatePreferredLocation] Salvataggio location');
     await preferences.save();
 
+    console.log('✅ [updatePreferredLocation] Location aggiornata');
     res.json({
       message: 'Location preferita aggiornata',
       preferredLocation: preferences.preferredLocation,
     });
   } catch (err) {
-    console.error('Errore updatePreferredLocation:', err);
+    console.error('❌ [updatePreferredLocation] Errore:', err);
     res.status(500).json({ message: 'Errore aggiornamento location' });
   }
 };
@@ -114,6 +132,9 @@ export const addFavoriteStruttura = async (req: AuthRequest, res: Response) => {
   try {
     const { strutturaId } = req.params;
 
+    console.log('📌 [addFavoriteStruttura] Inizio:', { userId: req.user!.id, strutturaId });
+
+    console.log('🔍 [addFavoriteStruttura] Verifica struttura');
     // Verifica che la struttura esista
     const struttura = await Struttura.findOne({
       _id: strutturaId,
@@ -122,27 +143,34 @@ export const addFavoriteStruttura = async (req: AuthRequest, res: Response) => {
     });
 
     if (!struttura) {
+      console.log('⚠️ [addFavoriteStruttura] Struttura non trovata');
       return res.status(404).json({ message: 'Struttura non trovata' });
     }
 
+    console.log('🔍 [addFavoriteStruttura] Ricerca preferenze');
     let preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     if (!preferences) {
+      console.log('⚠️ [addFavoriteStruttura] Preferenze non trovate, creo nuove');
       preferences = new UserPreferences({ user: req.user!.id });
     }
 
     // Aggiungi solo se non è già nei preferiti
     if (!preferences.favoriteStrutture.includes(strutturaId as any)) {
+      console.log('➕ [addFavoriteStruttura] Aggiunta struttura ai preferiti');
       preferences.favoriteStrutture.push(strutturaId as any);
       await preferences.save();
+    } else {
+      console.log('⚠️ [addFavoriteStruttura] Struttura già nei preferiti');
     }
 
+    console.log('✅ [addFavoriteStruttura] Struttura aggiunta ai preferiti');
     res.json({
       message: 'Struttura aggiunta ai preferiti',
       favoriteStrutture: preferences.favoriteStrutture,
     });
   } catch (err) {
-    console.error('Errore addFavoriteStruttura:', err);
+    console.error('❌ [addFavoriteStruttura] Errore:', err);
     res.status(500).json({ message: 'Errore aggiunta preferito' });
   }
 };
@@ -155,25 +183,31 @@ export const removeFavoriteStruttura = async (req: AuthRequest, res: Response) =
   try {
     const { strutturaId } = req.params;
 
+    console.log('📌 [removeFavoriteStruttura] Inizio:', { userId: req.user!.id, strutturaId });
+
+    console.log('🔍 [removeFavoriteStruttura] Ricerca preferenze');
     const preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     if (!preferences) {
+      console.log('⚠️ [removeFavoriteStruttura] Preferenze non trovate');
       return res.status(404).json({ message: 'Preferenze non trovate' });
     }
 
     // Rimuovi dai preferiti
+    console.log('➖ [removeFavoriteStruttura] Rimozione struttura dai preferiti');
     preferences.favoriteStrutture = preferences.favoriteStrutture.filter(
       (id) => id.toString() !== strutturaId
     );
 
     await preferences.save();
 
+    console.log('✅ [removeFavoriteStruttura] Struttura rimossa dai preferiti');
     res.json({
       message: 'Struttura rimossa dai preferiti',
       favoriteStrutture: preferences.favoriteStrutture,
     });
   } catch (err) {
-    console.error('Errore removeFavoriteStruttura:', err);
+    console.error('❌ [removeFavoriteStruttura] Errore:', err);
     res.status(500).json({ message: 'Errore rimozione preferito' });
   }
 };
@@ -184,12 +218,17 @@ export const removeFavoriteStruttura = async (req: AuthRequest, res: Response) =
  */
 export const getFavoriteStrutture = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('📌 [getFavoriteStrutture] Inizio:', { userId: req.user!.id });
+
+    console.log('🔍 [getFavoriteStrutture] Ricerca preferenze');
     const preferences = await UserPreferences.findOne({ user: req.user!.id });
 
     if (!preferences || preferences.favoriteStrutture.length === 0) {
+      console.log('⚠️ [getFavoriteStrutture] Nessuna struttura favorita');
       return res.json([]);
     }
 
+    console.log('🔍 [getFavoriteStrutture] Caricamento strutture favorite');
     // Carica le strutture favorite con i dettagli completi
     const strutture = await Struttura.find({
       _id: { $in: preferences.favoriteStrutture },
@@ -232,9 +271,10 @@ export const getFavoriteStrutture = async (req: AuthRequest, res: Response) => {
       })
     );
 
+    console.log('✅ [getFavoriteStrutture] Strutture favorite recuperate:', struttureWithSports.length);
     res.json(struttureWithSports);
   } catch (err) {
-    console.error('Errore getFavoriteStrutture:', err);
+    console.error('❌ [getFavoriteStrutture] Errore:', err);
     res.status(500).json({ message: 'Errore caricamento preferiti' });
   }
 };

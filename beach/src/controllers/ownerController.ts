@@ -36,7 +36,10 @@ export const createStruttura = async (req: AuthRequest, res: Response) => {
   try {
     const ownerId = req.user!.id;
 
-    const struttura = await Strutture.create({
+    console.log('📌 [createStruttura] Inizio:', { ownerId, body: req.body });
+
+    console.log('🏗️ [createStruttura] Creazione struttura');
+    const struttura = new Strutture({
       ...req.body,
       owner: new mongoose.Types.ObjectId(ownerId),
       location: {
@@ -47,10 +50,13 @@ export const createStruttura = async (req: AuthRequest, res: Response) => {
         ],
       },
     });
+    await struttura.save();
 
+    console.log('✅ [createStruttura] Struttura creata:', struttura._id);
+    console.log('📤 [createStruttura] Risposta struttura');
     res.status(201).json(struttura);
   } catch (err) {
-    console.error(err);
+    console.error('❌ [createStruttura] Errore:', err);
     res.status(500).json({ message: "Errore creazione struttura" });
   }
 };
@@ -62,13 +68,18 @@ export const getMyStrutture = async (req: AuthRequest, res: Response) => {
   try {
     const ownerId = req.user!.id;
 
+    console.log('📌 [getMyStrutture] Inizio:', { ownerId });
+
+    console.log('🔍 [getMyStrutture] Ricerca strutture owner');
     const strutture = await Strutture.find({
       owner: new mongoose.Types.ObjectId(ownerId),
       isDeleted: false,
     });
 
+    console.log('✅ [getMyStrutture] Strutture trovate:', strutture.length);
     res.json(strutture);
   } catch (err) {
+    console.error('❌ [getMyStrutture] Errore:', err);
     res.status(500).json({ message: "Errore" });
   }
 };
@@ -81,15 +92,20 @@ export const updateStruttura = async (req: AuthRequest, res: Response) => {
     const ownerId = req.user!.id;
     const { id } = req.params;
 
+    console.log('📌 [updateStruttura] Inizio:', { ownerId, id, body: req.body });
+
+    console.log('🔍 [updateStruttura] Ricerca struttura:', { id, ownerId });
     const struttura = await Strutture.findOne({
       _id: id,
       owner: new mongoose.Types.ObjectId(ownerId),
     });
 
     if (!struttura) {
+      console.log('⚠️ [updateStruttura] Struttura non trovata');
       return res.status(404).json({ message: "Struttura non trovata" });
     }
 
+    console.log('📝 [updateStruttura] Aggiornamento struttura');
     Object.assign(struttura, req.body);
 
     if (req.body.location?.lat && req.body.location?.lng) {
@@ -99,9 +115,13 @@ export const updateStruttura = async (req: AuthRequest, res: Response) => {
       ];
     }
 
+    console.log('💾 [updateStruttura] Salvataggio struttura');
     await struttura.save();
+
+    console.log('✅ [updateStruttura] Struttura aggiornata');
     res.json(struttura);
   } catch (err) {
+    console.error('❌ [updateStruttura] Errore:', err);
     res.status(500).json({ message: "Errore update" });
   }
 };
@@ -114,6 +134,7 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
     const ownerId = req.user!.id;
     const { campoId, month, strutturaId, date } = req.query;
 
+    console.log('📌 [getOwnerBookings] Inizio:', { ownerId, campoId, month, strutturaId, date });
     console.log("📋 getOwnerBookings chiamato:", { campoId, month, strutturaId, date });
 
     // ✅ Trova le strutture dell'owner
@@ -211,6 +232,7 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
     const ownerId = req.user!.id;
     const { status } = req.query;
 
+    console.log('📌 [getOwnerMatches] Inizio:', { ownerId, status });
     console.log("🏐 [getOwnerMatches] Richiesta per owner:", ownerId);
 
     // Trova le strutture dell'owner
@@ -330,6 +352,7 @@ export const getOwnerUserSuggestions = async (req: AuthRequest, res: Response) =
     const ownerId = new mongoose.Types.ObjectId(req.user!.id);
     const { limit = 10, strutturaId } = req.query;
 
+    console.log('📌 [getOwnerUserSuggestions] Inizio:', { ownerId: ownerId.toString(), limit, strutturaId });
     console.log(`🎯 [getOwnerUserSuggestions] Calcolo suggerimenti per owner: ${ownerId}, strutturaId: ${strutturaId}`);
 
     let strutture: any[];

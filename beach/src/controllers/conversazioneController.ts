@@ -169,15 +169,21 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
     const userId = req.user?.id;
     const { strutturaId } = req.params;
 
+    console.log('💬 [getOrCreateConversation] Inizio:', { userId, strutturaId });
+
     if (!userId) {
+      console.log('❌ Non autorizzato');
       return res.status(401).json({ message: 'Non autorizzato' });
     }
 
+    console.log('🔍 Verifica struttura esistente...');
     const struttura = await Struttura.findById(strutturaId);
     if (!struttura) {
+      console.log('❌ Struttura non trovata:', strutturaId);
       return res.status(404).json({ message: 'Struttura non trovata' });
     }
 
+    console.log('✅ Struttura trovata, cerca conversazione esistente...');
     let conversation = await Conversation.findOne({
       user: userId,
       struttura: strutturaId,
@@ -187,6 +193,7 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
       .populate('owner', 'name email');
 
     if (!conversation) {
+      console.log('➕ Creazione nuova conversazione...');
       conversation = await Conversation.create({
         user: userId,
         struttura: strutturaId,
@@ -201,6 +208,15 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
         .populate('user', 'name email')
         .populate('struttura', 'name images')
         .populate('owner', 'name email');
+      
+      if (!conversation) {
+        console.log('❌ Conversazione non trovata dopo creazione');
+        return res.status(500).json({ message: 'Errore creazione conversazione' });
+      }
+      
+      console.log('✅ Conversazione creata:', conversation._id);
+    } else {
+      console.log('✅ Conversazione esistente trovata:', conversation._id);
     }
 
     // Assicurati che struttura abbia images anche se undefined
@@ -211,9 +227,10 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
       }
     }
 
+    console.log('📤 Invio conversazione');
     res.json(conversation);
   } catch (error) {
-    console.error('Errore get/create conversazione:', error);
+    console.error('❌ Errore get/create conversazione:', error);
     res.status(500).json({ message: 'Errore server' });
   }
 };
@@ -275,6 +292,11 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
         .populate('user', 'name email')
         .populate('struttura', 'name images')
         .populate('owner', 'name email');
+      
+      if (!conversation) {
+        console.log('❌ Conversazione non trovata dopo creazione');
+        return res.status(500).json({ message: 'Errore creazione conversazione' });
+      }
     }
 
     // Assicurati che struttura abbia images anche se undefined
@@ -304,15 +326,21 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     const { conversationId } = req.params;
     const { limit = 50, before } = req.query;
 
+    console.log('💬 [getMessages] Inizio:', { conversationId, userId, limit, before });
+
     if (!userId) {
+      console.log('❌ Non autorizzato');
       return res.status(401).json({ message: 'Non autorizzato' });
     }
 
+    console.log('🔍 Caricamento conversazione...');
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
+      console.log('❌ Conversazione non trovata:', conversationId);
       return res.status(404).json({ message: 'Conversazione non trovata' });
     }
 
+    console.log('🔐 Verifica autorizzazione...');
     // Verifica autorizzazione
     const user = await User.findById(userId);
     const isOwner = user?.role === 'owner';
@@ -354,9 +382,11 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     }
 
     if (!isAuthorized) {
+      console.log('❌ Non autorizzato per questa conversazione');
       return res.status(403).json({ message: 'Non autorizzato' });
     }
 
+    console.log('✅ Autorizzato, caricamento messaggi...');
     const query: any = { conversationId };
     if (before) {
       query.createdAt = { $lt: new Date(before as string) };
@@ -366,6 +396,8 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .populate('sender', 'name email avatarUrl');
+
+    console.log('✅ Messaggi caricati:', messages.length);
 
     // Segna messaggi come letti
     if (conversation.type === 'direct') {
@@ -396,9 +428,10 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       { read: true }
     );
 
+    console.log('📤 Invio messaggi');
     res.json(messages.reverse());
   } catch (error) {
-    console.error('Errore caricamento messaggi:', error);
+    console.error('❌ Errore caricamento messaggi:', error);
     res.status(500).json({ message: 'Errore server' });
   }
 };

@@ -28,26 +28,36 @@ export const createMatchFromBooking = async (
     const { maxPlayers, isPublic, players } = req.body;
     const userId = req.user!.id;
 
+    console.log('⚽ [createMatchFromBooking] Inizio creazione match:', { bookingId, userId, maxPlayers, isPublic });
+
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      console.log('❌ ID prenotazione non valido');
       return res.status(400).json({ message: "ID prenotazione non valido" });
     }
 
+    console.log('🔍 Caricamento prenotazione...');
     const booking = await Booking.findById(bookingId).populate('campo');
     if (!booking) {
+      console.log('❌ Prenotazione non trovata');
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
+    console.log('🔐 Verifica autorizzazione...');
     // Solo chi ha prenotato può creare il match
     if (booking.user.toString() !== userId) {
+      console.log('❌ Non autorizzato - prenotazione non dell\'utente');
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log('🔍 Controllo match esistente...');
     // Match già esistente?
     const existing = await Match.findOne({ booking: bookingId });
     if (existing) {
+      console.log('❌ Match già esistente per questa prenotazione');
       return res.status(400).json({ message: "Match già creato per questa prenotazione" });
     }
 
+    console.log('⚙️ Determinazione maxPlayers...');
     // Determina maxPlayers basandosi sul tipo di sport del campo
     const campo = (booking as any).campo;
     let finalMaxPlayers = maxPlayers;
@@ -58,19 +68,24 @@ export const createMatchFromBooking = async (
       // Se maxPlayers non è fornito, usa il default per lo sport
       if (!maxPlayers) {
         finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
+        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
         const validation = validateMaxPlayersForSport(maxPlayers, sportType);
         if (!validation.valid) {
+          console.log('❌ MaxPlayers non valido:', validation.error);
           return res.status(400).json({ message: validation.error });
         }
         finalMaxPlayers = maxPlayers;
+        console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
       // Fallback se non c'è sport
       finalMaxPlayers = maxPlayers || 4;
+      console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
 
+    console.log('💾 Creazione match nel DB...');
     // Crea match
     const match = await Match.create({
       booking: bookingId,
@@ -83,6 +98,7 @@ export const createMatchFromBooking = async (
 
     await match.populate("players.user", "username name surname avatarUrl");
     await match.populate("createdBy", "username name surname avatarUrl");
+    console.log('✅ Match creato:', match._id);
 
     res.status(201).json(match);
   } catch (err) {
@@ -100,15 +116,21 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
     const { booking, event, maxPlayers, isPublic, players } = req.body;
     const userId = req.user!.id;
 
+    console.log('⚽ [createMatch] Creazione match standalone:', { booking, event, maxPlayers, isPublic, userId });
+
     if (!booking) {
+      console.log('❌ Booking obbligatorio mancante');
       return res.status(400).json({ message: "booking è obbligatorio" });
     }
 
+    console.log('🔍 Caricamento booking...');
     const bookingDoc = await Booking.findById(booking).populate('campo');
     if (!bookingDoc) {
+      console.log('❌ Prenotazione non trovata');
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
 
+    console.log('⚙️ Determinazione maxPlayers...');
     // Determina maxPlayers basandosi sul tipo di sport del campo
     const campo = (bookingDoc as any).campo;
     let finalMaxPlayers = maxPlayers;
@@ -119,19 +141,24 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
       // Se maxPlayers non è fornito, usa il default per lo sport
       if (!maxPlayers) {
         finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
+        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
         const validation = validateMaxPlayersForSport(maxPlayers, sportType);
         if (!validation.valid) {
+          console.log('❌ MaxPlayers non valido:', validation.error);
           return res.status(400).json({ message: validation.error });
         }
         finalMaxPlayers = maxPlayers;
+        console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
       // Fallback se non c'è sport
       finalMaxPlayers = maxPlayers || 4;
+      console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
 
+    console.log('💾 Creazione match nel DB...');
     const match = await Match.create({
       booking,
       createdBy: userId,
@@ -144,6 +171,7 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
 
     await match.populate("players.user", "username name surname avatarUrl");
     await match.populate("createdBy", "username name surname avatarUrl");
+    console.log('✅ Match creato:', match._id);
     
     // Se hai bisogno di event, decommenta questa riga e importa il modello Event
     // if (event) {
@@ -167,11 +195,15 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     const { username, team } = req.body;
     const userId = req.user!.id;
 
+    console.log('📨 [invitePlayer] Invito giocatore:', { matchId, username, team, userId });
+
     const match = await Match.findById(matchId);
     if (!match) {
+      console.log('❌ Match non trovato');
       return res.status(404).json({ message: "Match non trovato" });
     }
 
+    console.log('🔐 Verifica autorizzazione...');
     // Controlla se l'utente è il creatore o l'owner della struttura
     const isCreator = match.createdBy.toString() === userId;
     
@@ -183,6 +215,7 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
       }
     });
     if (!booking) {
+      console.log('❌ Prenotazione non trovata');
       return res.status(404).json({ message: "Prenotazione non trovata" });
     }
     
@@ -190,43 +223,56 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     const isOwner = strutturaOwner === userId;
     
     if (!isCreator && !isOwner) {
+      console.log('❌ Non autorizzato - non creatore né owner');
       return res.status(403).json({ message: "Solo il creatore o l'owner della struttura possono invitare" });
     }
 
+    console.log('🔍 Controllo status match...');
     // Match deve essere draft o open
     if (!["draft", "open"].includes(match.status)) {
+      console.log('❌ Match non aperto a nuovi giocatori');
       return res.status(400).json({ message: "Match non aperto a nuovi giocatori" });
     }
 
+    console.log('👤 Ricerca utente da invitare...');
     // Trova utente da username
     const userToInvite = await User.findOne({ username: username.toLowerCase() });
     if (!userToInvite) {
+      console.log('❌ Utente non trovato:', username);
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
+    console.log('🔍 Controllo se già invitato...');
     // Già presente?
     const alreadyInvited = match.players.some(
       (p) => p.user.toString() === userToInvite._id.toString()
     );
     if (alreadyInvited) {
+      console.log('❌ Utente già invitato');
       return res.status(400).json({ message: "Utente già invitato" });
     }
 
+    console.log('🔍 Controllo limite giocatori...');
     // Max players raggiunto?
     if (match.players.length >= match.maxPlayers) {
+      console.log('❌ Match pieno');
       return res.status(400).json({ message: "Match pieno" });
     }
 
+    console.log('🔍 Validazione team...');
     // Valida team se fornito
     if (team && team !== "A" && team !== "B") {
+      console.log('❌ Team non valido');
       return res.status(400).json({ message: "Team deve essere 'A' o 'B'" });
     }
 
     // Team obbligatorio se maxPlayers > 2 e match non è in draft
     if (match.maxPlayers > 2 && match.status !== "draft" && !team) {
+      console.log('❌ Team obbligatorio');
       return res.status(400).json({ message: "Team obbligatorio per questo match" });
     }
 
+    console.log('➕ Aggiunta player al match...');
     // Aggiungi player con team opzionale
     // Se è l'owner ad invitare, aggiungi direttamente come confirmed
     const playerStatus = isOwner ? "confirmed" : "pending";
@@ -240,30 +286,37 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
 
     await match.save();
     await match.populate("players.user", "username name surname avatarUrl");
+    console.log('✅ Player aggiunto, status:', playerStatus);
 
     // Invia notifica diversa in base a chi invita
-    if (isOwner) {
-      // Notifica di aggiunta diretta da parte dell'owner
-      await createNotification(
-        userToInvite._id,
-        new mongoose.Types.ObjectId(userId),
-        "match_join",
-        "Aggiunto a una partita",
-        `Sei stato aggiunto a una partita presso ${(booking.campo as any).struttura.name}`,
-        match._id,
-        "Match"
-      );
-    } else {
-      // Notifica di invito normale da parte del creator
-      await createNotification(
-        userToInvite._id,
-        new mongoose.Types.ObjectId(userId),
-        "match_invite",
-        "Invito a partita",
-        `Sei stato invitato a una partita`,
-        match._id,
-        "Match"
-      );
+    try {
+      if (isOwner) {
+        // Notifica di aggiunta diretta da parte dell'owner
+        await createNotification(
+          userToInvite._id,
+          new mongoose.Types.ObjectId(userId),
+          "match_join",
+          "Aggiunto a una partita",
+          `Sei stato aggiunto a una partita presso ${(booking.campo as any).struttura.name}`,
+          match._id,
+          "Match"
+        );
+        console.log('📢 Notifica owner inviata');
+      } else {
+        // Notifica di invito normale da parte del creator
+        await createNotification(
+          userToInvite._id,
+          new mongoose.Types.ObjectId(userId),
+          "match_invite",
+          "Invito a partita",
+          `Sei stato invitato a una partita`,
+          match._id,
+          "Match"
+        );
+        console.log('📢 Notifica invito inviata');
+      }
+    } catch (notifError) {
+      console.error("❌ Errore invio notifica:", notifError);
     }
 
     res.json(match);

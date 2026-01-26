@@ -250,6 +250,14 @@ export default function DettaglioPrenotazioneScreen() {
     }
   };
 
+  // Helper function to update booking state safely
+  const updateBookingState = (updater: (prevBooking: any) => any) => {
+    setBooking((prevBooking) => {
+      if (!prevBooking) return prevBooking;
+      return updater(prevBooking);
+    });
+  };
+
   // Verifica se la partita è in corso o passata
   const isMatchInProgress = () => {
     if (!booking) return false;
@@ -663,13 +671,31 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore invito");
       }
 
+      // Update local state instead of reloading
+      const invitedUser = searchResults.find(user => user.username === username);
+      if (invitedUser) {
+        updateBookingState((prevBooking) => ({
+          ...prevBooking,
+          match: {
+            ...prevBooking.match,
+            players: [
+              ...prevBooking.match.players,
+              {
+                user: invitedUser,
+                status: 'pending',
+                team: inviteToTeam || null,
+              }
+            ]
+          }
+        }));
+      }
+
       showCustomAlert("✅ Invito inviato!", "L'utente è stato invitato al match");
       setInviteModalVisible(false);
       setSearchQuery("");
       setSearchResults([]);
       setInviteToTeam(null);
       setInviteToSlot(null);
-      loadBooking();
     } catch (error: any) {
       showCustomAlert("Errore", error.message);
     }
@@ -703,8 +729,20 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(errorData.message || "Errore nella risposta all'invito");
       }
 
+      // Update local state instead of reloading
+      updateBookingState((prevBooking) => ({
+        ...prevBooking,
+        match: {
+          ...prevBooking.match,
+          players: prevBooking.match.players.map(p =>
+            p.user._id === getUserId(user)
+              ? { ...p, status: response === "accept" ? "confirmed" : "declined", team: team || p.team }
+              : p
+          )
+        }
+      }));
+
       setTeamSelectionModalVisible(false);
-      loadBooking();
       
       if (response === "accept") {
         showCustomAlert("✅ Invito accettato!", "Ti sei unito al match con successo");
@@ -750,7 +788,14 @@ export default function DettaglioPrenotazioneScreen() {
                 throw new Error(error.message || "Errore rimozione giocatore");
               }
 
-              loadBooking();
+              // Update local state instead of reloading
+              updateBookingState((prevBooking) => ({
+                ...prevBooking,
+                match: {
+                  ...prevBooking.match,
+                  players: prevBooking.match.players.filter(p => p.user._id !== playerId)
+                }
+              }));
             } catch (error: any) {
               showCustomAlert("Errore", error.message);
             }
@@ -813,8 +858,23 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore nell'unione al match");
       }
 
+      // Update local state instead of reloading
+      updateBookingState((prevBooking) => ({
+        ...prevBooking,
+        match: {
+          ...prevBooking.match,
+          players: [
+            ...prevBooking.match.players,
+            {
+              user: user,
+              status: 'confirmed',
+              team: team || null,
+            }
+          ]
+        }
+      }));
+
       showCustomAlert("✅ Match unito!", "Ti sei unito al match con successo");
-      loadBooking();
     } catch (error: any) {
       showCustomAlert("Errore", error.message);
     }
@@ -835,8 +895,16 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore nell'abbandonare il match");
       }
 
+      // Update local state instead of reloading
+      updateBookingState((prevBooking) => ({
+        ...prevBooking,
+        match: {
+          ...prevBooking.match,
+          players: prevBooking.match.players.filter(p => p.user._id !== getUserId(user))
+        }
+      }));
+
       showCustomAlert("Match abbandonato", "Hai lasciato il match");
-      loadBooking();
     } catch (error: any) {
       showCustomAlert("Errore", error.message);
     } finally {

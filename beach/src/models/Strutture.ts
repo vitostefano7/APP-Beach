@@ -62,5 +62,4 @@ const StrutturaSchema = new Schema<IStruttura>(
 // ✅ Indice per query con amenities
 StrutturaSchema.index({ amenities: 1 });
 
-export default mongoose.models.Struttura ||
-  mongoose.model<IStruttura>("Struttura", StrutturaSchema);
+export default mongoose.model<IStruttura>("Struttura", StrutturaSchema);

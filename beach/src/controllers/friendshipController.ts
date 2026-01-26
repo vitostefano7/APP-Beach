@@ -1486,37 +1486,32 @@ export const friendshipController = {
     userId: Types.ObjectId, 
     targetUserId: Types.ObjectId
   ): Promise<"none" | "pending" | "accepted"> {
-    console.log(`🔍 [getFriendshipStatusForUser] Checking OUTGOING request: userId=${userId} → targetUserId=${targetUserId}`);
-    
-    // Cerca solo la richiesta DA userId VERSO targetUserId
-    const friendship = await Friendship.findOne({
-      requester: userId,
-      recipient: targetUserId
-    });
+    try {
+      // Cerca solo la richiesta DA userId VERSO targetUserId
+      const friendship = await Friendship.findOne({
+        requester: userId,
+        recipient: targetUserId
+      });
 
-    console.log(`🔍 [getFriendshipStatusForUser] Friendship found:`, friendship ? {
-      _id: friendship._id,
-      status: friendship.status
-    } : 'NONE');
-
-    if (!friendship) {
-      console.log(`❌ [getFriendshipStatusForUser] No outgoing request found, returning 'none'`);
+      if (!friendship) {
+        return "none";
+      }
+      
+      // Log only when friendship exists
+      console.log(`🔍 [getFriendshipStatusForUser] Found friendship ${userId} → ${targetUserId}: ${friendship.status}`);
+      
+      if (friendship.status === "pending") {
+        return "pending";
+      }
+      if (friendship.status === "accepted") {
+        return "accepted";
+      }
+      
+      return "none"; // Per rejected o blocked
+    } catch (error) {
+      console.error(`❌ [getFriendshipStatusForUser] Error checking friendship ${userId} → ${targetUserId}:`, error);
       return "none";
     }
-    
-    console.log(`🔍 [getFriendshipStatusForUser] Friendship status: ${friendship.status}`);
-    
-    if (friendship.status === "pending") {
-      console.log(`⏳ [getFriendshipStatusForUser] Returning 'pending'`);
-      return "pending";
-    }
-    if (friendship.status === "accepted") {
-      console.log(`✅ [getFriendshipStatusForUser] Returning 'accepted'`);
-      return "accepted";
-    }
-    
-    console.log(`❌ [getFriendshipStatusForUser] Returning 'none' (rejected/blocked)`);
-    return "none"; // Per rejected o blocked
   },
 
   // Helper per statistiche amici in comune

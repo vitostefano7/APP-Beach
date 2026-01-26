@@ -436,11 +436,15 @@ export const likePost = async (req: AuthRequest, res: Response) => {
     const { postId } = req.params;
     const userId = req.user?.id;
 
+    console.log('👍 [likePost] Inizio like/unlike post:', { postId, userId });
+
     const post = await Post.findById(postId);
     if (!post) {
+      console.log('❌ Post non trovato:', postId);
       return res.status(404).json({ message: "Post not found" });
     }
 
+    console.log('✅ Post trovato, controllo like esistente...');
     const likeIndex = post.likes.findIndex(
       (id) => id.toString() === userId
     );
@@ -450,13 +454,17 @@ export const likePost = async (req: AuthRequest, res: Response) => {
       // Rimuovi like
       post.likes.splice(likeIndex, 1);
       liked = false;
+      console.log('👎 Like rimosso');
     } else {
       // Aggiungi like
       post.likes.push(userId as any);
       liked = true;
+      console.log('👍 Like aggiunto');
     }
 
+    console.log('💾 Salvataggio post...');
     await post.save();
+    console.log('✅ Post salvato, likes totali:', post.likes.length);
 
     res.json({
       message: liked ? "Post liked" : "Post unliked",
@@ -464,7 +472,7 @@ export const likePost = async (req: AuthRequest, res: Response) => {
       likesCount: post.likes.length,
     });
   } catch (error) {
-    console.error("Errore like post:", error);
+    console.error("❌ Errore like post:", error);
     res.status(500).json({ message: "Errore nell'aggiornamento del like" });
   }
 };
@@ -546,32 +554,44 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
     const { postId } = req.params;
     const userId = req.user?.id;
 
+    console.log('🗑️ [deletePost] Inizio eliminazione post:', { postId, userId });
+
     const post = await Post.findById(postId);
     if (!post) {
+      console.log('❌ Post non trovato:', postId);
       return res.status(404).json({ message: "Post not found" });
     }
 
+    console.log('✅ Post trovato, verifica ownership...');
     // Verifica che l'utente sia il creatore
     if (post.user.toString() !== userId) {
+      console.log('❌ Utente non autorizzato a eliminare questo post');
       return res.status(403).json({ message: "You can only delete your own posts" });
     }
 
+    console.log('✅ Ownership verificato, controllo immagine...');
     // Elimina immagine da Cloudinary se presente
     if (post.image) {
+      console.log('🖼️ Eliminazione immagine da Cloudinary...');
       try {
         const publicId = post.image.split("/").slice(-2).join("/").split(".")[0];
         await cloudinary.uploader.destroy(`community/posts/${publicId}`);
+        console.log('✅ Immagine eliminata da Cloudinary');
       } catch (cloudinaryError) {
-        console.error("Errore eliminazione immagine Cloudinary:", cloudinaryError);
+        console.error("❌ Errore eliminazione immagine Cloudinary:", cloudinaryError);
         // Continua comunque con l'eliminazione del post
       }
+    } else {
+      console.log('📝 Nessuna immagine da eliminare');
     }
 
+    console.log('💾 Eliminazione post dal DB...');
     await Post.findByIdAndDelete(postId);
+    console.log('✅ Post eliminato con successo');
 
     res.json({ message: "Post deleted successfully" });
   } catch (error) {
-    console.error("Errore eliminazione post:", error);
+    console.error("❌ Errore eliminazione post:", error);
     res.status(500).json({ message: "Errore nell'eliminazione del post" });
   }
 };
@@ -589,6 +609,8 @@ export const getEvents = async (req: AuthRequest, res: Response) => {
     const status = (req.query.status as string) || "upcoming";
     const limit = parseInt(req.query.limit as string) || 20;
 
+    console.log('📅 [getEvents] Recupero eventi:', { status, limit });
+
     let query: any = {};
 
     if (status !== "all") {
@@ -598,8 +620,10 @@ export const getEvents = async (req: AuthRequest, res: Response) => {
     // Filtra eventi futuri per "upcoming"
     if (status === "upcoming") {
       query.date = { $gte: new Date() };
+      console.log('📅 Filtro eventi futuri');
     }
 
+    console.log('🔍 Query eventi:', JSON.stringify(query));
     const events = await CommunityEvent.find(query)
       .sort({ date: 1 }) // Prossimi eventi per primi
       .limit(limit)
@@ -608,13 +632,14 @@ export const getEvents = async (req: AuthRequest, res: Response) => {
       .lean();
 
     const total = await CommunityEvent.countDocuments(query);
+    console.log('✅ Eventi trovati:', events.length, 'su', total);
 
     res.json({
       events,
       total,
     });
   } catch (error) {
-    console.error("Errore recupero eventi:", error);
+    console.error("❌ Errore recupero eventi:", error);
     res.status(500).json({ message: "Errore nel recupero degli eventi" });
   }
 };
@@ -628,27 +653,37 @@ export const createEvent = async (req: AuthRequest, res: Response) => {
     const { title, description, date, location, maxParticipants } = req.body;
     const userId = req.user?.id;
 
+    console.log('🎉 [createEvent] Creazione evento:', { title, date, location, maxParticipants, userId });
+
     // Validazione
     if (!title || !description || !date || !location || !maxParticipants) {
+      console.log('❌ Campi obbligatori mancanti');
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const eventDate = new Date(date);
     if (eventDate <= new Date()) {
+      console.log('❌ Data evento nel passato:', eventDate);
       return res.status(400).json({ message: "Event date must be in the future" });
     }
 
+    console.log('✅ Validazione superata, controllo immagine...');
     // Upload immagine se presente
     let imageUrl: string | undefined;
     if (req.file) {
+      console.log('📤 Upload immagine evento...');
       try {
         imageUrl = await uploadToCloudinary(req.file.buffer, "community/events");
+        console.log('✅ Immagine caricata:', imageUrl);
       } catch (uploadError) {
-        console.error("Errore upload immagine:", uploadError);
+        console.error("❌ Errore upload immagine:", uploadError);
         return res.status(500).json({ message: "Errore nell'upload dell'immagine" });
       }
+    } else {
+      console.log('📝 Nessuna immagine');
     }
 
+    console.log('💾 Creazione evento nel DB...');
     // Crea evento
     const event = new CommunityEvent({
       title,
@@ -664,13 +699,14 @@ export const createEvent = async (req: AuthRequest, res: Response) => {
 
     await event.save();
     await event.populate("organizer", "name avatarUrl");
+    console.log('✅ Evento creato:', event._id);
 
     res.status(201).json({
       message: "Event created successfully",
       event,
     });
   } catch (error) {
-    console.error("Errore creazione evento:", error);
+    console.error("❌ Errore creazione evento:", error);
     res.status(500).json({ message: "Errore nella creazione dell'evento" });
   }
 };
@@ -684,11 +720,15 @@ export const joinEvent = async (req: AuthRequest, res: Response) => {
     const { eventId } = req.params;
     const userId = req.user?.id;
 
+    console.log('🤝 [joinEvent] Join/unjoin evento:', { eventId, userId });
+
     const event = await CommunityEvent.findById(eventId);
     if (!event) {
+      console.log('❌ Evento non trovato:', eventId);
       return res.status(404).json({ message: "Event not found" });
     }
 
+    console.log('✅ Evento trovato, controllo partecipazione...');
     const participantIndex = event.participants.findIndex(
       (id) => id.toString() === userId
     );
@@ -698,16 +738,21 @@ export const joinEvent = async (req: AuthRequest, res: Response) => {
       // Disiscrivi
       event.participants.splice(participantIndex, 1);
       joined = false;
+      console.log('👋 Disiscritto dall\'evento');
     } else {
       // Iscriviti
       if (event.participants.length >= event.maxParticipants) {
+        console.log('❌ Evento pieno:', event.participants.length, '/', event.maxParticipants);
         return res.status(400).json({ message: "Event is full" });
       }
       event.participants.push(userId as any);
       joined = true;
+      console.log('✅ Iscritto all\'evento');
     }
 
+    console.log('💾 Salvataggio evento...');
     await event.save();
+    console.log('✅ Evento salvato, partecipanti:', event.participants.length);
 
     res.json({
       message: joined ? "Successfully joined event" : "Successfully left event",
@@ -715,7 +760,7 @@ export const joinEvent = async (req: AuthRequest, res: Response) => {
       participantsCount: event.participants.length,
     });
   } catch (error) {
-    console.error("Errore join evento:", error);
+    console.error("❌ Errore join evento:", error);
     res.status(500).json({ message: "Errore nell'iscrizione all'evento" });
   }
 };
@@ -734,7 +779,10 @@ export const getRankings = async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const userId = req.user?.id;
 
+    console.log('🏆 [getRankings] Recupero classifiche:', { type, limit, userId });
+
     // Aggrega dati dai match completati
+    console.log('🔍 Aggregazione match completati...');
     const rankings = await Match.aggregate([
       {
         $match: {
@@ -812,6 +860,8 @@ export const getRankings = async (req: AuthRequest, res: Response) => {
       },
     ]);
 
+    console.log('✅ Rankings calcolati:', rankings.length);
+
     // Aggiungi rank
     const rankedData = rankings.map((item, index) => ({
       rank: index + 1,
@@ -823,12 +873,14 @@ export const getRankings = async (req: AuthRequest, res: Response) => {
       (item) => item.user._id.toString() === userId
     );
 
+    console.log('🏅 Mia posizione:', myRank ? myRank.rank : 'Non in classifica');
+
     res.json({
       rankings: rankedData,
       myRank: myRank || null,
     });
   } catch (error) {
-    console.error("Errore recupero rankings:", error);
+    console.error("❌ Errore recupero rankings:", error);
     res.status(500).json({ message: "Errore nel recupero delle classifiche" });
   }
 };
@@ -970,17 +1022,22 @@ export const getStrutturaFollowStatus = async (req: AuthRequest, res: Response) 
     const { strutturaId } = req.params;
     const userId = req.user?.id;
 
+    console.log('🔍 [getStrutturaFollowStatus] Verifica follow status:', { strutturaId, userId });
+
     const follower = await StrutturaFollower.findOne({
       user: userId,
       struttura: strutturaId,
     });
 
+    const isFollowing = follower?.status === "active";
+    console.log('✅ Follow status:', isFollowing ? 'Seguendo' : 'Non seguendo');
+
     res.json({
-      isFollowing: follower?.status === "active",
+      isFollowing,
       status: follower?.status || null,
     });
   } catch (error) {
-    console.error("Errore verifica follow status:", error);
+    console.error("❌ Errore verifica follow status:", error);
     res.status(500).json({ message: "Errore nel verificare lo status" });
   }
 };
@@ -1474,7 +1531,10 @@ export const getUserFollowStatus = async (req: AuthRequest, res: Response) => {
     const { strutturaId } = req.query;
     const ownerId = req.user?.id;
 
+    console.log('🔍 [getUserFollowStatus] Verifica follow struttura->utente:', { userId, strutturaId, ownerId });
+
     if (!strutturaId) {
+      console.log('❌ strutturaId mancante');
       return res.status(400).json({ message: "strutturaId is required" });
     }
 
@@ -1486,20 +1546,25 @@ export const getUserFollowStatus = async (req: AuthRequest, res: Response) => {
     });
 
     if (!struttura) {
+      console.log('❌ Struttura non trovata o non di proprietà');
       return res.status(404).json({ message: "Struttura not found" });
     }
 
+    console.log('✅ Struttura verificata, controllo follow...');
     const follower = await UserFollower.findOne({
       struttura: strutturaId,
       user: userId,
     });
 
+    const isFollowing = follower?.status === "active";
+    console.log('✅ Follow status:', isFollowing ? 'Seguendo' : 'Non seguendo');
+
     res.json({
-      isFollowing: follower?.status === "active",
+      isFollowing,
       status: follower?.status || null,
     });
   } catch (error) {
-    console.error("Errore verifica follow status:", error);
+    console.error("❌ Errore verifica follow status:", error);
     res.status(500).json({ message: "Errore nel verificare lo status" });
   }
 };

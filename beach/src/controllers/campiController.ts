@@ -151,12 +151,14 @@ export const getCampiByStruttura = async (req: Request, res: Response) => {
   try {
     console.log("🏟️  GET /campi/struttura/:id (PUBLIC)");
     
+    console.log("🔍 Cercando campi attivi per struttura:", req.params.id);
     const campi = await Campo.find({
       struttura: req.params.id,
       isActive: true,
     }).sort({ name: 1 });
 
     console.log(`✅ Trovati ${campi.length} campi attivi`);
+    console.log("📤 Invio lista campi attivi");
     res.json(campi);
   } catch (err) {
     console.error("❌ getCampiByStruttura error:", err);
@@ -174,6 +176,7 @@ export const getAllCampiByStruttura = async (req: AuthRequest, res: Response) =>
     console.log("👤 User ID:", req.user?.id);
     console.log("🏢 Struttura ID:", req.params.id);
 
+    console.log("🔍 Verificando struttura ownership...");
     // Verifica che la struttura appartenga all'utente
     const struttura = await Struttura.findOne({
       _id: req.params.id,
@@ -185,12 +188,14 @@ export const getAllCampiByStruttura = async (req: AuthRequest, res: Response) =>
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("🔍 Cercando tutti i campi per struttura...");
     // Trova TUTTI i campi (anche isActive: false)
     const campi = await Campo.find({
       struttura: req.params.id,
     }).sort({ name: 1 });
     
     console.log(`✅ Trovati ${campi.length} campi totali`);
+    console.log("📤 Invio lista tutti campi");
     res.json(campi);
   } catch (err) {
     console.error("❌ getAllCampiByStruttura error:", err);
@@ -208,11 +213,13 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
     const { strutturaId, campi } = req.body;
 
     if (!strutturaId || !campi || campi.length === 0) {
+      console.log("❌ Dati mancanti: strutturaId o campi");
       return res.status(400).json({ 
         message: "ID struttura e campi sono obbligatori" 
       });
     }
 
+    console.log("🔍 Verificando ownership struttura...");
     // Verifica ownership
     const struttura = await Struttura.findOne({
       _id: strutturaId,
@@ -221,6 +228,7 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
     });
 
     if (!struttura) {
+      console.log("❌ Struttura non trovata o non autorizzato:", strutturaId);
       return res.status(404).json({ 
         message: "Struttura non trovata o non autorizzato" 
       });
@@ -229,12 +237,14 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
     // Validazione
     for (const campo of campi) {
       if (!campo.name || !campo.sport || !campo.surface || !campo.pricePerHour) {
+        console.log("❌ Validazione fallita per campo:", campo.name);
         return res.status(400).json({ 
           message: "Tutti i campi devono avere nome, sport, superficie e prezzo" 
         });
       }
     }
 
+    console.log("💾 Creando campi nel database...");
     // ✅ CORREZIONE: Crea i campi includendo pricingRules
     const campiToCreate = campi.map((c: any) => ({
       struttura: strutturaId,
@@ -275,6 +285,7 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
     const createdCampi = await Campo.insertMany(campiToCreate);
     console.log(`✅ ${createdCampi.length} campi creati per struttura ${strutturaId}`);
 
+    console.log("📅 Generando calendari annuali...");
     // 🔥 GENERAZIONE CALENDARIO ANNUALE AUTOMATICA
     console.log("🚀 Avvio generazione calendari annuali...");
     const currentYear = new Date().getFullYear();
@@ -287,6 +298,7 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
     }
     console.log(`✅ Tutti i calendari generati (${currentYear} + ${nextYear})`);
 
+    console.log("📤 Invio risposta creazione campi");
     res.status(201).json({
       message: "Campi e calendari creati con successo",
       campi: createdCampi,
@@ -303,14 +315,18 @@ export const createCampi = async (req: AuthRequest, res: Response) => {
 export const getCampoById = async (req: Request, res: Response) => {
   try {
     console.log("🏟️  GET /campi/:id");
+    
+    console.log("🔍 Cercando campo...");
     const campo = await Campo.findById(req.params.id).populate("struttura");
 
     if (!campo) {
+      console.log("❌ Campo non trovato:", req.params.id);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     console.log("📋 Campo caricato:", campo.name, "- isActive:", campo.isActive);
     console.log("🏟️  Struttura popolata:", campo.struttura?.name || "N/A");
+    console.log("📤 Invio dettaglio campo");
     res.json(campo);
   } catch (err) {
     console.error("❌ getCampoById error:", err);
@@ -331,15 +347,18 @@ export const getCampoCalendarByMonth = async (
     const { month } = req.query;
 
     if (!month || typeof month !== "string") {
+      console.log("❌ Mese non fornito o invalido");
       return res.status(400).json({ message: "month richiesto (YYYY-MM)" });
     }
 
+    console.log("🔍 Cercando giorni calendario per mese:", month);
     const days = await CampoCalendarDay.find({
       campo: id,
       date: { $regex: `^${month}` },
     }).sort({ date: 1 });
 
     console.log(`✅ Trovati ${days.length} giorni per ${month}`);
+    console.log("📤 Invio calendario mensile");
     res.json(days);
   } catch (err) {
     console.error("❌ getCampoCalendarByMonth error:", err);
@@ -366,16 +385,20 @@ export const updateCampo = async (req: AuthRequest, res: Response) => {
       forceUpdate // Flag per forzare l'aggiornamento ignorando i warning
     } = req.body;
 
+    console.log("🔍 Cercando campo da aggiornare...");
     const campo = await Campo.findById(id).populate("struttura");
     if (!campo) {
+      console.log("❌ Campo non trovato:", id);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     // Verifica ownership
     if ((campo.struttura as any).owner.toString() !== req.user!.id) {
+      console.log("❌ Non autorizzato per campo:", id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("⚠️ Controllando impatto prenotazioni...");
     // ✅ Se cambiano gli orari, controlla l'impatto sulle prenotazioni
     if (weeklySchedule && !forceUpdate) {
       const impact = await checkBookingsImpact(campo, weeklySchedule);
@@ -428,9 +451,11 @@ export const updateCampo = async (req: AuthRequest, res: Response) => {
       await generateAnnualCalendarForCampo(campo);
     }
 
+    console.log("💾 Salvando aggiornamenti campo...");
     await campo.save();
 
     console.log("✅ Campo aggiornato:", campo.name);
+    console.log("📤 Invio risposta aggiornamento campo");
     res.json({
       message: "Campo aggiornato con successo",
       campo,
@@ -449,6 +474,7 @@ export const deleteCampo = async (req: AuthRequest, res: Response) => {
     console.log("🗑️  DELETE /campi/:id");
     console.log("🔍 Campo ID:", req.params.id);
     
+    console.log("🔍 Cercando campo da eliminare...");
     const campo = await Campo.findById(req.params.id);
 
     if (!campo) {
@@ -456,6 +482,7 @@ export const deleteCampo = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
+    console.log("🔍 Verificando ownership...");
     // Verifica ownership
     const struttura = await Struttura.findOne({
       _id: campo.struttura,
@@ -469,13 +496,16 @@ export const deleteCampo = async (req: AuthRequest, res: Response) => {
 
     const campoNome = campo.name;
     
+    console.log("🗑️ Eliminando calendario associato...");
     // Elimina anche il calendario associato
     await CampoCalendarDay.deleteMany({ campo: req.params.id });
     console.log("✅ Calendario eliminato");
     
+    console.log("🗑️ Eliminando campo...");
     await Campo.findByIdAndDelete(req.params.id);
 
     console.log("✅ Campo eliminato:", campoNome);
+    console.log("📤 Invio conferma eliminazione campo");
     res.json({ message: "Campo eliminato con successo" });
   } catch (err) {
     console.error("❌ deleteCampo error:", err);
@@ -494,16 +524,20 @@ export const closeCalendarDay = async (req: AuthRequest, res: Response) => {
 
     console.log(`🔒 Chiusura giorno ${date} per campo ${campoId}`);
 
+    console.log("🔍 Verificando campo ownership...");
     // Verifica che il campo appartenga all'owner
     const campo = await Campo.findById(campoId).populate("struttura");
     if (!campo) {
+      console.log("❌ Campo non trovato:", campoId);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     if ((campo.struttura as any).owner.toString() !== ownerId) {
+      console.log("❌ Non autorizzato per campo:", campoId);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("🔍 Cercando giorno calendario...");
     // Trova il giorno nel calendario
     let calendarDay = await CampoCalendarDay.findOne({
       campo: campoId,
@@ -511,9 +545,11 @@ export const closeCalendarDay = async (req: AuthRequest, res: Response) => {
     });
 
     if (!calendarDay) {
+      console.log("❌ Giorno non trovato:", date);
       return res.status(404).json({ message: "Giorno non trovato" });
     }
 
+    console.log("🔍 Cercando prenotazioni da cancellare...");
     // ❌ Cancella tutte le prenotazioni confermate per questo giorno
     const bookingsToCancel = await Booking.find({
       campo: campoId,
@@ -524,6 +560,7 @@ export const closeCalendarDay = async (req: AuthRequest, res: Response) => {
     if (bookingsToCancel.length > 0) {
       console.log(`⚠️ Trovate ${bookingsToCancel.length} prenotazioni da cancellare`);
       
+      console.log("🗑️ Cancellando prenotazioni...");
       await Booking.updateMany(
         {
           campo: campoId,
@@ -538,12 +575,14 @@ export const closeCalendarDay = async (req: AuthRequest, res: Response) => {
       console.log(`✅ ${bookingsToCancel.length} prenotazioni cancellate`);
     }
 
+    console.log("🔒 Salvando chiusura giorno...");
     // 🔒 Svuota tutti gli slot (giorno chiuso)
     calendarDay.slots = [];
     calendarDay.isClosed = true;
     await calendarDay.save();
 
     console.log("✅ Giorno chiuso completamente");
+    console.log("📤 Invio risposta chiusura giorno");
     res.json({ 
       message: "Giorno chiuso con successo",
       cancelledBookings: bookingsToCancel.length,
@@ -566,16 +605,20 @@ export const reopenCalendarDay = async (req: AuthRequest, res: Response) => {
 
     console.log(`🔓 Riapertura giorno ${date} per campo ${campoId}`);
 
+    console.log("🔍 Verificando campo ownership...");
     // Verifica che il campo appartenga all'owner
     const campo = await Campo.findById(campoId).populate("struttura");
     if (!campo) {
+      console.log("❌ Campo non trovato:", campoId);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     if ((campo.struttura as any).owner.toString() !== ownerId) {
+      console.log("❌ Non autorizzato per campo:", campoId);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("🔍 Cercando giorno calendario...");
     // Trova o crea il giorno nel calendario
     let calendarDay = await CampoCalendarDay.findOne({
       campo: campoId,
@@ -583,9 +626,11 @@ export const reopenCalendarDay = async (req: AuthRequest, res: Response) => {
     });
 
     if (!calendarDay) {
+      console.log("❌ Giorno non trovato:", date);
       return res.status(404).json({ message: "Giorno non trovato" });
     }
 
+    console.log("🔓 Ricreando slot per riapertura...");
     // 🔓 Ricrea gli slot con orari di default (8:00-22:00, ogni 30 min)
     const slots = [];
     for (let h = 8; h <= 21; h++) {
@@ -600,6 +645,7 @@ export const reopenCalendarDay = async (req: AuthRequest, res: Response) => {
     await calendarDay.save();
 
     console.log("✅ Giorno riaperto con successo");
+    console.log("📤 Invio risposta riapertura giorno");
     res.json(calendarDay);
   } catch (err) {
     console.error("❌ reopenCalendarDay error:", err);
@@ -619,30 +665,37 @@ export const updateCalendarSlot = async (req: AuthRequest, res: Response) => {
 
     console.log(`🔄 Update slot ${date} ${time} → ${enabled}`);
 
+    console.log("🔍 Verificando campo ownership...");
     // Verifica che il campo appartenga all'owner
     const campo = await Campo.findById(campoId).populate("struttura");
     if (!campo) {
+      console.log("❌ Campo non trovato:", campoId);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
     if ((campo.struttura as any).owner.toString() !== ownerId) {
+      console.log("❌ Non autorizzato per campo:", campoId);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("🔍 Cercando giorno calendario...");
     const calendarDay = await CampoCalendarDay.findOne({
       campo: campoId,
       date,
     });
 
     if (!calendarDay) {
+      console.log("❌ Giorno non trovato:", date);
       return res.status(404).json({ message: "Giorno non trovato" });
     }
 
     const slot = calendarDay.slots.find((s: any) => s.time === time);
     if (!slot) {
+      console.log("❌ Slot non trovato:", time);
       return res.status(404).json({ message: "Slot non trovato" });
     }
 
+    console.log("🔍 Cercando prenotazione per slot...");
     // ⚠️ Se lo slot viene disabilitato, cancella eventuali prenotazioni
     if (enabled === false) {
       const bookingToCancel = await Booking.findOne({
@@ -654,15 +707,18 @@ export const updateCalendarSlot = async (req: AuthRequest, res: Response) => {
 
       if (bookingToCancel) {
         console.log(`⚠️ Prenotazione trovata per slot ${time}, cancellazione in corso...`);
+        console.log("🗑️ Cancellando prenotazione...");
         bookingToCancel.status = "cancelled";
         await bookingToCancel.save();
         console.log("✅ Prenotazione cancellata");
       }
     }
 
+    console.log("💾 Salvando aggiornamento slot...");
     slot.enabled = enabled;
     await calendarDay.save();
 
+    console.log("📤 Invio risposta aggiornamento slot");
     res.json(calendarDay);
   } catch (err) {
     console.error("❌ updateCalendarSlot error:", err);

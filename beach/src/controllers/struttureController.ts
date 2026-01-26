@@ -16,7 +16,10 @@ import cloudinary from "../config/cloudinary";
 export const getStrutture = async (req: Request, res: Response) => {
   try {
     const { date, timeSlot } = req.query;
-    
+
+    console.log('📌 [getStrutture] Inizio:', { date, timeSlot });
+
+    console.log('🔍 [getStrutture] Ricerca strutture');
     let strutture = await Struttura.find({
       isActive: true,
       isDeleted: false,
@@ -186,16 +189,22 @@ export const getStrutture = async (req: Request, res: Response) => {
  */
 export const getStrutturaById = async (req: Request, res: Response) => {
   try {
+    console.log('📌 [getStrutturaById] Inizio:', { id: req.params.id });
+
+    console.log('🔍 [getStrutturaById] Ricerca struttura');
     const struttura = await Struttura.findOne({
       _id: req.params.id,
       isDeleted: false,
     });
     if (!struttura) {
+      console.log('⚠️ [getStrutturaById] Struttura non trovata');
       return res.status(404).json({ message: "Struttura non trovata" });
     }
+
+    console.log('✅ [getStrutturaById] Struttura trovata');
     res.json(struttura);
   } catch (err) {
-    console.error("Errore getStrutturaById:", err);
+    console.error("❌ [getStrutturaById] Errore:", err);
     res.status(500).json({ message: "Errore struttura" });
   }
 };
@@ -209,13 +218,18 @@ export const getCampiByStruttura = async (
   res: Response
 ) => {
   try {
+    console.log('📌 [getCampiByStruttura] Inizio:', { strutturaId: req.params.id });
+
+    console.log('🔍 [getCampiByStruttura] Ricerca campi');
     const campi = await Campo.find({
       struttura: req.params.id,
       isActive: true,
     }).sort({ pricePerHour: 1 });
+
+    console.log('✅ [getCampiByStruttura] Campi trovati:', campi.length);
     res.json(campi);
   } catch (err) {
-    console.error("Errore getCampiByStruttura:", err);
+    console.error("❌ [getCampiByStruttura] Errore:", err);
     res.status(500).json({ message: "Errore caricamento campi" });
   }
 };
@@ -229,13 +243,18 @@ export const getOwnerStrutture = async (
   res: Response
 ) => {
   try {
+    console.log('📌 [getOwnerStrutture] Inizio:', { ownerId: req.user!.id });
+
+    console.log('🔍 [getOwnerStrutture] Ricerca strutture owner');
     const strutture = await Struttura.find({
       owner: req.user!.id,
       isDeleted: false,
     }).sort({ createdAt: -1 });
+
+    console.log('✅ [getOwnerStrutture] Strutture trovate:', strutture.length);
     res.json(strutture);
   } catch (err) {
-    console.error("Errore getOwnerStrutture:", err);
+    console.error("❌ [getOwnerStrutture] Errore:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -251,18 +270,23 @@ export const createStruttura = async (
   try {
     const { name, description, location, amenities, openingHours, isCostSplittingEnabled } = req.body;
 
+    console.log('📌 [createStruttura] Inizio:', { ownerId: req.user!.id, name, location });
+
     if (!name || !location?.city) {
+      console.log('⚠️ [createStruttura] Nome o città mancanti');
       return res.status(400).json({ 
         message: "Nome e citta sono obbligatori" 
       });
     }
 
     if (!location.lat || !location.lng) {
+      console.log('⚠️ [createStruttura] Coordinate mancanti');
       return res.status(400).json({ 
         message: "Coordinate mancanti. Seleziona un indirizzo valido" 
       });
     }
 
+    console.log('🏗️ [createStruttura] Creazione struttura');
     const struttura = new Struttura({
       name,
       description,
@@ -290,7 +314,7 @@ export const createStruttura = async (
       struttura,
     });
   } catch (err) {
-    console.error("❌ Errore createStruttura:", err);
+    console.error("❌ [createStruttura] Errore:", err);
     res.status(500).json({ message: "Errore creazione struttura" });
   }
 };
@@ -304,6 +328,7 @@ export const updateStruttura = async (
   res: Response
 ) => {
   try {
+    console.log('📌 [updateStruttura] Inizio:', { id: req.params.id, ownerId: req.user!.id });
     console.log("\n💾 === UPDATE STRUTTURA ===");
     console.log("🆔 Struttura ID:", req.params.id);
     console.log("👤 User ID:", req.user?.id);
@@ -576,6 +601,7 @@ export const deleteStruttura = async (
   res: Response
 ) => {
   try {
+    console.log('📌 [deleteStruttura] Inizio:', { id: req.params.id, ownerId: req.user!.id });
     console.log("🗑️ Eliminazione struttura:", req.params.id);
     
     const struttura = await Struttura.findOne({
@@ -641,7 +667,10 @@ export const searchAddress = async (req: Request, res: Response) => {
   try {
     const { query } = req.query;
 
+    console.log('📌 [searchAddress] Inizio:', { query });
+
     if (!query || typeof query !== "string" || query.length < 3) {
+      console.log('⚠️ [searchAddress] Query troppo corta');
       return res.status(400).json({ 
         message: "Query deve essere almeno 3 caratteri" 
       });

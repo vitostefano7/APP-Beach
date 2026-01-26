@@ -27,6 +27,7 @@ export const getUserProfile = async (
     const { userId } = req.params;
     const currentUser = req.user!;
 
+    console.log('📌 [getUserProfile] Inizio:', { userId });
     console.log("👤 getUserProfile chiamato");
     console.log("   - currentUser:", currentUser.id, currentUser.role);
     console.log("   - userId richiesto:", userId);
@@ -66,6 +67,9 @@ export const getMyProfile = async (
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getMyProfile] Inizio:', { userId });
+
+    console.log('🔍 [getMyProfile] Ricerca profilo e preferenze');
     const [user, profile, preferences] = await Promise.all([
       User.findById(userId).select("-password"),
       PlayerProfile.findOne({ user: userId }).populate("favoriteCampo"),
@@ -73,13 +77,17 @@ export const getMyProfile = async (
     ]);
 
     if (!user) {
+      console.log('⚠️ [getMyProfile] Utente non trovato');
       return res.status(404).json({ message: "Utente non trovato" });
     }
+
+    console.log('✅ [getMyProfile] Profilo trovato');
 
     // 📅 oggi a mezzanotte
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    console.log('📊 [getMyProfile] Calcolo partite giocate');
     // ✅ PARTITE GIOCATE = prenotazioni passate e confermate
     const matchesPlayed = await Booking.countDocuments({
       user: userId,
@@ -87,6 +95,7 @@ export const getMyProfile = async (
       date: { $lt: today.toISOString().slice(0, 10) },
     });
 
+    console.log('📤 [getMyProfile] Risposta profilo');
     res.json({
       user,
       profile: {
@@ -101,7 +110,7 @@ export const getMyProfile = async (
       },
     });
   } catch (error) {
-    console.error("getMyProfile error", error);
+    console.error("❌ [getMyProfile] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -117,15 +126,19 @@ export const updatePlayerProfile = async (
     const userId = req.user!.id;
     const { level, favoriteCampo } = req.body;
 
+    console.log('📌 [updatePlayerProfile] Inizio:', { userId, level, favoriteCampo });
+
+    console.log('💾 [updatePlayerProfile] Aggiornamento profilo giocatore');
     const profile = await PlayerProfile.findOneAndUpdate(
       { user: userId },
       { level, favoriteCampo },
       { new: true, upsert: true }
     ).populate("favoriteCampo");
 
+    console.log('✅ [updatePlayerProfile] Profilo aggiornato');
     res.json(profile);
   } catch (error) {
-    console.error("updatePlayerProfile error", error);
+    console.error("❌ [updatePlayerProfile] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -141,9 +154,13 @@ export const getPreferences = async (
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getPreferences] Inizio:', { userId });
+
+    console.log('🔍 [getPreferences] Ricerca preferenze');
     const preferences = await UserPreferences.findOne({ user: userId });
 
     if (!preferences) {
+      console.log('⚠️ [getPreferences] Preferenze non trovate, uso default');
       // Ritorna default se non esistono
       return res.json({
         pushNotifications: false,
@@ -151,9 +168,10 @@ export const getPreferences = async (
       });
     }
 
+    console.log('✅ [getPreferences] Preferenze trovate');
     res.json(preferences);
   } catch (error) {
-    console.error("getPreferences error", error);
+    console.error("❌ [getPreferences] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -168,15 +186,19 @@ export const updatePreferences = async (
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [updatePreferences] Inizio:', { userId, body: req.body });
+
+    console.log('💾 [updatePreferences] Aggiornamento preferenze');
     const preferences = await UserPreferences.findOneAndUpdate(
       { user: userId },
       req.body,
       { new: true, upsert: true }
     );
 
+    console.log('✅ [updatePreferences] Preferenze aggiornate');
     res.json(preferences);
   } catch (error) {
-    console.error("updatePreferences error", error);
+    console.error("❌ [updatePreferences] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -191,6 +213,8 @@ export const updateMe = async (
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [updateMe] Inizio:', { userId, body: req.body });
+
     // Costruisci l'oggetto di aggiornamento solo con i campi presenti
     const updateFields: any = {};
     if (req.body.name !== undefined) updateFields.name = req.body.name;
@@ -201,6 +225,7 @@ export const updateMe = async (
     // Aggiungi profilePrivacy se presente e valido
     if (req.body.profilePrivacy !== undefined) {
       if (!["public", "private"].includes(req.body.profilePrivacy)) {
+        console.log('⚠️ [updateMe] profilePrivacy invalido');
         return res.status(400).json({ 
           message: "profilePrivacy deve essere 'public' o 'private'" 
         });
@@ -208,15 +233,17 @@ export const updateMe = async (
       updateFields.profilePrivacy = req.body.profilePrivacy;
     }
 
+    console.log('💾 [updateMe] Aggiornamento utente');
     const user = await User.findByIdAndUpdate(
       userId,
       updateFields,
       { new: true }
     ).select("-password");
 
+    console.log('✅ [updateMe] Utente aggiornato');
     res.json(user);
   } catch (error) {
-    console.error("updateMe error", error);
+    console.error("❌ [updateMe] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -235,6 +262,7 @@ export const uploadAvatar = async (
       return res.status(401).json({ message: "Utente non autenticato" });
     }
 
+    console.log('📌 [uploadAvatar] Inizio:', { userId });
     console.log("[uploadAvatar] start", {
       userId,
       hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
@@ -320,12 +348,18 @@ export const deleteAvatar = async (
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [deleteAvatar] Inizio:', { userId });
+
+    console.log('🔍 [deleteAvatar] Ricerca utente');
     const user = await User.findById(userId);
     if (!user) {
+      console.log('⚠️ [deleteAvatar] Utente non trovato');
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
     const publicId = `avatars/${userId}`;
+
+    console.log('🗑️ [deleteAvatar] Eliminazione avatar da Cloudinary');
     await cloudinary.uploader.destroy(publicId, {
       invalidate: true,
       resource_type: "image",
@@ -339,12 +373,14 @@ export const deleteAvatar = async (
       }
     }
 
+    console.log('💾 [deleteAvatar] Aggiornamento utente');
     user.avatarUrl = null as any;
     await user.save();
 
+    console.log('✅ [deleteAvatar] Avatar rimosso');
     res.json({ message: "Avatar rimosso con successo" });
   } catch (error) {
-    console.error("deleteAvatar error:", error);
+    console.error("❌ [deleteAvatar] error:", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -356,6 +392,7 @@ export const changePassword = async (
   req: AuthRequest,
   res: Response
 ) => {
+  console.log('📌 [changePassword] Inizio:', { userId: req.user?.id });
   console.log("🔒 ========== CHANGE PASSWORD CALLED ==========");
   console.log("🔒 Route: POST /users/me/change-password");
   console.log("👤 User ID:", req.user?.id);
@@ -459,7 +496,10 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
+    console.log('📌 [searchUsers] Inizio:', { q, filter, followedBy, currentUserId, currentUserRole });
+
     if (!q || typeof q !== "string" || q.length < 2) {
+      console.log('⚠️ [searchUsers] Query troppo corta');
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
     }
 
@@ -583,15 +623,20 @@ export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { username } = req.params;
 
+    console.log('📌 [getUserPublicProfile] Inizio:', { username });
+
+    console.log('🔍 [getUserPublicProfile] Ricerca utente');
     const user = await User.findOne({
       username: username.toLowerCase(),
       isActive: true,
     }).select("username name avatarUrl createdAt");
 
     if (!user) {
+      console.log('⚠️ [getUserPublicProfile] Utente non trovato');
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
+    console.log('📊 [getUserPublicProfile] Calcolo statistiche');
     // Statistiche pubbliche
     const matchesPlayed = await Match.countDocuments({
       "players.user": user._id,
@@ -599,6 +644,7 @@ export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
       status: "completed",
     });
 
+    console.log('✅ [getUserPublicProfile] Profilo trovato');
     res.json({
       user,
       stats: {
@@ -606,7 +652,7 @@ export const getUserPublicProfile = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (err) {
-    console.error("❌ getUserPublicProfile error:", err);
+    console.error("❌ [getUserPublicProfile] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -620,8 +666,11 @@ export const getUserPublicProfileById = async (req: AuthRequest, res: Response) 
     const { userId } = req.params;
     const currentUserId = req.user!.id;
 
+    console.log('📌 [getUserPublicProfileById] Inizio:', { userId, currentUserId });
+
     // Validate userId format
     if (!Types.ObjectId.isValid(userId)) {
+      console.log('⚠️ [getUserPublicProfileById] ID utente non valido');
       return res.status(400).json({ message: "ID utente non valido" });
     }
 
@@ -801,11 +850,16 @@ export const getUserMatches = async (req: AuthRequest, res: Response) => {
     const { username } = req.params;
     const { limit = 20 } = req.query;
 
+    console.log('📌 [getUserMatches] Inizio:', { username, limit });
+
+    console.log('🔍 [getUserMatches] Ricerca utente');
     const user = await User.findOne({ username: username.toLowerCase() });
     if (!user) {
+      console.log('⚠️ [getUserMatches] Utente non trovato');
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
+    console.log('🔍 [getUserMatches] Ricerca match');
     const matches = await Match.find({
       "players.user": user._id,
       status: "completed",
@@ -816,9 +870,10 @@ export const getUserMatches = async (req: AuthRequest, res: Response) => {
       .populate("players.user", "username name avatarUrl")
       .populate("createdBy", "username name avatarUrl");
 
+    console.log('✅ [getUserMatches] Match trovati:', matches.length);
     res.json(matches);
   } catch (err) {
-    console.error("❌ getUserMatches error:", err);
+    console.error("❌ [getUserMatches] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -831,6 +886,9 @@ export const getPlayedWith = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getPlayedWith] Inizio:', { userId });
+
+    console.log('🔍 [getPlayedWith] Ricerca persone con cui giocato');
     const playedWith = await Match.aggregate([
       {
         $match: {
@@ -885,9 +943,10 @@ export const getPlayedWith = async (req: AuthRequest, res: Response) => {
       { $limit: 50 },
     ]);
 
+    console.log('✅ [getPlayedWith] Persone trovate:', playedWith.length);
     res.json(playedWith);
   } catch (err) {
-    console.error("❌ getPlayedWith error:", err);
+    console.error("❌ [getPlayedWith] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -900,6 +959,9 @@ export const getFrequentedVenues = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getFrequentedVenues] Inizio:', { userId });
+
+    console.log('🔍 [getFrequentedVenues] Ricerca strutture frequentate');
     const venues = await Booking.aggregate([
       {
         $match: {
@@ -947,9 +1009,10 @@ export const getFrequentedVenues = async (req: AuthRequest, res: Response) => {
       { $limit: 20 },
     ]);
 
+    console.log('✅ [getFrequentedVenues] Strutture trovate:', venues.length);
     res.json(venues);
   } catch (err) {
-    console.error("❌ getFrequentedVenues error:", err);
+    console.error("❌ [getFrequentedVenues] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -962,6 +1025,9 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getUserStats] Inizio:', { userId });
+
+    console.log('📊 [getUserStats] Calcolo statistiche');
     // Match giocati
     const matchesPlayed = await Match.countDocuments({
       "players.user": userId,
@@ -1044,6 +1110,7 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
       { $count: "people" },
     ]);
 
+    console.log('✅ [getUserStats] Statistiche calcolate');
     res.json({
       matchesPlayed,
       wins: winCount,
@@ -1052,7 +1119,7 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
       peopleMetCount: peopleCount[0]?.people || 0,
     });
   } catch (err) {
-    console.error("❌ getUserStats error:", err);
+    console.error("❌ [getUserStats] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -1065,6 +1132,9 @@ export const getPerformanceStats = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
+    console.log('📌 [getPerformanceStats] Inizio:', { userId });
+
+    console.log('📊 [getPerformanceStats] Calcolo statistiche performance');
     // Match giocati (completed e confirmed)
     const completedMatches = await Match.find({
       "players.user": userId,
@@ -1216,6 +1286,7 @@ export const getUserPosts = async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = parseInt(req.query.offset as string) || 0;
 
+    console.log('📌 [getUserPosts] Inizio:', { userId, currentUserId, limit, offset });
     console.log("📝 getUserPosts chiamato per userId:", userId);
 
     // Validate userId format
@@ -1290,6 +1361,7 @@ export const getUserFriends = async (
     const currentUserId = req.user!.id;
     const { limit = 100, skip = 0, type } = req.query;
 
+    console.log('📌 [getUserFriends] Inizio:', { userId, currentUserId, limit, skip, type });
     console.log("👥 getUserFriends chiamato");
     console.log("   - currentUser:", currentUserId);
     console.log("   - userId richiesto:", userId);
@@ -1397,19 +1469,25 @@ export const getMyEarnings = async (
     const userId = req.user!.id;
     const user = req.user!;
 
+    console.log('📌 [getMyEarnings] Inizio:', { userId, role: user.role });
+
     // Solo gli owner possono vedere i guadagni
     if (user.role !== "owner") {
+      console.log('⚠️ [getMyEarnings] Accesso negato: non owner');
       return res.status(403).json({ 
         message: "Solo i proprietari possono visualizzare i guadagni" 
       });
     }
 
+    console.log('🔍 [getMyEarnings] Ricerca owner');
     const ownerUser = await User.findById(userId).select('earnings totalEarnings');
 
     if (!ownerUser) {
+      console.log('⚠️ [getMyEarnings] Owner non trovato');
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
+    console.log('📊 [getMyEarnings] Popolamento dettagli guadagni');
     // Popola i dettagli delle prenotazioni per lo storico
     const earningsWithDetails = await Promise.all(
       ((ownerUser as any).earnings || []).map(async (earning: any) => {
@@ -1454,6 +1532,7 @@ export const getMyEarnings = async (
 
     console.log(`💰 Guadagni owner ${userId}: €${(ownerUser as any).totalEarnings || 0}`);
 
+    console.log('✅ [getMyEarnings] Guadagni recuperati');
     res.json({
       totalEarnings: (ownerUser as any).totalEarnings || 0,
       earnings: earningsWithDetails.sort((a, b) => 
@@ -1461,7 +1540,7 @@ export const getMyEarnings = async (
       ),
     });
   } catch (err) {
-    console.error("❌ getMyEarnings error:", err);
+    console.error("❌ [getMyEarnings] error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };

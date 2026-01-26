@@ -50,32 +50,39 @@ export const updateCampoAvailability = async (
 
     // Validazione input
     if (!day || !WEEK_MAP.includes(day as any)) {
+      console.log("❌ Giorno non valido:", day);
       return res.status(400).json({ 
         message: "Giorno non valido. Usa: monday, tuesday, etc." 
       });
     }
 
     if (enabled && (!open || !close)) {
+      console.log("❌ Parametri mancanti per enabled=true");
       return res.status(400).json({ 
         message: "Se enabled=true, open e close sono obbligatori" 
       });
     }
 
+    console.log("🔍 Cercando campo...");
     // Trova campo e verifica ownership
     const campo = await Campo.findById(req.params.id);
     if (!campo) {
+      console.log("❌ Campo non trovato:", req.params.id);
       return res.status(404).json({ message: "Campo non trovato" });
     }
 
+    console.log("🔍 Verificando ownership struttura...");
     const struttura = await Struttura.findOne({
       _id: campo.struttura,
       owner: req.user!.id,
     });
 
     if (!struttura) {
+      console.log("❌ Non autorizzato per campo:", req.params.id);
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
+    console.log("💾 Salvando weeklySchedule...");
     // Aggiorna weeklySchedule
     campo.weeklySchedule[day] = {
       enabled: enabled ?? false,
@@ -86,9 +93,11 @@ export const updateCampoAvailability = async (
     await campo.save();
     console.log(`✅ weeklySchedule.${day} aggiornato`);
 
+    console.log("🔄 Rigenerando calendario annuale...");
     // 🔥 RIGENERA IL CALENDARIO ANNUALE
     await regenerateAnnualCalendar(campo);
 
+    console.log("📤 Invio risposta aggiornamento disponibilità");
     res.json({
       message: "Disponibilità e calendario aggiornati",
       weeklySchedule: campo.weeklySchedule,

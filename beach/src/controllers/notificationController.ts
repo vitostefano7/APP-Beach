@@ -74,22 +74,30 @@ export const markAsRead = async (
     const userId = req.user!.id;
     const { id } = req.params;
 
+    console.log('📌 [markAsRead] Inizio:', { userId, id });
+
+    console.log('🔍 [markAsRead] Ricerca notifica:', { id, userId });
     const notification = await Notification.findOne({
       _id: id,
       recipient: userId
     });
 
     if (!notification) {
+      console.log('⚠️ [markAsRead] Notifica non trovata:', { id, userId });
       return res.status(404).json({ message: "Notifica non trovata" });
     }
 
+    console.log('📝 [markAsRead] Aggiornamento notifica:', { id });
     notification.isRead = true;
     notification.readAt = new Date();
+
+    console.log('💾 [markAsRead] Salvataggio notifica');
     await notification.save();
 
+    console.log('✅ [markAsRead] Notifica segnata come letta');
     res.json({ message: "Notifica segnata come letta", notification });
   } catch (error) {
-    console.error("markAsRead error", error);
+    console.error("❌ [markAsRead] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -106,6 +114,8 @@ export const markAllAsRead = async (
     const userId = req.user!.id;
     const { type } = req.query;
 
+    console.log('📌 [markAllAsRead] Inizio:', { userId, type });
+
     const query: any = {
       recipient: userId,
       isRead: false
@@ -115,6 +125,7 @@ export const markAllAsRead = async (
       query.type = type;
     }
 
+    console.log('🔄 [markAllAsRead] Aggiornamento notifiche:', query);
     const result = await Notification.updateMany(
       query,
       {
@@ -125,12 +136,13 @@ export const markAllAsRead = async (
       }
     );
 
+    console.log('✅ [markAllAsRead] Notifiche aggiornate:', { modifiedCount: result.modifiedCount });
     res.json({
       message: "Notifiche segnate come lette",
       modifiedCount: result.modifiedCount
     });
   } catch (error) {
-    console.error("markAllAsRead error", error);
+    console.error("❌ [markAllAsRead] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -181,18 +193,23 @@ export const deleteNotification = async (
     const userId = req.user!.id;
     const { id } = req.params;
 
+    console.log('📌 [deleteNotification] Inizio:', { userId, id });
+
+    console.log('🗑️ [deleteNotification] Eliminazione notifica:', { id, userId });
     const notification = await Notification.findOneAndDelete({
       _id: id,
       recipient: userId
     });
 
     if (!notification) {
+      console.log('⚠️ [deleteNotification] Notifica non trovata:', { id, userId });
       return res.status(404).json({ message: "Notifica non trovata" });
     }
 
+    console.log('✅ [deleteNotification] Notifica eliminata');
     res.json({ message: "Notifica eliminata con successo" });
   } catch (error) {
-    console.error("deleteNotification error", error);
+    console.error("❌ [deleteNotification] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -209,25 +226,30 @@ export const savePushToken = async (
     const userId = req.user!.id;
     const { pushToken } = req.body;
 
+    console.log('📌 [savePushToken] Inizio:', { userId, pushToken });
+
     if (!pushToken) {
+      console.log('⚠️ [savePushToken] Push token mancante');
       return res.status(400).json({ message: "Push token richiesto" });
     }
 
     // Verifica che sia un valid Expo push token
     if (!Expo.isExpoPushToken(pushToken)) {
+      console.log('⚠️ [savePushToken] Push token invalido');
       return res.status(400).json({ message: "Invalid push token" });
     }
 
+    console.log('💾 [savePushToken] Salvataggio push token');
     // Aggiorna l'utente con il push token
     await User.findByIdAndUpdate(userId, {
       expoPushToken: pushToken,
       pushTokenUpdatedAt: new Date(),
     });
 
-    console.log('✅ Push token saved for user:', userId);
+    console.log('✅ [savePushToken] Push token salvato');
     res.json({ message: "Push token salvato con successo" });
   } catch (error) {
-    console.error("savePushToken error", error);
+    console.error("❌ [savePushToken] error", error);
     res.status(500).json({ message: "Errore server" });
   }
 };
@@ -242,15 +264,18 @@ export async function sendPushNotification(
   data?: any
 ) {
   try {
+    console.log('📌 [sendPushNotification] Inizio:', { userId, title, body, data });
+
+    console.log('🔍 [sendPushNotification] Ricerca utente:', userId);
     const user = await User.findById(userId) as IUser | null;
     
     if (!user || !user.expoPushToken) {
-      console.log('⚠️ No push token for user:', userId);
+      console.log('⚠️ [sendPushNotification] Nessun push token per utente:', userId);
       return;
     }
 
     if (!Expo.isExpoPushToken(user.expoPushToken)) {
-      console.log('⚠️ Invalid push token for user:', userId);
+      console.log('⚠️ [sendPushNotification] Push token invalido per utente:', userId);
       return;
     }
 
@@ -262,6 +287,7 @@ export async function sendPushNotification(
       data,
     };
 
+    console.log('📤 [sendPushNotification] Invio notifica push');
     const chunks = expo.chunkPushNotifications([message]);
     const tickets = [];
 
@@ -269,15 +295,15 @@ export async function sendPushNotification(
       try {
         const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
         tickets.push(...ticketChunk);
-        console.log('✅ Push notification sent:', ticketChunk);
+        console.log('✅ [sendPushNotification] Notifica push inviata:', ticketChunk);
       } catch (error) {
-        console.error('❌ Error sending push notification:', error);
+        console.error('❌ [sendPushNotification] Errore invio notifica push:', error);
       }
     }
 
     return tickets;
   } catch (error) {
-    console.error('sendPushNotification error', error);
+    console.error('❌ [sendPushNotification] error', error);
   }
 }
 
@@ -291,6 +317,9 @@ export async function sendPushNotificationToMultiple(
   data?: any
 ) {
   try {
+    console.log('📌 [sendPushNotificationToMultiple] Inizio:', { userIds, title, body, data });
+
+    console.log('🔍 [sendPushNotificationToMultiple] Ricerca utenti:', userIds);
     const users = await User.find({ 
       _id: { $in: userIds },
       expoPushToken: { $exists: true, $ne: null }
@@ -307,10 +336,11 @@ export async function sendPushNotificationToMultiple(
       }));
 
     if (messages.length === 0) {
-      console.log('⚠️ No valid push tokens found');
+      console.log('⚠️ [sendPushNotificationToMultiple] Nessun push token valido trovato');
       return;
     }
 
+    console.log('📤 [sendPushNotificationToMultiple] Invio notifiche push a', messages.length, 'utenti');
     const chunks = expo.chunkPushNotifications(messages);
     const tickets = [];
 
@@ -319,14 +349,14 @@ export async function sendPushNotificationToMultiple(
         const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
         tickets.push(...ticketChunk);
       } catch (error) {
-        console.error('❌ Error sending push notifications:', error);
+        console.error('❌ [sendPushNotificationToMultiple] Errore invio notifiche push:', error);
       }
     }
 
-    console.log(`✅ Sent ${tickets.length} push notifications`);
+    console.log(`✅ [sendPushNotificationToMultiple] Inviate ${tickets.length} notifiche push`);
     return tickets;
   } catch (error) {
-    console.error('sendPushNotificationToMultiple error', error);
+    console.error('❌ [sendPushNotificationToMultiple] error', error);
   }
 }
 
@@ -341,6 +371,9 @@ export async function notifyBookingConfirmed(
     time: string;
   }
 ) {
+  console.log('📌 [notifyBookingConfirmed] Inizio:', { userId, bookingDetails });
+
+  console.log('📤 [notifyBookingConfirmed] Invio notifica conferma prenotazione');
   await sendPushNotification(
     userId,
     '🎾 Prenotazione Confermata!',
@@ -363,6 +396,9 @@ export async function notifyBookingReminder(
     time: string;
   }
 ) {
+  console.log('📌 [notifyBookingReminder] Inizio:', { userId, bookingDetails });
+
+  console.log('📤 [notifyBookingReminder] Invio promemoria prenotazione');
   await sendPushNotification(
     userId,
     '⏰ Promemoria Partita',
@@ -385,6 +421,9 @@ export async function notifyBookingCancelled(
     time: string;
   }
 ) {
+  console.log('📌 [notifyBookingCancelled] Inizio:', { userId, bookingDetails });
+
+  console.log('📤 [notifyBookingCancelled] Invio notifica cancellazione prenotazione');
   await sendPushNotification(
     userId,
     '❌ Prenotazione Cancellata',
