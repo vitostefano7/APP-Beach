@@ -25,7 +25,7 @@ export const formatDate = (dateStr: string): string => {
       return date.toLocaleDateString("it-IT", {
         weekday: "long",
         day: "numeric",
-        month: "short",
+        month: "long",
       });
     }
   } catch (error) {

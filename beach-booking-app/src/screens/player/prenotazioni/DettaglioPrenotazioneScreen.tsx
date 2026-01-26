@@ -57,7 +57,7 @@ export default function DettaglioPrenotazioneScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   console.log('🔍 [DettaglioPrenotazione] Route object:', route);
-  const { bookingId, openScoreModal, openJoinModal } = route?.params || {};
+  const { bookingId, openScoreModal, openJoinModal, fromOpenMatch } = route?.params || {};
 
   // Funzione helper per ottenere ID utente sicuro
   const getUserId = (user: any) => {
@@ -979,40 +979,72 @@ export default function DettaglioPrenotazioneScreen() {
     const match = booking.match;
     if (!match) return { color: "#999", text: "Nessun Match", icon: "help-circle" as const };
 
-    const confirmedCount = match.players?.filter(p => p.status === "confirmed").length || 0;
-    const pendingCount = match.players?.filter(p => p.status === "pending").length || 0;
+    const effectiveStatus = getMatchStatus();
 
     // Verifica se il match è in corso
-    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+    if (effectiveStatus === "in_progress") {
       return { color: "#FF9800", text: "In Corso", icon: "play-circle" as const };
     }
 
-    switch (match.status) {
+    switch (effectiveStatus) {
       case "completed":
-        return { color: "#4CAF50", text: "Concluso", icon: "checkmark-circle" as const };
+        return { color: "#4CAF50", text: "Conclusa", icon: "checkmark-circle" as const };
       case "cancelled":
-        return { color: "#F44336", text: "Cancellato", icon: "close-circle" as const };
+        return { color: "#F44336", text: "Cancellata", icon: "close-circle" as const };
       case "full":
-        return { color: "#FF9800", text: "Completo", icon: "people" as const };
+        return { color: "#FF9800", text: "Completa", icon: "people" as const };
+      case "not_team_completed":
+        return { color: "#FFC107", text: "Disponibile", icon: "people-outline" as const };
+      case "not_completed":
+        return { color: "#FF9800", text: "Da Completare", icon: "alert-circle" as const };
       case "open":
-        return { color: "#2196F3", text: "Aperto", icon: "radio-button-on" as const };
+        return { color: "#2196F3", text: "Aperta", icon: "radio-button-on" as const };
       default:
-        return { color: "#999", text: match.status, icon: "help-circle" as const };
+        return { color: "#999", text: effectiveStatus, icon: "help-circle" as const };
     }
   };
 
   const getMatchStatus = () => {
     const match = booking.match;
-    if (!match) return "draft";
+    if (!match) return "open"; // Dovrebbe sempre esserci un match
 
-    // Se il match è in corso, ritorna 'in_progress'
+    const confirmedPlayers = match.players?.filter(p => p.status === "confirmed").length || 0;
+    const isPublic = match.isPublic;
+    const teamsIncomplete = confirmedPlayers < match.maxPlayers;
+
+    // Se il match è in corso
     if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+      // Se è pubblico con team incompleti → cancellato
+      if (isPublic && teamsIncomplete) {
+        return "cancelled";
+      }
       return "in_progress";
     }
 
-    // Se il match è passato e ha un punteggio, consideralo completato
-    if (isMatchPassed() && match.score && match.score.sets.length > 0) {
-      return "completed";
+    // Se il match è passato
+    if (isMatchPassed() && match.status !== "cancelled") {
+      // Se è una partita PUBBLICA e i team non erano completi, non si è svolta
+      if (isPublic && teamsIncomplete) {
+        return "cancelled";
+      }
+      
+      // Per partite PRIVATE o pubbliche con team completi:
+      // Se non c'è punteggio, può essere completato
+      if (!match.score || match.score.sets.length === 0) {
+        return "not_completed";
+      }
+      
+      // Se c'è il punteggio, è completato
+      if (match.score && match.score.sets.length > 0) {
+        return "completed";
+      }
+    }
+
+    // Se il match non è ancora iniziato e i team non sono completi
+    if (!isMatchPassed() && match.status === "open") {
+      if (teamsIncomplete) {
+        return "not_team_completed";
+      }
     }
 
     return match.status;
@@ -1033,7 +1065,7 @@ export default function DettaglioPrenotazioneScreen() {
   const effectiveStatus = getMatchStatus();
   
   const statusInfo = getMatchStatusInfo();
-  const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "draft" && effectiveStatus !== "in_progress" && isRegistrationOpen();
+  const canInvite = isCreator && effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && effectiveStatus !== "not_completed" && effectiveStatus !== "in_progress" && isRegistrationOpen();
   // const canJoin = !isInMatch && match.status === "open" && isRegistrationOpen(); // Ora definito globalmente
   // Tutti i giocatori confermati possono inserire il risultato dopo la fine del match
   const canSubmitScore = isInMatch && isMatchPassed() && effectiveStatus !== "cancelled";
@@ -1066,29 +1098,30 @@ export default function DettaglioPrenotazioneScreen() {
         </View>
       </View>
 
-      {/* Match Status */}
-      <FadeInView delay={400}>
-        <View style={styles.matchStatusCard}>
-          <View style={styles.matchStatusRow}>
-            <View style={styles.matchStatusLeft}>
-              <View style={[styles.matchStatusIcon, { backgroundColor: statusInfo.color + '20' }]}>
-                <Ionicons name={statusInfo.icon} size={16} color={statusInfo.color} />
+      {/* Match Status - Nascosto se la partita è passata, conclusa o cancellata */}
+      {effectiveStatus !== "completed" && effectiveStatus !== "cancelled" && !isMatchPassed() && (
+        <FadeInView delay={400}>
+          <View style={styles.matchStatusCard}>
+            <View style={styles.matchStatusRow}>
+              <View style={styles.matchStatusLeft}>
+                <View style={[styles.matchStatusIcon, { backgroundColor: statusInfo.color + '20' }]}>
+                  <Ionicons name={statusInfo.icon} size={16} color={statusInfo.color} />
+                </View>
+                <Text style={styles.matchStatusTitle}>Stato Partita</Text>
               </View>
-              <Text style={styles.matchStatusTitle}>Stato Partita</Text>
+              <View style={[
+                styles.matchStatusBadge,
+                match.status === "completed" && styles.matchStatusCompleted,
+                match.status === "open" && styles.matchStatusOpen,
+                match.status === "full" && styles.matchStatusFull,
+                match.status === "cancelled" && styles.matchStatusCancelled,
+                effectiveStatus === "in_progress" && styles.matchStatusInProgress,
+              ]}>
+                <Text style={styles.matchStatusText}>{statusInfo.text}</Text>
+              </View>
             </View>
-            <View style={[
-              styles.matchStatusBadge,
-              match.status === "completed" && styles.matchStatusCompleted,
-              match.status === "open" && styles.matchStatusOpen,
-              match.status === "full" && styles.matchStatusFull,
-              match.status === "cancelled" && styles.matchStatusCancelled,
-              effectiveStatus === "in_progress" && styles.matchStatusInProgress,
-            ]}>
-              <Text style={styles.matchStatusText}>{statusInfo.text}</Text>
-            </View>
-          </View>
 
-          <View style={styles.matchStatsCompact}>
+            <View style={styles.matchStatsCompact}>
             <View style={styles.matchStatItem}>
               <View style={[styles.matchStatIcon, { backgroundColor: '#E8F5E920' }]}>
                 <Ionicons name="people" size={12} color="#4CAF50" />
@@ -1121,6 +1154,7 @@ export default function DettaglioPrenotazioneScreen() {
           </View>
         </View>
       </FadeInView>
+      )}
 
       {/* Pending Invite Card */}
       {isPendingInvite && (
@@ -1408,11 +1442,13 @@ export default function DettaglioPrenotazioneScreen() {
           </View>
           
           <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}> 
-            {booking.status === 'confirmed'
-              ? (isMatchInProgress()
-                  ? 'Partita in Corso'
-                  : (isMatchPassed() ? 'Partita Conclusa' : 'Prossima Partita'))
-              : 'Cancellata'}
+            {fromOpenMatch
+              ? 'Partita Aperta Disponibile'
+              : (booking.status === 'confirmed'
+                  ? (isMatchInProgress()
+                      ? 'Partita in Corso'
+                      : (isMatchPassed() ? 'Partita Conclusa' : 'Prossima Partita'))
+                  : 'Cancellata')}
           </Text>
 
           {canCancelBooking() ? (

@@ -1349,7 +1349,7 @@ async function seed() {
     });
 
     const matches: any[] = [];
-    const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
+    const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0 };
 
     // 1. MATCH PASSATI COMPLETATI (con risultato) - 10 match
     for (let i = 0; i < Math.min(10, pastBookings.length); i++) {
@@ -1681,7 +1681,7 @@ async function seed() {
       matchCounters.full++;
     }
 
-    // 6. MATCH PER TUTTI I BOOKING RIMANENTI (draft/privati)
+    // 6. MATCH PER TUTTI I BOOKING RIMANENTI (privati o aperti)
     const bookingsWithMatch = matches.map((m) => m.booking.toString());
     const bookingsWithoutMatch = (savedBookings as any[]).filter((b) => !bookingsWithMatch.includes(b._id.toString()));
 
@@ -1713,7 +1713,7 @@ async function seed() {
     console.log(`   - ${matchCounters.inProgress} in corso`);
     console.log(`   - ${matchCounters.open} aperti (2/4 giocatori)`);
     console.log(`   - ${matchCounters.full} completi (4/4 giocatori)`);
-    console.log(`   - ${matchCounters.draft} in bozza/privati`);
+    console.log(`   - ${matchCounters.open} aperti`);
 
     /* -------- CONVERSATIONS -------- */
     const directConversations = (strutture as any[]).slice(0, 4).map((s: any, idx: number) => ({
@@ -1894,7 +1894,7 @@ async function seed() {
     console.log(`   - Completati senza risultato: ${matchCounters.noResult}`);
     console.log(`   - Aperti (con inviti): ${matchCounters.open}`);
     console.log(`   - Completi: ${matchCounters.full}`);
-    console.log(`   - In bozza: ${matchCounters.draft}`);
+    console.log(`   - Aperti: ${matchCounters.open}`);
     console.log(`🎉 Eventi: ${events.length}`);
     console.log(`🎊 Community Events: ${communityEvents.length}`);
     console.log(`🔔 Notifiche: ${savedNotifications.length}`);

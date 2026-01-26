@@ -93,7 +93,7 @@ export const createMatchFromBooking = async (
       maxPlayers: finalMaxPlayers,
       isPublic: isPublic || false,
       players: players || [],
-      status: "draft",
+      status: "open",
     });
 
     await match.populate("players.user", "username name surname avatarUrl");
@@ -166,7 +166,7 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
       isPublic: isPublic || false,
       players: players || [],
       event: event || undefined,
-      status: "draft",
+      status: "open",
     });
 
     await match.populate("players.user", "username name surname avatarUrl");
@@ -228,8 +228,8 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('🔍 Controllo status match...');
-    // Match deve essere draft o open
-    if (!["draft", "open"].includes(match.status)) {
+    // Match deve essere open
+    if (!["open"].includes(match.status)) {
       console.log('❌ Match non aperto a nuovi giocatori');
       return res.status(400).json({ message: "Match non aperto a nuovi giocatori" });
     }
@@ -266,8 +266,8 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Team deve essere 'A' o 'B'" });
     }
 
-    // Team obbligatorio se maxPlayers > 2 e match non è in draft
-    if (match.maxPlayers > 2 && match.status !== "draft" && !team) {
+    // Team obbligatorio se maxPlayers > 2
+    if (match.maxPlayers > 2 && !team) {
       console.log('❌ Team obbligatorio');
       return res.status(400).json({ message: "Team obbligatorio per questo match" });
     }
@@ -1073,8 +1073,8 @@ export const assignPlayerTeam = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Non puoi modificare il team di altri giocatori" });
     }
 
-    // Match deve essere draft o open
-    if (match.status !== "draft" && match.status !== "open") {
+    // Match deve essere open
+    if (match.status !== "open") {
       return res.status(400).json({ message: "Non puoi modificare i team in questo stato" });
     }
 

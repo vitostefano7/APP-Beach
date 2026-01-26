@@ -18,7 +18,7 @@ export interface Set {
 
 export interface MatchDetails {
   _id: string;
-  status: "draft" | "open" | "full" | "completed" | "cancelled";
+  status: "open" | "full" | "completed" | "cancelled" | "not_team_completed" | "not_completed";
   players: Player[];
   maxPlayers: number;
   isPublic: boolean;

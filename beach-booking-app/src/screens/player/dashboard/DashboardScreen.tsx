@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useCallback } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import {
   ScrollView,
   View,
@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
-import { useSuggestedFriends } from './hooks/useSuggestedFriends';
+import { useSuggestedItems } from './hooks/useSuggestedItems';
 import { useGeographicMatchFiltering } from './hooks/useGeographicMatchFiltering';
 import Header from "./components/Header";
 // import StatsRow from "./components/StatsRow";
@@ -26,6 +26,7 @@ import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
 import EmptyStateCard from "./components/EmptyStateCard";
 import { SuggestedFriendCard } from './components/SuggestedFriendCard';
 import OpenMatchCard from './components/OpenMatchCard';
+import { SuggestedItemsCarousel } from './components/SuggestedItemsCarousel';
 import { styles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -89,7 +90,6 @@ export default function HomeScreen() {
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [openMatches, setOpenMatches] = useState<any[]>([]);
-  const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   
   // Hook per il filtraggio geografico
@@ -103,8 +103,6 @@ export default function HomeScreen() {
     filterMatchesByGeography,
     logFilteredMatchesDetails,
   } = useGeographicMatchFiltering(token);
-  
-  const friendsCarouselRef = useRef<FlatList>(null);
 
   // const [stats, setStats] = useState({
   //   totalMatches: 0,
@@ -114,12 +112,13 @@ export default function HomeScreen() {
 
   // Custom Hook per amici suggeriti
   const {
-    suggestions: suggestedFriends,
+    suggestions: suggestedItems,
     loading: suggestionsLoading,
     error: suggestionsError,
-    refresh: refreshSuggestions,
+    refetch: refreshSuggestions,
     sendFriendRequest,
-  } = useSuggestedFriends({ limit: 6 });
+    followStruttura,
+  } = useSuggestedItems({ friendsLimit: 4, struttureLimit: 2 });
 
   useFocusEffect(
     React.useCallback(() => {
@@ -666,17 +665,6 @@ export default function HomeScreen() {
     });
   };
 
-  const handleFriendsScrollEnd = useCallback((event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const cardWidth = screenWidth * 0.74;
-    const index = Math.round(offsetX / cardWidth);
-    
-    if (index !== currentFriendIndex && index >= 0 && index < (suggestedFriends?.length || 0)) {
-      console.log(`✅ Friends carousel - momentum end to index: ${index}`);
-      setCurrentFriendIndex(index);
-    }
-  }, [currentFriendIndex, suggestedFriends?.length]);
-
   const handleInviteFriend = (friendId: string) => {
     console.log("Inviting friend:", friendId);
     Alert.alert(
@@ -725,128 +713,61 @@ export default function HomeScreen() {
     );
   };
 
+  const handlePressStruttura = (struttura: any) => {
+    // Navigate to struttura details - assuming a route exists
+    navigation.navigate('StrutturaDetail', { strutturaId: struttura._id });
+  };
+
+  const handleFollowStruttura = async (strutturaId: string) => {
+    const struttura = suggestedItems.find(item => item.type === 'struttura' && item.data._id === strutturaId)?.data;
+    if (!struttura) return;
+
+    Alert.alert(
+      "Segui struttura",
+      `Vuoi seguire ${struttura.name}?`,
+      [
+        {
+          text: "Annulla",
+          style: "cancel"
+        },
+        {
+          text: "Segui",
+          onPress: async () => {
+            try {
+              const success = await followStruttura(strutturaId);
+              if (success) {
+                Alert.alert("Successo", `Ora segui ${struttura.name}!`);
+              }
+            } catch (error) {
+              Alert.alert("Errore", "Impossibile seguire questa struttura");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const validPendingInvites = getValidPendingInvites(pendingInvites || [], user?.id || "");
   
   const completedMatches = recentMatches.filter((match: any) => 
     match.status === "completed" && match.score?.sets?.length > 0
   );
 
-  const renderSuggestedFriendsSection = () => {
-    console.log("DEBUG: SuggestedFriendsSection render");
-    
-    if (suggestionsLoading) {
-      return (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Amici suggeriti</Text>
-          </View>
-          <View style={styles.loadingContainerSmall}>
-            <ActivityIndicator size="small" color="#2196F3" />
-            <Text style={styles.loadingTextSmall}>Caricamento suggerimenti...</Text>
-          </View>
-        </View>
-      );
-    }
-
-    if (suggestionsError) {
-      return (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Amici suggeriti</Text>
-          </View>
-          <View style={styles.errorContainer}>
-            <Ionicons name="warning-outline" size={32} color="#f44336" />
-            <Text style={styles.errorText}>Errore nel caricamento</Text>
-            <Pressable 
-              style={styles.retryButton}
-              onPress={refreshSuggestions}
-            >
-              <Text style={styles.retryButtonText}>Riprova</Text>
-            </Pressable>
-          </View>
-        </View>
-      );
-    }
-
+  const renderSuggestedItemsSection = () => {
     return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.sectionTitle}>Amici suggeriti</Text>
-            {suggestedFriends && suggestedFriends.length > 0 && (
-              <View style={styles.friendsCountBadge}>
-                <Text style={styles.friendsCountText}>{suggestedFriends.length}</Text>
-              </View>
-            )}
-          </View>
-          <Pressable 
-            onPress={() => navigation.navigate("CercaAmici")}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-          >
-            <Text style={styles.sectionLink}>Trova amici</Text>
-            <Ionicons name="chevron-forward" size={16} color="#2196F3" />
-          </Pressable>
-        </View>
-        
-        {suggestedFriends && suggestedFriends.length > 0 ? (
-          <>
-            <FlatList
-              ref={friendsCarouselRef}
-              data={suggestedFriends}
-              renderItem={({ item, index }) => {
-                console.log(`Rendering friend ${index}:`, item.user?.name, item.user?._id);
-                return (
-                  <View
-                    style={{
-                      width: screenWidth * 0.7,
-                      marginRight: 12,
-                    }}
-                  >
-                    <SuggestedFriendCard 
-                      friend={item}
-                      onPress={() => handlePressFriend(item)}
-                      onInvite={() => handleAddFriend(
-                        item.user?._id || item._id, 
-                        item.user?.name || item.name
-                      )}
-                    />
-                  </View>
-                );
-              }}
-              keyExtractor={(item, index) => `friend-${item.user?._id || item._id || index}`}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={screenWidth * 0.74}
-              decelerationRate="fast"
-              snapToAlignment="start"
-              onMomentumScrollEnd={handleFriendsScrollEnd}
-              scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
-              getItemLayout={(data, index) => ({
-                length: screenWidth * 0.74,
-                offset: screenWidth * 0.74 * index,
-                index,
-              })}
-            />
-          </>
-        ) : (
-          <View style={styles.emptyCarouselContainer}>
-            <Ionicons name="people-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyCarouselText}>
-              Aggiungi amici per iniziare!
-            </Text>
-            <Text style={styles.emptyCarouselSubtext}>
-              Troveremo suggerimenti basati su partite giocate insieme, amici comuni e giocatori VIP più attivi
-            </Text>
-            <Pressable 
-              style={[styles.bookButton, { marginTop: 16 }]}
-              onPress={() => navigation.navigate("CercaAmici")}
-            >
-              <Text style={styles.bookButtonText}>Trova amici</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
+      <SuggestedItemsCarousel
+        items={suggestedItems}
+        onPressFriend={handlePressFriend}
+        onInviteFriend={(friendId) => {
+          const friend = suggestedItems.find(item => item.type === 'friend' && item.data.user?._id === friendId)?.data;
+          if (friend) {
+            handleAddFriend(friendId, friend.user?.name || friend.name);
+          }
+        }}
+        onPressStruttura={handlePressStruttura}
+        onFollowStruttura={handleFollowStruttura}
+        onViewAll={() => navigation.navigate("CercaAmici")}
+      />
     );
   };
 
@@ -877,7 +798,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 30 }}
       >
         {refreshing && (
           <View style={{ paddingVertical: 10, alignItems: 'center' }}>
@@ -981,7 +902,7 @@ export default function HomeScreen() {
                     onPress={() => {
                       const bookingId = item.booking?._id;
                       if (bookingId) {
-                        navigation.navigate('DettaglioPrenotazione', { bookingId });
+                        navigation.navigate('DettaglioPrenotazione', { bookingId, fromOpenMatch: true });
                       }
                     }}
                     onJoin={() => handleJoinMatch(item)}
@@ -1091,7 +1012,7 @@ export default function HomeScreen() {
         ) : null}
 
         {/* Carosello Amici Suggeriti REALI */}
-        {renderSuggestedFriendsSection()}
+        {renderSuggestedItemsSection()}
 
       </ScrollView>
     </SafeAreaView>

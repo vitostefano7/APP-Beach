@@ -26,7 +26,7 @@ export interface IMatch extends Document {
   winner?: "A" | "B" | "draw";
   playedAt?: Date;
   event?: Types.ObjectId;
-  status: "draft" | "open" | "full" | "completed" | "cancelled";
+  status: "open" | "full" | "completed" | "cancelled" | "not_team_completed" | "not_completed";
   notes?: string;
 }
 
@@ -148,8 +148,8 @@ const MatchSchema = new Schema<IMatch>(
 
     status: {
       type: String,
-      enum: ["draft", "open", "full", "completed", "cancelled"],
-      default: "draft",
+      enum: ["open", "full", "completed", "cancelled", "not_team_completed", "not_completed"],
+      default: "open",
     },
 
     notes: {
@@ -175,16 +175,11 @@ MatchSchema.methods.isFull = function () {
   return confirmed >= this.maxPlayers;
 };
 
-// Validazione pre-save: team obbligatorio se maxPlayers > 2 E match non in draft
+// Validazione pre-save: team obbligatorio se maxPlayers > 2
 MatchSchema.pre("save", async function () {
   const match = this as IMatch;
 
-  // ✅ Se il match è in draft, non serve il team
-  if (match.status === "draft") {
-    return;
-  }
-
-  // ✅ Se maxPlayers > 2 E status non è draft, team obbligatorio
+  // ✅ Se maxPlayers > 2, team obbligatorio
   if (match.maxPlayers > 2) {
     const playersWithoutTeam = match.players.filter((p: IMatchPlayer) => !p.team);
     if (playersWithoutTeam.length > 0) {

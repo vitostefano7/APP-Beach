@@ -102,7 +102,12 @@ export const SuggestedItemsCarousel: React.FC<SuggestedItemsCarouselProps> = ({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item) => `${item.type}-${item.data._id}`}
+        keyExtractor={(item) => {
+          const id = item.type === 'friend' 
+            ? (item.data.user?._id || item.data._id)
+            : item.data._id;
+          return `${item.type}-${id}`;
+        }}
         horizontal
         showsHorizontalScrollIndicator={false}
         pagingEnabled

@@ -14,7 +14,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   const futureBookings = savedBookings.filter((b: any) => new Date(b.date) >= todayStart);
 
   const matches: any[] = [];
-  const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, draft: 0 };
+  const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, cancelled: 0 };
 
   // Helper function per verificare se una struttura supporta split payment
   const canBePublic = (bookingId: any) => {
@@ -123,9 +123,68 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       maxPlayers: 10, // volley
       isPublic: false,
       playedAt: new Date(booking.date),
-      status: "completed",
+      status: "not_completed",
     });
     matchCounters.noResult++;
+  }
+
+  // ============================================
+  // MATCH PUBBLICI PASSATI CON TEAM INCOMPLETI (cancellati)
+  // Partite pubbliche che non si sono svolte per mancanza di giocatori
+  // ============================================
+  // Usa solo booking che NON sono già stati usati per i match completati
+  const usedBookingIds = new Set(matches.map(m => m.booking.toString()));
+  const publicPastBookingsWithPeople = pastBookings
+    .filter((b: any) => b.numberOfPeople && canBePublic(b._id) && !usedBookingIds.has(b._id.toString()))
+    .slice(0, Math.floor(pastBookings.length * 0.05)); // 5% dei booking passati
+
+  for (const booking of publicPastBookingsWithPeople) {
+    const creator = booking.user;
+    const maxPlayers = getMaxPlayers(booking);
+    const incompletePlayerCount = Math.floor(maxPlayers * 0.6); // 60% dei giocatori necessari
+
+    const matchPlayers: any[] = [];
+    const selectedPlayers: string[] = [creator.toString()];
+
+    // Aggiungi il creatore
+    matchPlayers.push({
+      user: creator,
+      team: "A",
+      status: "confirmed",
+      joinedAt: new Date(booking.date),
+      respondedAt: new Date(booking.date),
+    });
+
+    // Aggiungi altri giocatori fino a incompletePlayerCount
+    for (let j = 1; j < incompletePlayerCount; j++) {
+      let player: any;
+      do {
+        player = randomElement(players);
+      } while (selectedPlayers.includes(player._id.toString()));
+      selectedPlayers.push(player._id.toString());
+      
+      const joinDate = new Date(booking.date);
+      joinDate.setHours(joinDate.getHours() - randomInt(1, 24));
+      
+      matchPlayers.push({
+        user: player._id,
+        team: j < maxPlayers / 2 ? "A" : "B",
+        status: "confirmed",
+        joinedAt: joinDate,
+        respondedAt: joinDate,
+      });
+    }
+
+    matches.push({
+      booking: booking._id,
+      createdBy: creator,
+      players: matchPlayers,
+      maxPlayers: maxPlayers,
+      isPublic: true,
+      playedAt: new Date(booking.date),
+      status: "cancelled",
+    });
+    matchCounters.cancelled++;
   }
 
   // ============================================
@@ -195,19 +254,18 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       players: matchPlayers,
       maxPlayers: maxPlayers,
       isPublic: isPublic,
-      status: isPublic ? "open" : "draft",
+      status: "open",
     });
-    if (isPublic) matchCounters.open++;
-    else matchCounters.draft++;
+    matchCounters.open++;
   }
 
   // ============================================
-  // MATCH FUTURI NORMALI (completi o draft)
+  // MATCH FUTURI NORMALI (completi o aperti)
   // ============================================
   for (const booking of regularFutureBookings) {
     const creator = booking.user;
     const maxPlayers = getMaxPlayers(booking);
-    const isFull = Math.random() > 0.5; // 50% completi, 50% draft
+    const isFull = Math.random() > 0.5; // 50% completi, 50% aperti
 
     if (isFull && booking.numberOfPeople) {
       const playersPerTeam = maxPlayers / 2;
@@ -248,7 +306,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       });
       matchCounters.full++;
     } else {
-      // Draft con solo organizzatore
+      // Match aperto con solo organizzatore
       matches.push({
         booking: booking._id,
         createdBy: creator,
@@ -263,9 +321,9 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         ],
         maxPlayers: maxPlayers,
         isPublic: false,
-        status: "draft",
+        status: "open",
       });
-      matchCounters.draft++;
+      matchCounters.open++;
     }
   }
 
@@ -288,11 +346,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
 
   const savedMatches = await Match.insertMany(matches);
   console.log(`✅ Creati ${savedMatches.length} match:`);
-  console.log(`   - ${matchCounters.completed} completati con risultato (beach)`);
-  console.log(`   - ${matchCounters.noResult} completati senza risultato (volley)`);
-  console.log(`   - ${matchCounters.open} aperti (2/${openMatchBookings.length > 0 ? getMaxPlayers(openMatchBookings[0]) : '?'} giocatori)`);
+  console.log(`   - ${matchCounters.completed} completati con risultato`);
+  console.log(`   - ${matchCounters.noResult} da completare (senza risultato)`);
+  console.log(`   - ${matchCounters.cancelled} cancellati (pubblici con team incompleti)`);
+  console.log(`   - ${matchCounters.open} aperti`);
   console.log(`   - ${matchCounters.full} completi`);
-  console.log(`   - ${matchCounters.draft} in bozza/privati`);
 
   return savedMatches;
 }

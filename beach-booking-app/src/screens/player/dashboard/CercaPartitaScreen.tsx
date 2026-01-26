@@ -72,7 +72,7 @@ type MatchItem = {
   }>;
   maxPlayers?: number;
   isPublic?: boolean;
-  status?: "draft" | "open" | "full" | "completed" | "cancelled";
+  status?: "open" | "full" | "completed" | "cancelled" | "not_team_completed" | "not_completed";
   booking?: {
     _id?: string;
     date?: string;
@@ -915,7 +915,7 @@ export default function CercaPartitaScreen() {
             Alert.alert("Errore", "ID prenotazione non disponibile");
             return;
           }
-          navigation.navigate("DettaglioPrenotazione", { bookingId });
+          navigation.navigate("DettaglioPrenotazione", { bookingId, fromOpenMatch: true });
         }}
         onJoin={() => handleJoinMatch(item)}
       />

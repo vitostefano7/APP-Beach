@@ -1731,7 +1731,7 @@ export default function FieldDetailsScreen() {
                     onPress={() => {
                       const bookingId = item.booking?._id;
                       if (bookingId) {
-                        navigation.navigate('DettaglioPrenotazione', { bookingId });
+                        navigation.navigate('DettaglioPrenotazione', { bookingId, fromOpenMatch: true });
                       } else {
                         alert('ID prenotazione non disponibile');
                       }

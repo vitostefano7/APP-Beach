@@ -25,6 +25,9 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
   const teamAPlayers = match.players?.filter((player: any) => player.team === 'A' && player.status === 'confirmed') || [];
   const teamBPlayers = match.players?.filter((player: any) => player.team === 'B' && player.status === 'confirmed') || [];
 
+  // Calculate cost per player for public matches
+  const costPerPlayer = match.isPublic ? (match.booking?.price || 0) / maxPlayers : 0;
+
   // Format sport name
   const formatSportName = (sport: string) => {
     switch (sport) {
@@ -213,6 +216,12 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
       {/* Footer con tasto Unisci */}
       {onJoin && (
         <View style={styles.openMatchFooter}>
+          {costPerPlayer > 0 && (
+            <View style={styles.costContainer}>
+              <Ionicons name="cash-outline" size={14} color="#333" />
+              <Text style={styles.costText}>Costo: €{costPerPlayer.toFixed(2)}</Text>
+            </View>
+          )}
           <Pressable style={styles.joinButton} onPress={onJoin}>
             <Ionicons name="person-add-outline" size={16} color="white" />
             <Text style={styles.joinButtonText}>Unisci alla partita</Text>

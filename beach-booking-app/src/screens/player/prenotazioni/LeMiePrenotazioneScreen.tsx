@@ -7,6 +7,8 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  Alert,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback } from "react";
@@ -74,6 +76,13 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const initialFilter = route?.params?.initialFilter || "upcoming";
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">(initialFilter);
   const fromDashboard = route?.params?.fromDashboard || false;
+
+  // Nuovi stati per i filtri avanzati
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedStruttura, setSelectedStruttura] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
 
   // Stati per il modal personalizzato
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
@@ -259,6 +268,29 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       return bDate - aDate; // Più recenti ultime
     }
     return bDate - aDate; // Di default, più recenti prima
+  });
+
+  // Estrazione valori unici per i filtri da TUTTE le prenotazioni
+  const availableCities = [...new Set(bookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
+  const availableStrutture = [...new Set(bookings.filter(b => b.campo?.struttura?.name).map(b => b.campo.struttura.name))].sort();
+  const availableSports = [...new Set(bookings.filter(b => b.campo?.sport).map(b => b.campo.sport))].sort();
+  const availableDays = [...new Set(bookings.filter(b => b.date).map(b => {
+    const date = new Date(b.date);
+    return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  }))].sort();
+  const availableTimes = [...new Set(bookings.filter(b => b.startTime).map(b => b.startTime))].sort();
+
+  // Applicazione filtri avanzati
+  const finalFilteredBookings = sortedBookings.filter(booking => {
+    if (selectedCity && booking.campo.struttura.location.city !== selectedCity) return false;
+    if (selectedStruttura && booking.campo.struttura.name !== selectedStruttura) return false;
+    if (selectedSport && booking.campo.sport !== selectedSport) return false;
+    if (selectedDay) {
+      const bookingDay = new Date(booking.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (bookingDay !== selectedDay) return false;
+    }
+    if (selectedTime && booking.startTime !== selectedTime) return false;
+    return true;
   });
 
   // Calcola i conteggi per i filtri
@@ -489,58 +521,159 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       <SafeAreaView style={styles.safe}>
         {/* HEADER */}
         {fromDashboard ? (
-          <View style={styles.backHeader}>
-            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
-            </Pressable>
-            <Text style={styles.backHeaderTitle}>Le mie prenotazioni</Text>
-            <View style={{ width: 24 }} />
+          <View>
+            <View style={styles.backHeader}>
+              <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
+              </Pressable>
+              <Text style={styles.backHeaderTitle}>Prossime Partite</Text>
+              <View style={{ width: 24 }} />
+            </View>
+            
+            {/* CHIP FILTERS */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.chipFiltersContainer}
+              contentContainerStyle={styles.chipFiltersContent}
+            >
+              <FilterChip
+                label="Città"
+                value={selectedCity}
+                options={availableCities}
+                onSelect={setSelectedCity}
+                icon="location-outline"
+              />
+              <FilterChip
+                label="Struttura"
+                value={selectedStruttura}
+                options={availableStrutture}
+                onSelect={setSelectedStruttura}
+                icon="business-outline"
+              />
+              <FilterChip
+                label="Giorno"
+                value={selectedDay}
+                options={availableDays}
+                onSelect={setSelectedDay}
+                icon="calendar-outline"
+              />
+              <FilterChip
+                label="Orario"
+                value={selectedTime}
+                options={availableTimes}
+                onSelect={setSelectedTime}
+                icon="time-outline"
+              />
+              <FilterChip
+                label="Sport"
+                value={selectedSport}
+                options={availableSports}
+                onSelect={setSelectedSport}
+                icon="football-outline"
+              />
+            </ScrollView>
           </View>
         ) : (
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
-            </View>
+          <View>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
+              </View>
 
-            {/* FILTERS */}
-            <View style={styles.filters}>
-              {[
-                { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
-                { key: "past", label: "Concluse", icon: "time-outline" },
-                { key: "all", label: "Tutte", icon: "list-outline" },
-              ].map((f) => (
-                <Pressable
-                  key={f.key}
-                  style={[
-                    styles.filterBtn,
-                    filter === f.key && styles.filterBtnActive,
-                  ]}
-                  onPress={() => setFilter(f.key as any)}
-                >
-                  <Ionicons 
-                    name={f.icon as any} 
-                    size={16} 
-                    color={filter === f.key ? "white" : "#666"} 
-                  />
-                  <Text
+              {/* FILTERS */}
+              <View style={styles.filters}>
+                {[
+                  { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
+                  { key: "past", label: "Concluse", icon: "time-outline" },
+                  { key: "all", label: "Tutte", icon: "list-outline" },
+                ].map((f) => (
+                  <Pressable
+                    key={f.key}
                     style={[
-                      styles.filterText,
-                      filter === f.key && styles.filterTextActive,
+                      styles.filterBtn,
+                      filter === f.key && styles.filterBtnActive,
                     ]}
+                    onPress={() => setFilter(f.key as any)}
                   >
-                    {f.label}{" "}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.filterNumber,
-                      filter === f.key && styles.filterNumberActive,
-                    ]}
-                  >
-                    {f.key === "upcoming" ? upcomingCount : f.key === "past" ? pastCount : allCount}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Ionicons 
+                      name={f.icon as any} 
+                      size={16} 
+                      color={filter === f.key ? "white" : "#666"} 
+                    />
+                    <Text
+                      style={[
+                        styles.filterText,
+                        filter === f.key && styles.filterTextActive,
+                      ]}
+                    >
+                      {f.label}{" "}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.filterNumber,
+                        filter === f.key && styles.filterNumberActive,
+                      ]}
+                    >
+                      {f.key === "upcoming" ? upcomingCount : f.key === "past" ? pastCount : allCount}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.chipFiltersContainer}
+              contentContainerStyle={styles.chipFiltersContent}
+            >
+              {availableCities.length > 1 && (
+                <FilterChip
+                  label="Città"
+                  value={selectedCity}
+                  options={availableCities}
+                  onSelect={setSelectedCity}
+                  icon="location-outline"
+                />
+              )}
+              {availableStrutture.length > 1 && (
+                <FilterChip
+                  label="Struttura"
+                  value={selectedStruttura}
+                  options={availableStrutture}
+                  onSelect={setSelectedStruttura}
+                  icon="business-outline"
+                />
+              )}
+              {availableDays.length > 1 && (
+                <FilterChip
+                  label="Giorno"
+                  value={selectedDay}
+                  options={availableDays}
+                  onSelect={setSelectedDay}
+                  icon="calendar-outline"
+                />
+              )}
+              {availableTimes.length > 1 && (
+                <FilterChip
+                  label="Orario"
+                  value={selectedTime}
+                  options={availableTimes}
+                  onSelect={setSelectedTime}
+                  icon="time-outline"
+                />
+              )}
+              {availableSports.length > 1 && (
+                <FilterChip
+                  label="Sport"
+                  value={selectedSport}
+                  options={availableSports}
+                  onSelect={setSelectedSport}
+                  icon="football-outline"
+                />
+              )}
+            </ScrollView>
           </View>
         )}
 
@@ -550,7 +683,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             <ActivityIndicator size="large" color="#2196F3" />
             <Text style={styles.loadingText}>Caricamento...</Text>
           </View>
-        ) : sortedBookings.length === 0 ? (
+        ) : finalFilteredBookings.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-outline" size={64} color="#ccc" />
             <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
@@ -564,7 +697,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           </View>
         ) : (
           <FlatList
-            data={sortedBookings}
+            data={finalFilteredBookings}
             keyExtractor={(item) => item._id}
             renderItem={renderBookingCard}
             contentContainerStyle={styles.listContent}
@@ -630,6 +763,57 @@ const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
     <Text style={styles.infoText}>{text}</Text>
   </View>
 );
+
+const FilterChip = ({ 
+  label, 
+  value, 
+  options, 
+  onSelect, 
+  icon 
+}: { 
+  label: string; 
+  value: string | null; 
+  options: string[]; 
+  onSelect: (value: string | null) => void; 
+  icon: string; 
+}) => {
+  const handlePress = () => {
+    if (options.length === 0) return;
+    
+    const buttons = [
+      { text: 'Tutti', onPress: () => onSelect(null) },
+      ...options.map(option => ({
+        text: option,
+        onPress: () => onSelect(option)
+      })),
+      { text: 'Annulla', style: 'cancel' as const }
+    ];
+    
+    Alert.alert(
+      `Seleziona ${label}`,
+      '',
+      buttons
+    );
+  };
+
+  return (
+    <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
+      <Ionicons 
+        name={icon as any} 
+        size={16} 
+        color={value ? "#2196F3" : "#666"} 
+      />
+      <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
+        {value || label}
+      </Text>
+      <Ionicons 
+        name="chevron-down" 
+        size={14} 
+        color={value ? "#2196F3" : "#666"} 
+      />
+    </Pressable>
+  );
+};
 
 const PlayerAvatar = ({ player, size = 32 }: { player: Player; size?: number }) => {
   const initials = `${player.user.name.charAt(0)}${player.user.surname.charAt(0)}`.toUpperCase();
@@ -1251,5 +1435,40 @@ const styles = StyleSheet.create({
   customAlertButtonTextCancel: {
     color: "#666",
     fontWeight: "500",
+  },
+
+  // Chip Filters
+  chipFiltersContainer: {
+    maxHeight: 50,
+    backgroundColor: "white",
+  },
+  chipFiltersContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#f8f8f8",
+  },
+  filterChipActive: {
+    borderColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  filterChipTextActive: {
+    color: "#2196F3",
+    fontWeight: "600",
   },
 });
