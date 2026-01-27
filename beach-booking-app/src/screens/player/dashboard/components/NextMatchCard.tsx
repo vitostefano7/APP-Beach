@@ -154,7 +154,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
             <View style={styles.matchLocation}>
               <Ionicons name="location-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
               <Text style={styles.matchLocationText}>
-                {booking.campo?.struttura?.name}{'\n'}{booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'} {booking.campo?.struttura?.location?.city || ''}
+                {booking.campo?.struttura?.name}{'\n'}{booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'} - {booking.campo?.struttura?.location?.city || ''}
               </Text>
             </View>
           </View>

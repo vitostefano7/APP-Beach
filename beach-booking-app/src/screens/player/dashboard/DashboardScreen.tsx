@@ -864,14 +864,6 @@ export default function HomeScreen() {
         )}
         <Header user={user} pendingInvites={validPendingInvites} />
 
-        {__DEV__ && validPendingInvites.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, color: '#666' }}>
-              Inviti validi: {validPendingInvites.length}
-            </Text>
-          </View>
-        )}
-
         {/* <StatsRow stats={stats} /> */}
 
         {/* Quick Action Buttons */}

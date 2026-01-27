@@ -649,7 +649,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
           {/* Footer with location */}
           <View style={styles.matchCardFooter}>
             <View style={styles.matchLocationContainer}>
-              <Ionicons name="location" size={14} color="#2196F3" />
+              <Ionicons name="location-outline" size={14} color="#2196F3" />
               <Text style={styles.matchLocationText} numberOfLines={1}>
                 {match.booking?.campo?.struttura?.name || 'Struttura'}
               </Text>

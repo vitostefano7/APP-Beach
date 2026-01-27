@@ -178,7 +178,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         <View style={styles.friendCardStats}>
           {matchCount > 0 && (
             <View style={styles.friendStatItem}>
-              <Ionicons name="trophy-outline" size={12} color={matchCount >= 3 ? "#FFD700" : "#2196F3"} />
+              <Ionicons name="trophy-outline" size={12} color={matchCount >= 3 ? "#2196F3" : "#2196F3"} />
               <Text style={styles.friendStatText}>
                 {matchCount} {matchCount === 1 ? 'partita' : 'partite'}
                 {matchCount >= 3 && ' 🌟'}
