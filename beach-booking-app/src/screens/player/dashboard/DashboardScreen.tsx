@@ -941,6 +941,40 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Inviti in attesa - mostrati prima delle partite aperte */}
+        {validPendingInvites.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <InviteCardTitle 
+                count={validPendingInvites.length} 
+                onViewAll={handleViewAllInvites}
+              />
+            </View>
+            
+            {validPendingInvites.slice(0, 3).map((invite) => (
+              <InviteCard
+                key={invite._id || invite.match?._id}
+                invite={invite}
+                userId={user?.id}
+                onViewDetails={handleViewInviteDetails}
+                onRespond={respondToInvite}
+              />
+            ))}
+            
+            {validPendingInvites.length > 3 && (
+              <Pressable 
+                style={styles.showMoreButton}
+                onPress={handleViewAllInvites}
+              >
+                <Text style={styles.showMoreText}>
+                  Mostra altri {validPendingInvites.length - 3} inviti
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Partite Aperte */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -992,39 +1026,6 @@ export default function HomeScreen() {
             />
           )}
         </View>
-
-        {validPendingInvites.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <InviteCardTitle 
-                count={validPendingInvites.length} 
-                onViewAll={handleViewAllInvites}
-              />
-            </View>
-            
-            {validPendingInvites.slice(0, 3).map((invite) => (
-              <InviteCard
-                key={invite._id || invite.match?._id}
-                invite={invite}
-                userId={user?.id}
-                onViewDetails={handleViewInviteDetails}
-                onRespond={respondToInvite}
-              />
-            ))}
-            
-            {validPendingInvites.length > 3 && (
-              <Pressable 
-                style={styles.showMoreButton}
-                onPress={handleViewAllInvites}
-              >
-                <Text style={styles.showMoreText}>
-                  Mostra altri {validPendingInvites.length - 3} inviti
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
-              </Pressable>
-            )}
-          </View>
-        )}
 
         {/* Carosello Ultime Partite */}
         {completedMatches.length > 0 ? (

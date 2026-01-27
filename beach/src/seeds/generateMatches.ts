@@ -14,8 +14,10 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   const futureBookings = savedBookings.filter((b: any) => new Date(b.date) >= todayStart);
 
   const matches: any[] = [];
-  const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, cancelled: 0 };
-
+  const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, cancelled: 0, withInvites: 0 };
+  // Traccia quanti inviti ha ricevuto ogni utente (almeno 2 per utente)
+  const userInviteCount = new Map<string, number>();
+  players.forEach((p: any) => userInviteCount.set(p._id.toString(), 0));
   // Helper function per verificare se una struttura supporta split payment
   const canBePublic = (bookingId: any) => {
     const booking = savedBookings.find((b: any) => b._id.toString() === bookingId.toString());
@@ -219,12 +221,13 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     }
   }
 
-  // Crea match aperti (organizzatore + 1 altro giocatore)
+  // Crea match aperti (organizzatore + 1 altro giocatore + inviti pending)
   for (const booking of openMatchBookings) {
     const creator = booking.user;
     const maxPlayers = getMaxPlayers(booking);
+    const isPublic = canBePublic(booking._id);
 
-    // Trova un altro giocatore random
+    // Trova un altro giocatore random che ha confermato
     let otherPlayer: any;
     do {
       otherPlayer = randomElement(players);
@@ -247,7 +250,32 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       },
     ];
 
-    const isPublic = canBePublic(booking._id);
+    // Aggiungi inviti pending se pubblico
+    if (isPublic) {
+      const numInvites = randomInt(2, Math.min(4, maxPlayers - 2)); // 2-4 inviti pending
+      const selectedPlayers = [creator.toString(), otherPlayer._id.toString()];
+      
+      for (let i = 0; i < numInvites; i++) {
+        let invitedPlayer: any;
+        do {
+          invitedPlayer = randomElement(players);
+        } while (selectedPlayers.includes(invitedPlayer._id.toString()));
+        selectedPlayers.push(invitedPlayer._id.toString());
+        
+        matchPlayers.push({
+          user: invitedPlayer._id,
+          team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+          status: "pending",
+          joinedAt: new Date(),
+        });
+        
+        // Incrementa il contatore di inviti per questo utente
+        const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
+        userInviteCount.set(invitedPlayer._id.toString(), currentCount + 1);
+      }
+      matchCounters.withInvites++;
+    }
+
     matches.push({
       booking: booking._id,
       createdBy: creator,
@@ -265,6 +293,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   for (const booking of regularFutureBookings) {
     const creator = booking.user;
     const maxPlayers = getMaxPlayers(booking);
+    const isPublic = canBePublic(booking._id);
     const isFull = Math.random() > 0.5; // 50% completi, 50% aperti
 
     if (isFull && booking.numberOfPeople) {
@@ -306,24 +335,97 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       });
       matchCounters.full++;
     } else {
-      // Match aperto con solo organizzatore
+      // Match aperto con solo organizzatore + possibili inviti
+      const matchPlayers: any[] = [
+        {
+          user: creator,
+          team: "A",
+          status: "confirmed",
+          joinedAt: new Date(),
+          respondedAt: new Date(),
+        },
+      ];
+
+      // Aggiungi inviti pending se pubblico
+      if (isPublic) {
+        const numInvites = randomInt(2, Math.min(5, maxPlayers - 1)); // 2-5 inviti
+        const selectedPlayers = [creator.toString()];
+        
+        for (let i = 0; i < numInvites; i++) {
+          let invitedPlayer: any;
+          do {
+            invitedPlayer = randomElement(players);
+          } while (selectedPlayers.includes(invitedPlayer._id.toString()));
+          selectedPlayers.push(invitedPlayer._id.toString());
+          
+          matchPlayers.push({
+            user: invitedPlayer._id,
+            team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+            status: "pending",
+            joinedAt: new Date(),
+          });
+          
+          // Incrementa il contatore di inviti per questo utente
+          const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
+          userInviteCount.set(invitedPlayer._id.toString(), currentCount + 1);
+        }
+        matchCounters.withInvites++;
+      }
+
       matches.push({
         booking: booking._id,
         createdBy: creator,
-        players: [
-          {
-            user: creator,
-            team: "A",
-            status: "confirmed",
-            joinedAt: new Date(),
-            respondedAt: new Date(),
-          },
-        ],
+        players: matchPlayers,
         maxPlayers: maxPlayers,
-        isPublic: false,
+        isPublic: isPublic,
         status: "open",
       });
       matchCounters.open++;
+    }
+  }
+
+  // ============================================
+  // ASSICURA CHE OGNI UTENTE ABBIA ALMENO 2 INVITI
+  // ============================================
+  const usersNeedingInvites = players.filter((p: any) => (userInviteCount.get(p._id.toString()) || 0) < 2);
+  
+  if (usersNeedingInvites.length > 0) {
+    console.log(`🔄 Aggiunta di inviti per ${usersNeedingInvites.length} utenti che ne hanno meno di 2...`);
+    
+    // Trova match pubblici aperti che possono accogliere più inviti
+    const openPublicMatches = matches.filter(m => 
+      m.status === "open" && 
+      m.isPublic && 
+      m.players.length < m.maxPlayers - 1 // lascia spazio per almeno 1 invito
+    );
+    
+    for (const user of usersNeedingInvites) {
+      const currentInvites = userInviteCount.get(user._id.toString()) || 0;
+      const invitesNeeded = 2 - currentInvites;
+      
+      for (let i = 0; i < invitesNeeded && i < openPublicMatches.length; i++) {
+        const match = openPublicMatches[i];
+        
+        // Verifica che l'utente non sia già nel match
+        if (match.players.some((p: any) => p.user.toString() === user._id.toString())) {
+          continue;
+        }
+        
+        // Verifica che ci sia spazio
+        if (match.players.length >= match.maxPlayers) {
+          continue;
+        }
+        
+        // Aggiungi l'invito
+        match.players.push({
+          user: user._id,
+          team: match.players.filter((p: any) => p.team === "A").length < match.maxPlayers / 2 ? "A" : "B",
+          status: "pending",
+          joinedAt: new Date(),
+        });
+        
+        userInviteCount.set(user._id.toString(), (userInviteCount.get(user._id.toString()) || 0) + 1);
+      }
     }
   }
 
@@ -345,12 +447,23 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   }
 
   const savedMatches = await Match.insertMany(matches);
+  
+  // Calcola statistiche sugli inviti
+  const usersWithLessThan2Invites = Array.from(userInviteCount.values()).filter(count => count < 2).length;
+  const totalInvites = Array.from(userInviteCount.values()).reduce((sum, count) => sum + count, 0);
+  const avgInvitesPerUser = (totalInvites / players.length).toFixed(1);
+  
   console.log(`✅ Creati ${savedMatches.length} match:`);
   console.log(`   - ${matchCounters.completed} completati con risultato`);
   console.log(`   - ${matchCounters.noResult} da completare (senza risultato)`);
   console.log(`   - ${matchCounters.cancelled} cancellati (pubblici con team incompleti)`);
   console.log(`   - ${matchCounters.open} aperti`);
   console.log(`   - ${matchCounters.full} completi`);
+  console.log(`   - ${matchCounters.withInvites} con inviti pending`);
+  console.log(`📨 Inviti generati:`);
+  console.log(`   - Totale inviti: ${totalInvites}`);
+  console.log(`   - Media per utente: ${avgInvitesPerUser}`);
+  console.log(`   - Utenti con meno di 2 inviti: ${usersWithLessThan2Invites}`);
 
   // 🔥 AGGIORNA I BOOKING CON IL RIFERIMENTO AL MATCH
   console.log(`🔄 Aggiornamento booking con riferimenti ai match...`);

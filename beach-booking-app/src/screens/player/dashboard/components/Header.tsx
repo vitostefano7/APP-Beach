@@ -30,6 +30,9 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
   
   // Hook per le notifiche
   const { unreadCount: notificationsUnreadCount, fetchUnreadCount } = useNotifications();
+  
+  // Calcola il totale delle notifiche includendo gli inviti pending
+  const totalNotifications = notificationsUnreadCount + (pendingInvites?.length || 0);
 
   const openChatModal = () => {
     // Animazione del bottone
@@ -150,21 +153,21 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
               style={({ pressed }) => [
                 styles.notificationButtonCompact,
                 pressed && styles.chatButtonPressed,
-                notificationsUnreadCount > 0 && styles.notificationButtonUnread,
+                totalNotifications > 0 && styles.notificationButtonUnread,
               ]}
               onPress={() => navigation.navigate('Notifiche')}
             >
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color={notificationsUnreadCount > 0 ? "#FF5252" : "#333"}
+                color={totalNotifications > 0 ? "#FF5252" : "#333"}
               />
             </Pressable>
             
-            {notificationsUnreadCount > 0 && (
+            {totalNotifications > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>
-                  {notificationsUnreadCount > 99 ? "99+" : notificationsUnreadCount}
+                  {totalNotifications > 99 ? "99+" : totalNotifications}
                 </Text>
               </View>
             )}
