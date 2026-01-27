@@ -4,7 +4,6 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,10 +12,12 @@ import {
 } from "react-native";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { useAlert } from "../context/AlertContext";
 import API_URL from "../config/api";
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useContext(AuthContext);
+  const { showAlert } = useAlert();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +25,11 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Errore", "Inserisci email e password");
+      showAlert({
+        title: "Errore",
+        message: "Inserisci email e password",
+        type: "error"
+      });
       return;
     }
 
@@ -40,7 +45,11 @@ export default function LoginScreen({ navigation }: any) {
       });
 
       if (!res.ok) {
-        Alert.alert("Errore", "Credenziali non valide");
+        showAlert({
+          title: "Errore",
+          message: "Credenziali non valide",
+          type: "error"
+        });
         return;
       }
 
@@ -62,7 +71,11 @@ export default function LoginScreen({ navigation }: any) {
       login(data.token, userData);
     } catch (error) {
       console.error("Errore login:", error);
-      Alert.alert("Errore", "Impossibile contattare il server");
+      showAlert({
+        title: "Errore",
+        message: "Impossibile contattare il server",
+        type: "error"
+      });
     } finally {
       setLoading(false);
     }

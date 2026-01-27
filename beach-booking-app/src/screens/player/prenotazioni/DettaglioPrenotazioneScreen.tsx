@@ -1620,8 +1620,8 @@ export default function DettaglioPrenotazioneScreen() {
               {/* Località - Cliccabile */}
               <FadeInView delay={400}>
                 <View style={styles.fieldInfoRow}>
-                  <View style={[styles.fieldIconCircle, { backgroundColor: '#F3E5F5' }]}>
-                    <Ionicons name="location" size={18} color="#9C27B0" />
+                  <View style={[styles.fieldIconCircle, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="location" size={18} color="#2196F3" />
                   </View>
                   <View style={styles.fieldInfoContent}>
                     <Text style={styles.fieldInfoLabel}>LOCALITÀ</Text>
@@ -1637,7 +1637,7 @@ export default function DettaglioPrenotazioneScreen() {
                         onPress={handleOpenMaps}
                         android_ripple={{ color: 'rgba(156, 39, 176, 0.1)', radius: 40 }}
                       >
-                        <Ionicons name="navigate" size={14} color="#9C27B0" />
+                        <Ionicons name="navigate" size={14} color="#2196F3" />
                         <Text style={styles.mapButtonText}>Indicazioni</Text>
                       </Pressable>
                     </View>

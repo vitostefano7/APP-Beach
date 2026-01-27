@@ -435,15 +435,15 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: "#F3E5F5",
+    backgroundColor: "#E3F2FD",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E1BEE7",
+    borderColor: "#E3F2FD",
   },
   mapButtonText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#9C27B0",
+    color: "#2196F3",
     letterSpacing: 0.2,
   },
 

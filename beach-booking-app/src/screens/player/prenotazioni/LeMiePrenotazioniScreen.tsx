@@ -1314,7 +1314,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   price: { 
-    fontSize: 16, 
+    fontSize: 20, 
     fontWeight: "800", 
     color: "#4CAF50",
   },

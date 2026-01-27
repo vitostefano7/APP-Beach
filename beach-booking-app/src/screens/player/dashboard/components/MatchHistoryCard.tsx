@@ -354,7 +354,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             <View style={styles.matchScoreMainContainer}>
               {match.score?.sets && match.score.sets.length > 0 && (
                 <View style={{ flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  {match.score.sets.map((set: any, idx: number) => {
+                  {match.score.sets
+                    .filter((set: any) => set.teamA > 0 || set.teamB > 0) // Mostra solo set compilati
+                    .map((set: any, idx: number) => {
                     const teamAWon = set.teamA > set.teamB;
                     const teamBWon = set.teamB > set.teamA;
                     return (

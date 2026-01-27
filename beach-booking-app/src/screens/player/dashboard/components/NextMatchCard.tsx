@@ -139,11 +139,11 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
           <View style={styles.matchInfoLeft}>
             <View style={styles.matchInfoSection}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginRight: 4 }} />
+                <Ionicons name="calendar-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
                 <Text style={styles.matchDay}>{displayDate}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="time-outline" size={16} color="#666" style={{ marginRight: 4 }} />
+                <Ionicons name="time-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
                 <Text style={styles.matchTime}>
                   {booking.startTime} - {booking.endTime}
                 </Text>
@@ -152,7 +152,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
 
             {/* Location */}
             <View style={styles.matchLocation}>
-              <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 4 }} />
+              <Ionicons name="location-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
               <Text style={styles.matchLocationText}>
                 {booking.campo?.struttura?.name}{'\n'}{booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'} {booking.campo?.struttura?.location?.city || ''}
               </Text>
@@ -235,7 +235,7 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
               <Text style={styles.matchActionText}>Indicazioni</Text>
             </Pressable>
             <Pressable 
-              style={[styles.matchActionButton, styles.chatButton, loadingChat && { opacity: 0.6 }]}
+              style={[styles.matchActionButton, styles.matchActionButton, loadingChat && { opacity: 0.6 }]}
               onPress={handleOpenGroupChat}
               disabled={loadingChat}
             >
@@ -243,8 +243,8 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 <>
-                  <Ionicons name="chatbubble-ellipses-outline" size={20} color="white" />
-                  <Text style={styles.chatActionText}>Chat Partita</Text>
+                  <Ionicons name="chatbubble-ellipses-outline" size={20} color="#2196F3" />
+                  <Text style={styles.matchActionText}>Chat Partita</Text>
                 </>
               )}
             </Pressable>

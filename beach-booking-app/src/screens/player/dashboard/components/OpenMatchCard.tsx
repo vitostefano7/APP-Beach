@@ -103,7 +103,7 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
         </View>
         {match.booking?.campo?.struttura?.location?.address && (
           <Text style={styles.openMatchSubtitle} numberOfLines={1}>
-            <Ionicons name="location-outline" size={12} color="#666" />
+            <Ionicons name="location-outline" size={12} color="#2196F3" />
             {match.booking.campo.struttura.location.address} - {match.booking.campo.struttura.location.city}
           </Text>
         )}
@@ -111,13 +111,13 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
 
       <View style={styles.openMatchInfo}>
         <View style={styles.openMatchInfoRow}>
-          <Ionicons name="calendar-outline" size={14} color="#666" />
+          <Ionicons name="calendar-outline" size={14} color="#2196F3" />
           <Text style={styles.openMatchInfoText}>
             {match.booking?.date ? new Date(match.booking.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Data da definire'}
           </Text>
         </View>
         <View style={styles.openMatchInfoRow}>
-          <Ionicons name="time-outline" size={14} color="#666" />
+          <Ionicons name="time-outline" size={14} color="#2196F3" />
           <Text style={styles.openMatchInfoText}>
             {match.booking?.startTime || '--:--'}
             {match.booking?.endTime ? `-${match.booking.endTime}` : ''}
@@ -218,7 +218,7 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
         <View style={styles.openMatchFooter}>
           {costPerPlayer > 0 && (
             <View style={styles.costContainer}>
-              <Ionicons name="cash-outline" size={14} color="#333" />
+              <Ionicons name="cash-outline" size={14} color="#2196F3" />
               <Text style={styles.costText}>Costo: €{costPerPlayer.toFixed(2)}</Text>
             </View>
           )}

@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 import { UnreadMessagesProvider } from "./src/context/UnreadMessagesContext";
+import { AlertProvider } from "./src/context/AlertContext";
 import { ThemeProvider } from "./src/screens/player/profilo/ThemeContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
@@ -48,9 +49,11 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <UnreadMessagesProvider>
-            <NavigationContainer>
-              <AppNavigator />
-            </NavigationContainer>
+            <AlertProvider>
+              <NavigationContainer>
+                <AppNavigator />
+              </NavigationContainer>
+            </AlertProvider>
           </UnreadMessagesProvider>
         </AuthProvider>
       </ThemeProvider>

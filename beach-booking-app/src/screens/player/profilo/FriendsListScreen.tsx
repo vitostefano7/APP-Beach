@@ -213,42 +213,44 @@ export default function FriendsListScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {isViewingOwnFriends ? "Account Seguiti & Follower" : "Account Seguiti & Follower"}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          </Pressable>
+          <Text style={styles.headerTitle}>
+            {isViewingOwnFriends ? "Account Seguiti & Follower" : "Account Seguiti & Follower"}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-      <View style={styles.filterRow}>
-        <Pressable
-          style={[styles.filterButton, filter === "followers" && styles.filterButtonActive]}
-          onPress={() => setFilter("followers")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "followers" && styles.filterTextActive,
-            ]}
+        <View style={styles.filterRow}>
+          <Pressable
+            style={[styles.filterButton, filter === "followers" && styles.filterButtonActive]}
+            onPress={() => setFilter("followers")}
           >
-            Follower
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.filterButton, filter === "following" && styles.filterButtonActive]}
-          onPress={() => setFilter("following")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "following" && styles.filterTextActive,
-            ]}
+            <Text
+              style={[
+                styles.filterText,
+                filter === "followers" && styles.filterTextActive,
+              ]}
+            >
+              Follower
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, filter === "following" && styles.filterButtonActive]}
+            onPress={() => setFilter("following")}
           >
-            Following
-          </Text>
-        </Pressable>
+            <Text
+              style={[
+                styles.filterText,
+                filter === "following" && styles.filterTextActive,
+              ]}
+            >
+              Following
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -298,14 +300,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
   },
   header: {
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    paddingBottom: 12,
+  },
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   backButton: {
     padding: 8,
@@ -321,8 +326,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f8f9fa",
   },
   filterButton: {
     flex: 1,
@@ -340,7 +343,7 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: "#2196F3",
   },
   filterTextActive: {
     color: "white",

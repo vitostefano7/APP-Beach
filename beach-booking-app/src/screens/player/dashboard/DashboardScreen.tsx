@@ -122,54 +122,106 @@ export default function HomeScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      console.log("HomeScreen focus - caricamento dati...");
-      loadDashboardData();
-      refreshSuggestions();
-      // Richiedi GPS dopo un breve delay
-      setTimeout(() => {
-        requestGPSLocation();
-      }, 500);
+      const focusStartTime = performance.now();
+      const allTimings: any = {};
+      
+      // Funzione per stampare il resoconto
+      const printReport = () => {
+        const totalFocusTime = performance.now() - focusStartTime;
+        const dashTimings = (window as any).__dashboardTimings || {};
+        
+        console.log("\n" + "=".repeat(50));
+        console.log("📊 RESOCONTO PERFORMANCE DASHBOARD");
+        console.log("=".repeat(50));
+        console.log(`⏱️  Preferenze geografiche: ${dashTimings.preferences?.toFixed(0) || 'N/A'}ms`);
+        console.log(`⏱️  Dati principali: ${dashTimings.mainData?.toFixed(0) || 'N/A'}ms`);
+        console.log(`⏱️  Match aperti: ${dashTimings.openMatches?.toFixed(0) || 'N/A'}ms`);
+        console.log(`⏱️  Suggerimenti: ${allTimings.suggestions?.toFixed(0) || 'N/A'}ms`);
+        console.log(`⏱️  GPS: ${allTimings.gps?.toFixed(0) || 'N/A'}ms`);
+        console.log("-".repeat(50));
+        console.log(`🎯 TEMPO TOTALE: ${totalFocusTime.toFixed(0)}ms (${(totalFocusTime / 1000).toFixed(2)}s)`);
+        console.log("=".repeat(50) + "\n");
+        
+        // Pulisci i dati temporanei
+        delete (window as any).__dashboardTimings;
+      };
+      
+      // Esegui tutte le operazioni e aspetta il completamento
+      (async () => {
+        // Carica dashboard (include preferenze e dati principali)
+        await loadDashboardData();
+        
+        // Carica suggerimenti in parallelo con GPS
+        const suggestionsStart = performance.now();
+        const suggestionsPromise = refreshSuggestions().then(() => {
+          allTimings.suggestions = performance.now() - suggestionsStart;
+        });
+        
+        // Aspetta un attimo prima di richiedere GPS (come prima)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const gpsStart = performance.now();
+        const gpsPromise = requestGPSLocation().then(() => {
+          allTimings.gps = performance.now() - gpsStart;
+        });
+        
+        // Aspetta che tutto sia completato
+        await Promise.all([suggestionsPromise, gpsPromise]);
+        
+        // Aspetta ancora un attimo per loadOpenMatches (chiamato da useEffect)
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Stampa il report finale
+        printReport();
+      })();
     }, [])
   );
 
   // Carica i match aperti quando cambiano le preferenze geografiche
   React.useEffect(() => {
     if (preferencesLoaded) {
-      console.log("🔄 [Dashboard] Preferenze geografiche cambiate, ricarico match aperti...");
-      console.log("🔄 [Dashboard] GPS:", gpsCoords ? "presente" : "assente");
-      console.log("🔄 [Dashboard] Preferenze:", userPreferences?.preferredLocation?.city || "nessuna");
-      console.log("🔄 [Dashboard] Strutture visitate:", visitedStruttureIds?.length || 0);
+      // console.log("🔄 [Dashboard] Preferenze geografiche cambiate, ricarico match aperti...");
+      // console.log("🔄 [Dashboard] GPS:", gpsCoords ? "presente" : "assente");
+      // console.log("🔄 [Dashboard] Preferenze:", userPreferences?.preferredLocation?.city || "nessuna");
+      // console.log("🔄 [Dashboard] Strutture visitate:", visitedStruttureIds?.length || 0);
       loadOpenMatches();
     }
   }, [gpsCoords, userPreferences, visitedStruttureIds, preferencesLoaded]);
 
   const loadDashboardData = async () => {
+    const startTime = performance.now();
+    const timings: Record<string, number> = {};
+    
     try {
       setLoading(true);
-      console.log("=== INIZIO CARICAMENTO DASHBOARD ===");
-      console.log("User ID:", user?.id);
-      console.log("User name:", user?.name);
 
       // Carica prima le preferenze e le strutture visitate
+      const prefsStart = performance.now();
       await Promise.all([
         loadUserPreferences(),
         loadVisitedStrutture(),
       ]);
+      timings.preferences = performance.now() - prefsStart;
       
-      console.log("✅ Preferenze e strutture caricate, ora carico i match...");
       setPreferencesLoaded(true);
 
       // Carica tutto il resto TRANNE i match aperti (li carica il useEffect)
+      const dataStart = performance.now();
       await Promise.all([
         loadNextBooking(),
         loadPendingInvites(),
         loadRecentMatchesAndStats(),
       ]);
+      timings.mainData = performance.now() - dataStart;
 
     } catch (error) {
       console.error("Errore caricamento dashboard:", error);
     } finally {
-      console.log("=== FINE CARICAMENTO DASHBOARD ===");
+      timings.total = performance.now() - startTime;
+      
+      // Salva i tempi per il resoconto finale
+      (window as any).__dashboardTimings = timings;
+      
       setLoading(false);
       setRefreshing(false);
     }
@@ -184,18 +236,18 @@ export default function HomeScreen() {
       if (bookingsRes.ok) {
         const bookings = await bookingsRes.json();
         
-        console.log("TUTTE le prenotazioni ricevute:", bookings.length);
+        // console.log("TUTTE le prenotazioni ricevute:", bookings.length);
         
         const now = new Date();
         
         const relevantBookings = bookings.filter((b: any) => {
-          console.log(`\n📋 Analizzo booking ${b._id}:`);
-          console.log(`   Data: ${b.date} ${b.startTime}-${b.endTime}`);
-          console.log(`   Status: ${b.status}`);
-          console.log(`   Campo: ${b.campo?.name}`);
+          // console.log(`\n📋 Analizzo booking ${b._id}:`);
+          // console.log(`   Data: ${b.date} ${b.startTime}-${b.endTime}`);
+          // console.log(`   Status: ${b.status}`);
+          // console.log(`   Campo: ${b.campo?.name}`);
           
           if (b.status !== "confirmed") {
-            console.log(`   ❌ ESCLUSA: status non confermato (${b.status})`);
+            // console.log(`   ❌ ESCLUSA: status non confermato (${b.status})`);
             return false;
           }
           
@@ -206,55 +258,55 @@ export default function HomeScreen() {
             const bookingEndTime = new Date(`${b.date}T${b.endTime}:00`);
             // Include sia partite future che in corso
             isRelevantTime = bookingEndTime > now;
-            console.log(`   Ora: ${now.toLocaleString('it-IT')}`);
-            console.log(`   Fine match: ${bookingEndTime.toLocaleString('it-IT')}`);
-            console.log(`   È futura/in corso: ${isRelevantTime}`);
+            // console.log(`   Ora: ${now.toLocaleString('it-IT')}`);
+            // console.log(`   Fine match: ${bookingEndTime.toLocaleString('it-IT')}`);
+            // console.log(`   È futura/in corso: ${isRelevantTime}`);
           } catch (error) {
             console.error("   ❌ Errore parsing data:", error);
             return false;
           }
           
           if (!isRelevantTime) {
-            console.log(`   ❌ ESCLUSA: già terminata`);
+            // console.log(`   ❌ ESCLUSA: già terminata`);
             return false;
           }
           
           const isMyBooking = b.isMyBooking;
-          console.log(`   isMyBooking: ${isMyBooking}`);
-          console.log(`   isInvitedPlayer: ${b.isInvitedPlayer}`);
+          // console.log(`   isMyBooking: ${isMyBooking}`);
+          // console.log(`   isInvitedPlayer: ${b.isInvitedPlayer}`);
           
           // Se è una prenotazione creata da me O sono un player invitato, mostrarla
           const shouldShow = isMyBooking || b.isInvitedPlayer;
-          console.log(`   Risultato finale: ${shouldShow ? '✅ INCLUSA' : '❌ ESCLUSA'} (myBooking: ${isMyBooking}, invited: ${b.isInvitedPlayer})`);
+          // console.log(`   Risultato finale: ${shouldShow ? '✅ INCLUSA' : '❌ ESCLUSA'} (myBooking: ${isMyBooking}, invited: ${b.isInvitedPlayer})`);
           
           return shouldShow;
         });
         
-        console.log("Prenotazioni rilevanti (mia o confermato):", relevantBookings.length);
+        // console.log("Prenotazioni rilevanti (mia o confermato):", relevantBookings.length);
         
-        if (relevantBookings.length === 0 && bookings.length > 0) {
-          console.log("=== DEBUG TUTTE LE PRENOTAZIONI ===");
-          bookings.forEach((b: any, index: number) => {
-            console.log(`${index + 1}. ID: ${b._id}`);
-            console.log(`   Data: ${b.date} ${b.startTime}`);
-            console.log(`   Status: ${b.status}`);
-            console.log(`   isMyBooking: ${b.isMyBooking}`);
-            console.log(`   hasMatch: ${b.hasMatch}`);
-            
-            if (b.hasMatch && b.match && b.match.players) {
-              const myPlayer = b.match.players.find((p: any) => {
-                const playerUserId = p.user?._id || p.user || p.userId;
-                return playerUserId === user?.id;
-              });
-              console.log(`   Mio player trovato:`, myPlayer ? 'SI' : 'NO');
-              if (myPlayer) {
-                console.log(`   Mio status: ${myPlayer.status}`);
-                console.log(`   Mio team: ${myPlayer.team}`);
-              }
-            }
-            console.log('---');
-          });
-        }
+        // if (relevantBookings.length === 0 && bookings.length > 0) {
+        //   console.log("=== DEBUG TUTTE LE PRENOTAZIONI ===");
+        //   bookings.forEach((b: any, index: number) => {
+        //     console.log(`${index + 1}. ID: ${b._id}`);
+        //     console.log(`   Data: ${b.date} ${b.startTime}`);
+        //     console.log(`   Status: ${b.status}`);
+        //     console.log(`   isMyBooking: ${b.isMyBooking}`);
+        //     console.log(`   hasMatch: ${b.hasMatch}`);
+        //     
+        //     if (b.hasMatch && b.match && b.match.players) {
+        //       const myPlayer = b.match.players.find((p: any) => {
+        //         const playerUserId = p.user?._id || p.user || p.userId;
+        //         return playerUserId === user?.id;
+        //       });
+        //       console.log(`   Mio player trovato:`, myPlayer ? 'SI' : 'NO');
+        //       if (myPlayer) {
+        //         console.log(`   Mio status: ${myPlayer.status}`);
+        //         console.log(`   Mio team: ${myPlayer.team}`);
+        //       }
+        //     }
+        //     console.log('---');
+        //   });
+        // }
         
         // ✅ ORDINA PER DATA/ORA CRESCENTE - La prima sarà la prossima partita disponibile
         relevantBookings.sort((a: any, b: any) => {
@@ -266,28 +318,28 @@ export default function HomeScreen() {
         // Prende solo la prima prenotazione (la più vicina nel tempo)
         setNextBooking(relevantBookings[0] || null);
         
-        if (relevantBookings.length > 0) {
-          console.log("=== PROSSIMA PARTITA TROVATA ===");
-          const next = relevantBookings[0];
-          console.log("ID:", next._id);
-          console.log("Data:", next.date);
-          console.log("Orario:", next.startTime);
-          console.log("Campo:", next.campo?.name);
-          console.log("Creata da me:", next.isMyBooking);
-          
-          if (next.hasMatch && next.match) {
-            const myPlayer = next.match.players?.find((p: any) => {
-              const playerUserId = p.user?._id || p.user || p.userId;
-              return playerUserId === user?.id;
-            });
-            console.log("Mio status nel match:", myPlayer?.status);
-            console.log("Mio team nel match:", myPlayer?.team);
-          }
-        } else {
-          console.log("=== NESSUNA PARTITA RILEVANTE TROVATA ===");
-          console.log("User ID:", user?.id);
-          console.log("User name:", user?.name);
-        }
+        // if (relevantBookings.length > 0) {
+        //   console.log("=== PROSSIMA PARTITA TROVATA ===");
+        //   const next = relevantBookings[0];
+        //   console.log("ID:", next._id);
+        //   console.log("Data:", next.date);
+        //   console.log("Orario:", next.startTime);
+        //   console.log("Campo:", next.campo?.name);
+        //   console.log("Creata da me:", next.isMyBooking);
+        //   
+        //   if (next.hasMatch && next.match) {
+        //     const myPlayer = next.match.players?.find((p: any) => {
+        //       const playerUserId = p.user?._id || p.user || p.userId;
+        //       return playerUserId === user?.id;
+        //     });
+        //     console.log("Mio status nel match:", myPlayer?.status);
+        //     console.log("Mio team nel match:", myPlayer?.team);
+        //   }
+        // } else {
+        //   console.log("=== NESSUNA PARTITA RILEVANTE TROVATA ===");
+        //   console.log("User ID:", user?.id);
+        //   console.log("User name:", user?.name);
+        // }
       }
     } catch (error) {
       console.error("Errore caricamento prossima prenotazione:", error);
@@ -296,7 +348,7 @@ export default function HomeScreen() {
 
   const loadPendingInvites = async () => {
     try {
-      console.log("=== CARICAMENTO INVITI PENDENTI ===");
+      // console.log("=== CARICAMENTO INVITI PENDENTI ===");
       
       const res = await fetch(`${API_URL}/matches/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -304,7 +356,7 @@ export default function HomeScreen() {
       
       if (res.ok) {
         const allMatches = await res.json();
-        console.log("Tutti i match ricevuti:", allMatches.length);
+        // console.log("Tutti i match ricevuti:", allMatches.length);
         
         const pendingInvites = allMatches.filter((match: any) => {
           const myPlayer = match.players?.find((p: any) => 
@@ -322,20 +374,20 @@ export default function HomeScreen() {
           return isPendingStatus && !isCreator && !isExpired;
         });
         
-        console.log("Inviti pendenti trovati:", pendingInvites.length);
+        // console.log("Inviti pendenti trovati:", pendingInvites.length);
         
-        if (pendingInvites.length > 0) {
-          console.log("=== DEBUG DETTAGLIATO INVITI ===");
-          pendingInvites.forEach((invite: any, index: number) => {
-            const myPlayer = invite.players?.find((p: any) => p.user?._id === user?.id);
-            console.log(`Invito ${index + 1}:`);
-            console.log(`  Match ID: ${invite._id}`);
-            console.log(`  Creato da: ${invite.createdBy?.name}`);
-            console.log(`  Mio status: ${myPlayer?.status}`);
-            console.log(`  Data: ${invite.booking?.date}`);
-            console.log(`  Orario: ${invite.booking?.startTime}`);
-          });
-        }
+        // if (pendingInvites.length > 0) {
+        //   console.log("=== DEBUG DETTAGLIATO INVITI ===");
+        //   pendingInvites.forEach((invite: any, index: number) => {
+        //     const myPlayer = invite.players?.find((p: any) => p.user?._id === user?.id);
+        //     console.log(`Invito ${index + 1}:`);
+        //     console.log(`  Match ID: ${invite._id}`);
+        //     console.log(`  Creato da: ${invite.createdBy?.name}`);
+        //     console.log(`  Mio status: ${myPlayer?.status}`);
+        //     console.log(`  Data: ${invite.booking?.date}`);
+        //     console.log(`  Orario: ${invite.booking?.startTime}`);
+        //   });
+        // }
         
         setPendingInvites(pendingInvites);
       } else {
@@ -368,9 +420,9 @@ export default function HomeScreen() {
   };
 
   const loadOpenMatches = async () => {
+    const startTime = performance.now();
+    
     try {
-      console.log("🔄 [Dashboard] Inizio caricamento match aperti...");
-      
       const res = await fetch(`${API_URL}/matches?status=open`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -384,19 +436,19 @@ export default function HomeScreen() {
       const data = await res.json();
       const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
       
-      console.log(`✅ [Dashboard] ${rawMatches.length} match grezzi trovati`);
+      // console.log(`✅ [Dashboard] ${rawMatches.length} match grezzi trovati`);
 
       if (rawMatches.length === 0) {
-        console.log("ℹ️ [Dashboard] Nessun match aperto dal server");
+        // console.log("ℹ️ [Dashboard] Nessun match aperto dal server");
         setOpenMatches([]);
         return;
       }
 
       // *** FILTRO GEOGRAFICO OBBLIGATORIO ***
-      console.log("🌍 [Dashboard] Applicazione filtro geografico obbligatorio...");
-      console.log("🌍 [Dashboard] GPS coords:", gpsCoords);
-      console.log("🌍 [Dashboard] User preferences:", userPreferences?.preferredLocation);
-      console.log("🌍 [Dashboard] Visited structures:", visitedStruttureIds?.length || 0);
+      // console.log("🌍 [Dashboard] Applicazione filtro geografico obbligatorio...");
+      // console.log("🌍 [Dashboard] GPS coords:", gpsCoords);
+      // console.log("🌍 [Dashboard] User preferences:", userPreferences?.preferredLocation);
+      // console.log("🌍 [Dashboard] Visited structures:", visitedStruttureIds?.length || 0);
       
       // Determina modalità di filtro geografico
       let referenceLat: number | null = null;
@@ -409,18 +461,18 @@ export default function HomeScreen() {
         referenceLng = gpsCoords.lng;
         searchRadius = 30;
         filterMode = 'gps';
-        console.log("📍 [Dashboard] Filtro GPS attivo - raggio 30km");
+        // console.log("📍 [Dashboard] Filtro GPS attivo - raggio 30km");
       } else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
         referenceLat = userPreferences.preferredLocation.lat;
         referenceLng = userPreferences.preferredLocation.lng;
         searchRadius = userPreferences.preferredLocation.radius || 30;
         filterMode = 'preferred';
-        console.log("📍 [Dashboard] Filtro città preferita attivo -", userPreferences.preferredLocation.city, "raggio", searchRadius, "km");
+        // console.log("📍 [Dashboard] Filtro città preferita attivo -", userPreferences.preferredLocation.city, "raggio", searchRadius, "km");
       } else if (visitedStruttureIds && visitedStruttureIds.length > 0) {
         filterMode = 'visited';
-        console.log("📍 [Dashboard] Filtro strutture visitate attivo -", visitedStruttureIds.length, "strutture");
+        // console.log("📍 [Dashboard] Filtro strutture visitate attivo -", visitedStruttureIds.length, "strutture");
       } else {
-        console.log("⚠️ [Dashboard] Nessun criterio geografico disponibile - nessun risultato");
+        // console.log("⚠️ [Dashboard] Nessun criterio geografico disponibile - nessun risultato");
         setOpenMatches([]);
         return;
       }
@@ -443,7 +495,7 @@ export default function HomeScreen() {
               Math.sin(dLng / 2) * Math.sin(dLng / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distance = R * c;
-            console.log(`📏 [Dashboard] ${match.booking?.campo?.struttura?.name || 'N/A'}: ${distance.toFixed(2)}km`);
+            // console.log(`📏 [Dashboard] ${match.booking?.campo?.struttura?.name || 'N/A'}: ${distance.toFixed(2)}km`);
             return distance <= searchRadius;
           }
           return false;
@@ -454,12 +506,12 @@ export default function HomeScreen() {
       });
       
       if (geoFiltered.length === 0) {
-        console.log("⚠️ [Dashboard] Nessun match trovato dopo filtro geografico");
+        // console.log("⚠️ [Dashboard] Nessun match trovato dopo filtro geografico");
         setOpenMatches([]);
         return;
       }
       
-      console.log(`✅ [Dashboard] ${geoFiltered.length} match dopo filtro geografico`);
+      // console.log(`✅ [Dashboard] ${geoFiltered.length} match dopo filtro geografico`);
 
       const now = new Date();
       const filtered = geoFiltered.filter((match: any) => {
@@ -476,10 +528,10 @@ export default function HomeScreen() {
         return true;
       });
 
-      console.log(`✅ [Dashboard] Partite dopo filtro iniziale: ${filtered.length}`);
+      // console.log(`✅ [Dashboard] Partite dopo filtro iniziale: ${filtered.length}`);
 
       if (filtered.length === 0) {
-        console.log("ℹ️ [Dashboard] Nessun match disponibile dopo filtri base");
+        // console.log("ℹ️ [Dashboard] Nessun match disponibile dopo filtri base");
         setOpenMatches([]);
         return;
       }
@@ -494,33 +546,38 @@ export default function HomeScreen() {
       });
 
       // Log della logica di filtraggio e ordinamento
-      console.log(`🎯 [Dashboard] Logica match aperti suggeriti:`);
-      console.log(`   - Filtrati: filtro geografico OBBLIGATORIO, partite aperte, pubbliche, non piene, non già joined`);
-      console.log(`   - Ordinati: per data crescente`);
-      console.log(`   - Mostrati: primi 10 match`);
+      // console.log(`🎯 [Dashboard] Logica match aperti suggeriti:`);
+      // console.log(`   - Filtrati: filtro geografico OBBLIGATORIO, partite aperte, pubbliche, non piene, non già joined`);
+      // console.log(`   - Ordinati: per data crescente`);
+      // console.log(`   - Mostrati: primi 10 match`);
 
       const finalMatches = sorted.slice(0, 10);
       setOpenMatches(finalMatches);
       
       // Log dettagliato per ogni card mostrata
-      console.log(`📋 Dettagli match dashboard mostrati (${finalMatches.length}):`);
-      finalMatches.forEach((match, index) => {
-        const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
-        const maxPlayers = match.maxPlayers || 0;
-        const struttura = match.booking?.campo?.struttura?.name || 'N/A';
-        const citta = match.booking?.campo?.struttura?.location?.city || 'N/A';
-        const dataOra = match.booking?.date && match.booking?.startTime ?
-          `${match.booking.date} ${match.booking.startTime}` : 'N/A';
-
-        console.log(`   ${index + 1}. Match ${match._id?.slice(-6)} - ${struttura} (${citta}) - ${dataOra} - ${confirmedPlayers}/${maxPlayers} giocatori`);
-      });
-      
-      console.log(`✅ [Dashboard] ${finalMatches.length} partite caricate e visualizzate`);
+      // console.log(`📋 Dettagli match dashboard mostrati (${finalMatches.length}):`);
+      // finalMatches.forEach((match, index) => {
+      //   const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
+      //   const maxPlayers = match.maxPlayers || 0;
+      //   const struttura = match.booking?.campo?.struttura?.name || 'N/A';
+      //   const citta = match.booking?.campo?.struttura?.location?.city || 'N/A';
+      //   const dataOra = match.booking?.date && match.booking?.startTime ?
+      //     `${match.booking.date} ${match.booking.startTime}` : 'N/A';
+      //
+      //   console.log(`   ${index + 1}. Match ${match._id?.slice(-6)} - ${struttura} (${citta}) - ${dataOra} - ${confirmedPlayers}/${maxPlayers} giocatori`);
+      // });
+      // 
+      // console.log(`✅ [Dashboard] ${finalMatches.length} partite caricate e visualizzate`);
     } catch (error) {
       console.error('❌ [Dashboard] Errore caricamento partite aperte:', error);
-      console.error('❌ [Dashboard] Stack:', (error as Error).stack);
       // In caso di errore, assicurati che la lista sia vuota
       setOpenMatches([]);
+    } finally {
+      const totalTime = performance.now() - startTime;
+      // Salva timing per resoconto finale
+      if ((window as any).__dashboardTimings) {
+        (window as any).__dashboardTimings.openMatches = totalTime;
+      }
     }
   };
 
@@ -532,29 +589,29 @@ export default function HomeScreen() {
       
       if (matchesRes.ok) {
         const allMatches = await matchesRes.json();
-        console.log("Match completati ricevuti:", allMatches.length);
+        // console.log("Match completati ricevuti:", allMatches.length);
         
         // DEBUG: Verifica struttura
-        console.log("=== DEBUG STRUTTURA NEI MATCH ===");
-        allMatches.slice(0, 3).forEach((match: any, index: number) => {
-          console.log(`Match ${index + 1}:`);
-          console.log("  - Match ID:", match._id);
-          console.log("  - Booking:", match.booking ? "presente" : "ASSENTE");
-          console.log("  - Booking ID:", match.booking?._id);
-          console.log("  - Campo:", match.booking?.campo ? "presente" : "ASSENTE");
-          console.log("  - Campo name:", match.booking?.campo?.name);
-          console.log("  - Struttura:", match.booking?.campo?.struttura ? "presente" : "ASSENTE");
-          console.log("  - Struttura name:", match.booking?.campo?.struttura?.name);
-          console.log("  - Score:", match.score ? "presente" : "ASSENTE");
-          console.log("  - Score sets:", match.score?.sets?.length || 0);
-          console.log("  - Winner:", match.winner || "non definito");
-        });
+        // console.log("=== DEBUG STRUTTURA NEI MATCH ===");
+        // allMatches.slice(0, 3).forEach((match: any, index: number) => {
+        //   console.log(`Match ${index + 1}:`);
+        //   console.log("  - Match ID:", match._id);
+        //   console.log("  - Booking:", match.booking ? "presente" : "ASSENTE");
+        //   console.log("  - Booking ID:", match.booking?._id);
+        //   console.log("  - Campo:", match.booking?.campo ? "presente" : "ASSENTE");
+        //   console.log("  - Campo name:", match.booking?.campo?.name);
+        //   console.log("  - Struttura:", match.booking?.campo?.struttura ? "presente" : "ASSENTE");
+        //   console.log("  - Struttura name:", match.booking?.campo?.struttura?.name);
+        //   console.log("  - Score:", match.score ? "presente" : "ASSENTE");
+        //   console.log("  - Score sets:", match.score?.sets?.length || 0);
+        //   console.log("  - Winner:", match.winner || "non definito");
+        // });
         
         const matchesWithScores = allMatches.filter((m: any) => 
           m.score?.sets?.length > 0
         );
         
-        console.log("Match con risultati:", matchesWithScores.length);
+        // console.log("Match con risultati:", matchesWithScores.length);
         
         const sortedMatches = matchesWithScores.sort((a: any, b: any) => {
           const dateA = new Date(a.playedAt || a.createdAt).getTime();

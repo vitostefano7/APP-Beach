@@ -763,6 +763,9 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
 
     const winner: "A" | "B" = winsA > winsB ? "A" : "B";
 
+    // Verifica se è una modifica o un inserimento
+    const isUpdate = match.score && match.score.sets && match.score.sets.length > 0;
+
     // Aggiorna match
     match.score = { sets: score.sets };
     match.winner = winner;
@@ -773,7 +776,7 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     await match.populate("players.user", "username name surname avatarUrl");
     await match.populate("createdBy", "username name surname avatarUrl");
 
-    // Invia notifiche a tutti i partecipanti
+    // Invia notifiche a tutti i partecipanti e all'owner della struttura
     try {
       // Ri-popola il booking per le notifiche se non già fatto
       let notifBooking = booking;
@@ -782,24 +785,33 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
           path: 'campo',
           populate: {
             path: 'struttura',
-            select: 'name'
+            select: 'name owner'
           }
         });
       }
       
       if (notifBooking && notifBooking.campo) {
-        const strutturaName = (notifBooking as any).campo?.struttura?.name || 'la struttura';
+        const struttura = (notifBooking as any).campo?.struttura;
+        const strutturaName = struttura?.name || 'la struttura';
+        const strutturaOwnerId = struttura?.owner;
         const bookingDate = new Date(notifBooking.date).toLocaleDateString('it-IT', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric'
         });
         
-        const notificationTitle = "Risultato partita inserito";
-        const notificationMessage = `E' stato inserito un risultato per la partita presso la struttura ${strutturaName} del giorno ${bookingDate}`;
+        // Prepara i dati del risultato per il messaggio
+        const scoreDetails = `Team ${winner} ha vinto ${winsA > winsB ? winsA : winsB}-${winsA > winsB ? winsB : winsA}`;
+        
+        // Notifica per i GIOCATORI
+        const playerNotificationTitle = isUpdate ? "Risultato partita modificato" : "Risultato partita inserito";
+        const playerNotificationMessage = isUpdate
+          ? `Il risultato della partita presso ${strutturaName} del ${bookingDate} è stato aggiornato. ${scoreDetails}`
+          : `È stato inserito un risultato per la partita presso ${strutturaName} del ${bookingDate}. ${scoreDetails}`;
         
         // Invia notifica a tutti i giocatori confermati (eccetto chi ha inserito il risultato)
         const confirmedPlayers = match.players.filter(p => p.status === 'confirmed');
+        let playerNotificationsCount = 0;
         
         for (const player of confirmedPlayers) {
           const playerId = typeof player.user === 'object' ? (player.user as any)._id : player.user;
@@ -810,15 +822,36 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
               playerId,
               new Types.ObjectId(userId),
               'match_result',
-              notificationTitle,
-              notificationMessage,
+              playerNotificationTitle,
+              playerNotificationMessage,
               notifBooking._id as Types.ObjectId,
               'Booking'
             );
+            playerNotificationsCount++;
           }
         }
         
-        console.log(`✅ [submitResult] Notifiche inviate a ${confirmedPlayers.length - 1} partecipanti`);
+        console.log(`✅ [submitResult] Notifiche inviate a ${playerNotificationsCount} giocatori`);
+        
+        // Notifica per l'OWNER DELLA STRUTTURA (se diverso da chi ha inserito il risultato)
+        if (strutturaOwnerId && strutturaOwnerId.toString() !== userId) {
+          const ownerNotificationTitle = isUpdate ? "Risultato partita aggiornato" : "Partita conclusa";
+          const ownerNotificationMessage = isUpdate
+            ? `Il risultato della partita del ${bookingDate} presso ${strutturaName} è stato aggiornato: ${scoreDetails}`
+            : `La partita del ${bookingDate} presso ${strutturaName} è stata conclusa con risultato: ${scoreDetails}`;
+          
+          await createNotification(
+            strutturaOwnerId,
+            new Types.ObjectId(userId),
+            'match_result',
+            ownerNotificationTitle,
+            ownerNotificationMessage,
+            notifBooking._id as Types.ObjectId,
+            'Booking'
+          );
+          
+          console.log(`✅ [submitResult] Notifica inviata all'owner della struttura`);
+        }
       }
     } catch (notifError) {
       console.error("⚠️ [submitResult] Errore invio notifiche:", notifError);
@@ -1526,6 +1559,9 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Non puoi inserire il risultato di un match cancellato" });
     }
 
+    // Verifica se è una modifica o un inserimento
+    const isUpdate = match.score && match.score.sets && match.score.sets.length > 0;
+
     // Aggiorna il risultato
     match.winner = winner;
     match.score = { sets };
@@ -1540,29 +1576,42 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
 
     console.log(`✅ [submitScore] Risultato salvato: Team ${winner} vince ${sets.length} set(s)`);
 
-    // Invia notifiche a tutti i partecipanti
+    // Invia notifiche a tutti i partecipanti e all'owner della struttura
     try {
       const booking = await Booking.findOne({ match: matchId }).populate({
         path: 'campo',
         populate: {
           path: 'struttura',
-          select: 'name'
+          select: 'name owner'
         }
       });
       
       if (booking) {
-        const strutturaName = (booking as any).campo?.struttura?.name || 'la struttura';
+        const struttura = (booking as any).campo?.struttura;
+        const strutturaName = struttura?.name || 'la struttura';
+        const strutturaOwnerId = struttura?.owner;
         const bookingDate = new Date(booking.date).toLocaleDateString('it-IT', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric'
         });
         
-        const notificationTitle = "Risultato partita inserito";
-        const notificationMessage = `E' stato inserito un risultato per la partita presso la struttura ${strutturaName} del giorno ${bookingDate}`;
+        // Prepara i dati del risultato per il messaggio
+        const scoreDetails = `Team ${winner} ha vinto ${sets.length === 2 ? '2-0' : sets.filter((s: any) => 
+          (winner === 'A' && s.teamA > s.teamB) || (winner === 'B' && s.teamB > s.teamA)
+        ).length + '-' + sets.filter((s: any) => 
+          (winner === 'A' && s.teamA < s.teamB) || (winner === 'B' && s.teamB < s.teamA)
+        ).length}`;
+        
+        // Notifica per i GIOCATORI
+        const playerNotificationTitle = isUpdate ? "Risultato partita modificato" : "Risultato partita inserito";
+        const playerNotificationMessage = isUpdate 
+          ? `Il risultato della partita presso ${strutturaName} del ${bookingDate} è stato aggiornato. ${scoreDetails}`
+          : `È stato inserito un risultato per la partita presso ${strutturaName} del ${bookingDate}. ${scoreDetails}`;
         
         // Invia notifica a tutti i giocatori confermati (eccetto chi ha inserito il risultato)
         const confirmedPlayers = match.players.filter(p => p.status === 'confirmed');
+        let playerNotificationsCount = 0;
         
         for (const player of confirmedPlayers) {
           const playerId = typeof player.user === 'object' ? (player.user as any)._id : player.user;
@@ -1573,15 +1622,36 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
               playerId,
               new Types.ObjectId(userId),
               'match_result',
-              notificationTitle,
-              notificationMessage,
+              playerNotificationTitle,
+              playerNotificationMessage,
               booking._id as Types.ObjectId,
               'Booking'
             );
+            playerNotificationsCount++;
           }
         }
         
-        console.log(`✅ [submitScore] Notifiche inviate a ${confirmedPlayers.length - 1} partecipanti`);
+        console.log(`✅ [submitScore] Notifiche inviate a ${playerNotificationsCount} giocatori`);
+        
+        // Notifica per l'OWNER DELLA STRUTTURA (se diverso da chi ha inserito il risultato)
+        if (strutturaOwnerId && strutturaOwnerId.toString() !== userId) {
+          const ownerNotificationTitle = isUpdate ? "Risultato partita aggiornato" : "Partita conclusa";
+          const ownerNotificationMessage = isUpdate
+            ? `Il risultato della partita del ${bookingDate} presso ${strutturaName} è stato aggiornato: ${scoreDetails}`
+            : `La partita del ${bookingDate} presso ${strutturaName} è stata conclusa con risultato: ${scoreDetails}`;
+          
+          await createNotification(
+            strutturaOwnerId,
+            new Types.ObjectId(userId),
+            'match_result',
+            ownerNotificationTitle,
+            ownerNotificationMessage,
+            booking._id as Types.ObjectId,
+            'Booking'
+          );
+          
+          console.log(`✅ [submitScore] Notifica inviata all'owner della struttura`);
+        }
       }
     } catch (notifError) {
       console.error("⚠️ [submitScore] Errore invio notifiche:", notifError);
