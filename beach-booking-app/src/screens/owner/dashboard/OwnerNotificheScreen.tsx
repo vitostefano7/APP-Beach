@@ -75,6 +75,11 @@ const OwnerNotificheScreen = () => {
       navigation.navigate('OwnerDettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
+    } else if (notification.type === 'match_result' && notification.relatedId) {
+      console.log("🏆 [OwnerNotifiche] Navigating to booking for match_result:", notification.relatedId);
+      navigation.navigate('OwnerDettaglioPrenotazione', {
+        bookingId: notification.relatedId,
+      });
     } else if (notification.relatedModel === 'Booking' && notification.relatedId) {
       console.log("🏐 [OwnerNotifiche] Navigating to booking:", notification.relatedId);
       navigation.navigate('OwnerDettaglioPrenotazione', {
@@ -147,6 +152,8 @@ const OwnerNotificheScreen = () => {
         return 'checkmark-circle';
       case 'match_join':
         return 'person-add';
+      case 'match_result':
+        return 'trophy';
       default:
         return 'notifications';
     }
@@ -162,6 +169,8 @@ const OwnerNotificheScreen = () => {
         return '#2196F3';
       case 'match_join':
         return '#FF9800';
+      case 'match_result':
+        return '#FFD700';
       default:
         return '#757575';
     }

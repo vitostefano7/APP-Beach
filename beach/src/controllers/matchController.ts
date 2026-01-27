@@ -666,16 +666,76 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     const { score } = req.body;
     const userId = req.user!.id;
 
+    console.log('🏆 [submitResult] Inizio inserimento risultato:', {
+      matchId,
+      userId,
+      score
+    });
+
     const match = await Match.findById(matchId);
     if (!match) {
+      console.log('❌ [submitResult] Match non trovato:', matchId);
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Solo createdBy o players possono inserire risultato
+    console.log('✅ [submitResult] Match trovato:', {
+      matchId: match._id,
+      createdBy: match.createdBy,
+      players: match.players.map(p => ({ user: p.user, status: p.status }))
+    });
+
+    // Verifica autorizzazione: createdBy, players o owner della struttura
     const isCreator = match.createdBy.toString() === userId;
     const isPlayer = match.players.some((p) => p.user.toString() === userId);
+    
+    console.log('🔍 [submitResult] Check autorizzazione base:', {
+      userId,
+      isCreator,
+      isPlayer,
+      createdBy: match.createdBy.toString()
+    });
+    
+    let isOwner = false;
+    // Verifica se l'utente è l'owner della struttura
+    const booking = await Booking.findOne({ match: matchId }).populate({
+      path: 'campo',
+      populate: {
+        path: 'struttura',
+        select: 'owner name'
+      }
+    });
+    
+    console.log('📋 [submitResult] Booking trovato:', {
+      bookingId: booking?._id,
+      hasCampo: !!booking?.campo,
+      hasStruttura: !!(booking as any)?.campo?.struttura
+    });
+    
+    if (booking && booking.campo) {
+      const struttura = (booking as any).campo?.struttura;
+      if (struttura) {
+        console.log('🏢 [submitResult] Struttura trovata:', {
+          strutturaId: struttura._id,
+          ownerId: struttura.owner?.toString(),
+          userId
+        });
+        if (struttura.owner.toString() === userId) {
+          isOwner = true;
+        }
+      } else {
+        console.log('⚠️ [submitResult] Campo trovato ma struttura non popolata');
+      }
+    }
 
-    if (!isCreator && !isPlayer) {
+    console.log('🔐 [submitResult] Autorizzazione finale:', {
+      isCreator,
+      isPlayer,
+      isOwner,
+      authorized: isCreator || isPlayer || isOwner
+    });
+
+    if (!isCreator && !isPlayer && !isOwner) {
+      console.log('❌ [submitResult] Non autorizzato');
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
@@ -712,6 +772,58 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     await match.save();
     await match.populate("players.user", "username name surname avatarUrl");
     await match.populate("createdBy", "username name surname avatarUrl");
+
+    // Invia notifiche a tutti i partecipanti
+    try {
+      // Ri-popola il booking per le notifiche se non già fatto
+      let notifBooking = booking;
+      if (!booking || !booking.campo) {
+        notifBooking = await Booking.findOne({ match: matchId }).populate({
+          path: 'campo',
+          populate: {
+            path: 'struttura',
+            select: 'name'
+          }
+        });
+      }
+      
+      if (notifBooking && notifBooking.campo) {
+        const strutturaName = (notifBooking as any).campo?.struttura?.name || 'la struttura';
+        const bookingDate = new Date(notifBooking.date).toLocaleDateString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        
+        const notificationTitle = "Risultato partita inserito";
+        const notificationMessage = `E' stato inserito un risultato per la partita presso la struttura ${strutturaName} del giorno ${bookingDate}`;
+        
+        // Invia notifica a tutti i giocatori confermati (eccetto chi ha inserito il risultato)
+        const confirmedPlayers = match.players.filter(p => p.status === 'confirmed');
+        
+        for (const player of confirmedPlayers) {
+          const playerId = typeof player.user === 'object' ? (player.user as any)._id : player.user;
+          
+          // Non inviare notifica a chi ha inserito il risultato
+          if (playerId.toString() !== userId) {
+            await createNotification(
+              playerId,
+              new Types.ObjectId(userId),
+              'match_result',
+              notificationTitle,
+              notificationMessage,
+              notifBooking._id as Types.ObjectId,
+              'Booking'
+            );
+          }
+        }
+        
+        console.log(`✅ [submitResult] Notifiche inviate a ${confirmedPlayers.length - 1} partecipanti`);
+      }
+    } catch (notifError) {
+      console.error("⚠️ [submitResult] Errore invio notifiche:", notifError);
+      // Non blocchiamo la risposta se le notifiche falliscono
+    }
 
     res.json(match);
   } catch (err) {
@@ -1385,9 +1497,28 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Match non trovato" });
     }
 
-    // Solo il creatore può inserire il risultato
-    if (match.createdBy.toString() !== userId) {
-      return res.status(403).json({ message: "Solo il creatore può inserire il risultato" });
+    // Verifica se l'utente è il creatore del match o l'owner della struttura
+    let isAuthorized = match.createdBy.toString() === userId;
+    
+    // Se non è il creatore, verifica se è l'owner della struttura
+    if (!isAuthorized) {
+      const booking = await Booking.findOne({ match: matchId }).populate({
+        path: 'campo',
+        populate: {
+          path: 'struttura',
+          select: 'owner name'
+        }
+      });
+      if (booking && booking.campo) {
+        const struttura = (booking as any).campo?.struttura;
+        if (struttura && struttura.owner.toString() === userId) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ message: "Non autorizzato" });
     }
 
     // Il match non deve essere cancellato
@@ -1408,6 +1539,54 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
     await match.populate("createdBy", "username name surname avatarUrl");
 
     console.log(`✅ [submitScore] Risultato salvato: Team ${winner} vince ${sets.length} set(s)`);
+
+    // Invia notifiche a tutti i partecipanti
+    try {
+      const booking = await Booking.findOne({ match: matchId }).populate({
+        path: 'campo',
+        populate: {
+          path: 'struttura',
+          select: 'name'
+        }
+      });
+      
+      if (booking) {
+        const strutturaName = (booking as any).campo?.struttura?.name || 'la struttura';
+        const bookingDate = new Date(booking.date).toLocaleDateString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        
+        const notificationTitle = "Risultato partita inserito";
+        const notificationMessage = `E' stato inserito un risultato per la partita presso la struttura ${strutturaName} del giorno ${bookingDate}`;
+        
+        // Invia notifica a tutti i giocatori confermati (eccetto chi ha inserito il risultato)
+        const confirmedPlayers = match.players.filter(p => p.status === 'confirmed');
+        
+        for (const player of confirmedPlayers) {
+          const playerId = typeof player.user === 'object' ? (player.user as any)._id : player.user;
+          
+          // Non inviare notifica a chi ha inserito il risultato
+          if (playerId.toString() !== userId) {
+            await createNotification(
+              playerId,
+              new Types.ObjectId(userId),
+              'match_result',
+              notificationTitle,
+              notificationMessage,
+              booking._id as Types.ObjectId,
+              'Booking'
+            );
+          }
+        }
+        
+        console.log(`✅ [submitScore] Notifiche inviate a ${confirmedPlayers.length - 1} partecipanti`);
+      }
+    } catch (notifError) {
+      console.error("⚠️ [submitScore] Errore invio notifiche:", notifError);
+      // Non blocchiamo la risposta se le notifiche falliscono
+    }
 
     res.json({
       message: "Risultato salvato con successo",

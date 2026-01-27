@@ -42,6 +42,7 @@ interface ScoreDisplayProps {
   matchStatus: string;
   teamAPlayers?: Player[];
   teamBPlayers?: Player[];
+  showEditLabel?: boolean;
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
@@ -51,6 +52,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   matchStatus,
   teamAPlayers = [],
   teamBPlayers = [],
+  showEditLabel = false,
 }) => {
   if (!score || score.sets.length === 0) {
     return null;
@@ -70,7 +72,11 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 
 
   const { teamAWins, teamBWins } = getSetSummary();
-  const canEdit = isInMatch && matchStatus !== "cancelled";
+  // Usa showEditLabel se fornito, altrimenti usa la logica di default
+  const canEdit = showEditLabel !== undefined ? showEditLabel : (isInMatch && matchStatus !== "cancelled");
+  
+  // Filtra solo i set compilati (con almeno un punteggio > 0)
+  const compiledSets = score.sets.filter(set => set.teamA > 0 || set.teamB > 0);
 
   return (
     <FadeInView delay={0}>
@@ -84,13 +90,13 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             <View>
               <Text style={styles.scoreDisplayTitle}>Risultato Match</Text>
               <Text style={styles.scoreDisplaySubtitle}>
-                {score.sets.length} set giocati
+                {compiledSets.length} set giocati
               </Text>
             </View>
           </View>
           {canEdit && (
             <AnimatedButton style={styles.scoreEditButton} onPress={onEdit}>
-              <Ionicons name="create" size={20} color="#2196F3" />
+              <Ionicons name="create-outline" size={20} color="#2196F3" />
             </AnimatedButton>
           )}
         </View>
@@ -110,22 +116,6 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 )}
                 <Text style={styles.scoreTeamName}>Team A</Text>
               </TeamAGradient>
-              
-              {/* Avatar Team A */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamAPlayers.map((player, index) => (
-                  <Avatar
-                    key={player.user._id}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="A"
-                    style={index > 0 && { marginLeft: -8 }}
-                    zIndex={teamAPlayers.length - index}
-                  />
-                ))}
-              </View>
 
               <Text style={[
                 styles.scoreTeamScore,
@@ -156,22 +146,6 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 )}
                 <Text style={styles.scoreTeamName}>Team B</Text>
               </TeamBGradient>
-              
-              {/* Avatar Team B */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamBPlayers.map((player, index) => (
-                  <Avatar
-                    key={player.user._id}
-                    name={player.user?.name}
-                    surname={player.user?.surname}
-                    avatarUrl={player.user?.avatarUrl}
-                    size="small"
-                    teamColor="B"
-                    style={index > 0 && { marginLeft: -8 }}
-                    zIndex={teamBPlayers.length - index}
-                  />
-                ))}
-              </View>
 
               <Text style={[
                 styles.scoreTeamScore,
@@ -205,7 +179,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
           <View style={styles.setsDetailContainer}>
             <Text style={styles.setsDetailTitle}>Dettaglio Set</Text>
             <View style={styles.setsDetailList}>
-              {score.sets.map((set, index) => {
+              {score.sets
+                .filter(set => set.teamA > 0 || set.teamB > 0) // Mostra solo set compilati
+                .map((set, index) => {
                 const winner = set.teamA > set.teamB ? 'A' : set.teamB > set.teamA ? 'B' : null;
                 
                 return (

@@ -41,6 +41,7 @@ interface ScoreDisplayProps {
   matchStatus: string;
   teamAPlayers?: Player[];
   teamBPlayers?: Player[];
+  showEditLabel?: boolean;
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
@@ -50,6 +51,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   matchStatus,
   teamAPlayers = [],
   teamBPlayers = [],
+  showEditLabel = false,
 }) => {
   if (!score || score.sets.length === 0) {
     return null;
@@ -72,6 +74,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   };
 
   const { teamAWins, teamBWins } = getSetSummary();
+  const canEdit = isInMatch && matchStatus !== "cancelled";
 
   return (
     <FadeInView delay={0}>
@@ -89,6 +92,11 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
               </Text>
             </View>
           </View>
+          {canEdit && (
+            <AnimatedButton style={styles.scoreEditButton} onPress={onEdit}>
+              <Ionicons name="create-outline" size={20} color="#2196F3" />
+            </AnimatedButton>
+          )}
         </View>
 
         {/* Main Score Display con gradients */}
@@ -96,31 +104,20 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
           <View style={styles.scoreMainDisplay}>
             <View style={styles.scoreTeamDisplay}>
               <TeamAGradient
-                style={[
+                style={([
                   styles.scoreTeamBadge,
-                  score.winner === 'A' && styles.scoreTeamBadgeWinner
-                ]}
+                  score.winner === 'A' ? styles.scoreTeamBadgeWinner : undefined
+                ] as any)}
               >
                 {score.winner === 'A' && (
                   <Ionicons name="trophy" size={14} color="white" />
                 )}
                 <Text style={styles.scoreTeamName}>Team A</Text>
               </TeamAGradient>
-              
-              {/* Avatar Team A */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamAPlayers.map((player, index) => (
-                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamAPlayers.length - index }]}>
-                    <Text style={styles.scoreAvatarText}>
-                      {getInitials(player.user?.name || '', player.user?.surname || '')}
-                    </Text>
-                  </View>
-                ))}
-              </View>
 
               <Text style={[
                 styles.scoreTeamScore,
-                score.winner === 'A' && styles.scoreTeamScoreWinner
+                score.winner === 'A' ? styles.scoreTeamScoreWinner : undefined
               ]}>
                 {teamAWins}
               </Text>
@@ -137,31 +134,20 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 
             <View style={styles.scoreTeamDisplay}>
               <TeamBGradient
-                style={[
+                style={([
                   styles.scoreTeamBadge,
-                  score.winner === 'B' && styles.scoreTeamBadgeWinner
-                ]}
+                  score.winner === 'B' ? styles.scoreTeamBadgeWinner : undefined
+                ] as any)}
               >
                 {score.winner === 'B' && (
                   <Ionicons name="trophy" size={14} color="white" />
                 )}
                 <Text style={styles.scoreTeamName}>Team B</Text>
               </TeamBGradient>
-              
-              {/* Avatar Team B */}
-              <View style={styles.scoreTeamAvatars}>
-                {teamBPlayers.map((player, index) => (
-                  <View key={player.user._id} style={[styles.scoreAvatar, { zIndex: teamBPlayers.length - index }]}>
-                    <Text style={styles.scoreAvatarText}>
-                      {getInitials(player.user?.name || '', player.user?.surname || '')}
-                    </Text>
-                  </View>
-                ))}
-              </View>
 
               <Text style={[
                 styles.scoreTeamScore,
-                score.winner === 'B' && styles.scoreTeamScoreWinner
+                score.winner === 'B' ? styles.scoreTeamScoreWinner : undefined
               ]}>
                 {teamBWins}
               </Text>

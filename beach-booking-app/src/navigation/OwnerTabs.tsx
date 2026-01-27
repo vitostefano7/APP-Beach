@@ -37,7 +37,7 @@ export default function OwnerTabs() {
             Strutture: "business",
             Partite: "calendar",
             Community: "people",
-            Messaggi: "chatbox",
+            Messaggi: "chatbubble-ellipses-outline",
             Profilo: "person",
           };
           return (

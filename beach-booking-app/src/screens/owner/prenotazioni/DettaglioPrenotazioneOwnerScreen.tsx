@@ -45,10 +45,12 @@ import { calculateDuration } from "./DettaglioPrenotazione/utils/DettaglioPrenot
 import ScoreDisplay from "./DettaglioPrenotazione/components/ScoreDisplay";
 import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import TeamSection from "./DettaglioPrenotazione/components/TeamSection";
+import ScoreModal from "../../../components/ScoreModal";
+import { submitMatchScore } from "../../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
 
 export default function OwnerDettaglioPrenotazioneScreen() {
   console.log('🔍 [Owner] OwnerDettaglioPrenotazioneScreen called');
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { bookingId } = route.params;
@@ -59,6 +61,9 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const [loadingGroupChat, setLoadingGroupChat] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+
+  // Score modal visibility (owner)
+  const [scoreModalVisible, setScoreModalVisible] = useState(false);
 
   // Stati per il modal invite
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
@@ -135,46 +140,113 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   const getMatchStatus = () => {
     const match = booking.match;
-    if (!match) return;
+    if (!match) return "open"; // Dovrebbe sempre esserci un match
 
-    // Se il match è in corso, ritorna 'in_progress'
-    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") return "in_progress";
+    const confirmedPlayers = match.players?.filter(p => p.status === "confirmed").length || 0;
+    const isPublic = match.isPublic;
+    const teamsIncomplete = confirmedPlayers < match.maxPlayers;
 
-    // Se il match è passato e ha un punteggio, consideralo completato
-    if (isMatchPassed() && match.score && match.score.sets.length > 0) return "completed";
+    // Se il match è in corso
+    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
+      // Se è pubblico con team incompleti → cancellato
+      if (isPublic && teamsIncomplete) {
+        return "cancelled";
+      }
+      return "in_progress";
+    }
+
+    // Se il match è passato
+    if (isMatchPassed() && match.status !== "cancelled") {
+      // Se è una partita PUBBLICA e i team non erano completi, non si è svolta
+      if (isPublic && teamsIncomplete) {
+        return "cancelled";
+      }
+      
+      // Per partite PRIVATE o pubbliche con team completi:
+      // Se non c'è punteggio, può essere completato
+      if (!match.score || match.score.sets.length === 0) {
+        return "not_completed";
+      }
+      
+      // Se c'è il punteggio, è completato
+      if (match.score && match.score.sets.length > 0) {
+        return "completed";
+      }
+    }
+
+    // Se il match non è ancora iniziato e i team non sono completi
+    if (!isMatchPassed() && match.status === "open") {
+      if (teamsIncomplete) {
+        return "not_team_completed";
+      }
+    }
 
     return match.status;
   };
 
   const getMatchStatusInfo = () => {
     const match = booking.match;
-    if (!match) return { text: "Nessun match", icon: "help-circle", color: "#666" };
+    if (!match) return { color: "#999", text: "Nessun Match", icon: "help-circle" as const };
 
-    const confirmedCount = match.players?.filter(p => p.status === "confirmed").length || 0;
-    const pendingCount = match.players?.filter(p => p.status === "pending").length || 0;
+    const effectiveStatus = getMatchStatus();
 
     // Verifica se il match è in corso
-    if (isMatchInProgress() && match.status !== "completed" && match.status !== "cancelled") {
-      return { text: "In Corso", icon: "play-circle", color: "#4CAF50" };
+    if (effectiveStatus === "in_progress") {
+      return { color: "#FF9800", text: "In Corso", icon: "play-circle" as const };
     }
 
-    switch (match.status) {
-      case "open":
-        return { text: "Aperto", icon: "people", color: "#2196F3" };
-      case "full":
-        return { text: "Completo", icon: "checkmark-circle", color: "#4CAF50" };
+    switch (effectiveStatus) {
       case "completed":
-        return { text: "Completato", icon: "trophy", color: "#FF9800" };
+        return { color: "#4CAF50", text: "Completato", icon: "trophy" as const };
       case "cancelled":
-        return { text: "Cancellato", icon: "close-circle", color: "#F44336" };
+        return { color: "#F44336", text: "Cancellato", icon: "close-circle" as const };
+      case "full":
+        return { color: "#4CAF50", text: "Completo", icon: "checkmark-circle" as const };
+      case "not_team_completed":
+        return { color: "#FF9800", text: "Team non completi", icon: "people" as const };
+      case "not_completed":
+        return { color: "#FF9800", text: "Non completato", icon: "time" as const };
+      case "open":
+        return { color: "#2196F3", text: "Aperto", icon: "people" as const };
       default:
-        return { text: match.status, icon: "help-circle", color: "#666" };
+        return { color: "#999", text: effectiveStatus, icon: "help-circle" as const };
     }
   };
 
   useEffect(() => {
     loadBooking();
   }, []);
+
+  // Se la navigazione passa openScoreEntry, prova ad aprire il modal (stesse condizioni del pulsante)
+  useEffect(() => {
+    if (!route?.params?.openScoreEntry) return;
+
+    // Solo se booking è caricato
+    if (!booking || loading) return;
+
+    const ownerOk = user?.role === 'owner';
+    const passed = isMatchPassed();
+    const match = booking.match;
+    const noScore = !match?.score || match.score.sets.length === 0;
+    const maxPerTeam = match ? Math.floor(match.maxPlayers / 2) : 0;
+    const teamAConfirmedCnt = match?.players?.filter((p: any) => p.status === 'confirmed' && p.team === 'A').length || 0;
+    const teamBConfirmedCnt = match?.players?.filter((p: any) => p.status === 'confirmed' && p.team === 'B').length || 0;
+    const teamsComplete = teamAConfirmedCnt === maxPerTeam && teamBConfirmedCnt === maxPerTeam;
+
+    if (ownerOk && passed && noScore && teamsComplete) {
+      setScoreModalVisible(true);
+    } else {
+      let reason = '';
+      if (!ownerOk) reason = "Devi essere l'owner per inserire il risultato.";
+      else if (!passed) reason = 'La partita non è ancora conclusa.';
+      else if (!noScore) reason = 'Risultato già presente.';
+      else if (!teamsComplete) reason = 'I team non sono completi.';
+      Alert.alert('Impossibile inserire risultato', reason);
+    }
+
+    // Ripulisci il parametro per evitare riaperture
+    navigation.setParams({ openScoreEntry: false });
+  }, [route?.params?.openScoreEntry, booking, loading, user]);
 
   const loadBooking = async () => {
     try {
@@ -240,6 +312,14 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   const getTeamIcon = (team: "A" | "B" | null) => {
     return team === "A" ? "people" : team === "B" ? "people" : "person-add";
+  };
+
+  // Determine sport type for score validation (beachvolley | volleyball)
+  const getSportTypeFromString = (sportStr?: string): 'beachvolley' | 'volleyball' => {
+    const s = (sportStr || '').toLowerCase();
+    if (s.includes('beach')) return 'beachvolley';
+    if (s.includes('volley')) return 'volleyball';
+    return 'beachvolley';
   };
 
   const isRegistrationOpen = () => {
@@ -377,6 +457,27 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       setInviteToSlot(null);
     } catch (error: any) {
       Alert.alert("Errore", error.message);
+    }
+  };
+
+  // Apri il profilo utente (usato nella lista di ricerca inviti)
+  const openUserProfile = (userId?: string) => {
+    if (!userId || userId === user?.id || userId === (user as any)?._id) return;
+    navigation.navigate('ProfiloUtente', { userId });
+  };
+
+  // Submit score (owner)
+  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+    if (!booking?.match?._id || !token) return;
+
+    try {
+      await submitMatchScore(booking.match._id, winner, sets, token);
+      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
+      setScoreModalVisible(false);
+      loadBooking();
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
+      throw error;
     }
   };
 
@@ -827,12 +928,40 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 <FadeInView delay={600}>
                   <ScoreDisplay
                     score={booking.match.score}
-                    isInMatch={false}
-                    onEdit={() => {}}
+                    // Allow owner to edit the existing score
+                    isInMatch={true}
+                    onEdit={() => setScoreModalVisible(true)}
                     matchStatus={getMatchStatus()}
                     teamAPlayers={teamAConfirmed}
                     teamBPlayers={teamBConfirmed}
+                    showEditLabel={user?.role === 'owner' && getMatchStatus() !== 'cancelled'}
                   />
+                </FadeInView>
+              )}
+
+              {/* Score Actions - Owner can insert result */}
+              {(
+                user?.role === 'owner' &&
+                isMatchPassed() &&
+                getMatchStatus() !== 'cancelled' &&
+                (!booking.match.score || booking.match.score.sets.length === 0) &&
+                (teamAConfirmed.length === maxPlayersPerTeam && teamBConfirmed.length === maxPlayersPerTeam)
+              ) && (
+                <FadeInView delay={700}>
+                  <View style={{ padding: 10, alignItems: 'center' }}>
+                    <AnimatedButton onPress={() => {
+                      if (unassignedPlayers.length > 0) {
+                        Alert.alert('Giocatori non assegnati', 'Assegna tutti i giocatori ai team prima di inserire il risultato');
+                        return;
+                      }
+                      setScoreModalVisible(true);
+                    }}>
+                      <WinnerGradient style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="trophy" size={20} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: '700', marginLeft: 8 }}>Inserisci risultato</Text>
+                      </WinnerGradient>
+                    </AnimatedButton>
+                  </View>
                 </FadeInView>
               )}
 
@@ -1389,6 +1518,19 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           </ScaleInView>
         </View>
       </Modal>
+
+      {/* Score Modal - Owner */}
+      {booking?.match && (
+        <ScoreModal
+          visible={scoreModalVisible}
+          onClose={() => setScoreModalVisible(false)}
+          onSave={handleSubmitScore}
+          currentScore={booking.match?.score}
+          matchStatus={booking.match?.status}
+          sportType={getSportTypeFromString(booking?.campo?.sport)}
+        />
+      )}
+
     </SafeAreaView>
   );
 }

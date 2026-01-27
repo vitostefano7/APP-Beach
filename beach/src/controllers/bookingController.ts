@@ -872,17 +872,37 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
         },
       })
       .populate("user", "name surname email avatarUrl")
-      .sort({ date: 1, startTime: 1 });
+      .sort({ date: 1, startTime: 1 })
+      .lean();
 
     // Rimuove booking non dell'owner
-    const filtered = bookings.filter((b) => (b as any).campo?.struttura);
+    const filtered = bookings.filter((b: any) => b.campo?.struttura);
 
-    console.log(`✅ ${filtered.length} prenotazioni trovate`);
+    // Populate match separatamente per evitare errori
+    const bookingsWithMatch = await Promise.all(
+      filtered.map(async (booking: any) => {
+        try {
+          if (booking.match) {
+            const match = await Match.findById(booking.match)
+              .populate("players.user", "name surname username avatarUrl email")
+              .populate("createdBy", "name surname username avatarUrl email")
+              .lean();
+            return { ...booking, match };
+          }
+        } catch (matchErr) {
+          console.warn(`⚠️ Errore populate match per booking ${booking._id}:`, matchErr);
+        }
+        return booking;
+      })
+    );
+
+    console.log(`✅ ${bookingsWithMatch.length} prenotazioni trovate`);
     console.log("📤 Invio prenotazioni owner");
-    res.json(filtered);
+    res.json(bookingsWithMatch);
   } catch (err) {
     console.error("❌ getOwnerBookings error:", err);
-    res.status(500).json({ message: "Errore server" });
+    console.error("Error details:", err);
+    res.status(500).json({ message: "Errore server", error: String(err) });
   }
 };
 

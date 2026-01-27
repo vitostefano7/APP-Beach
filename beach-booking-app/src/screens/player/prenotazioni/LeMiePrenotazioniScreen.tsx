@@ -90,6 +90,21 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const [customAlertMessage, setCustomAlertMessage] = useState("");
   const [customAlertButtons, setCustomAlertButtons] = useState<Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}>>([]);
 
+  // Stati per il modal filtro
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterModalLabel, setFilterModalLabel] = useState("");
+  const [filterModalOptions, setFilterModalOptions] = useState<string[]>([]);
+  const [filterModalOnSelect, setFilterModalOnSelect] = useState<((value: string | null) => void) | null>(null);
+
+  // Funzione per resettare i filtri avanzati quando si cambia il filtro temporale
+  const resetAdvancedFilters = () => {
+    setSelectedCity(null);
+    setSelectedStruttura(null);
+    setSelectedDay(null);
+    setSelectedTime(null);
+    setSelectedSport(null);
+  };
+
   // Funzione helper per mostrare alert personalizzato
   const showCustomAlert = (title: string, message: string, buttons: Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}> = [{text: 'OK'}]) => {
     setCustomAlertTitle(title);
@@ -121,7 +136,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       // Debug: vediamo i players
       data.forEach((b: any, i: number) => {
         if (b.players && b.players.length > 0) {
-          console.log(`🎮 Prenotazione ${i + 1}: ${b.players.length} players`, b.players);
+          //console.log(`🎮 Prenotazione ${i + 1}: ${b.players.length} players`, b.players);
         }
       });
       
@@ -270,15 +285,15 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     return bDate - aDate; // Di default, più recenti prima
   });
 
-  // Estrazione valori unici per i filtri da TUTTE le prenotazioni
-  const availableCities = [...new Set(bookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
-  const availableStrutture = [...new Set(bookings.filter(b => b.campo?.struttura?.name).map(b => b.campo.struttura.name))].sort();
-  const availableSports = [...new Set(bookings.filter(b => b.campo?.sport).map(b => b.campo.sport))].sort();
-  const availableDays = [...new Set(bookings.filter(b => b.date).map(b => {
+  // Estrazione valori unici per i filtri dalle prenotazioni già filtrate per stato (future/passate/tutte)
+  const availableCities = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
+  const availableStrutture = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.name).map(b => b.campo.struttura.name))].sort();
+  const availableSports = [...new Set(filteredBookings.filter(b => b.campo?.sport).map(b => b.campo.sport))].sort();
+  const availableDays = [...new Set(filteredBookings.filter(b => b.date).map(b => {
     const date = new Date(b.date);
     return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   }))].sort();
-  const availableTimes = [...new Set(bookings.filter(b => b.startTime).map(b => b.startTime))].sort();
+  const availableTimes = [...new Set(filteredBookings.filter(b => b.startTime).map(b => b.startTime))].sort();
 
   // Applicazione filtri avanzati
   const finalFilteredBookings = sortedBookings.filter(booking => {
@@ -297,6 +312,50 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const upcomingCount = bookings.filter(b => isUpcomingBooking(b) || isOngoingBooking(b)).length;
   const pastCount = bookings.filter(b => isPastBooking(b)).length;
   const allCount = bookings.length;
+
+  /* =========================
+     FILTER CHIP COMPONENT
+  ========================= */
+  const FilterChip = ({ 
+    label, 
+    value, 
+    options, 
+    onSelect, 
+    icon 
+  }: { 
+    label: string; 
+    value: string | null; 
+    options: string[]; 
+    onSelect: (value: string | null) => void; 
+    icon: string; 
+  }) => {
+    const handlePress = () => {
+      if (options.length === 0) return;
+      
+      setFilterModalLabel(label);
+      setFilterModalOptions(options);
+      setFilterModalOnSelect(() => onSelect);
+      setFilterModalVisible(true);
+    };
+
+    return (
+      <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
+        <Ionicons 
+          name={icon as any} 
+          size={16} 
+          color={value ? "#2196F3" : "#666"} 
+        />
+        <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
+          {value || label}
+        </Text>
+        <Ionicons 
+          name="chevron-down" 
+          size={14} 
+          color={value ? "#2196F3" : "#666"} 
+        />
+      </Pressable>
+    );
+  };
 
   /* =========================
      RENDER CARD
@@ -594,7 +653,10 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                       styles.filterBtn,
                       filter === f.key && styles.filterBtnActive,
                     ]}
-                    onPress={() => setFilter(f.key as any)}
+                    onPress={() => {
+                      setFilter(f.key as any);
+                      resetAdvancedFilters();
+                    }}
                   >
                     <Ionicons 
                       name={f.icon as any} 
@@ -750,6 +812,61 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           </ScaleInView>
         </View>
       </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.centeredModalOverlay}>
+          <ScaleInView style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona {filterModalLabel}</Text>
+            </View>
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]} 
+                onPress={() => {
+                  filterModalOnSelect?.(null);
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
+              </Pressable>
+              {filterModalOptions.map((option, index) => (
+                <Pressable 
+                  key={index} 
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < filterModalOptions.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
+                  ]} 
+                  onPress={() => {
+                    filterModalOnSelect?.(option);
+                    setFilterModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.filterModalOptionText}>{option}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View style={styles.filterModalFooter}>
+              <Pressable 
+                style={styles.filterModalCancel} 
+                onPress={() => setFilterModalVisible(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </ScaleInView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -763,57 +880,6 @@ const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
     <Text style={styles.infoText}>{text}</Text>
   </View>
 );
-
-const FilterChip = ({ 
-  label, 
-  value, 
-  options, 
-  onSelect, 
-  icon 
-}: { 
-  label: string; 
-  value: string | null; 
-  options: string[]; 
-  onSelect: (value: string | null) => void; 
-  icon: string; 
-}) => {
-  const handlePress = () => {
-    if (options.length === 0) return;
-    
-    const buttons = [
-      { text: 'Tutti', onPress: () => onSelect(null) },
-      ...options.map(option => ({
-        text: option,
-        onPress: () => onSelect(option)
-      })),
-      { text: 'Annulla', style: 'cancel' as const }
-    ];
-    
-    Alert.alert(
-      `Seleziona ${label}`,
-      '',
-      buttons
-    );
-  };
-
-  return (
-    <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
-      <Ionicons 
-        name={icon as any} 
-        size={16} 
-        color={value ? "#2196F3" : "#666"} 
-      />
-      <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
-        {value || label}
-      </Text>
-      <Ionicons 
-        name="chevron-down" 
-        size={14} 
-        color={value ? "#2196F3" : "#666"} 
-      />
-    </Pressable>
-  );
-};
 
 const PlayerAvatar = ({ player, size = 32 }: { player: Player; size?: number }) => {
   const initials = `${player.user.name.charAt(0)}${player.user.surname.charAt(0)}`.toUpperCase();
@@ -1152,13 +1218,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   strutturaName: { 
-    fontSize: 18, 
+    fontSize: 15, 
     fontWeight: "800",
     color: "#1a1a1a",
     marginBottom: 4,
   },
   campoName: { 
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
     fontWeight: "500",
   },
@@ -1174,7 +1240,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoText: { 
-    fontSize: 14,
+    fontSize: 13,
     color: "#333",
     fontWeight: "500",
   },
@@ -1248,7 +1314,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   price: { 
-    fontSize: 20, 
+    fontSize: 16, 
     fontWeight: "800", 
     color: "#4CAF50",
   },
@@ -1470,5 +1536,76 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: "#2196F3",
     fontWeight: "600",
+  },
+
+  // Filter Modal
+  filterModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    marginHorizontal: 40,
+    width: "85%",
+    maxHeight: "75%",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
+  },
+  filterModalHeader: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    backgroundColor: "#2196F3",
+    minHeight: 70,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "white",
+    textAlign: "center",
+  },
+  filterModalContent: {
+    maxHeight: 350,
+    paddingTop: 8,
+  },
+  filterModalOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginHorizontal: 12,
+    backgroundColor: "transparent",
+  },
+  filterModalOptionWithBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#e8e8e8",
+    marginBottom: 0,
+  },
+  filterModalOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+  },
+  filterModalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  filterModalCancel: {
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    alignItems: "center",
+  },
+  filterModalCancelText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "700",
   },
 });

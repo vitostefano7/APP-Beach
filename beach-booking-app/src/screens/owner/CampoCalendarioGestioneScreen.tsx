@@ -21,18 +21,20 @@ interface Slot {
 }
 
 interface Booking {
-  id: string;
-  userName: string;
-  userSurname: string;
+  _id?: string;
+  id?: string;
+  user?: { name?: string; surname?: string; email?: string; phone?: string } | null;
+  userName?: string;
+  userSurname?: string;
   userEmail?: string;
   userPhone?: string;
   startTime: string;
   endTime: string;
   date: string;
-  duration: number;
-  totalPrice: number;
-  status: string;
-}
+  duration?: number;
+  totalPrice?: number;
+  status?: string;
+} 
 
 interface CalendarDay {
   _id: string;
@@ -316,8 +318,14 @@ export default function CampoCalendarioGestioneScreen() {
       // Trova la prenotazione per questo slot
       const booking = dayBookings.find(b => b.startTime === time);
       if (booking) {
-        // Naviga al dettaglio prenotazione
-        navigation.navigate("OwnerDettaglioPrenotazione", { bookingId: booking.id });
+        // Naviga al dettaglio prenotazione (usa _id se presente)
+        const bookingId = booking._id ?? booking.id;
+        if (bookingId) {
+          navigation.navigate("OwnerDettaglioPrenotazione", { bookingId });
+        } else {
+          console.warn("Booking senza id:", booking);
+          Alert.alert("Errore", "ID prenotazione non disponibile");
+        }
       } else if (!slotEnabled) {
         // Se è inattivo ma non c'è prenotazione, mostra info
         navigation.navigate("OwnerBookings", {
@@ -561,7 +569,7 @@ export default function CampoCalendarioGestioneScreen() {
               {MONTHS_FULL[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </Text>
             {!loading && calendarDays.length > 0 && (
-              <Text style={styles.monthSubtext}>✓ {calendarDays.length} giorni configurati</Text>
+              <Text style={styles.monthSubtext}>✓ {calendarDays.length} giorni</Text>
             )}
             {!loading && calendarDays.length === 0 && (
               <Text style={styles.monthSubtextWarning}>⚠️ Nessun dato</Text>
@@ -669,6 +677,12 @@ export default function CampoCalendarioGestioneScreen() {
                         styles.dayCell,
                         isSelected && styles.dayCellSelected,
                         isToday && !isSelected && styles.dayCellToday,
+                        !isSelected && dayData && (
+                          status === "available" ? styles.dayCellAvailable :
+                          status === "partial" ? styles.dayCellPartial :
+                          status === "full" ? styles.dayCellFull :
+                          status === "closed" ? styles.dayCellClosed : null
+                        ),
                       ]}
                       onPress={() => setSelectedDate(dateStr)}
                     >
@@ -677,22 +691,11 @@ export default function CampoCalendarioGestioneScreen() {
                           styles.dayNumber,
                           isSelected && styles.dayNumberSelected,
                           isToday && !isSelected && styles.dayNumberToday,
+                          !isSelected && dayData && styles.dayNumberOnColored,
                         ]}
                       >
                         {date.getDate()}
                       </Text>
-
-                      {dayData && (
-                        <View
-                          style={[
-                            styles.dayIndicator,
-                            status === "available" && styles.indicatorAvailable,
-                            status === "partial" && styles.indicatorPartial,
-                            status === "full" && styles.indicatorFull,
-                            status === "closed" && styles.indicatorClosed,
-                          ]}
-                        />
-                      )}
                     </Pressable>
                   );
                 })}
@@ -788,7 +791,7 @@ export default function CampoCalendarioGestioneScreen() {
                               </View>
                               {isBooked && booking && (
                                 <Text style={styles.slotBookingUser}>
-                                  👤 {booking.userName} {booking.userSurname}
+                                  👤 {booking.user?.name ?? booking.userName ?? ""} {booking.user?.surname ?? booking.userSurname ?? ""}
                                 </Text>
                               )}
                             </View>
@@ -1019,6 +1022,30 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "700",
   },
+
+  // Colored backgrounds for day states
+  dayCellAvailable: {
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+  },
+  dayCellPartial: {
+    backgroundColor: "#FFF3E0",
+    borderRadius: 8,
+  },
+  dayCellFull: {
+    backgroundColor: "#FFEBEE",
+    borderRadius: 8,
+  },
+  dayCellClosed: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+  },
+
+  dayNumberOnColored: {
+    color: "#333",
+    fontWeight: "700",
+  },
+
   dayIndicator: {
     position: "absolute",
     bottom: 1,

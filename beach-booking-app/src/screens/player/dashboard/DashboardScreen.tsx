@@ -714,8 +714,8 @@ export default function HomeScreen() {
   };
 
   const handlePressStruttura = (struttura: any) => {
-    // Navigate to struttura details - assuming a route exists
-    navigation.navigate('StrutturaDetail', { strutturaId: struttura._id });
+    // Navigate to struttura details - pass full struttura object so target screen can use it directly
+    navigation.navigate('DettaglioStruttura', { struttura });
   };
 
   const handleFollowStruttura = async (strutturaId: string) => {

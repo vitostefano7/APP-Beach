@@ -67,10 +67,22 @@ export async function generateStrutture(owners: any[]) {
         coordinates: [lng, lat],
       },
       amenities: amenitiesList,
-      openingHours: {
-        opening: "08:00",
-        closing: "23:00"
-      },
+      // Opening hours per day (expected format by the app)
+      openingHours: (() => {
+        const defaultOpening = "08:00";
+        const defaultClosing = "23:00";
+        const days = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+        const oh: any = {};
+        days.forEach((d) => {
+          // Occasionally close weekends for variety
+          if ((d === "saturday" || d === "sunday") && Math.random() < 0.3) {
+            oh[d] = { closed: true };
+          } else {
+            oh[d] = { slots: [{ open: defaultOpening, close: defaultClosing }] };
+          }
+        });
+        return oh;
+      })(),
       images,
       rating: {
         average: randomInt(3, 5),

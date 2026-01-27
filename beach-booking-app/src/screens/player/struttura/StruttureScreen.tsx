@@ -23,7 +23,7 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
-import { Calendar } from 'react-native-calendars';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { resolveImageUrl } from "../../../utils/imageUtils";
@@ -39,6 +39,16 @@ import {
   filterStrutture,
   countActiveFilters,
 } from "../utils-player/StruttureScreen-utils";
+
+// Configurazione lingua italiana per il calendario
+LocaleConfig.locales['it'] = {
+  monthNames: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'],
+  monthNamesShort: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'],
+  dayNames: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],
+  dayNamesShort: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
+  today: 'Oggi'
+};
+LocaleConfig.defaultLocale = 'it';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -1631,6 +1641,7 @@ function AdvancedFiltersModal({
             <Calendar
               current={formatDate(tempFilters.date) || formatDate(new Date()) || undefined}
               minDate={formatDate(new Date()) || undefined}
+              locale={'it'}
               onDayPress={(day) => {
                 setTempFilters((prev) => ({
                   ...prev,

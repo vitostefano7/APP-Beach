@@ -116,7 +116,7 @@ export default function BookingTodayCard({
               onChat();
             }}
           >
-            <Ionicons name="chatbox" size={18} color="#2196F3" />
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color="#2196F3" />
           </Pressable>
         </View>
       </View>

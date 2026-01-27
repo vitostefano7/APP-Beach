@@ -47,8 +47,37 @@ export function getAmenityDisplay(amenityKey: string): { label: string; icon: st
   if (predefined) {
     return { label: predefined.label, icon: predefined.icon };
   }
-  
-  // Custom amenity - icona generica + testo originale
+
+  // Heuristic mapping for custom amenities: try to infer a meaningful icon
+  const normalize = (s: string) => String(s || "").toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const key = normalize(amenityKey);
+
+  const keywordMap: Array<[RegExp, string]> = [
+    [/wifi/, 'wifi'],
+    [/wi-?fi/, 'wifi'],
+    [/bar|caffe|caff/, 'cafe'],
+    [/birr|beer/, 'beer'],
+    [/ristor|ristorante/, 'restaurant'],
+    [/palestr|gym/, 'barbell'],
+    [/docc|doccia/, 'water'],
+    [/spogli|spogliatoio/, 'shirt'],
+    [/bagni|toilet/, 'man'],
+    [/parch|parcheggio/, 'car'],
+    [/negoz|shop|store/, 'storefront'],
+    [/pronto soccorso|soccors|first aid/, 'medical'],
+    [/bimb|kids|baby/, 'happy'],
+    [/pizza/, 'pizza'],
+    [/gelat|ice.?cream/, 'ice-cream'],
+    [/luce|illuminaz|illuminazione/, 'bulb'],
+    [/aria|condizion/, 'snow'],
+    [/wifi gratuito/, 'wifi'],
+  ];
+
+  for (const [re, icon] of keywordMap) {
+    if (re.test(key)) return { label: amenityKey, icon };
+  }
+
+  // Fallback generic icon
   return { label: amenityKey, icon: "checkmark-circle" };
 }
 

@@ -146,6 +146,10 @@ const NotificheScreen = () => {
       navigation.navigate('DettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
+    } else if (notification.type === 'match_result' && notification.relatedId) {
+      navigation.navigate('DettaglioPrenotazione', {
+        bookingId: notification.relatedId,
+      });
     } else if (notification.relatedModel === 'Booking' && notification.relatedId) {
       navigation.navigate('DettaglioPrenotazione', {
         bookingId: notification.relatedId,

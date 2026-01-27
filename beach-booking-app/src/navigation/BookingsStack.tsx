@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenotazioneScreen";
+import LeMiePrenotazioniScreen from "../screens/player/prenotazioni/LeMiePrenotazioniScreen";
 import DettaglioPrenotazioneScreen from "../screens/player/prenotazioni/DettaglioPrenotazioneScreen";
 import InserisciRisultatoScreen from "../screens/InserisciRisultatoScreen";
 import ChatScreen from "../screens/player/comunicazioni/ChatScreen";

@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   TextInput,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useContext, useEffect, useState } from "react";
@@ -80,6 +81,19 @@ export default function UserProfileScreen() {
   const [visibleComments, setVisibleComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
   const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
+
+  // Supporto opzionale blur (expo-blur). Se non presente useremo un overlay semitrasparente
+  let BlurViewImpl: any = View;
+  let hasBlur = false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('expo-blur');
+    BlurViewImpl = mod.BlurView || View;
+    hasBlur = !!(mod && mod.BlurView);
+  } catch (e) {
+    BlurViewImpl = View;
+    hasBlur = false;
+  }
 
   // Ricarica il profilo quando la schermata viene focalizzata
   useFocusEffect(
@@ -207,12 +221,12 @@ export default function UserProfileScreen() {
         // Update friendship status based on backend response
         // isPending = true means private profile (pending approval)
         // isPending = false means public profile (accepted immediately)
-        const newStatus = result.isPending ? "pending" : "accepted";
+        const newStatus: UserProfileData['friendshipStatus'] = result.isPending ? 'pending' : 'accepted';
         console.log("✅ [UserProfile] Setting new friendshipStatus:", newStatus);
         
         setData((prev) => {
           if (!prev) return prev;
-          const updated = {
+          const updated: UserProfileData = {
             ...prev,
             friendshipStatus: newStatus,
           };
@@ -254,7 +268,7 @@ export default function UserProfileScreen() {
         
         setData((prev) => {
           if (!prev) return prev;
-          const updated = {
+          const updated: UserProfileData = {
             ...prev,
             friendshipStatus: 'none',
             friendshipId: undefined,
@@ -296,7 +310,7 @@ export default function UserProfileScreen() {
         console.log("👤 [UserProfile] Chatting with:", displayName);
         
         // Navigate to ChatScreen (usato per chat 1-a-1)
-        navigation.navigate("Chat", {
+        navigation.navigate("Chat", ({
           conversationId: conversation._id,
           strutturaName: displayName,
           isUserChat: true,
@@ -305,7 +319,7 @@ export default function UserProfileScreen() {
             name: displayName,
             avatarUrl: data.user.avatarUrl,
           }
-        });
+        } as any));
       } else {
         console.error("❌ [UserProfile] Failed to get conversation:", res.status);
       }
@@ -432,6 +446,9 @@ export default function UserProfileScreen() {
   const isPending = data.friendshipStatus === 'pending';
   const isFriend = data.friendshipStatus === 'accepted';
   const isPrivateProfile = data.isPrivate && !isFriend;
+
+  // Blocca la visualizzazione dei post se profilo privato o richiesta pending
+  const canSeePosts = !isPrivateProfile && !isPending;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -603,8 +620,8 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        {/* Posts Section - Only if not private or if friend */}
-        {!isPrivateProfile && (
+        {/* Posts Section - Always render; if not allowed, overlay blur + lock */}
+        <View style={{ position: 'relative' }}>
           <View style={styles.postsSection}>
             <View style={styles.postsSectionHeader}>
               <Text style={styles.postsSectionTitle}>Post</Text>
@@ -615,27 +632,17 @@ export default function UserProfileScreen() {
               posts.map((post) => (
                 <View key={post._id} style={styles.postCard}>
                   <View style={styles.postHeader}>
-                    <Avatar
-                      avatarUrl={post.user.avatarUrl}
-                      name={post.user.name}
-                      size={32}
-                    />
+                    <Avatar avatarUrl={post.user.avatarUrl} name={post.user.name} size={32} />
                     <View style={styles.postHeaderText}>
                       <Text style={styles.postAuthor}>{post.user.name}</Text>
-                      <Text style={styles.postTime}>
-                        {new Date(post.createdAt).toLocaleDateString('it-IT')}
-                      </Text>
+                      <Text style={styles.postTime}>{new Date(post.createdAt).toLocaleDateString('it-IT')}</Text>
                     </View>
                   </View>
 
                   <Text style={styles.postContent}>{post.content}</Text>
 
                   {post.image && (
-                    <Image
-                      source={{ uri: post.image }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri: post.image }} style={styles.postImage} resizeMode="cover" />
                   )}
 
                   <View style={styles.postStats}>
@@ -655,18 +662,9 @@ export default function UserProfileScreen() {
                         <View style={{ marginBottom: 10 }}>
                           {post.comments.map(comment => (
                             <View key={comment._id} style={{ flexDirection: 'row', marginBottom: 10 }}>
-                              <Avatar
-                                avatarUrl={comment.user.avatarUrl}
-                                name={comment.user.name}
-                                surname={comment.user.surname || comment.user.lastName}
-                                size={28}
-                              />
+                              <Avatar avatarUrl={comment.user.avatarUrl} name={comment.user.name} surname={comment.user.surname || comment.user.lastName} size={28} />
                               <View style={{ marginLeft: 8, flex: 1 }}>
-                                <Text style={{ fontWeight: 'bold' }}>
-                                  {comment.user.surname || comment.user.lastName
-                                    ? `${comment.user.name} ${comment.user.surname || comment.user.lastName}`
-                                    : comment.user.name}
-                                </Text>
+                                <Text style={{ fontWeight: 'bold' }}>{comment.user.surname || comment.user.lastName ? `${comment.user.name} ${comment.user.surname || comment.user.lastName}` : comment.user.name}</Text>
                                 <Text>{comment.text}</Text>
                               </View>
                             </View>
@@ -674,46 +672,12 @@ export default function UserProfileScreen() {
                         </View>
                       )}
 
-                      {/* Comment Input - Only if friend */}
                       {isFriend && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8 }}>
-                          <Avatar
-                            avatarUrl={currentUser?.avatarUrl}
-                            name={currentUser?.name || 'Tu'}
-                            size={32}
-                          />
+                          <Avatar avatarUrl={currentUser?.avatarUrl} name={currentUser?.name || 'Tu'} size={32} />
                           <View style={{ flex: 1, marginLeft: 8, flexDirection: 'row', alignItems: 'center' }}>
-                            <TextInput
-                              style={{
-                                flex: 1,
-                                backgroundColor: '#f5f5f5',
-                                borderRadius: 20,
-                                paddingHorizontal: 15,
-                                paddingVertical: 8,
-                                fontSize: 14,
-                                color: '#333',
-                              }}
-                              placeholder="Scrivi un commento..."
-                              value={commentInputs[post._id] || ''}
-                              onChangeText={(text) =>
-                                setCommentInputs(prev => ({ ...prev, [post._id]: text }))
-                              }
-                              multiline
-                              maxLength={500}
-                            />
-                            <Pressable
-                              style={{
-                                marginLeft: 8,
-                                width: 32,
-                                height: 32,
-                                borderRadius: 16,
-                                backgroundColor: commentInputs[post._id]?.trim() && !postingComment.has(post._id) ? '#2196F3' : '#ccc',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                              onPress={() => handlePostComment(post._id)}
-                              disabled={!commentInputs[post._id]?.trim() || postingComment.has(post._id)}
-                            >
+                            <TextInput style={{ flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, color: '#333' }} placeholder="Scrivi un commento..." value={commentInputs[post._id] || ''} onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [post._id]: text }))} multiline maxLength={500} />
+                            <Pressable style={{ marginLeft: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: commentInputs[post._id]?.trim() && !postingComment.has(post._id) ? '#2196F3' : '#ccc', alignItems: 'center', justifyContent: 'center' }} onPress={() => handlePostComment(post._id)} disabled={!commentInputs[post._id]?.trim() || postingComment.has(post._id)}>
                               {postingComment.has(post._id) ? (
                                 <ActivityIndicator size="small" color="white" />
                               ) : (
@@ -734,7 +698,25 @@ export default function UserProfileScreen() {
               </View>
             ) : null}
           </View>
-        )}
+
+          {!canSeePosts && (
+            <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+              {hasBlur ? (
+                <BlurViewImpl intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)' }]} />
+              )}
+
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 12, padding: 24, alignItems: 'center', width: '80%' }}>
+                <Ionicons name="lock-closed" size={56} color="#666" style={{ marginBottom: 12 }} />
+                <Text style={{ color: '#333', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>I post di questo utente sono visibili solo ai follower approvati.</Text>
+                {isPending ? (
+                  <Text style={{ color: '#666', fontSize: 14, marginTop: 8, textAlign: 'center' }}>La tua richiesta di follow è in attesa di approvazione.</Text>
+                ) : null}
+              </View>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

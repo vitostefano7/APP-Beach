@@ -80,6 +80,13 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+
+    // 🎾 Match associato a questa prenotazione
+    match: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Match",
+      required: false,
+    },
   },
   { timestamps: true }
 );

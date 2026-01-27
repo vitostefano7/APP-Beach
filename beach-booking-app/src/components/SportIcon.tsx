@@ -30,7 +30,7 @@ export default function SportIcon({ sport, size = 24, color = 'black' }: SportIc
       case 'basketball':
         return 'basketball';
       default:
-        return 'football';
+        return <FontAwesome5 name="volleyball-ball" size={size} color={color} />;
     }
   };
 

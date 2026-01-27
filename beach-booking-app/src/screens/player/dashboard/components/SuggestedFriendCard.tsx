@@ -165,11 +165,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
             {friendName}
             {friendSurname ? ` ${friendSurname}` : ""}
           </Text>
-          {badge && (
-            <View style={[styles.friendBadge, { backgroundColor: badge.color + '15' }]}>
-              <Ionicons name={badge.icon as any} size={12} color={badge.color} />
-            </View>
-          )}
+          
         </View>
         
         {username && (

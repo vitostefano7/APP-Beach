@@ -32,6 +32,10 @@ interface PlayerCardWithTeamProps {
   maxSlotsPerTeam?: number;
   matchStatus?: string;
   onPlayerPress?: (player: Player) => void;
+  isOrganizer?: boolean; // Indica se il giocatore è l'organizzatore (mostra badge)
+  teamACount?: number;
+  teamBCount?: number;
+  maxPlayersPerTeam?: number;
 }
 
 const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
@@ -49,6 +53,10 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   slotNumber,
   maxSlotsPerTeam,
   matchStatus = "open",
+  isOrganizer = false, // Valore di default
+  teamACount = 0,
+  teamBCount = 0,
+  maxPlayersPerTeam = 2,
 }) => {
   const isCurrentUser = player?.user?._id === currentUserId;
   const isConfirmed = player?.status === "confirmed";
@@ -128,6 +136,9 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           {player.user?.name && player.user?.surname 
             ? `${player.user.name} ${player.user.surname}`
             : player.user?.name || "Giocatore"}
+          {isOrganizer && (
+            <Text style={styles.organizerIndicator}> (organizzatore)</Text>
+          )}
         </Text>
         <Text style={styles.playerUsernameSlot}>
           @{player.user?.username || "unknown"}

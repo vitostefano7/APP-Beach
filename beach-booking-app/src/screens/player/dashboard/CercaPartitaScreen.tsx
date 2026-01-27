@@ -36,7 +36,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { Calendar } from "react-native-calendars";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import * as Location from "expo-location";
 import SportIcon from '../../../components/SportIcon';
 
@@ -45,6 +45,16 @@ import API_URL from "../../../config/api";
 import Avatar from "../../../components/Avatar/Avatar";
 import OpenMatchCard from "./components/OpenMatchCard";
 import { useGeographicMatchFiltering } from './hooks/useGeographicMatchFiltering';
+
+// Configurazione lingua italiana per il calendario
+LocaleConfig.locales['it'] = {
+  monthNames: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'],
+  monthNamesShort: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'],
+  dayNames: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],
+  dayNamesShort: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
+  today: 'Oggi'
+};
+LocaleConfig.defaultLocale = 'it';
 
 type UserPreferences = {
   preferredLocation?: {
@@ -196,6 +206,43 @@ export default function CercaPartitaScreen() {
     filterMatchesByGeography,
     logFilteredMatchesDetails,
   } = useGeographicMatchFiltering(token);
+
+  // Stato per l'indirizzo ottenuto dal GPS (DOPO la dichiarazione di gpsCoords)
+  const [gpsAddress, setGpsAddress] = useState<string | null>(null);
+
+  // Funzione per il reverse geocoding delle coordinate GPS
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<string | null> => {
+    try {
+      console.log('[DEBUG] Chiamata reverseGeocode con:', lat, lng);
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'SportBookingApp/1.0' } });
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[DEBUG] Risposta reverseGeocode:', data);
+        return data.display_name || null;
+      } else {
+        console.error('[DEBUG] Errore HTTP reverseGeocode:', res.status, res.statusText);
+      }
+    } catch (e) {
+      console.error('[DEBUG] Reverse geocoding error:', e);
+    }
+    return null;
+  }, []);
+
+  // Aggiorna l'indirizzo GPS quando cambiano le coordinate
+  useEffect(() => {
+    console.log('[DEBUG-USEEFFECT] useEffect (gpsCoords dependency) triggered. gpsCoords:', gpsCoords);
+    if (gpsCoords) {
+      console.log('[DEBUG-USEEFFECT] gpsCoords presente, chiamo reverseGeocode...');
+      reverseGeocode(gpsCoords.lat, gpsCoords.lng).then(addr => {
+        console.log('[DEBUG] reverseGeocode result:', addr);
+        setGpsAddress(addr);
+      });
+    } else {
+      console.log('[DEBUG-USEEFFECT] gpsCoords è null/undefined, resetto gpsAddress');
+      setGpsAddress(null);
+    }
+  }, [gpsCoords, reverseGeocode]);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -358,6 +405,24 @@ export default function CercaPartitaScreen() {
     }
   };
 
+  const currentFilter = useMemo(() => {
+    console.log('[DEBUG] currentFilter: gpsCoords', gpsCoords, 'gpsAddress', gpsAddress);
+    if (cityFilter.trim() && manualCityCoords) {
+      return { mode: 'manual' as const, displayCity: cityFilter, canClear: true };
+    }
+    if (gpsCoords) {
+      console.log('[DEBUG] currentFilter using GPS address:', gpsAddress);
+      return { mode: 'gps' as const, displayCity: 'Posizione GPS', canClear: false };
+    }
+    if (userPreferences?.preferredLocation?.city) {
+      return { mode: 'preferred' as const, displayCity: userPreferences.preferredLocation.city, canClear: false };
+    }
+    if (visitedStruttureIds.length > 0) {
+      return { mode: 'visited' as const, displayCity: 'Strutture visitate', canClear: false };
+    }
+    return { mode: 'none' as const, displayCity: '', canClear: false };
+  }, [cityFilter, manualCityCoords, gpsCoords, gpsAddress, userPreferences, visitedStruttureIds]);
+
   const filteredMatches = useMemo(() => {
     console.log("🔍 [CercaPartita] === INIZIO FILTRAGGIO ===");
     console.log("🔍 [CercaPartita] Partite totali da filtrare:", matches.length);
@@ -371,52 +436,38 @@ export default function CercaPartitaScreen() {
     let referenceLat: number | null = null;
     let referenceLng: number | null = null;
     let searchRadius = 30; // Default 30km
-    let filterMode: 'manual' | 'gps' | 'preferred' | 'visited' | 'none' = 'none';
+    const filterMode = currentFilter.mode;
+    let activeFilterInfo = '';
     
-    // PRIORITÀ 1: Città manuale (inserita dall'utente)
-    if (cityFilter.trim() && manualCityCoords) {
-      referenceLat = manualCityCoords.lat;
-      referenceLng = manualCityCoords.lng;
+    if (filterMode === 'manual') {
+      referenceLat = manualCityCoords!.lat;
+      referenceLng = manualCityCoords!.lng;
       searchRadius = 30;
-      filterMode = 'manual';
-      setActiveFilterMode('manual');
-      setActiveFilterInfo(`${cityFilter} (30 km)`);
+      activeFilterInfo = `${cityFilter} (30 km)`;
       console.log("📍 [CercaPartita] PRIORITÀ 1 - Città manuale:", cityFilter, "Raggio: 30km");
-    }
-    // PRIORITÀ 2: GPS (se l'utente ha usato il GPS)
-    else if (gpsCoords) {
-      referenceLat = gpsCoords.lat;
-      referenceLng = gpsCoords.lng;
+    } else if (filterMode === 'gps') {
+      referenceLat = gpsCoords!.lat;
+      referenceLng = gpsCoords!.lng;
       searchRadius = 30;
-      filterMode = 'gps';
-      setActiveFilterMode('gps');
-      setActiveFilterInfo(`${cityFilter || 'Posizione GPS'} (30 km)`);
+      activeFilterInfo = gpsAddress ? `${gpsAddress} (30 km)` : 'Posizione GPS (30 km)';
       console.log("📍 [CercaPartita] PRIORITÀ 2 - GPS:", gpsCoords, "Raggio: 30km");
-    }
-    // PRIORITÀ 3: Città preferita (dalle preferenze utente)
-    else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
-      referenceLat = userPreferences.preferredLocation.lat;
-      referenceLng = userPreferences.preferredLocation.lng;
-      searchRadius = userPreferences.preferredLocation.radius || 30;
-      filterMode = 'preferred';
-      setActiveFilterMode('preferred');
-      setActiveFilterInfo(`${userPreferences.preferredLocation.city} (${searchRadius} km - città preferita)`);
+    } else if (filterMode === 'preferred') {
+      referenceLat = userPreferences!.preferredLocation!.lat;
+      referenceLng = userPreferences!.preferredLocation!.lng;
+      searchRadius = userPreferences!.preferredLocation!.radius || 30;
+      activeFilterInfo = `${userPreferences!.preferredLocation!.city} (${searchRadius} km - città preferita)`;
       console.log("📍 [CercaPartita] PRIORITÀ 3 - Città preferita:", userPreferences.preferredLocation.city, "Raggio:", searchRadius, "km");
-    }
-    // FALLBACK: Strutture visitate (se nessuna posizione disponibile)
-    else if (visitedStruttureIds.length > 0) {
-      filterMode = 'visited';
-      setActiveFilterMode('visited');
-      setActiveFilterInfo(`Strutture dove hai già giocato (${visitedStruttureIds.length})`);
+    } else if (filterMode === 'visited') {
+      activeFilterInfo = `Strutture dove hai già giocato (${visitedStruttureIds.length})`;
       console.log("📍 [CercaPartita] FALLBACK - Strutture visitate:", visitedStruttureIds.length, "strutture");
-    }
-    else {
-      setActiveFilterMode('none');
-      setActiveFilterInfo('');
+    } else {
       console.log("⚠️ [CercaPartita] Nessun filtro geografico disponibile - nessun risultato");
       // Se non c'è nessun criterio geografico, non mostrare nulla
       return [];
     }
+    
+    setActiveFilterMode(filterMode);
+    setActiveFilterInfo(activeFilterInfo);
 
     // Filtra le partite
     let filtered = matches.filter((match) => {
@@ -617,7 +668,7 @@ export default function CercaPartitaScreen() {
     
     console.log(`✅ [CercaPartita] === FINE FILTRAGGIO === Partite finali mostrate: ${finalResult.length}`);
     return finalResult;
-  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, userPreferences, manualCityCoords, visitedStruttureIds, playersFilter]);
+  }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, userPreferences, manualCityCoords, visitedStruttureIds, playersFilter, currentFilter]);
 
   const visitedMatches = useMemo(() => {
     const visited = matches.filter((match) => {
@@ -731,7 +782,7 @@ export default function CercaPartitaScreen() {
         <Pressable
           style={[
             styles.filterChip,
-            cityFilter.trim() && styles.filterChipActive,
+            currentFilter.displayCity && styles.filterChipActive,
           ]}
           onPress={() => {
             setTempCity(cityFilter);
@@ -741,15 +792,15 @@ export default function CercaPartitaScreen() {
           <Ionicons 
             name="location" 
             size={14} 
-            color={cityFilter.trim() ? "white" : "#2196F3"} 
+            color={currentFilter.displayCity ? "#2196F3" : "#666"} 
           />
           <Text style={[
             styles.filterChipText,
-            cityFilter.trim() && styles.filterChipTextActive,
+            currentFilter.displayCity && styles.filterChipTextActive,
           ]}>
-            {cityFilter.trim() ? cityFilter : "Città"}
+            {currentFilter.displayCity || "Città"}
           </Text>
-          {cityFilter.trim() && (
+          {currentFilter.canClear && (
             <Pressable
               style={styles.filterChipClear}
               onPress={(event) => {
@@ -759,7 +810,7 @@ export default function CercaPartitaScreen() {
                 // GPS coords are managed by the hook, no manual reset
               }}
             >
-              <Ionicons name="close" size={12} color="white" />
+              <Ionicons name="close" size={12} color="#2196F3" />
             </Pressable>
           )}
         </Pressable>
@@ -774,7 +825,7 @@ export default function CercaPartitaScreen() {
           <Ionicons 
             name="calendar" 
             size={14} 
-            color={dateFilter ? "white" : "#2196F3"} 
+            color={dateFilter ? "#2196F3" : "#666"} 
           />
           <Text style={[
             styles.filterChipText,
@@ -790,7 +841,7 @@ export default function CercaPartitaScreen() {
                 setDateFilter(null);
               }}
             >
-              <Ionicons name="close" size={12} color="white" />
+              <Ionicons name="close" size={12} color="#2196F3" />
             </Pressable>
           )}
         </Pressable>
@@ -805,7 +856,7 @@ export default function CercaPartitaScreen() {
           <Ionicons 
             name="time" 
             size={14} 
-            color={timeFilter ? "white" : "#2196F3"} 
+            color={timeFilter ? "#2196F3" : "#666"} 
           />
           <Text style={[
             styles.filterChipText,
@@ -821,7 +872,7 @@ export default function CercaPartitaScreen() {
                 setTimeFilter(null);
               }}
             >
-              <Ionicons name="close" size={12} color="white" />
+              <Ionicons name="close" size={12} color="#2196F3" />
             </Pressable>
           )}
         </Pressable>
@@ -836,7 +887,7 @@ export default function CercaPartitaScreen() {
           <Ionicons 
             name="basketball" 
             size={14} 
-            color={sportFilter ? "white" : "#2196F3"} 
+            color={sportFilter ? "#2196F3" : "#666"} 
           />
           <Text style={[
             styles.filterChipText,
@@ -856,7 +907,7 @@ export default function CercaPartitaScreen() {
                 setSportFilter(null);
               }}
             >
-              <Ionicons name="close" size={12} color="white" />
+              <Ionicons name="close" size={12} color="#2196F3" />
             </Pressable>
           )}
         </Pressable>
@@ -871,7 +922,7 @@ export default function CercaPartitaScreen() {
           <Ionicons 
             name="people" 
             size={14} 
-            color={playersFilter ? "white" : "#2196F3"} 
+            color={playersFilter ? "#2196F3" : "#666"} 
           />
           <Text style={[
             styles.filterChipText,
@@ -887,7 +938,7 @@ export default function CercaPartitaScreen() {
                 setPlayersFilter(null);
               }}
             >
-              <Ionicons name="close" size={12} color="white" />
+              <Ionicons name="close" size={12} color="#2196F3" />
             </Pressable>
           )}
         </Pressable>
@@ -944,6 +995,109 @@ export default function CercaPartitaScreen() {
           <View style={styles.headerSpacer} />
         </View>
         {renderFilters()}
+        {isCityEditing && (
+          <View style={styles.cityEditContainer}>
+            <View style={styles.cityEditField}>
+              <Ionicons name="search" size={18} color="#666" />
+              <TextInput
+                style={styles.cityEditInput}
+                placeholder="Cerca città..."
+                placeholderTextColor="#999"
+                value={tempCity}
+                onChangeText={handleCityTextChange}
+                autoCapitalize="words"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={async () => {
+                  const cityName = tempCity.trim();
+                  if (cityName) {
+                    const coords = await geocodeCity(cityName);
+                    if (coords) {
+                      setManualCityCoords(coords);
+                    }
+                    setCityFilter(cityName);
+                  } else {
+                    setCityFilter("");
+                    setManualCityCoords(null);
+                  }
+                  setCitySuggestions([]);
+                  setIsCityEditing(false);
+                }}
+              />
+              <Pressable
+                style={styles.cityEditGPS}
+                onPress={handleUseGPS}
+                disabled={isLoadingGPS}
+              >
+                {isLoadingGPS ? (
+                  <ActivityIndicator size="small" color="#2196F3" />
+                ) : (
+                  <Ionicons name="locate" size={16} color="#2196F3" />
+                )}
+              </Pressable>
+              <Pressable
+                style={styles.cityEditGPS}
+                onPress={() => setShowMapModal(true)}
+              >
+                <Ionicons name="map" size={16} color="#2196F3" />
+              </Pressable>
+              <Pressable
+                style={styles.cityEditApply}
+                onPress={async () => {
+                  const cityName = tempCity.trim();
+                  if (cityName) {
+                    const coords = await geocodeCity(cityName);
+                    if (coords) {
+                      setManualCityCoords(coords);
+                    }
+                    setCityFilter(cityName);
+                  } else {
+                    setCityFilter("");
+                    setManualCityCoords(null);
+                  }
+                  setCitySuggestions([]);
+                  setIsCityEditing(false);
+                }}
+              >
+                <Ionicons name="checkmark" size={18} color="white" />
+              </Pressable>
+              <Pressable
+                style={styles.cityEditCancel}
+                onPress={() => {
+                  setTempCity(cityFilter);
+                  setCitySuggestions([]);
+                  setIsCityEditing(false);
+                }}
+              >
+                <Ionicons name="close" size={18} color="#666" />
+              </Pressable>
+            </View>
+
+            {/* Suggerimenti città */}
+            {citySuggestions.length > 0 && (
+              <View style={styles.citySuggestionsContainer}>
+                {isLoadingCitySuggestions && (
+                  <View style={styles.citySuggestionItem}>
+                    <ActivityIndicator size="small" color="#2196F3" />
+                    <Text style={styles.citySuggestionText}>Ricerca in corso...</Text>
+                  </View>
+                )}
+                {!isLoadingCitySuggestions && citySuggestions.map((suggestion, index) => (
+                  <Pressable
+                    key={index}
+                    style={styles.citySuggestionItem}
+                    onPress={() => handleSelectCitySuggestion(suggestion)}
+                  >
+                    <Ionicons name="location" size={16} color="#2196F3" />
+                    <Text style={styles.citySuggestionText} numberOfLines={1}>
+                      {suggestion.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         {activeFilterMode !== 'none' && activeFilterInfo && (
           <View style={styles.filterInfoContainer}>
             <Ionicons name="location" size={14} color="#666" />
@@ -971,109 +1125,6 @@ export default function CercaPartitaScreen() {
             contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 24 }]}
             ListHeaderComponent={
               <>
-                {isCityEditing && (
-                  <View style={styles.cityEditContainer}>
-                    <View style={styles.cityEditField}>
-                      <Ionicons name="search" size={18} color="#666" />
-                      <TextInput
-                        style={styles.cityEditInput}
-                        placeholder="Cerca città..."
-                        placeholderTextColor="#999"
-                        value={tempCity}
-                        onChangeText={handleCityTextChange}
-                        autoCapitalize="words"
-                        autoFocus
-                        returnKeyType="done"
-                        onSubmitEditing={async () => {
-                          const cityName = tempCity.trim();
-                          if (cityName) {
-                            const coords = await geocodeCity(cityName);
-                            if (coords) {
-                              setManualCityCoords(coords);
-                            }
-                            setCityFilter(cityName);
-                          } else {
-                            setCityFilter("");
-                            setManualCityCoords(null);
-                          }
-                          setCitySuggestions([]);
-                          setIsCityEditing(false);
-                        }}
-                      />
-                      <Pressable
-                        style={styles.cityEditGPS}
-                        onPress={handleUseGPS}
-                        disabled={isLoadingGPS}
-                      >
-                        {isLoadingGPS ? (
-                          <ActivityIndicator size="small" color="#2196F3" />
-                        ) : (
-                          <Ionicons name="locate" size={16} color="#2196F3" />
-                        )}
-                      </Pressable>
-                      <Pressable
-                        style={styles.cityEditGPS}
-                        onPress={() => setShowMapModal(true)}
-                      >
-                        <Ionicons name="map" size={16} color="#2196F3" />
-                      </Pressable>
-                      <Pressable
-                        style={styles.cityEditApply}
-                        onPress={async () => {
-                          const cityName = tempCity.trim();
-                          if (cityName) {
-                            const coords = await geocodeCity(cityName);
-                            if (coords) {
-                              setManualCityCoords(coords);
-                            }
-                            setCityFilter(cityName);
-                          } else {
-                            setCityFilter("");
-                            setManualCityCoords(null);
-                          }
-                          setCitySuggestions([]);
-                          setIsCityEditing(false);
-                        }}
-                      >
-                        <Ionicons name="checkmark" size={18} color="white" />
-                      </Pressable>
-                      <Pressable
-                        style={styles.cityEditCancel}
-                        onPress={() => {
-                          setTempCity(cityFilter);
-                          setCitySuggestions([]);
-                          setIsCityEditing(false);
-                        }}
-                      >
-                        <Ionicons name="close" size={18} color="#666" />
-                      </Pressable>
-                    </View>
-
-                    {/* Suggerimenti città */}
-                    {citySuggestions.length > 0 && (
-                      <View style={styles.citySuggestionsContainer}>
-                        {isLoadingCitySuggestions && (
-                          <View style={styles.citySuggestionItem}>
-                            <ActivityIndicator size="small" color="#2196F3" />
-                            <Text style={styles.citySuggestionText}>Ricerca in corso...</Text>
-                          </View>
-                        )}
-                        {!isLoadingCitySuggestions && citySuggestions.map((suggestion, index) => (
-                          <Pressable
-                            key={index}
-                            style={styles.citySuggestionItem}
-                            onPress={() => handleSelectCitySuggestion(suggestion)}
-                          >
-                            <Ionicons name="location" size={16} color="#2196F3" />
-                            <Text style={styles.citySuggestionText} numberOfLines={1}>
-                              {suggestion.name}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                )}
                 {visitedMatches.length > 0 && (
                   <View style={styles.visitedSection}>
                     <Text style={styles.visitedTitle}>Partite nelle tue strutture visitate</Text>
@@ -1113,210 +1164,210 @@ export default function CercaPartitaScreen() {
 
       <Modal
         visible={showCalendar}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setShowCalendar(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowCalendar(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleziona una data</Text>
-              <Pressable onPress={() => setShowCalendar(false)}>
-                <Ionicons name="close" size={22} color="#333" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona una data</Text>
             </View>
 
-            <Calendar
-              current={formatDate(dateFilter) || formatDate(new Date())}
-              minDate={formatDate(new Date())}
-              onDayPress={(day) => {
-                setDateFilter(new Date(day.dateString));
-                setShowCalendar(false);
-              }}
-              markedDates={{
-                [formatDate(dateFilter) || ""]: {
-                  selected: true,
-                  selectedColor: "#2979ff",
-                },
-              }}
-              theme={{
-                backgroundColor: "#ffffff",
-                calendarBackground: "#ffffff",
-                textSectionTitleColor: "#666",
-                selectedDayBackgroundColor: "#2979ff",
-                selectedDayTextColor: "#ffffff",
-                todayTextColor: "#2979ff",
-                dayTextColor: "#1A1A1A",
-                textDisabledColor: "#d9d9d9",
-                dotColor: "#2979ff",
-                selectedDotColor: "#ffffff",
-                arrowColor: "#2979ff",
-                monthTextColor: "#1A1A1A",
-                indicatorColor: "#2979ff",
-                textDayFontWeight: "500",
-                textMonthFontWeight: "700",
-                textDayHeaderFontWeight: "600",
-                textDayFontSize: 15,
-                textMonthFontSize: 18,
-                textDayHeaderFontSize: 13,
-              }}
-            />
-          </Pressable>
-        </Pressable>
+            <View style={styles.calendarContainer}>
+              <Calendar
+                current={formatDate(dateFilter) || formatDate(new Date())}
+                minDate={formatDate(new Date())}
+                locale={'it'}
+                onDayPress={(day) => {
+                  setDateFilter(new Date(day.dateString));
+                  setShowCalendar(false);
+                }}
+                markedDates={{
+                  [formatDate(dateFilter) || ""]: {
+                    selected: true,
+                    selectedColor: "#2196F3",
+                  },
+                }}
+                theme={{
+                  backgroundColor: "#ffffff",
+                  calendarBackground: "#ffffff",
+                  textSectionTitleColor: "#666",
+                  selectedDayBackgroundColor: "#2196F3",
+                  selectedDayTextColor: "#ffffff",
+                  todayTextColor: "#2196F3",
+                  dayTextColor: "#1A1A1A",
+                  textDisabledColor: "#d9d9d9",
+                  dotColor: "#2196F3",
+                  selectedDotColor: "#ffffff",
+                  arrowColor: "#2196F3",
+                  monthTextColor: "#1A1A1A",
+                  indicatorColor: "#2196F3",
+                  textDayFontWeight: "500",
+                  textMonthFontWeight: "700",
+                  textDayHeaderFontWeight: "600",
+                  textDayFontSize: 15,
+                  textMonthFontSize: 18,
+                  textDayHeaderFontSize: 13,
+                }}
+              />
+            </View>
+
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowCalendar(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
         visible={showSportPicker}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setShowSportPicker(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowSportPicker(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Scegli sport</Text>
-              <Pressable onPress={() => setShowSportPicker(false)}>
-                <Ionicons name="close" size={22} color="#333" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Scegli sport</Text>
             </View>
-
-            <View style={{ gap: 10 }}>
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
               <Pressable
-                style={[
-                  styles.timeSlot,
-                  sportFilter === "beach_volley" && styles.timeSlotActive,
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
                 ]}
                 onPress={() => {
                   setSportFilter("beach_volley");
                   setShowSportPicker(false);
                 }}
               >
-                <Text
-                  style={[
-                    styles.timeSlotText,
-                    sportFilter === "beach_volley" && styles.timeSlotTextActive,
-                  ]}
-                >
-                  Beach Volley
-                </Text>
+                <Text style={styles.filterModalOptionText}>Beach Volley</Text>
               </Pressable>
               <Pressable
-                style={[
-                  styles.timeSlot,
-                  sportFilter === "volley" && styles.timeSlotActive,
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  pressed && { backgroundColor: "#E3F2FD" }
                 ]}
                 onPress={() => {
                   setSportFilter("volley");
                   setShowSportPicker(false);
                 }}
               >
-                <Text
-                  style={[
-                    styles.timeSlotText,
-                    sportFilter === "volley" && styles.timeSlotTextActive,
-                  ]}
-                >
-                  Volley
-                </Text>
+                <Text style={styles.filterModalOptionText}>Volley</Text>
+              </Pressable>
+            </ScrollView>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowSportPicker(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       <Modal
         visible={showPlayersPicker}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setShowPlayersPicker(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowPlayersPicker(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Scegli formato</Text>
-              <Pressable onPress={() => setShowPlayersPicker(false)}>
-                <Ionicons name="close" size={22} color="#333" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Scegli formato</Text>
             </View>
-
-            <View style={{ gap: 10 }}>
-              {playersOptions.map((option) => (
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
+                onPress={() => {
+                  setPlayersFilter(null);
+                  setShowPlayersPicker(false);
+                }}
+              >
+                <Text style={styles.filterModalOptionText}>✨ Tutti i formati</Text>
+              </Pressable>
+              {playersOptions.map((option, index) => (
                 <Pressable
                   key={option}
-                  style={[
-                    styles.timeSlot,
-                    playersFilter === option && styles.timeSlotActive,
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < playersOptions.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
                   ]}
                   onPress={() => {
                     setPlayersFilter(option);
                     setShowPlayersPicker(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.timeSlotText,
-                      playersFilter === option && styles.timeSlotTextActive,
-                    ]}
-                  >
-                    {option}
-                  </Text>
+                  <Text style={styles.filterModalOptionText}>{option}</Text>
                 </Pressable>
               ))}
+            </ScrollView>
+            <View style={styles.filterModalFooter}>
               <Pressable
-                style={styles.timeSlot}
-                onPress={() => {
-                  setPlayersFilter(null);
-                  setShowPlayersPicker(false);
-                }}
+                style={styles.filterModalCancel}
+                onPress={() => setShowPlayersPicker(false)}
               >
-                <Text style={styles.timeSlotText}>Rimuovi filtro</Text>
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       <Modal
         visible={showTimePicker}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setShowTimePicker(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowTimePicker(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleziona un orario</Text>
-              <Pressable onPress={() => setShowTimePicker(false)}>
-                <Ionicons name="close" size={22} color="#333" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona un orario</Text>
             </View>
-
-            <ScrollView contentContainerStyle={styles.timeList}>
-              {timeSlots.map((slot) => (
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
+              {timeSlots.map((slot, index) => (
                 <Pressable
                   key={slot}
-                  style={[
-                    styles.timeSlot,
-                    timeFilter === slot && styles.timeSlotActive,
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < timeSlots.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
                   ]}
                   onPress={() => {
                     setTimeFilter(slot);
                     setShowTimePicker(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.timeSlotText,
-                      timeFilter === slot && styles.timeSlotTextActive,
-                    ]}
-                  >
-                    {slot}
-                  </Text>
+                  <Text style={styles.filterModalOptionText}>{slot}</Text>
                 </Pressable>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
@@ -1425,21 +1476,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: "#E3F2FD",
-    borderWidth: 1.5,
-    borderColor: "#90CAF9",
+    backgroundColor: "#f8f8f8",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#1976D2",
+    color: "#666",
   },
   filterChipActive: {
-    backgroundColor: "#2196F3",
-    borderColor: "#1976D2",
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
   },
   filterChipTextActive: {
-    color: "white",
+    color: "#2196F3",
   },
   filterChipClear: {
     width: 16,
@@ -1447,7 +1498,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    backgroundColor: "#E3F2FD",
     marginLeft: 2,
   },
   cityEditContainer: {
@@ -1455,8 +1506,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    // borderBottomWidth: 1, // Rimossa la riga separatrice
+    // borderBottomColor: "#e0e0e0",
   },
   cityEditField: {
     flexDirection: "row",
@@ -1777,6 +1828,86 @@ const styles = StyleSheet.create({
   },
   timeSlotTextActive: {
     color: "#2196F3",
+  },
+  // Nuovi stili per i modal filtri
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    marginHorizontal: 40,
+    width: "85%",
+    maxHeight: "75%",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
+  },
+  filterModalHeader: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    backgroundColor: "#2196F3",
+    minHeight: 70,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "white",
+    textAlign: "center",
+  },
+  filterModalContent: {
+    maxHeight: 350,
+    paddingTop: 8,
+  },
+  filterModalOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginHorizontal: 12,
+    backgroundColor: "transparent",
+  },
+  filterModalOptionWithBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#e8e8e8",
+    marginBottom: 0,
+  },
+  filterModalOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+  },
+  filterModalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  filterModalCancel: {
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    alignItems: "center",
+  },
+  filterModalCancelText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "700",
+  },
+  calendarContainer: {
+    padding: 16,
+    backgroundColor: "white",
   },
   visitedSection: {
     marginTop: 16,

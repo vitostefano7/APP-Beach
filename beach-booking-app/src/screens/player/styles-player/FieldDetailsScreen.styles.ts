@@ -509,6 +509,24 @@ export const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
+  // Colored backgrounds for day states
+  dayCellAvailable: {
+    backgroundColor: "#E8F5E9",
+    borderRadius: 10,
+  },
+  dayCellPartial: {
+    backgroundColor: "#FFF3E0",
+    borderRadius: 10,
+  },
+  dayCellFull: {
+    backgroundColor: "#FFEBEE",
+    borderRadius: 10,
+  },
+  dayCellClosed: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+  },
+
   dayNumber: {
     fontSize: 12,
     fontWeight: "600",
@@ -525,18 +543,10 @@ export const styles = StyleSheet.create({
   dayNumberPast: {
     color: "#999",
   },
-
-  dayIndicator: {
-    position: "absolute",
-    bottom: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  dayNumberOnColored: {
+    color: "#333",
+    fontWeight: "700",
   },
-  indicatorAvailable: { backgroundColor: "#4CAF50" },
-  indicatorPartial: { backgroundColor: "#FF9800" },
-  indicatorFull: { backgroundColor: "#F44336" },
-  indicatorClosed: { backgroundColor: "#999" },
 
   dayDetail: {
     backgroundColor: "white",
@@ -904,10 +914,9 @@ export const styles = StyleSheet.create({
 
   // Navigation chips
   chipsContainer: {
-    backgroundColor: "white",
     paddingVertical: 12,
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 8, // reduced to bring chips closer to profile card
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -923,7 +932,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: "#E3F2FD",
+    backgroundColor: "white",
     borderWidth: 1.5,
     borderColor: "#90CAF9",
   },
@@ -957,7 +966,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },

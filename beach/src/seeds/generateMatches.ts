@@ -352,5 +352,18 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   console.log(`   - ${matchCounters.open} aperti`);
   console.log(`   - ${matchCounters.full} completi`);
 
+  // 🔥 AGGIORNA I BOOKING CON IL RIFERIMENTO AL MATCH
+  console.log(`🔄 Aggiornamento booking con riferimenti ai match...`);
+  const Booking = (await import("../models/Booking")).default;
+  
+  for (const match of savedMatches) {
+    await Booking.findByIdAndUpdate(match.booking, {
+      match: match._id,
+      hasMatch: true,
+      matchId: match._id.toString(),
+    });
+  }
+  console.log(`✅ Booking aggiornati con riferimenti ai match`);
+
   return savedMatches;
 }

@@ -53,7 +53,7 @@ import {
 
 export default function DettaglioPrenotazioneScreen() {
   console.log('🚀 [DettaglioPrenotazione] Componente inizializzato');
-  const { token, user } = useContext(AuthContext);
+  const { token, user, updateUser } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   console.log('🔍 [DettaglioPrenotazione] Route object:', route);
@@ -140,9 +140,37 @@ export default function DettaglioPrenotazioneScreen() {
   const [customAlertMessage, setCustomAlertMessage] = useState("");
   const [customAlertButtons, setCustomAlertButtons] = useState<Array<{text: string, onPress?: () => void, style?: 'default' | 'cancel' | 'destructive'}>>([]);
 
+  // Helper per confrontare utenti (con fallback a username/email se ID non disponibile)
+  const isSameUser = (userId: string | undefined, targetUser: any) => {
+    if (!targetUser) return false;
+    
+    // Prima prova con ID
+    if (userId && (userId === targetUser._id || userId === targetUser.id)) return true;
+    
+    // Fallback: confronta con username
+    if (user?.username && user.username === targetUser.username) return true;
+    
+    // Fallback: confronta email con email
+    if (user?.email && user.email === targetUser.email) return true;
+    
+    // Fallback: estrai username dall'email e confronta con username
+    if (user?.email && targetUser.username) {
+      const usernameFromEmail = user.email.split('@')[0];
+      if (usernameFromEmail === targetUser.username) return true;
+    }
+    
+    // Fallback: confronta email con username (caso inverso)
+    if (user?.username && targetUser.email) {
+      const usernameFromEmail = targetUser.email.split('@')[0];
+      if (user.username === usernameFromEmail) return true;
+    }
+    
+    return false;
+  };
+
   // Variabili calcolate basate su booking
-  const isCreator = booking?.match?.createdBy?._id === getUserId(user);
-  const currentUserPlayer = booking?.match?.players?.find(p => p.user._id === getUserId(user));
+  const isCreator = booking?.match?.createdBy ? isSameUser(getUserId(user), booking.match.createdBy) : false;
+  const currentUserPlayer = booking?.match?.players?.find(p => isSameUser(getUserId(user), p.user));
   const isPendingInvite = currentUserPlayer?.status === "pending";
   const isDeclined = currentUserPlayer?.status === "declined";
   const isConfirmed = currentUserPlayer?.status === "confirmed";
@@ -170,6 +198,39 @@ export default function DettaglioPrenotazioneScreen() {
   const unassignedPlayers = confirmedPlayers.filter(p => !p.team);
   const teamAConfirmed = confirmedPlayers.filter(p => p.team === "A");
   const teamBConfirmed = confirmedPlayers.filter(p => p.team === "B");
+
+  // Recupera l'ID utente dal backend se mancante
+  useEffect(() => {
+    const fetchUserIdIfMissing = async () => {
+      if (user && !getUserId(user) && token) {
+        console.log('🔄 [DettaglioPrenotazione] ID utente mancante, recupero dal backend...');
+        try {
+          const res = await fetch(`${API_URL}/users/me/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            const freshUser = data.user;
+            const updatedUser = {
+              ...user,
+              id: freshUser._id || freshUser.id,
+              _id: freshUser._id || freshUser.id,
+            };
+            console.log('✅ [DettaglioPrenotazione] ID utente recuperato:', updatedUser.id);
+            // Aggiorna il contesto auth
+            await updateUser(updatedUser);
+            // Ricarica i dati dopo l'aggiornamento
+            setTimeout(() => loadBooking(), 100);
+          }
+        } catch (error) {
+          console.error('❌ [DettaglioPrenotazione] Errore recupero ID:', error);
+        }
+      }
+    };
+    
+    fetchUserIdIfMissing();
+  }, []);
 
   useEffect(() => {
     if (!bookingId || bookingId === 'undefined') {
@@ -1050,6 +1111,14 @@ export default function DettaglioPrenotazioneScreen() {
     return match.status;
   };
 
+  console.log('🔍 [isCreator Debug]:', {
+    userId: getUserId(user),
+    userUsername: user?.username,
+    userEmail: user?.email,
+    createdBy: booking?.match?.createdBy,
+    isCreator,
+  });
+
   console.log('User status check:', {
     isCreator,
     currentUserPlayer: currentUserPlayer?.status,
@@ -1227,6 +1296,7 @@ export default function DettaglioPrenotazioneScreen() {
             matchStatus={getMatchStatus()}
             teamAPlayers={teamAConfirmed}
             teamBPlayers={teamBConfirmed}
+            showEditLabel={isCreator && getMatchStatus() !== "cancelled"}
           />
         </FadeInView>
       )}

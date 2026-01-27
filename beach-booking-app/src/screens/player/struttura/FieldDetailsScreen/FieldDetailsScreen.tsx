@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
 import { styles } from "../../styles-player/FieldDetailsScreen.styles";
+import { styles as strutturaStyles } from "../../styles-player/StrutturaDetailScreen.styles";
 import API_URL from "../../../../config/api";
 import { resolveImageUrl } from "../../../../utils/imageUtils";
 import OpenMatchCard from "../../dashboard/components/OpenMatchCard";
@@ -71,11 +72,126 @@ const DAYS_OF_WEEK = [
   { key: "sunday", label: "Domenica" },
 ];
 
+// Helper to normalize different openingHours shapes coming from the API or navigation params
+const IT_TO_EN_DAY_MAP: Record<string, string> = {
+  lunedi: 'monday',
+  lunedì: 'monday',
+  martedi: 'tuesday',
+  martedì: 'tuesday',
+  mercoledi: 'wednesday',
+  mercoledì: 'wednesday',
+  giovedi: 'thursday',
+  giovedì: 'thursday',
+  venerdi: 'friday',
+  venerdì: 'friday',
+  sabato: 'saturday',
+  domenica: 'sunday',
+};
+
+function normalizeOpeningHours(openingHours: any) {
+  if (!openingHours) return undefined;
+
+  // Try parse JSON strings
+  if (typeof openingHours === 'string') {
+    try {
+      openingHours = JSON.parse(openingHours);
+    } catch (e) {
+      // Some backends return the literal string "[object Object]" – treat as unavailable
+      if (openingHours === '[object Object]') return undefined;
+      return undefined;
+    }
+  }
+
+  // If it's an array, try to map by `day` field or index order
+  if (Array.isArray(openingHours)) {
+    const normalized: any = {};
+    openingHours.forEach((entry: any, idx: number) => {
+      if (!entry) return;
+      let key: string | null = null;
+      if (entry.day) {
+        const d = String(entry.day).toLowerCase();
+        key = IT_TO_EN_DAY_MAP[d] ?? (['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(d) ? d : null);
+      } else {
+        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        key = days[idx];
+      }
+      if (key) normalized[key] = entry;
+    });
+    return Object.keys(normalized).length ? normalized : undefined;
+  }
+
+  // If it's an object, map italian keys to english expected keys and strip accents/whitespace
+  if (typeof openingHours === 'object') {
+    const normalized: any = {};
+    Object.entries(openingHours).forEach(([k, v]) => {
+      let key = String(k).toLowerCase();
+      // strip accents
+      key = key.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+      key = key.replace(/\s+/g, '');
+      key = IT_TO_EN_DAY_MAP[key] ?? (['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(key) ? key : null);
+      if (key) normalized[key] = v;
+    });
+    return Object.keys(normalized).length ? normalized : undefined;
+  }
+
+  return undefined;
+}
+
 export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { struttura } = route.params ?? {};
   const { token } = useContext(AuthContext);
+
+  // Support receiving either a full `struttura` object or just a `strutturaId` in params
+  const { struttura: initialStruttura, strutturaId } = route.params ?? {};
+  const [strutturaState, setStrutturaState] = useState<any | null>(initialStruttura ?? null);
+  const struttura = strutturaState;
+
+  // If a full `struttura` object is passed via navigation params, normalize its openingHours immediately
+  useEffect(() => {
+    if (!initialStruttura || !initialStruttura.openingHours) return;
+    const normalized = normalizeOpeningHours(initialStruttura.openingHours);
+    if (normalized) {
+      setStrutturaState((prev) => (prev ? { ...prev, openingHours: normalized } : { ...initialStruttura, openingHours: normalized }));
+    } else {
+      setStrutturaState((prev) => (prev ? { ...prev, openingHours: undefined } : initialStruttura));
+    }
+  }, [initialStruttura]);
+
+  useEffect(() => {
+    if (!strutturaState && strutturaId) {
+      const loadStruttura = async () => {
+        try {
+          const res = await fetch(`${API_URL}/community/strutture/${strutturaId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+
+            // DEBUG: log raw openingHours from API to help diagnose missing hours
+            console.debug('RAW openingHours from API for struttura', strutturaId, ':', data.openingHours);
+
+            // Normalize openingHours robustly (supports stringified JSON, arrays, or italian keys)
+            const normalizedOH = normalizeOpeningHours(data.openingHours);
+            if (normalizedOH) {
+              data.openingHours = normalizedOH;
+            } else {
+              data.openingHours = undefined;
+            }
+
+            setStrutturaState(data);
+          } else {
+            console.error('❌ [FieldDetails] Error fetching struttura:', res.status);
+          }
+        } catch (error) {
+          console.error('❌ [FieldDetails] Exception fetching struttura:', error);
+        }
+      };
+
+      loadStruttura();
+    }
+  }, [strutturaId, token, strutturaState]);
   const scrollViewRef = useRef<ScrollView>(null);
   const galleryScrollViewRef = useRef<ScrollView>(null);
   const contentViewRef = useRef<View>(null);
@@ -101,10 +217,14 @@ export default function FieldDetailsScreen() {
   const [openingHoursExpanded, setOpeningHoursExpanded] = useState(true);
   
   // ✅ Navigation chips
-  const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite'>('campi');
+  const [activeChip, setActiveChip] = useState<'info' | 'campi' | 'partite' | 'post'>('campi');
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [sportFilter, setSportFilter] = useState<string | 'all'>('all');
+
+  // Posts
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   /* =======================
      INIT
@@ -249,6 +369,68 @@ export default function FieldDetailsScreen() {
     }
   };
 
+  // Follow / Unfollow for struttura (copied from StrutturaDetail)
+  const [followingInProgress, setFollowingInProgress] = useState(false);
+  const [isFollowingStruttura, setIsFollowingStruttura] = useState<boolean>(!!struttura?.isFollowing);
+  const [followersCount, setFollowersCount] = useState<number>(struttura?.followersCount || 0);
+
+  useEffect(() => {
+    setIsFollowingStruttura(!!struttura?.isFollowing);
+    setFollowersCount(struttura?.followersCount || 0);
+  }, [struttura?._id]);
+
+  const handleFollow = async () => {
+    if (!token || !struttura?._id || followingInProgress) return;
+
+    try {
+      setFollowingInProgress(true);
+
+      const response = await fetch(`${API_URL}/community/strutture/${struttura._id}/follow`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setIsFollowingStruttura(true);
+        setFollowersCount((c) => (c || 0) + 1);
+      } else {
+        console.error('❌ [FieldDetails] Error following');
+      }
+    } catch (error) {
+      console.error('❌ [FieldDetails] Exception following:', error);
+    } finally {
+      setFollowingInProgress(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!token || !struttura?._id || followingInProgress) return;
+
+    try {
+      setFollowingInProgress(true);
+
+      const response = await fetch(`${API_URL}/community/strutture/${struttura._id}/follow`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setIsFollowingStruttura(false);
+        setFollowersCount((c) => Math.max((c || 1) - 1, 0));
+      } else {
+        console.error('❌ [FieldDetails] Error unfollowing');
+      }
+    } catch (error) {
+      console.error('❌ [FieldDetails] Exception unfollowing:', error);
+    } finally {
+      setFollowingInProgress(false);
+    }
+  };
+
   const fetchOpenMatches = async () => {
     if (!token) return;
     
@@ -311,6 +493,30 @@ export default function FieldDetailsScreen() {
     }
   };
 
+  const fetchStrutturaPosts = async () => {
+    if (!token || !struttura?._id) return;
+
+    try {
+      setLoadingPosts(true);
+      const res = await fetch(`${API_URL}/community/strutture/${struttura._id}/posts?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setPosts(json.posts || []);
+      } else {
+        console.error('❌ [FieldDetails] Error loading posts:', res.status);
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error('❌ [FieldDetails] Exception loading posts:', error);
+      setPosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
   /* =======================
      MEMO
   ======================= */
@@ -323,10 +529,13 @@ export default function FieldDetailsScreen() {
     [struttura?.images]
   );
 
-  // ✅ Fetch open matches when switching to partite chip
+  // ✅ Fetch open matches or posts when switching to respective chips
   useEffect(() => {
     if (activeChip === 'partite' && openMatches.length === 0 && !loadingMatches) {
       fetchOpenMatches();
+    }
+    if (activeChip === 'post' && posts.length === 0 && !loadingPosts) {
+      fetchStrutturaPosts();
     }
   }, [activeChip]);
 
@@ -445,27 +654,79 @@ export default function FieldDetailsScreen() {
               />
             </Pressable>
           )}
-
-          {/* Bottone community */}
-          {token && (
-            <Pressable
-              style={styles.communityButton}
-              onPress={() => navigation.navigate("StrutturaDetail", { strutturaId: struttura._id })}
-            >
-              <Ionicons name="people" size={24} color="white" />
-            </Pressable>
-          )}
         </View>
 
-        {/* INFO SECTION */}
-        <View style={styles.infoSection}>
-          <View style={styles.nameRow}>
-            <Text style={styles.title}>{struttura.name}</Text>
-            {token && (
-              <Pressable style={styles.chatButtonCompact} onPress={startChat}>
-                <Ionicons name="chatbubble-outline" size={24} color="#2196F3" />
+        {/* PROFILE CARD (from StrutturaDetail) */}
+        <View style={strutturaStyles.profileCard}>
+          <View style={strutturaStyles.nameContainer}>
+            <Ionicons name="business" size={28} color="#2196F3" />
+            <Text style={strutturaStyles.name}>{struttura.name}</Text>
+          </View>
+
+          {/* Stats */}
+          <View style={strutturaStyles.statsContainer}>
+            <Pressable 
+              style={strutturaStyles.statItem}
+              onPress={() => navigation.navigate("StrutturaFollowers", { 
+                strutturaId: struttura._id,
+                strutturaName: struttura.name,
+                type: "followers"
+              })}
+            >
+              <Text style={strutturaStyles.statValue}>{followersCount || 0}</Text>
+              <Text style={strutturaStyles.statLabel}>Follower</Text>
+            </Pressable>
+            <Pressable 
+              style={strutturaStyles.statItem}
+              onPress={() => navigation.navigate("StrutturaFollowers", { 
+                strutturaId: struttura._id,
+                strutturaName: struttura.name,
+                type: "following"
+              })}
+            >
+              <Text style={strutturaStyles.statValue}>{struttura.fieldsCount || 0}</Text>
+              <Text style={strutturaStyles.statLabel}>Following</Text>
+            </Pressable>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={strutturaStyles.actionButtonsContainer}>
+            {isFollowingStruttura ? (
+              <Pressable
+                style={[strutturaStyles.followButton, strutturaStyles.unfollowButton]}
+                onPress={handleUnfollow}
+                disabled={followingInProgress}
+              >
+                {followingInProgress ? (
+                  <ActivityIndicator size="small" color="#F44336" />
+                ) : (
+                  <>
+                    <Ionicons name="remove-circle" size={20} color="#F44336" />
+                    <Text style={[strutturaStyles.followButtonText, strutturaStyles.unfollowButtonText]}>Smetti di seguire</Text>
+                  </>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable
+                style={strutturaStyles.followButton}
+                onPress={handleFollow}
+                disabled={followingInProgress}
+              >
+                {followingInProgress ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="add-circle" size={20} color="#fff" />
+                    <Text style={strutturaStyles.followButtonText}>Segui</Text>
+                  </>
+                )}
               </Pressable>
             )}
+
+            <Pressable style={strutturaStyles.chatButton} onPress={startChat}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#2196F3" />
+              <Text style={strutturaStyles.chatButtonText}>Chat</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -541,6 +802,29 @@ export default function FieldDetailsScreen() {
                 ]}
               >
                 Partite Aperte
+              </Text>
+            </Pressable>
+
+            {/* Post Chip */}
+            <Pressable
+              style={[
+                styles.chip,
+                activeChip === 'post' && styles.chipActive,
+              ]}
+              onPress={() => setActiveChip('post')}
+            >
+              <Ionicons
+                name="newspaper"
+                size={16}
+                color={activeChip === 'post' ? 'white' : '#2196F3'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  activeChip === 'post' && styles.chipTextActive,
+                ]}
+              >
+                Post
               </Text>
             </Pressable>
           </ScrollView>
@@ -947,6 +1231,12 @@ export default function FieldDetailsScreen() {
                                         !isSelected &&
                                         styles.dayCellToday,
                                       isPast && styles.dayCellPast,
+                                      !isSelected && dayData && !isPast && (
+                                        status === "available" ? styles.dayCellAvailable :
+                                        status === "partial" ? styles.dayCellPartial :
+                                        status === "full" ? styles.dayCellFull :
+                                        status === "closed" ? styles.dayCellClosed : null
+                                      ),
                                     ]}
                                     onPress={() => {
                                       if (isPast) return;
@@ -974,26 +1264,11 @@ export default function FieldDetailsScreen() {
                                           !isSelected &&
                                           styles.dayNumberToday,
                                         isPast && styles.dayNumberPast,
+                                        !isSelected && dayData && !isPast && styles.dayNumberOnColored,
                                       ]}
                                     >
                                       {date.getDate()}
                                     </Text>
-
-                                    {dayData && !isPast && (
-                                      <View
-                                        style={[
-                                          styles.dayIndicator,
-                                          status === "available" &&
-                                            styles.indicatorAvailable,
-                                          status === "partial" &&
-                                            styles.indicatorPartial,
-                                          status === "full" &&
-                                            styles.indicatorFull,
-                                          status === "closed" &&
-                                            styles.indicatorClosed,
-                                        ]}
-                                      />
-                                    )}
                                   </Pressable>
                                 </View>
                               );
@@ -1724,7 +1999,8 @@ export default function FieldDetailsScreen() {
             ) : (
               <FlatList
                 data={openMatches}
-                keyExtractor={(item) => item._id}
+                // Use the match `_id` as key; fallback to booking id if present
+                keyExtractor={(item) => item._id ?? item.booking?._id}
                 renderItem={({ item }) => (
                   <OpenMatchCard
                     match={item}
@@ -1743,6 +2019,67 @@ export default function FieldDetailsScreen() {
                 contentContainerStyle={{ gap: 12 }}
               />
             )}
+          </View>
+        )}
+
+        {/* POSTS SECTION */}
+        {activeChip === 'post' && (
+          <View style={strutturaStyles.postsSection}>
+            <View style={strutturaStyles.postsSectionHeader}>
+              <Text style={strutturaStyles.postsSectionTitle}>Post</Text>
+              {loadingPosts && <ActivityIndicator size="small" color="#2196F3" />}
+            </View>
+
+            {posts.length > 0 ? (
+              posts.map((post) => (
+                <View key={post._id} style={strutturaStyles.postCard}>
+                  <View style={strutturaStyles.postHeader}>
+                    <View style={strutturaStyles.postStrutturaAvatar}>
+                      {post.struttura?.images?.[0] ? (
+                        <Image
+                          source={{ uri: post.struttura.images[0] }}
+                          style={strutturaStyles.postStrutturaAvatarImage}
+                        />
+                      ) : (
+                        <Ionicons name="business" size={24} color="#2196F3" />
+                      )}
+                    </View>
+                    <View style={strutturaStyles.postHeaderText}>
+                      <Text style={strutturaStyles.postAuthor}>{post.struttura?.name}</Text>
+                      <Text style={strutturaStyles.postTime}>
+                        {new Date(post.createdAt).toLocaleDateString('it-IT')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={strutturaStyles.postContent}>{post.content}</Text>
+
+                  {post.image && (
+                    <Image
+                      source={{ uri: post.image }}
+                      style={strutturaStyles.postImage}
+                      resizeMode="cover"
+                    />
+                  )}
+
+                  <View style={strutturaStyles.postStats}>
+                    <View style={strutturaStyles.postStat}>
+                      <Ionicons name="heart-outline" size={18} color="#666" />
+                      <Text style={strutturaStyles.postStatText}>{post.likes?.length || 0}</Text>
+                    </View>
+                    <View style={strutturaStyles.postStat}>
+                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
+                      <Text style={strutturaStyles.postStatText}>{post.comments?.length || 0}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))
+            ) : !loadingPosts ? (
+              <View style={strutturaStyles.emptyPosts}>
+                <Ionicons name="newspaper-outline" size={48} color="#ccc" />
+                <Text style={strutturaStyles.emptyPostsText}>Nessun post pubblicato</Text>
+              </View>
+            ) : null}
           </View>
         )}
 

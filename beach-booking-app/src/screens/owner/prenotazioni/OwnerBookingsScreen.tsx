@@ -47,9 +47,22 @@ interface Booking {
   endTime: string;
   price: number;
   status: "confirmed" | "cancelled";
+  hasMatch?: boolean;
+  matchId?: string;
   match?: {
-    winner: "A" | "B";
-    sets: { teamA: number; teamB: number }[];
+    _id: string;
+    status: string;
+    maxPlayers: number;
+    isPublic: boolean;
+    players?: Array<{
+      user: any;
+      status: "confirmed" | "pending" | "declined";
+      team?: "A" | "B";
+    }>;
+    score?: {
+      winner: "A" | "B";
+      sets: { teamA: number; teamB: number }[];
+    };
   };
 }
 
@@ -177,6 +190,158 @@ const getTimeStatus = (booking: Booking): string => {
   }
 };
 
+// Verifica se il match è in corso
+const isMatchInProgress = (booking: Booking): boolean => {
+  if (!booking) return false;
+  const now = new Date();
+  const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+  const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+  return now >= matchDateTime && now <= matchEndTime;
+};
+
+// Verifica se il match è passato
+const isMatchPassed = (booking: Booking): boolean => {
+  if (!booking) return false;
+  const now = new Date();
+  const matchEndTime = new Date(`${booking.date}T${booking.endTime}`);
+  return now > matchEndTime;
+};
+
+// Ottieni lo stato effettivo del match
+const getMatchStatus = (booking: Booking): string | null => {
+  // Se non c'è match, ritorna null
+  if (!booking.hasMatch && !booking.match) {
+    return null;
+  }
+
+  const match = booking.match;
+  if (!match) {
+    return null;
+  }
+
+  const confirmedPlayers = match.players?.filter(p => p.status === "confirmed").length || 0;
+  const isPublic = match.isPublic;
+  const teamsIncomplete = confirmedPlayers < match.maxPlayers;
+
+  // Se il match è in corso
+  if (isMatchInProgress(booking) && match.status !== "completed" && match.status !== "cancelled") {
+    if (isPublic && teamsIncomplete) {
+      return "cancelled";
+    }
+    return "in_progress";
+  }
+
+  // Se il match è passato
+  if (isMatchPassed(booking) && match.status !== "cancelled") {
+    if (isPublic && teamsIncomplete) {
+      return "cancelled";
+    }
+    
+    if (!match.score || match.score.sets.length === 0) {
+      return "not_completed";
+    }
+    
+    if (match.score && match.score.sets.length > 0) {
+      return "completed";
+    }
+  }
+
+  // Se il match non è ancora iniziato e i team non sono completi
+  if (!isMatchPassed(booking) && match.status === "open") {
+    if (teamsIncomplete) {
+      return "not_team_completed";
+    }
+  }
+
+  return match.status;
+};
+
+// Ottieni le info del badge del match
+const getMatchBadgeInfo = (booking: Booking): { text: string; color: string; bgColor: string; icon: string } | null => {
+  // Se non c'è match, ritorna null
+  if (!booking.hasMatch && !booking.match) {
+    return null;
+  }
+  
+  const matchStatus = getMatchStatus(booking);
+  
+  if (!matchStatus) {
+    return null;
+  }
+
+  const match = booking.match;
+  if (!match) {
+    return null;
+  }
+
+  const confirmedPlayers = match.players?.filter(p => p.status === "confirmed").length || 0;
+
+  switch (matchStatus) {
+    case "not_team_completed":
+      return {
+        text: `Team incompleti (${confirmedPlayers}/${match.maxPlayers})`,
+        color: "#FF9800",
+        bgColor: "#FFF3E0",
+        icon: "people-outline"
+      };
+    case "not_completed":
+      // Se i team non sono completi mostriamo una badge "Team incompleti" invece di "Risultato mancante"
+      if (confirmedPlayers < (match?.maxPlayers || 0)) {
+        return {
+          text: `Team incompleti (${confirmedPlayers}/${match.maxPlayers})`,
+          color: "#FF9800",
+          bgColor: "#FFF3E0",
+          icon: "people-outline"
+        };
+      }
+
+      return {
+        text: "Risultato mancante",
+        color: "#FF9800",
+        bgColor: "#FFF3E0",
+        icon: "clipboard-outline"
+      };
+    case "cancelled":
+      return {
+        text: "Match cancellato",
+        color: "#F44336",
+        bgColor: "#FFEBEE",
+        icon: "close-circle-outline"
+      };
+    case "in_progress":
+      return {
+        text: "Match in corso",
+        color: "#4CAF50",
+        bgColor: "#E8F5E9",
+        icon: "play-circle-outline"
+      };
+    case "completed":
+      return {
+        text: "Match completato",
+        color: "#4CAF50",
+        bgColor: "#E8F5E9",
+        icon: "trophy-outline"
+      };
+    case "open":
+      if (confirmedPlayers < match.maxPlayers) {
+        return {
+          text: `Giocatori: ${confirmedPlayers}/${match.maxPlayers}`,
+          color: "#2196F3",
+          bgColor: "#E3F2FD",
+          icon: "people-outline"
+        };
+      }
+      return {
+        text: "Match completo",
+        color: "#4CAF50",
+        bgColor: "#E8F5E9",
+        icon: "checkmark-circle-outline"
+      };
+    default:
+      return null;
+  }
+};
+
 /* =========================
    INFO ROW COMPONENT
 ========================= */
@@ -191,21 +356,30 @@ const InfoRow = ({ icon, text }: { icon: string; text: string }) => (
    BOOKING CARD
 ========================= */
 function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) {
+  const navigation = useNavigation<any>();
+  const { user } = useContext(AuthContext);
   const isPast = isPastBooking(item);
   const isOngoing = isOngoingBooking(item);
   const isUpcoming = isUpcomingBooking(item);
   const isCancelled = item.status === "cancelled";
   const timeStatus = getTimeStatus(item);
+  const matchBadgeInfo = getMatchBadgeInfo(item);
+  const matchStatus = getMatchStatus(item);
+  const needsScore = matchStatus === "not_completed" && isMatchPassed(item);
 
+  // Team completeness
+  const match = item.match;
+  const maxPlayersPerTeam = match ? Math.floor(match.maxPlayers / 2) : 0;
+  const teamAConfirmed = match?.players?.filter(p => p.status === 'confirmed' && p.team === 'A').length || 0;
+  const teamBConfirmed = match?.players?.filter(p => p.status === 'confirmed' && p.team === 'B').length || 0;
+  const teamsComplete = teamAConfirmed === maxPlayersPerTeam && teamBConfirmed === maxPlayersPerTeam;
 
-  // DEBUG: logga avatarUrl e user
-  console.log('[BookingCard] user:', item.user);
-  console.log('[BookingCard] avatarUrl:', item.user?.avatarUrl);
+  const canOwnerInsert = needsScore && user?.role === 'owner' && teamsComplete;
+
   return (
     <Pressable
       style={[
         styles.card,
-        isPast && !isCancelled && styles.pastCard,
         isOngoing && styles.ongoingCard,
         isCancelled && styles.cancelledCard,
       ]}
@@ -244,6 +418,16 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
                   )}
                 </View>
             )}
+            
+            {/* Match Status Badge - sotto lo stato temporale */}
+            {matchBadgeInfo && (
+              <View style={[styles.matchStatusBadgeInline, { backgroundColor: matchBadgeInfo.bgColor }]}>
+                <Ionicons name={matchBadgeInfo.icon as any} size={12} color={matchBadgeInfo.color} />
+                <Text style={[styles.matchStatusTextInline, { color: matchBadgeInfo.color }]}>
+                  {matchBadgeInfo.text}
+                </Text>
+              </View>
+            )}
         </View>
       </View>
 
@@ -277,6 +461,25 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
              <Text style={styles.locationText}>{formatSportName(item.campo.sport)}</Text>
         </View>
       </View>
+
+      {/* PULSANTE INSERIMENTO RISULTATO */}
+      {canOwnerInsert && (
+        <View style={styles.scoreButtonContainer}>
+          <Pressable
+            style={styles.scoreButton}
+            onPress={() => {
+              navigation.navigate("OwnerDettaglioPrenotazione", {
+                bookingId: item._id,
+                openScoreEntry: true,
+              });
+            }}
+          >
+            <Ionicons name="clipboard" size={18} color="#FF9800" />
+            <Text style={styles.scoreButtonText}>Inserisci risultato</Text>
+            <Ionicons name="chevron-forward" size={16} color="#FF9800" />
+          </Pressable>
+        </View>
+      )}
 
       {/* FOOTER */}
       <View style={styles.cardFooterBlue}>
@@ -1159,9 +1362,6 @@ const styles = StyleSheet.create({
     borderColor: "#e9ecef",
     overflow: "hidden",
   },
-  pastCard: {
-    opacity: 0.7,
-  },
   ongoingCard: {
     borderLeftWidth: 5,
     borderLeftColor: "#4CAF50",
@@ -1202,6 +1402,7 @@ const styles = StyleSheet.create({
   },
   statusBadgeContainer: {
     marginLeft: 12,
+    gap: 6,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -1272,6 +1473,75 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
     flex: 1,
+  },
+
+  // MATCH STATUS BADGE
+  matchStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: "flex-start",
+  },
+  matchStatusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  matchStatusBadgeInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignSelf: "flex-end",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  matchStatusTextInline: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+
+  // SCORE BUTTON
+  scoreButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#FFF8E1",
+    borderTopWidth: 1,
+    borderTopColor: "#FFE082",
+  },
+  scoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "white",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#FF9800",
+    shadowColor: "#FF9800",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scoreButtonText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#FF9800",
+    letterSpacing: 0.3,
   },
 
   // CARD FOOTER
