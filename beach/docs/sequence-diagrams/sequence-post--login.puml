@@ -1,0 +1,12 @@
+@startuml
+title POST /login
+
+actor Client
+participant Router
+participant login
+
+Client -> Router: POST /login
+Router -> login: login()
+login --> Router: response
+Router --> Client: JSON
+@enduml

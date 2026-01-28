@@ -1,0 +1,19 @@
+@startuml
+title GET /strutture
+
+actor Client
+participant Router
+participant getMyStrutture
+
+Client -> Router: GET /strutture
+Router -> getMyStrutture: getMyStrutture()
+note right of getMyStrutture
+auth: user
+end note
+getMyStrutture -> Strutture: find(owner)
+Strutture -> MongoDB: query
+MongoDB --> Strutture: result
+Strutture --> getMyStrutture: data
+getMyStrutture --> Router: response
+Router --> Client: JSON
+@enduml

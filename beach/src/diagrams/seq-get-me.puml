@@ -1,0 +1,41 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title GET /me
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "getMyBookings" as Controller
+database MongoDB
+
+Client -> Router: GET /me
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: getMyBookings()
+activate Controller
+
+autonumber
+Controller -> MongoDB: Booking.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Match.find()
+MongoDB --> Controller: result
+note over Controller: Initialize new Set
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

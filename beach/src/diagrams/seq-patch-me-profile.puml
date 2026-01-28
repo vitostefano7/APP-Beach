@@ -1,0 +1,38 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title PATCH /me/profile
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "updatePlayerProfile" as Controller
+database MongoDB
+
+Client -> Router: PATCH /me/profile
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: updatePlayerProfile()
+activate Controller
+
+autonumber
+Controller -> MongoDB: PlayerProfile.find()
+MongoDB --> Controller: result
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

@@ -1,0 +1,43 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title GET /preferences/favorites
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "getFavoriteStrutture" as Controller
+database MongoDB
+
+Client -> Router: GET /preferences/favorites
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> Controller: getFavoriteStrutture()
+activate Controller
+
+autonumber
+Controller -> MongoDB: UserPreferences.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Struttura.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Campo.find()
+MongoDB --> Controller: result
+note over Controller: Initialize new Set
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

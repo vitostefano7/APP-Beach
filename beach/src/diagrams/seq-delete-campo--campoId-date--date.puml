@@ -1,0 +1,52 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title DELETE /campo/:campoId/date/:date
+
+actor Client
+participant "Express Router" as Router
+participant "requireAuth" as requireAuth
+participant "ownerOnly" as ownerOnly
+participant "closeCalendarDay" as Controller
+database MongoDB
+
+Client -> Router: DELETE /campo/:campoId/date/:date
+activate Router
+Router -> requireAuth: execute
+activate requireAuth
+requireAuth --> Router: next()
+deactivate requireAuth
+Router -> ownerOnly: execute
+activate ownerOnly
+ownerOnly --> Router: next()
+deactivate ownerOnly
+Router -> Controller: closeCalendarDay()
+activate Controller
+
+autonumber
+Controller -> MongoDB: Campo.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: CampoCalendarDay.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Booking.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Booking.update()
+MongoDB --> Controller: result
+Controller -> MongoDB: Day.save()
+MongoDB --> Controller: result
+note over Controller: Validate Input / Check Existence
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

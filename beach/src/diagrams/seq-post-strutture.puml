@@ -1,0 +1,33 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title POST /strutture
+
+actor Client
+participant "Express Router" as Router
+participant "createStruttura" as Controller
+database MongoDB
+
+Client -> Router: POST /strutture
+activate Router
+Router -> Controller: createStruttura()
+activate Controller
+
+autonumber
+Controller -> MongoDB: Strutture.create()
+MongoDB --> Controller: result
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

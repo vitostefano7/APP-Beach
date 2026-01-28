@@ -1,0 +1,36 @@
+@startuml
+skinparam Style strictuml
+skinparam sequence {
+  ParticipantPadding 30
+  MessageAlign center
+}
+
+title GET /
+
+actor Client
+participant "Express Router" as Router
+participant "getStrutture" as Controller
+database MongoDB
+
+Client -> Router: GET /
+activate Router
+Router -> Controller: getStrutture()
+activate Controller
+
+autonumber
+Controller -> MongoDB: Struttura.find()
+MongoDB --> Controller: result
+Controller -> MongoDB: Campo.find()
+MongoDB --> Controller: result
+note over Controller: Initialize new Set
+
+alt success
+  Controller --> Client: res.json(data)
+else catch (error)
+  Controller --> Client: res.status(500)
+end
+
+deactivate Controller
+Router --> Client: HTTP Response
+deactivate Router
+@enduml

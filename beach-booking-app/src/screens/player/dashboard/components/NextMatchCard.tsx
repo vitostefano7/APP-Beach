@@ -1,0 +1,267 @@
+import React, { useState, useContext } from 'react';
+import { View, Text, Image, Pressable, Alert, ActivityIndicator, Linking } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import API_URL from "../../../../config/api";
+import { resolveImageUrl } from "../../../../utils/imageUtils";
+import { AuthContext } from "../../../../context/AuthContext";
+import { formatDate, calculateDaysUntil } from "../utils/dateFormatter";
+import { styles } from "../styles";
+
+interface NextMatchCardProps {
+  booking: any;
+  onPress: () => void;
+}
+
+const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
+  const navigation = useNavigation<any>();
+  const { token } = useContext(AuthContext);
+  const [loadingChat, setLoadingChat] = useState(false);
+  
+  const displayDate = formatDate(booking.date);
+  const daysUntil = calculateDaysUntil(booking.date);
+
+  // Verifica se la partita è in corso
+  const isMatchInProgress = () => {
+    try {
+      const now = new Date();
+      const bookingStartTime = new Date(`${booking.date}T${booking.startTime}:00`);
+      const bookingEndTime = new Date(`${booking.date}T${booking.endTime}:00`);
+      return now >= bookingStartTime && now <= bookingEndTime;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const handleOpenGroupChat = async () => {
+    try {
+      const matchId = booking.match?._id || booking.matchId;
+      if (!matchId || matchId === "undefined") {
+        Alert.alert("Errore", "Nessun match associato a questa prenotazione");
+        return;
+      }
+
+      setLoadingChat(true);
+
+      // Ottieni o crea la conversazione di gruppo
+      const response = await fetch(
+        `${API_URL}/api/conversations/match/${matchId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Errore apertura chat');
+      }
+
+      const conversation = await response.json();
+
+      // Naviga alla chat di gruppo
+      navigation.navigate("GroupChat", {
+        conversationId: conversation._id,
+        groupName: conversation.groupName,
+        matchId,
+      });
+    } catch (error: any) {
+      console.error("Errore apertura chat gruppo:", error);
+      Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
+    } finally {
+      setLoadingChat(false);
+    }
+  };
+
+  const handleOpenMaps = () => {
+    const location = booking.campo?.struttura?.location;
+    if (!location) {
+      Alert.alert("Errore", "Indirizzo non disponibile");
+      return;
+    }
+
+    const { address, city } = location;
+    const query = address ? `${address}, ${city}` : city;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Errore", "Impossibile aprire Google Maps");
+    });
+  };
+
+  const matchInProgress = isMatchInProgress();
+
+  const now = new Date();
+  const matchStart = new Date(`${booking.date}T${booking.startTime}:00`);
+  const hoursUntil = (matchStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  // Debug players
+  console.log("NextMatchCard - hasMatch:", booking.hasMatch);
+  console.log("NextMatchCard - players:", booking.players);
+  console.log("NextMatchCard - players length:", booking.players?.length);
+
+  return (
+    <Pressable style={[styles.nextMatchCard, matchInProgress && { borderWidth: 2, borderColor: '#4CAF50' }]} onPress={onPress}>
+      {/* Immagine in alto */}
+      <View style={styles.matchImageContainer}>
+        {booking.campo?.struttura?.images?.[0] && (
+          <Image
+            source={{ uri: resolveImageUrl(booking.campo.struttura.images[0]) }}
+            style={styles.matchImage}
+          />
+        )}
+        <View style={styles.matchOverlay} />
+        
+        <View style={[
+          styles.matchTimeBadge,
+          { backgroundColor: '#4CAF50' }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="time-outline" size={14} color="white" style={{ marginRight: 4 }} />
+            {matchInProgress ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>IN CORSO</Text>
+            ) : hoursUntil < 0 ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>PASSATA</Text>
+            ) : hoursUntil < 24 ? (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>Tra {Math.ceil(hoursUntil)}h</Text>
+            ) : (
+              <Text style={[styles.matchTimeText, { color: 'white' }]}>Tra {Math.ceil(hoursUntil / 24)}g</Text>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* Contenuto sotto l'immagine */}
+      <View style={styles.matchContent}>
+        <View style={styles.matchInfoRow}>
+          {/* Data, orario e location */}
+          <View style={styles.matchInfoLeft}>
+            <View style={styles.matchInfoSection}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="calendar-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
+                <Text style={styles.matchDay}>{displayDate}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="time-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
+                <Text style={styles.matchTime}>
+                  {booking.startTime} - {booking.endTime}
+                </Text>
+              </View>
+            </View>
+
+            {/* Location */}
+            <View style={styles.matchLocation}>
+              <Ionicons name="location-outline" size={16} color="#2196F3" style={{ marginRight: 4 }} />
+              <Text style={styles.matchLocationText}>
+                {booking.campo?.struttura?.name}{'\n'}{booking.campo?.struttura?.location?.address || 'Indirizzo non disponibile'} - {booking.campo?.struttura?.location?.city || ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* Avatar partecipanti */}
+          {booking.players && booking.players.length > 0 ? (
+            <View style={[styles.playersAvatarContainer, { flexDirection: 'column' }]}>
+              {(() => {
+                const totalPlayers = booking.players.length;
+                const displayPlayers = booking.players.slice(0, Math.min(totalPlayers, 8));
+                const displayCount = displayPlayers.length;
+                const firstRowCount = displayCount <= 4 ? displayCount : Math.ceil(displayCount / 2);
+                const secondRowCount = displayCount - firstRowCount;
+                
+                return (
+                  <>
+                    <View style={{ flexDirection: 'row' }}>
+                      {displayPlayers.slice(0, firstRowCount).map((player: any, index: number) => (
+                        <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - index }]}>
+                          {player.user?.avatarUrl ? (
+                            <Image 
+                              source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
+                              style={styles.avatarImage}
+                            />
+                          ) : (
+                            <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
+                              <Text style={styles.avatarInitial}>
+                                {player.user?.name?.charAt(0).toUpperCase() || '?'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                    {secondRowCount > 0 && (
+                      <View style={{ flexDirection: 'row' }}>
+                        {displayPlayers.slice(firstRowCount).map((player: any, index: number) => (
+                          <View key={player._id || index} style={[styles.playerAvatar, { zIndex: 4 - (index + firstRowCount) }]}>
+                            {player.user?.avatarUrl ? (
+                              <Image 
+                                source={{ uri: resolveImageUrl(player.user.avatarUrl) }} 
+                                style={styles.avatarImage}
+                              />
+                            ) : (
+                              <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
+                                <Text style={styles.avatarInitial}>
+                                  {player.user?.name?.charAt(0).toUpperCase() || '?'}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                        {totalPlayers > 8 && (
+                          <View style={[styles.playerAvatar, styles.morePlayersAvatar]}>
+                            <Text style={styles.morePlayersText}>+{totalPlayers - 8}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
+            </View>
+          ) : null}
+        </View>
+
+        {/* Pulsanti azioni */}
+        {booking.hasMatch && (
+          <View style={styles.matchActions}>
+            <Pressable
+              style={styles.matchActionButton}
+              onPress={(event) => {
+                event?.stopPropagation?.();
+                handleOpenMaps();
+              }}
+            >
+              <Ionicons name="navigate" size={20} color="#2196F3" />
+              <Text style={styles.matchActionText}>Indicazioni</Text>
+            </Pressable>
+            <Pressable 
+              style={[styles.matchActionButton, styles.matchActionButton, loadingChat && { opacity: 0.6 }]}
+              onPress={handleOpenGroupChat}
+              disabled={loadingChat}
+            >
+              {loadingChat ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="chatbubble-ellipses-outline" size={20} color="#2196F3" />
+                  <Text style={styles.matchActionText}>Chat Partita</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+};
+
+// Componenti separati per titolo e link
+NextMatchCard.Title = () => (
+  <Text style={styles.sectionTitle}>La tua prossima partita</Text>
+);
+
+NextMatchCard.Link = () => (
+  <Text style={styles.sectionLink}>Calendario</Text>
+);
+
+export default NextMatchCard;

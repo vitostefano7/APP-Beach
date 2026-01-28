@@ -1,0 +1,15 @@
+@startuml
+title GET /:id
+
+actor Client
+participant Router
+participant getStrutturaById
+
+Client -> Router: GET /:id
+Router -> getStrutturaById: getStrutturaById()
+note right of getStrutturaById
+params: { id }
+end note
+getStrutturaById --> Router: response
+Router --> Client: JSON
+@enduml
