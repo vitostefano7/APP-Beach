@@ -1,0 +1,1 @@
+export { CommunityTabBar } from './CommunityTabBar';
