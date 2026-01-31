@@ -378,7 +378,7 @@ const NotificheScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Ionicons name="arrow-back" size={23} color="#000" />
           </Pressable>
           <Text style={styles.headerTitle}>Notifiche</Text>
 

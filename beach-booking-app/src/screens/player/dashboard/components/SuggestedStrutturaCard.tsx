@@ -49,7 +49,7 @@ export const SuggestedStrutturaCard: React.FC<SuggestedStrutturaCardProps> = ({
       
       if (reasonType === 'played') {
         color = '#2196F3';
-        icon = 'trophy';
+        icon = 'trophy-outline';
         text = 'Giocato';
       } else if (reasonType === 'followed_by_friends') {
         color = '#FF9800';

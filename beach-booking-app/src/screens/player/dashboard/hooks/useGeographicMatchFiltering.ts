@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type GeographicFilterMode = 'gps' | 'preferred' | 'visited' | 'none';
 
@@ -31,12 +32,87 @@ export const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2
   return R * c;
 };
 
+// Cache GPS: 15 minuti di validità
+const GPS_CACHE_DURATION = 15 * 60 * 1000; // 15 minuti in millisecondi
+// Tempo di attesa prima di riprovare dopo un rifiuto: 1 ora
+const GPS_DENIED_RETRY_DURATION = 60 * 60 * 1000; // 1 ora in millisecondi
+
+// Keys per AsyncStorage
+const STORAGE_KEYS = {
+  GPS_COORDS: '@beach_gps_coords',
+  GPS_TIMESTAMP: '@beach_gps_timestamp',
+  GPS_PERMISSION_DENIED: '@beach_gps_permission_denied',
+};
+
 export const useGeographicMatchFiltering = (token: string | null) => {
   const [userPreferences, setUserPreferences] = useState<any>(null);
   const [visitedStruttureIds, setVisitedStruttureIds] = useState<string[]>([]);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsTimestamp, setGpsTimestamp] = useState<number | null>(null);
+  const [gpsPermissionDenied, setGpsPermissionDenied] = useState<number | null>(null);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
   const [isLoadingGPS, setIsLoadingGPS] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Carica i dati persistiti all'avvio
+  useEffect(() => {
+    const loadPersistedGPSData = async () => {
+      try {
+        console.log("🔄 [GPS Cache] Caricamento dati persistiti...");
+        
+        const [coords, timestamp, denied] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.GPS_COORDS),
+          AsyncStorage.getItem(STORAGE_KEYS.GPS_TIMESTAMP),
+          AsyncStorage.getItem(STORAGE_KEYS.GPS_PERMISSION_DENIED),
+        ]);
+
+        if (coords && timestamp) {
+          const parsedCoords = JSON.parse(coords);
+          const parsedTimestamp = parseInt(timestamp);
+          const now = Date.now();
+          const age = now - parsedTimestamp;
+
+          if (age < GPS_CACHE_DURATION) {
+            setGpsCoords(parsedCoords);
+            setGpsTimestamp(parsedTimestamp);
+            const minutesRemaining = Math.floor((GPS_CACHE_DURATION - age) / 60000);
+            console.log(`✅ [GPS Cache] Dati GPS caricati - validi per ${minutesRemaining} min`);
+            console.log(`📍 [GPS Cache] Coordinate:`, parsedCoords);
+          } else {
+            console.log("⚠️ [GPS Cache] Dati GPS scaduti - verranno richiesti");
+            // Pulisci i dati scaduti
+            await AsyncStorage.multiRemove([STORAGE_KEYS.GPS_COORDS, STORAGE_KEYS.GPS_TIMESTAMP]);
+          }
+        } else {
+          console.log("ℹ️ [GPS Cache] Nessun dato GPS salvato");
+        }
+
+        if (denied) {
+          const parsedDenied = parseInt(denied);
+          const now = Date.now();
+          const timeSinceDenied = now - parsedDenied;
+
+          if (timeSinceDenied < GPS_DENIED_RETRY_DURATION) {
+            setGpsPermissionDenied(parsedDenied);
+            const minutesRemaining = Math.floor((GPS_DENIED_RETRY_DURATION - timeSinceDenied) / 60000);
+            console.log(`⚠️ [GPS Cache] Permessi GPS negati - riproverò tra ${minutesRemaining} min`);
+          } else {
+            console.log("ℹ️ [GPS Cache] Tempo scaduto dal rifiuto GPS - posso riprovare");
+            await AsyncStorage.removeItem(STORAGE_KEYS.GPS_PERMISSION_DENIED);
+          }
+        } else {
+          console.log("ℹ️ [GPS Cache] Nessun rifiuto GPS salvato");
+        }
+
+        setInitialized(true);
+      } catch (error) {
+        console.error("❌ [GPS Cache] Errore caricamento dati:", error);
+        setInitialized(true);
+      }
+    };
+
+    loadPersistedGPSData();
+  }, []);
 
   const loadUserPreferences = useCallback(async () => {
     if (!token) return;
@@ -86,14 +162,64 @@ export const useGeographicMatchFiltering = (token: string | null) => {
   }, [token]);
 
   const requestGPSLocation = useCallback(async () => {
-    if (!token || gpsCoords) return; // Non sovrascrivere se già disponibile
+    // Aspetta che i dati persistiti siano caricati
+    if (!initialized) {
+      console.log("⏳ [GPS] In attesa dell'inizializzazione...");
+      return;
+    }
+
+    console.log("\n🔍 [GPS] === DEBUG RICHIESTA GPS ===");
+    console.log("📊 [GPS] Stato corrente:");
+    console.log("   - GPS Coords:", gpsCoords ? `${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)}` : 'null');
+    console.log("   - GPS Timestamp:", gpsTimestamp ? new Date(gpsTimestamp).toLocaleString('it-IT') : 'null');
+    console.log("   - Permission Denied:", gpsPermissionDenied ? new Date(gpsPermissionDenied).toLocaleString('it-IT') : 'null');
+
+    // Verifica se l'utente ha negato i permessi recentemente
+    if (gpsPermissionDenied) {
+      const now = Date.now();
+      const timeSinceDenied = now - gpsPermissionDenied;
+      
+      if (timeSinceDenied < GPS_DENIED_RETRY_DURATION) {
+        const minutesRemaining = Math.floor((GPS_DENIED_RETRY_DURATION - timeSinceDenied) / 60000);
+        console.log(`⚠️ [GPS] Permessi negati - riproverò tra ${minutesRemaining} minuti`);
+        return; // Non richiedere ancora
+      } else {
+        console.log("📍 [GPS] Tempo scaduto dal rifiuto, riprovo a richiedere GPS...");
+        setGpsPermissionDenied(null);
+        await AsyncStorage.removeItem(STORAGE_KEYS.GPS_PERMISSION_DENIED);
+      }
+    }
+    
+    // Verifica se la cache GPS è ancora valida
+    if (gpsCoords && gpsTimestamp) {
+      const now = Date.now();
+      const cacheAge = now - gpsTimestamp;
+      
+      if (cacheAge < GPS_CACHE_DURATION) {
+        const minutesRemaining = Math.floor((GPS_CACHE_DURATION - cacheAge) / 60000);
+        console.log(`✅ [GPS] Cache valida - riutilizzo per ${minutesRemaining} min`);
+        console.log(`📍 [GPS] Coordinate: ${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)}`);
+        return; // Usa la posizione in cache
+      } else {
+        console.log("⏰ [GPS] Cache scaduta, richiedo nuova posizione...");
+      }
+    } else {
+      console.log("ℹ️ [GPS] Nessuna cache disponibile, richiedo posizione...");
+    }
+
+    if (!token) {
+      console.log("❌ [GPS] Token non disponibile");
+      return;
+    }
 
     setIsLoadingGPS(true);
-    console.log("📍 [GeographicFilter] Richiesta posizione GPS...");
+    console.log("📡 [GPS] Richiesta permessi al sistema...");
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log("📋 [GPS] Risposta permessi:", status);
 
       if (status === "granted") {
+        console.log("✅ [GPS] Permessi accettati, ottengo posizione...");
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -102,18 +228,39 @@ export const useGeographicMatchFiltering = (token: string | null) => {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
         };
+        const now = Date.now();
 
         setGpsCoords(coords);
-        console.log("📍 [GeographicFilter] GPS ottenuto:", coords);
+        setGpsTimestamp(now);
+        setGpsPermissionDenied(null);
+        
+        // Salva in AsyncStorage
+        await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEYS.GPS_COORDS, JSON.stringify(coords)),
+          AsyncStorage.setItem(STORAGE_KEYS.GPS_TIMESTAMP, now.toString()),
+          AsyncStorage.removeItem(STORAGE_KEYS.GPS_PERMISSION_DENIED),
+        ]);
+        
+        console.log("✅ [GPS] Posizione ottenuta e salvata:", coords);
+        console.log("💾 [GPS] Dati persistiti in AsyncStorage");
       } else {
-        console.log("⚠️ [GeographicFilter] Permesso GPS negato");
+        // Permessi negati - salva il timestamp
+        const now = Date.now();
+        setGpsPermissionDenied(now);
+        
+        await AsyncStorage.setItem(STORAGE_KEYS.GPS_PERMISSION_DENIED, now.toString());
+        
+        console.log("❌ [GPS] Permessi negati dall'utente");
+        console.log("💾 [GPS] Stato negato salvato - non chiederò per 1 ora");
+        console.log("💡 [GPS] Userò città preferita o strutture visitate");
       }
     } catch (gpsError) {
-      console.log("⚠️ [GeographicFilter] Errore GPS:", gpsError);
+      console.error("❌ [GPS] Errore durante la richiesta:", gpsError);
     } finally {
       setIsLoadingGPS(false);
+      console.log("🏁 [GPS] === FINE DEBUG RICHIESTA GPS ===\n");
     }
-  }, [token, gpsCoords]);
+  }, [token, gpsCoords, gpsTimestamp, gpsPermissionDenied, initialized]);
 
   const filterMatchesByGeography = useCallback((
     matches: any[],

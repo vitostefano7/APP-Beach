@@ -6,6 +6,285 @@ export const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
 
+  // Nuovo Header Design
+  newHeader: {
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8E8E8",
+  },
+
+  newSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+
+  newSearchBox: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    height: 44,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    gap: 8,
+  },
+
+  newSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#333",
+  },
+
+  filterIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+
+  filterBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: "#FF5252",
+    borderWidth: 1,
+    borderColor: "white",
+  },
+
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    marginBottom: 12,
+    gap: 8,
+  },
+
+  locationSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+
+  locationText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+
+  showMapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 6,
+    marginLeft: "auto",
+  },
+
+  showMapText: {
+    fontSize: 13,
+    color: "#2979ff",
+    fontWeight: "600",
+  },
+
+  sportChipsContainer: {
+    marginBottom: 8,
+  },
+
+  sportChipsContent: {
+    gap: 10,
+    paddingVertical: 4,
+  },
+
+  sportChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "white",
+    borderWidth: 1.5,
+    borderColor: "#E0E0E0",
+  },
+
+  sportChipActive: {
+    backgroundColor: "#2979ff",
+    borderColor: "#2979ff",
+  },
+
+  sportChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  sportChipTextActive: {
+    color: "white",
+  },
+
+  newResultsBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FAFAFA",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+
+  newResultsText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#666",
+    letterSpacing: 0.5,
+  },
+
+  // Inline Results Row (senza barra separata)
+  inlineResultsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: "#FAFAFA",
+  },
+
+  inlineResultsText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  resultsCount: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 0.8,
+  },
+
+  inlineSortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 6,
+  },
+
+  inlineSortText: {
+    fontSize: 13,
+    color: "#2979ff",
+    fontWeight: "600",
+  },
+
+  recommendedButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  recommendedText: {
+    fontSize: 14,
+    color: "#2979ff",
+    fontWeight: "600",
+  },
+
+  // Sort Menu Styles
+  sortMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+
+  sortMenuContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+
+  sortMenuTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+
+  sortMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: "#F5F5F5",
+  },
+
+  sortMenuItemActive: {
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1,
+    borderColor: "#2979ff",
+  },
+
+  sortMenuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+
+  sortMenuItemText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  sortMenuItemTextActive: {
+    color: "#2979ff",
+  },
+
+  sortMenuItemSubtext: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+
+  sortMenuCloseButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    alignItems: "center",
+  },
+
+  sortMenuCloseText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  // Vecchi stili (mantenuti per retrocompatibilità)
   header: {
     backgroundColor: "#2979ff",
     paddingHorizontal: 16,
@@ -235,6 +514,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 16,
     marginBottom: 12,
+    marginHorizontal: 24,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -741,11 +1021,11 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 0,
+    backgroundColor: "white",
   },
 
   modalScrollView: {
@@ -759,18 +1039,19 @@ export const styles = StyleSheet.create({
   },
 
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     color: "#1A1A1A",
+    letterSpacing: -0.5,
   },
 
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
     color: "#1a1a1a",
-    marginTop: 20,
-    marginBottom: 10,
-    letterSpacing: -0.2,
+    marginTop: 24,
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
 
   cityInputContainer: {
@@ -786,10 +1067,14 @@ export const styles = StyleSheet.create({
 
   cityInput: {
     flex: 1,
-    padding: 14,
-    fontSize: 15,
+    padding: 16,
+    fontSize: 14,
     fontWeight: "500",
-    color: "#333",
+    color: "#1A1A1A",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E9ECEF",
   },
 
   geolocationButton: {
@@ -870,27 +1155,37 @@ export const styles = StyleSheet.create({
   },
 
   option: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
     backgroundColor: "#f8f9fa",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#e9ecef",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 
   optionActive: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#2196F3",
+    backgroundColor: "#2979ff",
+    borderColor: "#2979ff",
+    shadowColor: "#2979ff",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   optionText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: "#495057",
   },
 
   optionTextActive: {
-    color: "#2196F3",
+    color: "white",
     fontWeight: "700",
   },
 
@@ -932,22 +1227,32 @@ export const styles = StyleSheet.create({
   timeSlot: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
     backgroundColor: "#f8f9fa",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#e9ecef",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 
   timeSlotActive: {
-    backgroundColor: "#2196F3",
-    borderColor: "#2196F3",
+    backgroundColor: "#2979ff",
+    borderColor: "#2979ff",
+    shadowColor: "#2979ff",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   timeSlotText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
     color: "#495057",
   },
@@ -960,14 +1265,13 @@ export const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: "row",
     gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
     backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
+    borderTopWidth: 0,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 8,
@@ -976,11 +1280,15 @@ export const styles = StyleSheet.create({
   resetModalButton: {
     flex: 1,
     paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#f8f9fa",
+    borderRadius: 14,
+    backgroundColor: "#F5F5F5",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#e9ecef",
+    borderWidth: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   resetModalText: {
@@ -992,14 +1300,14 @@ export const styles = StyleSheet.create({
   applyButton: {
     flex: 2,
     paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#2196F3",
+    borderRadius: 14,
+    backgroundColor: "#2979ff",
     alignItems: "center",
-    shadowColor: "#2196F3",
+    shadowColor: "#2979ff",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 5,
   },
 
   applyButtonText: {
@@ -1128,6 +1436,173 @@ export const styles = StyleSheet.create({
   datePickerTextActive: {
     color: "#2196F3",
     fontWeight: "700",
+  },
+
+  // Modal Filtri Avanzati
+  modalBody: {
+    flex: 1,
+  },
+
+  dateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+
+  dateText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+
+  // FAB Filtri
+  fabFilters: {
+    position: "absolute",
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2979ff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  fabBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FF5252",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+
+  fabBadgeText: {
+    color: "white",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  // Marker e Cluster
+  markerContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  clusterMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2979ff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  clusterText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  // Pulsanti Mappa
+  mapBackButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  mapBackText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  mapFilterButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  mapFilterBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#FF5252",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+
+  mapFilterBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  mapLocationButton: {
+    position: "absolute",
+    bottom: 90,
+    right: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 
   clearDateButton: {

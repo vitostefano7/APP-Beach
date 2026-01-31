@@ -105,7 +105,6 @@ export default function DashboardStack() { // ✅ Nome corretto
       <Stack.Screen 
         name="TuttiInviti" 
         component={TuttiInvitiScreen}
-        options={{ title: "Tutti gli Inviti Ricevuti" }}
       />
       <Stack.Screen 
         name="InvitoScaduto" 

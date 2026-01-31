@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useLayoutEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
@@ -22,6 +22,30 @@ import styles from "./TuttiInviti.styles";
 export default function TuttiInvitiScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: "Tutti gli Inviti Ricevuti",
+      headerTitleStyle: { fontSize: 18 },
+      headerTitleAlign: "center",
+      headerBackTitleVisible: false,
+      headerLeft: () => (
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "#f0f0f0",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="chevron-back" size={20} color="#333" />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -271,6 +295,10 @@ const loadAllMatches = async () => {
     
     if (!booking) return null;
 
+    // Calcola il prezzo per persona
+    const pricePerPerson = booking?.price && item?.players ? 
+      (booking.price / item.players.length).toFixed(2) : null;
+
     let statusLabel = "In attesa";
     let statusColor = "#FF9800";
     let statusIcon = "time";
@@ -402,6 +430,19 @@ const loadAllMatches = async () => {
               {booking.startTime} - {booking.endTime}
             </Text>
           </View>
+
+          {pricePerPerson && (
+            <View style={styles.matchInfoRow}>
+              <Ionicons name="wallet-outline" size={16} color={isExpired ? "#999" : "#4CAF50"} />
+              <Text style={[
+                styles.matchInfoText,
+                isExpired && styles.expiredText,
+                !isExpired && { color: "#4CAF50", fontWeight: "600" }
+              ]}>
+                € {pricePerPerson}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.playersPreview}>

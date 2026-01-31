@@ -860,12 +860,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: 'white' }]} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: 'white' }]} edges={['top', 'bottom']}>
       <StatusBar backgroundColor="white" barStyle="dark-content" />
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 70 }}
       >
         {refreshing && (
           <View style={{ paddingVertical: 10, alignItems: 'center' }}>

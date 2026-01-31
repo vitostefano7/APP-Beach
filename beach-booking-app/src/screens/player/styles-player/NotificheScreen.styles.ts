@@ -16,14 +16,19 @@ export const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#000',
     flex: 1,
+    textAlign: 'center',
     marginLeft: 8,
   },
   markAllButton: {

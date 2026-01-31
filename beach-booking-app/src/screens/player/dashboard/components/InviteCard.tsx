@@ -31,6 +31,10 @@ const InviteCard: React.FC<InviteCardProps> = ({
   const myPlayer = match.players?.find((p: any) => p.user?._id === userId);
   const myStatus = myPlayer?.status || "unknown";
 
+  // Calcola il prezzo per persona
+  const pricePerPerson = booking?.price && match?.players ? 
+    (booking.price / match.players.length).toFixed(2) : null;
+
   console.log(`Match ID: ${matchId}, My status: ${myStatus}`);
 
   // Constante per le ore di cut-off
@@ -198,6 +202,14 @@ const InviteCard: React.FC<InviteCardProps> = ({
               {booking.startTime} - {booking.endTime}
             </Text>
           </View>
+          {pricePerPerson && (
+            <View style={styles.invitePriceBadge}>
+              <Ionicons name="wallet-outline" size={14} color="#2E7D32" />
+              <Text style={styles.invitePriceText}>
+                €{pricePerPerson}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
