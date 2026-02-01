@@ -11,12 +11,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { API_URL } from "../../config/api";
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useUnreadMessages } from "../../context/UnreadMessagesContext";
 import { useConversations } from "./useConversations";
 import ConversationItem from "./ConversationItem";
 import { styles } from "../../styles/ConversationScreen.styles"; // Shared styles
+import { useCustomAlert } from "../CustomAlert/CustomAlert";
 
 
 interface ConversationScreenProps {
@@ -27,6 +29,8 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
   const { token, user } = useContext(AuthContext);
   const { refreshUnreadCount } = useUnreadMessages();
   const enableFilters = role === 'owner';
+
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const {
     conversations,
@@ -49,6 +53,40 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
 
   const isOwner = role === 'owner';
 
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      const endpoint = isOwner
+        ? `${API_URL}/owner/conversazioni/${conversationId}`
+        : `${API_URL}/conversazioni/${conversationId}`;
+
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh conversation list
+        onRefresh();
+        refreshUnreadCount();
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Errore',
+          message: 'Non è stato possibile eliminare la conversazione',
+        });
+      }
+    } catch (error) {
+      console.error("Errore nell'eliminazione della conversazione:", error);
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Si è verificato un errore durante l\'eliminazione',
+      });
+    }
+  };
+
   const renderConversation = ({ item }: { item: any }) => (
     <ConversationItem
       conversation={item}
@@ -56,42 +94,50 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
       formatTime={formatTime}
       getUnreadCount={getUnreadCount}
       refreshUnreadCount={refreshUnreadCount}
+      onDelete={deleteConversation}
     />
   );
 
   if (!token || (isOwner && user?.role !== 'owner')) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.emptyState}>
-          <Ionicons name="lock-closed-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>
-            {isOwner ? "Accesso negato" : "Accedi per vedere le chat"}
-          </Text>
-          <Text style={styles.emptyText}>
-            {isOwner
-              ? "Questa sezione è riservata ai proprietari"
-              : "Effettua il login per chattare con le strutture"}
-          </Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.emptyState}>
+            <Ionicons name="lock-closed-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>
+              {isOwner ? "Accesso negato" : "Accedi per vedere le chat"}
+            </Text>
+            <Text style={styles.emptyText}>
+              {isOwner
+                ? "Questa sezione è riservata ai proprietari"
+                : "Effettua il login per chattare con le strutture"}
+            </Text>
+          </View>
+        </SafeAreaView>
+        <AlertComponent />
+      </>
     );
   }
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2979ff" />
-          {isOwner && <Text style={styles.loadingText}>Caricamento chat...</Text>}
-        </View>
-      </SafeAreaView>
+      <>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2979ff" />
+            {isOwner && <Text style={styles.loadingText}>Caricamento chat...</Text>}
+          </View>
+        </SafeAreaView>
+        <AlertComponent />
+      </>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messaggi</Text>
+    <>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Messaggi</Text>
 
         {enableFilters && (
           <>
@@ -349,6 +395,8 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
         </Modal>
       )}
     </SafeAreaView>
+    <AlertComponent />
+    </>
   );
 };
 

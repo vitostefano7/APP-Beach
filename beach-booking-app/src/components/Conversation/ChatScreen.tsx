@@ -12,6 +12,7 @@ import {
 import { Keyboard, Dimensions } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useCustomAlert } from "../CustomAlert/CustomAlert";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
@@ -53,6 +54,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
+
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const {
     conversationId,
@@ -191,6 +194,52 @@ export default function ChatScreen({ role }: ChatScreenProps) {
     } finally {
       setLoadingProfile(false);
     }
+  };
+
+  const deleteConversation = async () => {
+    showAlert({
+      type: 'warning',
+      title: 'Elimina conversazione',
+      message: 'Sei sicuro di voler eliminare questa conversazione? Questa azione non può essere annullata.',
+      buttons: [
+        {
+          text: 'Annulla',
+          style: 'cancel',
+        },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const endpoint = role === "owner"
+                ? `${API_URL}/owner/conversazioni/${conversationId}`
+                : `${API_URL}/conversazioni/${conversationId}`;
+
+              const response = await fetch(endpoint, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!response.ok) {
+                throw new Error("Errore durante l'eliminazione");
+              }
+
+              // Naviga indietro alla lista conversazioni
+              navigation.goBack();
+            } catch (error) {
+              console.error("Errore nell'eliminazione della conversazione:", error);
+              showAlert({
+                type: 'error',
+                title: 'Errore',
+                message: 'Non è stato possibile eliminare la conversazione. Riprova più tardi.',
+              });
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleOpenProfile = () => {
@@ -370,10 +419,11 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <>
+      <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <View style={styles.header}>
@@ -413,15 +463,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
                 <Text style={styles.headerTitle} numberOfLines={1}>
                   {strutturaName}
                 </Text>
-                {isUserChat ? (
-                  <Text style={styles.onlineText}>Tocca per vedere il profilo</Text>
-                ) : (
-                  <View style={styles.onlineIndicator}>
-                    <View style={styles.onlineDot} />
-                    <Text style={styles.onlineText}>Online</Text>
-                  </View>
-                )}
-              </View>
+                </View>
             </Pressable>
           ) : (
             <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
@@ -642,5 +684,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
         </Modal>
       )}
     </SafeAreaView>
+    <AlertComponent />
+    </>
   );
 }

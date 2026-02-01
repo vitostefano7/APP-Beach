@@ -7,7 +7,6 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Alert,
   StyleSheet,
   Dimensions,
 } from "react-native";
@@ -18,6 +17,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
 import API_URL from "../../config/api";
+import { useCustomAlert } from "../CustomAlert/CustomAlert";
 import { AuthContext } from "../../context/AuthContext";
 import { styles as baseStyles } from "../../screens/player/styles-player/ChatScreen.styles";
 import Avatar from "../Avatar/Avatar";
@@ -46,6 +46,8 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
+
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId, struttura } = route.params;
 
@@ -235,10 +237,11 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
         if (role === "player" && errorData.reason === "not_confirmed") {
           setCanSendMessages(false);
-          Alert.alert(
-            "Non puoi inviare messaggi",
-            "Devi confermare la partecipazione al match per inviare messaggi nella chat di gruppo."
-          );
+          showAlert({
+            type: 'warning',
+            title: 'Non puoi inviare messaggi',
+            message: 'Devi confermare la partecipazione al match per inviare messaggi nella chat di gruppo.',
+          });
           setInputText(content);
           return;
         }
@@ -253,11 +256,61 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
       }, 100);
     } catch (error: any) {
       console.error("Errore invio messaggio:", error);
-      Alert.alert("Errore", error.message || "Impossibile inviare il messaggio");
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: error.message || "Impossibile inviare il messaggio",
+      });
       setInputText(content);
     } finally {
       setSending(false);
     }
+  };
+
+  const deleteConversation = async () => {
+    showAlert({
+      type: 'warning',
+      title: 'Elimina conversazione',
+      message: 'Sei sicuro di voler eliminare questa conversazione di gruppo? Questa azione non può essere annullata.',
+      buttons: [
+        {
+          text: "Annulla",
+          style: "cancel",
+        },
+        {
+          text: "Elimina",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const endpoint = role === "owner"
+                ? `${API_URL}/owner/conversazioni/${conversationId}`
+                : `${API_URL}/conversazioni/${conversationId}`;
+
+              const response = await fetch(endpoint, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!response.ok) {
+                throw new Error("Errore durante l'eliminazione");
+              }
+
+              // Naviga indietro alla lista conversazioni
+              navigation.goBack();
+            } catch (error) {
+              console.error("Errore nell'eliminazione della conversazione:", error);
+              showAlert({
+                type: 'error',
+                title: 'Errore',
+                message: 'Non è stato possibile eliminare la conversazione. Riprova più tardi.',
+              });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const formatTime = (dateString: string) => {
@@ -437,217 +490,220 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
   }
 
   return (
-    <SafeAreaView style={[baseStyles.safe, { flex: 1 }]} edges={["top"]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
-        <View style={{ flex: 1 }}>
-          {/* Header */}
-          <View style={baseStyles.header}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={baseStyles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-            </Pressable>
+    <>
+      <SafeAreaView style={[baseStyles.safe, { flex: 1 }]} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        >
+          <View style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={baseStyles.header}>
+              <Pressable
+                onPress={() => navigation.goBack()}
+                style={baseStyles.backButton}
+              >
+                <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+              </Pressable>
 
-            <Text style={additionalStyles.headerTitleCentered} numberOfLines={1}>
-              Chat della Partita
-            </Text>
-            <View style={additionalStyles.headerSpacer} />
-          </View>
-
-          {/* SubHeader */}
-          <View style={additionalStyles.subHeader}>
-            <View style={additionalStyles.subHeaderLeft}>
-              <Text style={additionalStyles.subHeaderTitle} numberOfLines={1}>
-                {bookingInfo?.strutturaName || "Struttura"}
+              <Text style={additionalStyles.headerTitleCentered} numberOfLines={1}>
+                Chat della Partita
               </Text>
-              <Text style={additionalStyles.subHeaderDay} numberOfLines={1}>
-                {bookingInfo?.date
-                  ? new Date(bookingInfo.date).toLocaleDateString("it-IT", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    })
-                  : "Data"}
-                {" - "}
-                {bookingInfo?.startTime || "Ora"}
-                {" - "}
-                {bookingInfo?.participantsCount || 0} partecipanti
-              </Text>
+              <View style={{ width: 40 }} />
             </View>
-            <Pressable
-              style={[
-                additionalStyles.detailsButton,
-                !bookingInfo?.bookingId && { opacity: 0.5 },
-              ]}
-              onPress={() => {
-                if (bookingInfo?.bookingId) {
-                  navigation.navigate(
-                    role === "owner"
-                      ? "OwnerDettaglioPrenotazione"
-                      : "DettaglioPrenotazione",
-                    { bookingId: bookingInfo.bookingId }
-                  );
-                }
-              }}
-              disabled={!bookingInfo?.bookingId}
-            >
-              <Ionicons name="calendar-outline" size={18} color="#2196F3" />
-              <Text style={additionalStyles.detailsButtonText}>Dettaglio</Text>
-            </Pressable>
-          </View>
 
-          {role === "player" && !canSendMessages && (
-            <View style={additionalStyles.warningBanner}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={20}
-                color="#FF9800"
-              />
-              <Text style={additionalStyles.warningText}>
-                Conferma la tua partecipazione al match per inviare messaggi
-              </Text>
-            </View>
-          )}
-
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={[
-              baseStyles.messagesList,
-              {
-                flexGrow: 1,
-                paddingBottom: 8,
-              },
-            ]}
-            onContentSizeChange={() => {
-              setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }, 100);
-            }}
-            onLayout={() => {
-              setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }, 100);
-            }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={baseStyles.emptyState}>
-                <View style={baseStyles.emptyIcon}>
-                  <Ionicons
-                    name="chatbubbles-outline"
-                    size={64}
-                    color="#2196F3"
-                  />
-                </View>
-                <Text style={baseStyles.emptyTitle}>
-                  Nessun messaggio ancora
+            {/* SubHeader */}
+            <View style={additionalStyles.subHeader}>
+              <View style={additionalStyles.subHeaderLeft}>
+                <Text style={additionalStyles.subHeaderTitle} numberOfLines={1}>
+                  {bookingInfo?.strutturaName || "Struttura"}
                 </Text>
-                <Text style={baseStyles.emptyText}>
-                  Inizia la conversazione con il gruppo!
+                <Text style={additionalStyles.subHeaderDay} numberOfLines={1}>
+                  {bookingInfo?.date
+                    ? new Date(bookingInfo.date).toLocaleDateString("it-IT", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })
+                    : "Data"}
+                  {" - "}
+                  {bookingInfo?.startTime || "Ora"}
+                  {" - "}
+                  {bookingInfo?.participantsCount || 0} partecipanti
                 </Text>
               </View>
-            }
-          />
-
-          <View
-            style={[
-              baseStyles.inputContainer,
-              {
-                paddingBottom: Math.max(insets.bottom, 12),
-                marginBottom:
-                  role === "player" && keyboardHeight > 0
-                    ? keyboardHeight + 10
-                    : 0,
-              },
-            ]}
-            onLayout={(event) => {
-              const { y, height } = event.nativeEvent.layout;
-              const screenHeight = Dimensions.get("window").height;
-              const containerBottom = y + height;
-              
-              console.log("📍 [GroupChatScreen] Input Container Layout:", {
-                role,
-                y: y.toFixed(2),
-                height: height.toFixed(2),
-                containerBottom: containerBottom.toFixed(2),
-                screenHeight: screenHeight.toFixed(2),
-                distanceFromBottom: (screenHeight - containerBottom).toFixed(2),
-                keyboardHeight,
-                insetsBottom: insets.bottom,
-                marginBottom: role === "player" && keyboardHeight > 0 ? keyboardHeight + 10 : 0,
-                paddingBottom: Math.max(insets.bottom, 12),
-                isVisible: containerBottom <= screenHeight ? "✅ VISIBILE" : "❌ TAGLIATO",
-              });
-            }}
-          >
-            {role === "player" && (
-              <Pressable style={baseStyles.addButton} onPress={() => {}}>
-                <Ionicons name="add" size={22} color="#1a1a1a" />
-              </Pressable>
-            )}
-            <View style={baseStyles.inputWrapper}>
-              <TextInput
-                style={baseStyles.input}
-                placeholder={
-                  role === "player" && !canSendMessages
-                    ? "Non puoi inviare messaggi"
-                    : "Scrivi un messaggio..."
-                }
-                placeholderTextColor="#999"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
-                editable={role === "owner" || canSendMessages}
-                onFocus={() => {
-                  setTimeout(() => {
-                    flatListRef.current?.scrollToEnd({ animated: true });
-                  }, 100);
+              <Pressable
+                style={[
+                  additionalStyles.detailsButton,
+                  !bookingInfo?.bookingId && { opacity: 0.5 },
+                ]}
+                onPress={() => {
+                  if (bookingInfo?.bookingId) {
+                    navigation.navigate(
+                      role === "owner"
+                        ? "OwnerDettaglioPrenotazione"
+                        : "DettaglioPrenotazione",
+                      { bookingId: bookingInfo.bookingId }
+                    );
+                  }
                 }}
-              />
+                disabled={!bookingInfo?.bookingId}
+              >
+                <Ionicons name="calendar-outline" size={18} color="#2196F3" />
+                <Text style={additionalStyles.detailsButtonText}>Dettaglio</Text>
+              </Pressable>
             </View>
 
-            <Pressable
-              style={[
-                baseStyles.sendButton,
-                inputText.trim() &&
-                  !sending &&
-                  (role === "owner" || canSendMessages) &&
-                  baseStyles.sendButtonActive,
-              ]}
-              onPress={sendMessage}
-              disabled={
-                !inputText.trim() ||
-                sending ||
-                (role === "player" && !canSendMessages)
-              }
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
+            {role === "player" && !canSendMessages && (
+              <View style={additionalStyles.warningBanner}>
                 <Ionicons
-                  name={
-                    inputText.trim() && (role === "owner" || canSendMessages)
-                      ? "send"
-                      : "send-outline"
-                  }
+                  name="alert-circle-outline"
                   size={20}
-                  color="white"
+                  color="#FF9800"
                 />
+                <Text style={additionalStyles.warningText}>
+                  Conferma la tua partecipazione al match per inviare messaggi
+                </Text>
+              </View>
+            )}
+
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={[
+                baseStyles.messagesList,
+                {
+                  flexGrow: 1,
+                  paddingBottom: 8,
+                },
+              ]}
+              onContentSizeChange={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }, 100);
+              }}
+              onLayout={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }, 100);
+              }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={baseStyles.emptyState}>
+                  <View style={baseStyles.emptyIcon}>
+                    <Ionicons
+                      name="chatbubbles-outline"
+                      size={64}
+                      color="#2196F3"
+                    />
+                  </View>
+                  <Text style={baseStyles.emptyTitle}>
+                    Nessun messaggio ancora
+                  </Text>
+                  <Text style={baseStyles.emptyText}>
+                    Inizia la conversazione con il gruppo!
+                  </Text>
+                </View>
+              }
+            />
+
+            <View
+              style={[
+                baseStyles.inputContainer,
+                {
+                  paddingBottom: Math.max(insets.bottom, 12),
+                  marginBottom:
+                    role === "player" && keyboardHeight > 0
+                      ? keyboardHeight + 10
+                      : 0,
+                },
+              ]}
+              onLayout={(event) => {
+                const { y, height } = event.nativeEvent.layout;
+                const screenHeight = Dimensions.get("window").height;
+                const containerBottom = y + height;
+                
+                console.log("📍 [GroupChatScreen] Input Container Layout:", {
+                  role,
+                  y: y.toFixed(2),
+                  height: height.toFixed(2),
+                  containerBottom: containerBottom.toFixed(2),
+                  screenHeight: screenHeight.toFixed(2),
+                  distanceFromBottom: (screenHeight - containerBottom).toFixed(2),
+                  keyboardHeight,
+                  insetsBottom: insets.bottom,
+                  marginBottom: role === "player" && keyboardHeight > 0 ? keyboardHeight + 10 : 0,
+                  paddingBottom: Math.max(insets.bottom, 12),
+                  isVisible: containerBottom <= screenHeight ? "✅ VISIBILE" : "❌ TAGLIATO",
+                });
+              }}
+            >
+              {role === "player" && (
+                <Pressable style={baseStyles.addButton} onPress={() => {}}>
+                  <Ionicons name="add" size={22} color="#1a1a1a" />
+                </Pressable>
               )}
-            </Pressable>
+              <View style={baseStyles.inputWrapper}>
+                <TextInput
+                  style={baseStyles.input}
+                  placeholder={
+                    role === "player" && !canSendMessages
+                      ? "Non puoi inviare messaggi"
+                      : "Scrivi un messaggio..."
+                  }
+                  placeholderTextColor="#999"
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                  maxLength={1000}
+                  editable={role === "owner" || canSendMessages}
+                  onFocus={() => {
+                    setTimeout(() => {
+                      flatListRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                  }}
+                />
+              </View>
+
+              <Pressable
+                style={[
+                  baseStyles.sendButton,
+                  inputText.trim() &&
+                    !sending &&
+                    (role === "owner" || canSendMessages) &&
+                    baseStyles.sendButtonActive,
+                ]}
+                onPress={sendMessage}
+                disabled={
+                  !inputText.trim() ||
+                  sending ||
+                  (role === "player" && !canSendMessages)
+                }
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Ionicons
+                    name={
+                      inputText.trim() && (role === "owner" || canSendMessages)
+                        ? "send"
+                        : "send-outline"
+                    }
+                    size={20}
+                    color="white"
+                  />
+                )}
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+      <AlertComponent />
+    </>
   );
 }
 

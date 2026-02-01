@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import Avatar from "../Avatar/Avatar";
 import { styles } from "../../styles/ConversationScreen.styles";
+import { useCustomAlert } from "../CustomAlert/CustomAlert";
 
 type Conversation = {
   _id: string;
@@ -61,6 +62,7 @@ interface ConversationItemProps {
   formatTime: (dateString: string) => string;
   getUnreadCount: (conv: Conversation) => number;
   refreshUnreadCount: () => void;
+  onDelete: (conversationId: string) => Promise<void>;
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
@@ -69,10 +71,29 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   formatTime,
   getUnreadCount,
   refreshUnreadCount,
+  onDelete,
 }) => {
   const navigation = useNavigation<any>();
   const unreadCount = getUnreadCount(conversation);
   const isOwner = role === 'owner';
+
+  const { showAlert, AlertComponent } = useCustomAlert();
+
+  const handleDelete = () => {
+    showAlert({
+      type: 'warning',
+      title: 'Elimina conversazione',
+      message: 'Sei sicuro di voler eliminare questa conversazione? Questa azione non può essere annullata.',
+      buttons: [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: () => onDelete(conversation._id),
+        },
+      ],
+    });
+  };
 
   const renderConversation = () => {
     if (conversation.type === 'group') {
@@ -124,9 +145,20 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                 <Text style={styles.conversationTitle} numberOfLines={1}>
                   {groupTitle}
                 </Text>
-                <Text style={styles.conversationTime}>
-                  {formatTime(conversation.lastMessageAt)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.conversationTime}>
+                    {formatTime(conversation.lastMessageAt)}
+                  </Text>
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDelete();
+                    }}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                  </Pressable>
+                </View>
               </View>
 
               <View style={styles.matchInfoRow}>
@@ -196,9 +228,20 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               <Text style={styles.conversationTitle} numberOfLines={1}>
                 {isOwner ? conversation.user?.name : strutturaName}
               </Text>
-              <Text style={styles.conversationTime}>
-                {formatTime(conversation.lastMessageAt)}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.conversationTime}>
+                  {formatTime(conversation.lastMessageAt)}
+                </Text>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  hitSlop={10}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                </Pressable>
+              </View>
             </View>
 
             {isOwner && conversation.struttura && (
@@ -241,7 +284,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     );
   };
 
-  return renderConversation();
+  return (
+    <>
+      {renderConversation()}
+      <AlertComponent />
+    </>
+  );
 };
 
 export default ConversationItem;

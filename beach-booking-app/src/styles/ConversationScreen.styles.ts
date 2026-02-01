@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "white",
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 16,
+    paddingBottom: 7,
     borderBottomWidth: 0,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -18,7 +18,8 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 18,
+    textAlign: "center",
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 14,
