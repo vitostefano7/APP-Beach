@@ -858,6 +858,20 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#2196F3",
   },
+  invitePriceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  invitePriceText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2E7D32",
+  },
   inviteActions: {
     flexDirection: "row",
     gap: 8,

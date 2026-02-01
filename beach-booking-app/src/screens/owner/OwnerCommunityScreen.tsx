@@ -1,96 +1,73 @@
 import React, { useState, useContext, useEffect, useCallback, useRef } from 'react';
 import {
   View,
-  Text,
   FlatList,
-  Pressable,
   ActivityIndicator,
-  TextInput,
-  Image,
-  Alert,
   Modal,
-  RefreshControl,
+  Pressable,
+  Image,
+  Text,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
-import { Avatar } from '../../components/Avatar';
 import API_URL from '../../config/api';
-import { StyleSheet } from 'react-native';
-
-interface User {
-  _id: string;
-  name: string;
-  surname: string;
-  username: string;
-  avatarUrl?: string;
-  friendshipStatus?: 'none' | 'pending' | 'accepted';
-  followStatus?: 'none' | 'following'; // Stato follow per ogni struttura
-}
-
-interface Struttura {
-  _id: string;
-  name: string;
-  images: string[];
-  location: {
-    city: string;
-  };
-}
-
-interface Post {
-  _id: string;
-  content: string;
-  image?: string;
-  user?: User;
-  struttura?: {
-    _id: string;
-    name: string;
-    images: string[];
-  };
-  isStrutturaPost: boolean;
-  likes: string[];
-  comments: {
-    _id: string;
-    text: string;
-    user: {
-      _id: string;
-      name: string;
-      avatarUrl?: string;
-    };
-    struttura?: {
-      _id: string;
-      name: string;
-      images: string[];
-    };
-    createdAt: string;
-  }[];
-  createdAt: string;
-}
+import {
+  CommunityHeader,
+  CommunityTabBar,
+  QuickInputBar,
+  PostCard,
+  CommunityTheme,
+} from '../../components/Community';
+import { usePosts, usePostInteractions } from '../../components/Community/hooks';
+import { Post, Struttura, CommunityTab } from '../../types/community.types';
 
 export default function OwnerCommunityScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
-  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
-  const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
+  // State
+  const [activeTab, setActiveTab] = useState<CommunityTab>('tutti');
   const [userStructures, setUserStructures] = useState<Struttura[]>([]);
   const [loadingStructures, setLoadingStructures] = useState(false);
+  const [selectedStructure, setSelectedStructure] = useState<Struttura | null>(null);
   const [structureModalVisible, setStructureModalVisible] = useState(false);
-  const [structureComments, setStructureComments] = useState<Set<string>>(new Set()); // Track commenti fatti come struttura
-  const [selectedStructure, setSelectedStructure] = useState<Struttura | null>(null); // Struttura attualmente selezionata
-  const [selectedPostForComment, setSelectedPostForComment] = useState<string | null>(null);
-  const [replyingToPostId, setReplyingToPostId] = useState<string | null>(null);
-  const replyInputRef = useRef<TextInput>(null);
-  const tabBarOffset = 15;
+  const flatListRef = useRef<FlatList>(null);
+  const currentScrollOffset = useRef<number>(0);
 
+  // Custom hooks
+  const {
+    posts,
+    loading,
+    refreshing,
+    loadPosts,
+    refreshPosts,
+    updatePost,
+  } = usePosts({
+    token: token || '',
+    userId: user?.id,
+    strutturaId: selectedStructure?._id,
+    filter: 'all',
+  });
+
+  const { likePost } = usePostInteractions({
+    token: token || '',
+    userId: user?.id,
+    onLikeToggled: (postId, isLiked) => {
+      updatePost(postId, {
+        likes: isLiked
+          ? [...(posts.find(p => p._id === postId)?.likes || []), user?.id || '']
+          : posts.find(p => p._id === postId)?.likes.filter(id => id !== user?.id) || [],
+      });
+    },
+  });
+
+  // Load structures on mount
   useFocusEffect(
     useCallback(() => {
       loadUserStructures();
@@ -98,41 +75,24 @@ export default function OwnerCommunityScreen() {
     }, [])
   );
 
-  useEffect(() => {
-    if (replyingToPostId && replyInputRef.current) {
-      replyInputRef.current.focus();
-    }
-  }, [replyingToPostId]);
-
-  useEffect(() => {
-    const eventName = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const subscription = Keyboard.addListener(eventName, () => {
-      if (replyingToPostId && !commentInputs[replyingToPostId]?.trim()) {
-        setReplyingToPostId(null);
-      }
-    });
-
-    return () => subscription.remove();
-  }, [replyingToPostId, commentInputs]);
-
-  // Ricarica i post quando cambia la struttura selezionata
+  // Reload posts when structure changes
   useEffect(() => {
     if (selectedStructure) {
-      console.log('🔄 Struttura cambiata, ricarico post per:', selectedStructure.name);
+      console.log('🔄 Structure changed, reloading posts for:', selectedStructure.name);
       loadPosts();
     }
-  }, [selectedStructure]);
+  }, [selectedStructure, loadPosts]);
 
-  // Seleziona automaticamente la prima struttura se non ne è selezionata una
+  // Auto-select first structure
   useEffect(() => {
     if (userStructures.length > 0 && !selectedStructure) {
       setSelectedStructure(userStructures[0]);
       console.log('🏢 Auto-selected first structure:', userStructures[0].name);
     }
-  }, [userStructures]);
+  }, [userStructures, selectedStructure]);
 
   const loadUserStructures = async () => {
-    console.log('🏢 [OwnerCommunity] Loading user structures...');
+    console.log('🏢 Loading user structures...');
     try {
       setLoadingStructures(true);
       const response = await fetch(`${API_URL}/strutture/owner/me`, {
@@ -143,659 +103,202 @@ export default function OwnerCommunityScreen() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Strutture caricate:', data.length);
-        data.forEach((s: Struttura, i: number) => {
-          console.log(`  ${i + 1}. ${s.name} (${s._id})`);
-        });
+        console.log('✅ Structures loaded:', data.length);
         setUserStructures(data);
       } else {
-        console.error('❌ Errore caricamento strutture:', response.status);
+        console.error('❌ Error loading structures:', response.status);
         setUserStructures([]);
       }
     } catch (error) {
-      console.error('💥 Errore caricamento strutture:', error);
+      console.error('💥 Error loading structures:', error);
       setUserStructures([]);
     } finally {
       setLoadingStructures(false);
     }
   };
 
-  const loadPosts = async () => {
-    console.log('🔄 [OwnerCommunity] Starting loadPosts...');
-    console.log('🔑 Token exists:', !!token);
-    console.log('👤 User:', user?.id, user?.name);
-    console.log('🏢 Selected structure:', selectedStructure?.name, selectedStructure?._id);
-    
-    try {
-      setLoadingPosts(true);
-      
-      // Aggiungi strutturaId alla query se è selezionata una struttura
-      let url = `${API_URL}/community/posts?limit=50&offset=0`;
-      if (selectedStructure) {
-        url += `&strutturaId=${selectedStructure._id}`;
-        console.log('🏢 Filtering posts for structure:', selectedStructure.name);
-      }
-      console.log('🌐 Fetching from:', url);
-      
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }).catch(fetchError => {
-        console.error('💥 Fetch error:', fetchError);
-        throw fetchError;
-      });
-
-      console.log('📡 Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API error:', response.status, errorText);
-        setPosts([]);
-        return;
-      }
-
-      let data;
-      try {
-        data = await response.json();
-        console.log('✅ JSON parsed successfully');
-        console.log('📦 Data type:', typeof data);
-        console.log('📦 Is array:', Array.isArray(data));
-        console.log('📦 Has posts property:', data && 'posts' in data);
-        console.log('📦 Data keys:', data ? Object.keys(data) : 'null');
-      } catch (parseError) {
-        console.error('💥 JSON parse error:', parseError);
-        setPosts([]);
-        return;
-      }
-      
-      // Gestisci sia {posts: [...]} che [...]
-      let allPosts: Post[] = [];
-      
-      if (Array.isArray(data)) {
-        console.log('📋 Data is array, length:', data.length);
-        allPosts = data;
-      } else if (data && typeof data === 'object' && 'posts' in data && Array.isArray(data.posts)) {
-        console.log('📋 Data has posts property, length:', data.posts.length);
-        allPosts = data.posts;
-      } else {
-        console.warn('⚠️ Unexpected API response format');
-        console.warn('⚠️ Data:', JSON.stringify(data, null, 2));
-        allPosts = [];
-      }
-      
-      console.log('🔍 Total posts received:', allPosts.length);
-      
-      const visiblePosts = allPosts;
-      console.log('?o. Visible posts:', visiblePosts.length);
-      
-      // Ripopola i commenti struttura dal backend (se hanno strutturaId)
-      const newStructureComments = new Set<string>();
-      visiblePosts.forEach(post => {
-        post.comments?.forEach(comment => {
-          if (comment.struttura) {
-            newStructureComments.add(comment._id);
-          }
-        });
-      });
-      setStructureComments(newStructureComments);
-      console.log('?Y"< Repopulated structure comments:', newStructureComments.size);
-      
-      setPosts(visiblePosts);
-      
-    } catch (error: any) {
-      console.error('💥 Exception in loadPosts:');
-      console.error('   Name:', error?.name);
-      console.error('   Message:', error?.message);
-      console.error('   Stack:', error?.stack);
-      setPosts([]);
-    } finally {
-      console.log('🏁 loadPosts completed');
-      setLoadingPosts(false);
-    }
+  const handleLike = async (postId: string) => {
+    await likePost(postId);
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadPosts();
-    setRefreshing(false);
+  const handleShare = (postId: string) => {
+    console.log('🔗 Share post:', postId);
+    // TODO: Implement share functionality
   };
 
-  const handleLikePost = async (postId: string) => {
-    try {
-      const res = await fetch(`${API_URL}/community/posts/${postId}/like`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(prevPosts =>
-          prevPosts.map(post => {
-            if (post._id === postId) {
-              const newLikes = data.liked
-                ? [...post.likes, user?.id || '']
-                : post.likes.filter(id => id !== user?.id);
-              return { ...post, likes: newLikes };
-            }
-            return post;
-          })
-        );
-      }
-    } catch (error) {
-      console.error('Errore like post:', error);
-    }
-  };
-
-  const handleCommentPost = (postId: string) => {
-    const isSamePost = expandedComments.has(postId);
-
-    if (isSamePost) {
-      setExpandedComments(new Set());
-      setReplyingToPostId(null);
-      return;
-    }
-
-    setExpandedComments(new Set([postId]));
-    setReplyingToPostId(postId);
-  };
-
-  const handlePostComment = async (postId: string) => {
-    const commentText = commentInputs[postId]?.trim();
-    if (!commentText) return;
-
+  const handleCreatePost = () => {
     if (!selectedStructure) {
-      Alert.alert('Errore', 'Seleziona una struttura dall\'header');
+      // Show alert to select structure first
       return;
     }
-
-    console.log('💬 handlePostComment with structure:', selectedStructure.name);
-    await postComment(postId, selectedStructure._id);
+    navigation.navigate('OwnerCreatePost', { strutturaId: selectedStructure._id });
   };
 
-  const postComment = async (postId: string, strutturaId: string) => {
-    const commentText = commentInputs[postId]?.trim();
-    if (!commentText) return;
-
-    setPostingComment(prev => new Set(prev).add(postId));
-
-    try {
-      const response = await fetch(`${API_URL}/community/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          text: commentText,
-          strutturaId: strutturaId // Specifica quale struttura sta commentando
-        }),
-      });
-
-      console.log('📡 Comment API call:', {
-        url: `${API_URL}/community/posts/${postId}/comments`,
-        method: 'POST',
-        body: { text: commentText, strutturaId: strutturaId }
-      });
-
-      if (response.ok) {
-        const newComment = await response.json();
-        console.log('📝 New comment created:', JSON.stringify(newComment, null, 2));
-        console.log('🏢 Comment has struttura:', !!newComment.struttura);
-        
-        // Traccia che questo commento è stato fatto come struttura
-        if (newComment.struttura && newComment._id) {
-          setStructureComments(prev => new Set(prev).add(newComment._id));
-          console.log('📋 Tracked structure comment:', newComment._id);
-        }
-        
-        // Aggiorna lo stato locale con il commento completo dal backend
-        setPosts(prevPosts =>
-          prevPosts.map(post => {
-            if (post._id === postId) {
-              return {
-                ...post,
-                comments: [...(post.comments || []), newComment],
-              };
-            }
-            return post;
-          })
-        );
-
-        // Espandi automaticamente i commenti per vedere il nuovo commento
-        setExpandedComments(prev => {
-          const newSet = new Set(prev);
-          newSet.add(postId);
-          return newSet;
-        });
-
-        // Pulisci input e chiudi modal
-        setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-        setStructureModalVisible(false);
-        setSelectedPostForComment(null);
-      }
-    } catch (error) {
-      console.error('Errore pubblicazione commento:', error);
-      Alert.alert('Errore', 'Impossibile pubblicare il commento');
-    } finally {
-      setPostingComment(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(postId);
-        return newSet;
-      });
+  const handleAuthorPress = (authorId: string, isStructure: boolean) => {
+    console.log('👤 [OwnerCommunityScreen] Author pressed:', { authorId, isStructure });
+    if (isStructure) {
+      navigation.navigate('StrutturaDetail', { strutturaId: authorId });
+    } else {
+      navigation.navigate('UserProfile', { userId: authorId });
     }
   };
 
-  const handleDeleteComment = async (postId: string, commentId: string) => {
+  const handleDeletePost = async (postId: string) => {
     try {
-      const response = await fetch(`${API_URL}/community/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/community/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
+      
       if (response.ok) {
-        // Aggiorna lo stato locale
-        setPosts(prevPosts =>
-          prevPosts.map(post => {
-            if (post._id === postId) {
-              return {
-                ...post,
-                comments: post.comments?.filter(comment => comment._id !== commentId) || [],
-              };
-            }
-            return post;
-          })
-        );
-        
-        // Rimuovi dal tracking se era un commento struttura
-        setStructureComments(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(commentId);
-          return newSet;
-        });
+        // Refresh posts to remove the deleted one
+        await refreshPosts();
       }
     } catch (error) {
-      console.error('Errore eliminazione commento:', error);
-      Alert.alert('Errore', 'Impossibile eliminare il commento');
+      console.error('Error deleting post:', error);
     }
   };
 
-  const renderPost = ({ item }: { item: Post }) => {
-    const isStruttura = item.isStrutturaPost && item.struttura;
-    const displayName = isStruttura ? item.struttura!.name : (item.user?.name || 'Utente sconosciuto');
-    const displayAvatar = isStruttura ? item.struttura!.images[0] : item.user?.avatarUrl;
-
-    return (
-      <View style={styles.postCard}>
-        <View style={styles.postHeader}>
-          {isStruttura ? (
-            <Image
-              source={{ uri: displayAvatar }}
-              style={styles.strutturaAvatar}
-            />
-          ) : (
-            <Avatar
-              avatarUrl={displayAvatar}
-              name={displayName}
-              size={40}
-            />
-          )}
-          <View style={styles.postHeaderText}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              {isStruttura && <Ionicons name="business" size={16} color="#2196F3" />}
-              <Text style={styles.postAuthor}>{displayName}</Text>
-            </View>
-            {isStruttura && item.struttura?.location?.city && (
-              <Text style={styles.strutturaLocation}>{item.struttura.location.city}</Text>
-            )}
-            <Text style={styles.postTime}>
-              {new Date(item.createdAt).toLocaleDateString('it-IT')}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.postContent}>{item.content}</Text>
-
-        {item.image && (
-          <Image
-            source={{ uri: item.image }}
-            style={styles.postImage}
-            resizeMode="cover"
-          />
-        )}
-
-        <View style={styles.postActions}>
-          <Pressable
-            style={styles.postAction}
-            onPress={() => handleLikePost(item._id)}
-          >
-            <Ionicons
-              name={item.likes?.includes(user?.id || '') ? 'heart' : 'heart-outline'}
-              size={24}
-              color={item.likes?.includes(user?.id || '') ? '#FF5252' : '#666'}
-            />
-            <Text style={styles.postActionText}>{item.likes?.length || 0}</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.postAction}
-            onPress={() => handleCommentPost(item._id)}
-          >
-            <Ionicons name="chatbubble-outline" size={22} color="#666" />
-            <Text style={styles.postActionText}>{item.comments?.length || 0}</Text>
-          </Pressable>
-
-          <Pressable style={styles.postAction}>
-            <Ionicons name="share-social-outline" size={22} color="#666" />
-          </Pressable>
-        </View>
-
-        {/* Sezione commenti espansa */}
-        {expandedComments.has(item._id) && (
-          <View style={styles.commentsSection}>
-            {/* Lista commenti esistenti */}
-            {item.comments && item.comments.length > 0 && (
-              <View style={styles.commentsList}>
-                {item.comments.map((comment: any) => {
-                  // Determina se il commento è fatto da una struttura
-                  const isStructureComment = !!comment.struttura;
-                  const commentStructure = comment.struttura;
-                  
-                  const displayName = isStructureComment && commentStructure 
-                    ? commentStructure.name 
-                    : (comment.user?.name || 'Utente');
-                  const displayAvatar = isStructureComment && commentStructure 
-                    ? commentStructure.images?.[0] 
-                    : comment.user?.avatarUrl;
-                  
-                  console.log('💬 Rendering comment:', {
-                    commentId: comment._id,
-                    isStructureComment,
-                    hasStruttura: !!comment.struttura,
-                    userId: comment.user?._id,
-                    currentUserId: user?.id,
-                    displayName,
-                    structureFound: !!commentStructure
-                  });
-
-                  return (
-                    <View key={`comment-${comment._id}`} style={styles.commentItem}>
-                      {isStructureComment && commentStructure ? (
-                        <Image
-                          source={{ uri: displayAvatar }}
-                          style={styles.strutturaAvatar}
-                        />
-                      ) : (
-                        <Avatar
-                          avatarUrl={displayAvatar}
-                          name={displayName}
-                          size={32}
-                        />
-                      )}
-                      <View style={styles.commentContent}>
-                        <View style={styles.commentHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            {isStructureComment && commentStructure && (
-                              <Ionicons name="business" size={14} color="#2196F3" />
-                            )}
-                            <Text style={styles.commentAuthor}>{displayName}</Text>
-                          </View>
-                          <Text style={styles.commentTime}>
-                            {new Date(comment.createdAt).toLocaleDateString('it-IT')}
-                          </Text>
-                        </View>
-                        <Text style={styles.commentText}>{comment.text}</Text>
-                      </View>
-                      {/* Pulsante elimina se è il proprietario del commento */}
-                      {comment.user?._id === user?.id && (
-                        <Pressable
-                          style={styles.deleteCommentButton}
-                          onPress={() => handleDeleteComment(item._id, comment._id)}
-                        >
-                          <Ionicons name="trash-outline" size={16} color="#999" />
-                        </Pressable>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Placeholder per input commento (apre la barra globale) */}
-            <Pressable
-              style={styles.commentInputContainer}
-              onPress={() => {
-                if (replyingToPostId === item._id) {
-                  replyInputRef.current?.focus();
-                }
-              }}
-            >
-              {selectedStructure ? (
-                <Image
-                  source={{ uri: selectedStructure.images[0] }}
-                  style={styles.commentInputAvatar}
-                />
-              ) : (
-                <Avatar
-                  avatarUrl={user?.avatarUrl}
-                  name={user?.name || 'Tu'}
-                  size={32}
-                />
-              )}
-              <View style={styles.commentInputWrapper}>
-                <View style={[styles.commentInput, { justifyContent: 'flex-start' }]}>
-                  <Text style={{ color: '#999' }}>
-                    {commentInputs[item._id] ? commentInputs[item._id] : 'Scrivi un commento...'}
-                  </Text>
-                </View>
-                <View style={[styles.postCommentButton, styles.postCommentButtonDisabled]}>
-                  <Ionicons name="send" size={18} color="white" />
-                </View>
-              </View>
-            </Pressable>
-          </View>
-        )}
-      </View>
-    );
+  const handleInputFocus = (postId: string, inputBottomEdge?: number) => {
+    console.log('📍 [OwnerCommunityScreen] Input focused on post:', postId, 'bottomEdge:', inputBottomEdge);
+    
+    if (inputBottomEdge && flatListRef.current) {
+      const screenHeight = Dimensions.get('window').height;
+      const keyboardHeight = 288;
+      const keyboardTop = screenHeight - keyboardHeight;
+      
+      const currentGap = keyboardTop - inputBottomEdge;
+      const desiredGap = 100;
+      
+      console.log('📏 [OwnerCommunityScreen] Scroll calculation:', {
+        screenHeight: Math.round(screenHeight),
+        keyboardTop: Math.round(keyboardTop),
+        inputBottomEdge: Math.round(inputBottomEdge),
+        currentGap: Math.round(currentGap),
+        desiredGap,
+        currentScrollOffset: Math.round(currentScrollOffset.current),
+      });
+      
+      if (currentGap < desiredGap) {
+        const scrollAmount = desiredGap - currentGap;
+        const newOffset = currentScrollOffset.current + scrollAmount;
+        console.log(`⬆️ [OwnerCommunityScreen] Scrolling from ${Math.round(currentScrollOffset.current)}px to ${Math.round(newOffset)}px (+${Math.round(scrollAmount)}px)`);
+        
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({
+            offset: Math.max(0, newOffset),
+            animated: true,
+          });
+        }, 100);
+      } else {
+        console.log('✅ [OwnerCommunityScreen] Gap is sufficient, no scroll needed');
+      }
+    }
   };
 
+  const renderPost = ({ item }: { item: Post }) => (
+    <PostCard
+      post={item}
+      currentUserId={user?.id}
+      token={token || ''}
+      onLike={handleLike}
+      onShare={handleShare}
+      strutturaId={selectedStructure?._id}
+      onInputFocus={handleInputFocus}
+      onAuthorPress={handleAuthorPress}
+      onDeletePost={handleDeletePost}
+    />
+  );
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="newspaper-outline" size={64} color={CommunityTheme.colors.textTertiary} />
+      <Text style={styles.emptyText}>Nessun post</Text>
+      <Text style={styles.emptySubtext}>
+        {selectedStructure 
+          ? `Sii il primo a postare per ${selectedStructure.name}!`
+          : 'Seleziona una struttura per vedere i post'}
+      </Text>
+      {selectedStructure && (
+        <Pressable style={styles.emptyButton} onPress={handleCreatePost}>
+          <Text style={styles.emptyButtonText}>Crea un post</Text>
+        </Pressable>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <View style={{ flex: 1 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Community</Text>
-          
-          {/* Selettore struttura */}
-          {userStructures.length > 0 && (
-            <Pressable
-              style={styles.structureSelector}
-              onPress={() => setStructureModalVisible(true)}
-            >
-              {selectedStructure && (
-                <>
-                  <Image
-                    source={{ uri: selectedStructure.images[0] }}
-                    style={styles.selectedStructureAvatar}
-                  />
-                  <Text style={styles.selectedStructureName} numberOfLines={1}>
-                    {selectedStructure.name}
-                  </Text>
-                </>
-              )}
-              <Ionicons name="chevron-down" size={16} color="#666" />
-            </Pressable>
-          )}
-        </View>
-        
-        <Pressable
-          style={styles.searchButton}
-          onPress={() => {
-            navigation.navigate('OwnerCercaAmiciScreen');
-          }}
-        >
-          <Ionicons name="search" size={24} color="#2196F3" />
-        </Pressable>
-      </View>
+        <View style={styles.content}>
+        {/* Header with structure selector */}
+        <CommunityHeader
+          title="Community"
+          selectedStructure={selectedStructure}
+          onStructurePress={() => setStructureModalVisible(true)}
+          onSearchPress={() => navigation.navigate('OwnerCercaAmiciScreen')}
+          showNotification={false}
+          showSearch={true}
+        />
 
-      {/* Content */}
-      <View style={{ flex: 1 }}>
-        <FlatList
-        data={posts}
-        keyExtractor={(item) => item._id}
-        renderItem={renderPost}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          loadingPosts ? (
-            <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#2196F3" />
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="newspaper-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>
-                Nessun post delle tue strutture
-              </Text>
-              <Pressable
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('OwnerCreatePost')}
-              >
-                <Text style={styles.emptyButtonText}>Crea il primo post</Text>
-              </Pressable>
-            </View>
-          )
-        }
-      />
-      </View>
+        {/* Tab bar */}
+        <CommunityTabBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={[
+            { id: 'tutti', label: 'Tutti' },
+            { id: 'post', label: 'Post' },
+          ]}
+        />
 
-      {/* FAB per creare post */}
-      {!replyingToPostId && (
-        <Pressable
-        style={styles.fab}
-        onPress={() => navigation.navigate('OwnerCreatePost')}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
-      )}
-
-      {/* Global Input Bar per i commenti */}
-      {replyingToPostId && (
-        <View
-          style={{
-            marginTop: 'auto',
-            marginBottom: tabBarOffset,
-            backgroundColor: 'white',
-            borderTopWidth: 1,
-            borderTopColor: '#eee',
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: -2,
-            },
-            shadowOpacity: 0.1,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: 10,
-            }}
-          >
-            <Pressable
-              onPress={() => {
-                setExpandedComments(new Set());
-                setReplyingToPostId(null);
-              }}
-              style={{ padding: 10, marginRight: 5 }}
-            >
-              <Ionicons name="close" size={24} color="#666" />
-            </Pressable>
-
-            {selectedStructure ? (
-              <Image
-                source={{ uri: selectedStructure.images[0] }}
-                style={styles.commentInputAvatar}
-              />
-            ) : (
-              <Avatar
-                avatarUrl={user?.avatarUrl}
-                name={user?.name || 'Tu'}
-                size={32}
-              />
-            )}
-
-            <TextInput
-              ref={replyInputRef}
-              autoFocus={true}
-              style={{
-                flex: 1,
-                backgroundColor: '#f5f5f5',
-                borderRadius: 20,
-                paddingHorizontal: 15,
-                paddingVertical: 10,
-                maxHeight: 100,
-                fontSize: 15,
-                color: '#333',
-                marginLeft: 8,
-              }}
-              placeholder="Scrivi un commento..."
-              value={commentInputs[replyingToPostId] || ''}
-              onChangeText={(text) =>
-                setCommentInputs(prev => ({ ...prev, [replyingToPostId]: text }))
-              }
-              multiline
-              maxLength={500}
-            />
-
-            <Pressable
-              style={[
-                {
-                  marginLeft: 10,
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: '#2196F3',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-                (!commentInputs[replyingToPostId]?.trim() || postingComment.has(replyingToPostId)) && { backgroundColor: '#ccc' },
-              ]}
-              onPress={() => {
-                handlePostComment(replyingToPostId);
-                setReplyingToPostId(null);
-                Keyboard.dismiss();
-              }}
-              disabled={!commentInputs[replyingToPostId]?.trim() || postingComment.has(replyingToPostId)}
-            >
-              {postingComment.has(replyingToPostId) ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons name="send" size={20} color="white" />
-              )}
-            </Pressable>
+        {/* Content */}
+        {loading && posts.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={CommunityTheme.colors.primary} />
           </View>
-        </View>
-      )}
-        </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={posts}
+            keyExtractor={(item) => item._id}
+            renderItem={renderPost}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={refreshPosts}
+            onScroll={(event) => {
+              currentScrollOffset.current = event.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+            onScrollToIndexFailed={(info) => {
+              console.warn('Failed to scroll to index:', info);
+              setTimeout(() => {
+                flatListRef.current?.scrollToOffset({
+                  offset: info.averageItemLength * info.index,
+                  animated: true,
+                });
+              }, 100);
+            }}
+            ListHeaderComponent={
+              selectedStructure ? (
+                <QuickInputBar
+                  showStructureAvatar={true}
+                  structureImageUrl={selectedStructure.images[0]}
+                  placeholder="Cosa vuoi condividere?"
+                  onPress={handleCreatePost}
+                />
+              ) : null
+            }
+            ListEmptyComponent={renderEmptyState()}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
       </KeyboardAvoidingView>
 
       {/* Modal selezione struttura */}
@@ -813,7 +316,7 @@ export default function OwnerCommunityScreen() {
                 onPress={() => setStructureModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={CommunityTheme.colors.textSecondary} />
               </Pressable>
             </View>
 
@@ -830,7 +333,7 @@ export default function OwnerCommunityScreen() {
                   <Pressable
                     style={[
                       styles.structureOption,
-                      isSelected && styles.structureOptionSelected
+                      isSelected && styles.structureOptionSelected,
                     ]}
                     onPress={() => {
                       console.log('🏢 Structure changed to:', item.name);
@@ -849,7 +352,11 @@ export default function OwnerCommunityScreen() {
                       </Text>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
+                      <Ionicons 
+                        name="checkmark-circle" 
+                        size={24} 
+                        color={CommunityTheme.colors.primary} 
+                      />
                     )}
                   </Pressable>
                 );
@@ -862,259 +369,54 @@ export default function OwnerCommunityScreen() {
       </Modal>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: CommunityTheme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  headerLeft: {
+  content: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#212121',
-    marginBottom: 4,
-  },
-  structureSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 4,
-    maxWidth: '90%',
-  },
-  selectedStructureAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  selectedStructureName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#212121',
+  loadingContainer: {
     flex: 1,
-    marginRight: 4,
-  },
-  searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E3F2FD',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2196F3',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 90,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2196F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   listContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
+    paddingVertical: CommunityTheme.spacing.md,
   },
-  postCard: {
-    backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  postHeaderText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  strutturaAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  strutturaLocation: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  postAuthor: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212121',
-  },
-  postTime: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  postContent: {
-    fontSize: 15,
-    color: '#212121',
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  postImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  postActions: {
-    flexDirection: 'row',
-    gap: 24,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  postAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  postActionText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-
   emptyContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    paddingHorizontal: CommunityTheme.spacing.xl,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: CommunityTheme.colors.textPrimary,
+    marginTop: CommunityTheme.spacing.lg,
+  },
+  emptySubtext: {
+    fontSize: 15,
+    color: CommunityTheme.colors.textSecondary,
+    marginTop: CommunityTheme.spacing.sm,
     textAlign: 'center',
   },
   emptyButton: {
-    marginTop: 24,
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    marginTop: CommunityTheme.spacing.xxl,
+    backgroundColor: CommunityTheme.colors.primary,
+    paddingHorizontal: CommunityTheme.spacing.xxl,
+    paddingVertical: CommunityTheme.spacing.md,
+    borderRadius: CommunityTheme.borderRadius.md,
   },
   emptyButtonText: {
-    color: '#fff',
+    color: CommunityTheme.colors.cardBackground,
     fontSize: 16,
     fontWeight: '600',
-  },
-  commentsSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  commentsList: {
-    marginBottom: 16,
-  },
-  commentItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  commentContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  commentAuthor: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#212121',
-    marginRight: 8,
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  commentText: {
-    fontSize: 14,
-    color: '#212121',
-    lineHeight: 20,
-  },
-  deleteCommentButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  commentInputAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  commentInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginLeft: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxHeight: 100,
-  },
-  commentInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#212121',
-    maxHeight: 80,
-  },
-  postCommentButton: {
-    marginLeft: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#2196F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postCommentButtonDisabled: {
-    backgroundColor: '#ccc',
   },
   modalOverlay: {
     flex: 1,
@@ -1123,71 +425,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
+    backgroundColor: CommunityTheme.colors.cardBackground,
+    borderRadius: CommunityTheme.borderRadius.lg,
     maxHeight: '70%',
     width: '90%',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    ...CommunityTheme.shadows.card,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: CommunityTheme.spacing.xl,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: CommunityTheme.colors.borderLight,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#212121',
+    color: CommunityTheme.colors.textPrimary,
   },
   closeButton: {
     padding: 4,
   },
   modalSubtitle: {
     fontSize: 16,
-    color: '#666',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    color: CommunityTheme.colors.textSecondary,
+    paddingHorizontal: CommunityTheme.spacing.xl,
+    paddingBottom: CommunityTheme.spacing.lg,
   },
   structuresList: {
-    padding: 20,
+    padding: CommunityTheme.spacing.xl,
   },
   structureOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: CommunityTheme.colors.background,
+    padding: CommunityTheme.spacing.lg,
+    borderRadius: CommunityTheme.borderRadius.md,
+    marginBottom: CommunityTheme.spacing.md,
   },
   structureOptionSelected: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: CommunityTheme.colors.primaryLight,
     borderWidth: 2,
-    borderColor: '#2196F3',
+    borderColor: CommunityTheme.colors.primary,
   },
   structureOptionImage: {
     width: 50,
     height: 50,
-    borderRadius: 8,
+    borderRadius: CommunityTheme.borderRadius.sm,
   },
   structureOptionInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: CommunityTheme.spacing.md,
   },
   structureOptionName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212121',
+    color: CommunityTheme.colors.textPrimary,
   },
   structureOptionLocation: {
     fontSize: 14,
-    color: '#666',
+    color: CommunityTheme.colors.textSecondary,
     marginTop: 2,
   },
 });

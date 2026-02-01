@@ -176,6 +176,21 @@ export default function DettaglioPrenotazioneScreen() {
   const isDeclined = currentUserPlayer?.status === "declined";
   const isConfirmed = currentUserPlayer?.status === "confirmed";
   const isInMatch = !!currentUserPlayer;
+
+  // Controllo scadenza invito: scade 2 ore prima dell'inizio della partita
+  const isInviteExpired = (() => {
+    if (!booking || !currentUserPlayer) return false;
+    try {
+      const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+      const cutoffTime = new Date(matchDateTime);
+      cutoffTime.setHours(cutoffTime.getHours() - 2);
+      return new Date() > cutoffTime;
+    } catch (e) {
+      console.error('Errore calcolo scadenza invito:', e);
+      return false;
+    }
+  })();
+
   const isRegistrationOpen = () => {
     if (!booking) return false;
     const now = new Date();
@@ -766,6 +781,12 @@ export default function DettaglioPrenotazioneScreen() {
   const handleRespondToInvite = async (response: "accept" | "decline", team?: "A" | "B") => {
     if (!booking?.matchId) return;
 
+    // Non permettere di rispondere se l'invito è scaduto
+    if (isInviteExpired) {
+      showCustomAlert("Invito scaduto", "Non è possibile rispondere a un invito scaduto");
+      return;
+    }
+
     if (response === "accept" && booking.match?.maxPlayers && booking.match?.maxPlayers > 2 && !team) {
       setTeamSelectionMode("invite");
       setTeamSelectionModalVisible(true);
@@ -1230,7 +1251,7 @@ export default function DettaglioPrenotazioneScreen() {
       )}
 
       {/* Pending Invite Card */}
-      {isPendingInvite && (
+      {isPendingInvite && !isInviteExpired && (
         <ScaleInView delay={500}>
           <LinearGradient
             colors={['#FFF8E1', '#FFECB3', '#FFE082']}
@@ -1310,6 +1331,26 @@ export default function DettaglioPrenotazioneScreen() {
                 </AnimatedButton>
               </View>
             </SlideInView>
+          </LinearGradient>
+        </ScaleInView>
+      )}
+
+      {/* Pending Invite Expired Notice */}
+      {isPendingInvite && isInviteExpired && (
+        <ScaleInView delay={550}>
+          <LinearGradient
+            colors={['#F5F5F5', '#EEEEEE']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pendingInviteCard}
+          >
+            <View style={styles.pendingInviteBackgroundIcon}>
+              <Ionicons name="time-outline" size={120} color="rgba(0,0,0,0.06)" />
+            </View>
+            <FadeInView delay={600}>
+              <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 6 }}>Invito scaduto</Text>
+              <Text style={{ color: '#666' }}>La deadline per rispondere è passata. Non è possibile accettare l'invito.</Text>
+            </FadeInView>
           </LinearGradient>
         </ScaleInView>
       )}

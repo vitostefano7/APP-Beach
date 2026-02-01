@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   Image,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/CreatePostScreen.styles';
 import API_URL from '../../../config/api';
+import { useCustomAlert } from '../../../components/CustomAlert/CustomAlert';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation<any>();
@@ -28,16 +28,19 @@ export default function CreatePostScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const { showAlert, AlertComponent } = useCustomAlert();
+
   const handlePickImage = async () => {
     try {
       // Richiedi permessi
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Permessi necessari',
-          'Abbiamo bisogno dei permessi per accedere alla tua galleria'
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Permessi necessari',
+          message: 'Abbiamo bisogno dei permessi per accedere alla tua galleria',
+        });
         return;
       }
 
@@ -53,7 +56,11 @@ export default function CreatePostScreen() {
       }
     } catch (error) {
       console.error('Errore selezione immagine:', error);
-      Alert.alert('Errore', 'Impossibile selezionare l\'immagine');
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile selezionare l\'immagine',
+      });
     }
   };
 
@@ -63,10 +70,11 @@ export default function CreatePostScreen() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Permessi necessari',
-          'Abbiamo bisogno dei permessi per accedere alla fotocamera'
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Permessi necessari',
+          message: 'Abbiamo bisogno dei permessi per accedere alla fotocamera',
+        });
         return;
       }
 
@@ -81,7 +89,11 @@ export default function CreatePostScreen() {
       }
     } catch (error) {
       console.error('Errore scatto foto:', error);
-      Alert.alert('Errore', 'Impossibile scattare la foto');
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile scattare la foto',
+      });
     }
   };
 
@@ -117,7 +129,11 @@ export default function CreatePostScreen() {
 
     if (!content.trim() && !selectedImage) {
       console.log('❌ Validazione fallita: nessun contenuto o immagine');
-      Alert.alert('Attenzione', 'Scrivi qualcosa o aggiungi una foto');
+      showAlert({
+        type: 'warning',
+        title: 'Attenzione',
+        message: 'Scrivi qualcosa o aggiungi una foto',
+      });
       return;
     }
 
@@ -185,15 +201,20 @@ export default function CreatePostScreen() {
         console.log('  Post user:', data.post?.user?.name);
         console.log('========================================\n');
 
-        Alert.alert('Successo', 'Post pubblicato con successo!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              console.log('🔙 Navigazione indietro alla Community');
-              navigation.goBack();
+        showAlert({
+          type: 'success',
+          title: 'Successo',
+          message: 'Post pubblicato con successo!',
+          buttons: [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔙 Navigazione indietro alla Community');
+                navigation.goBack();
+              },
             },
-          },
-        ]);
+          ],
+        });
       } else {
         const errorText = await response.text();
         console.error('\n❌ ERRORE RISPOSTA API:');
@@ -219,10 +240,11 @@ export default function CreatePostScreen() {
       console.error('  Stack:', error.stack);
       console.error('========================================\n');
 
-      Alert.alert(
-        'Errore',
-        error.message || 'Impossibile pubblicare il post. Riprova.'
-      );
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: error.message || 'Impossibile pubblicare il post. Riprova.',
+      });
     } finally {
       setUploading(false);
       console.log('🏁 Fine processo pubblicazione\n');
@@ -232,10 +254,11 @@ export default function CreatePostScreen() {
   const canPost = (content.trim().length > 0 || selectedImage) && !uploading;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
@@ -364,5 +387,7 @@ export default function CreatePostScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    <AlertComponent />
+    </>
   );
 }

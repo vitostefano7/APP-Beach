@@ -25,6 +25,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/PostDetailScreen.styles';
 import API_URL from '../../../config/api';
+import { useCustomAlert } from '../../../components/CustomAlert/CustomAlert';
 
 type Comment = {
   _id: string;
@@ -82,6 +83,8 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<Post | null>(null);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  const { showAlert, AlertComponent } = useCustomAlert();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   // UI state for input focus and send button animation
@@ -108,12 +111,20 @@ export default function PostDetailScreen() {
         setPost(data.post);
       } else {
         console.error('Error loading post:', res.status);
-        Alert.alert('Errore', 'Impossibile caricare il post');
+        showAlert({
+          type: 'error',
+          title: 'Errore',
+          message: 'Impossibile caricare il post',
+        });
         navigation.goBack();
       }
     } catch (error) {
       console.error('Error loading post:', error);
-      Alert.alert('Errore', 'Errore di connessione');
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Errore di connessione',
+      });
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -166,11 +177,19 @@ export default function PostDetailScreen() {
         setIsModalVisible(false);
       } else {
         const error = await res.text();
-        Alert.alert('Errore', error || 'Impossibile aggiungere il commento');
+        showAlert({
+          type: 'error',
+          title: 'Errore',
+          message: error || 'Impossibile aggiungere il commento',
+        });
       }
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Errore', 'Errore di connessione');
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Errore di connessione',
+      });
     } finally {
       setSubmittingComment(false);
     }
@@ -253,11 +272,12 @@ export default function PostDetailScreen() {
   const displayAvatar = isStruttura ? post.struttura!.images[0] : post.user?.avatarUrl;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    <>
+      <SafeAreaView style={styles.safe}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -458,5 +478,7 @@ export default function PostDetailScreen() {
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    <AlertComponent />
+    </>
   );
 }

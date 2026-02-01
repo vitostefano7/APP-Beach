@@ -675,11 +675,18 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                     resetAdvancedFilters();
                   }}
                 >
-                  <Ionicons 
-                    name="mail-outline" 
-                    size={16} 
-                    color={filter === "invites" ? "white" : "#666"} 
-                  />
+                  <View style={styles.inviteIconContainer}>
+                    <Ionicons 
+                      name="mail-outline" 
+                      size={16} 
+                      color={filter === "invites" ? "white" : "#666"} 
+                    />
+                    {invitesCount > 0 && (
+                      <View style={styles.inviteNotificationBadge}>
+                        <View style={styles.inviteNotificationDot} />
+                      </View>
+                    )}
+                  </View>
                   <Text
                     style={[
                       styles.filterText,
@@ -1121,6 +1128,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     minWidth: 80,
+  },
+  inviteIconContainer: {
+    position: 'relative',
+  },
+  inviteNotificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteNotificationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F44336',
   },
 
   loadingContainer: {
