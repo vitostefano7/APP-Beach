@@ -49,7 +49,17 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
   const { showAlert, AlertComponent } = useCustomAlert();
 
-  const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId, struttura } = route.params;
+  const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId, struttura, match } = route.params;
+
+  console.log('📥 [GroupChatScreen] Parametri ricevuti:', {
+    conversationId,
+    groupName,
+    matchId,
+    headerInfo,
+    paramBookingId,
+    struttura,
+    match
+  });
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -86,11 +96,39 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
       loadMatchInfo();
     } else if (paramBookingId) {
       loadBookingInfo(paramBookingId);
+    } else if (match) {
+      // Fallback: usa direttamente l'oggetto match passato come parametro
+      console.log('🔄 [GroupChatScreen] Uso match diretto da parametri');
+      
+      const booking = match.booking;
+      const campo = booking?.campo || match.campo;
+      const strutturaData = campo?.struttura || booking?.struttura;
+      
+      setBookingInfo({
+        bookingId: booking?._id || match._id,
+        strutturaName: strutturaData?.name || "Struttura",
+        date: booking?.date || match.date,
+        startTime: booking?.startTime || match.startTime,
+        endTime: booking?.endTime || match.endTime,
+        participantsCount: match.players?.filter((p: any) => 
+          p.status === "confirmed" || p.status === "pending"
+        ).length || 0,
+      });
+
+      // Imposta anche struttura per l'avatar se disponibile
+      if (!struttura && strutturaData) {
+        console.log('🏢 [GroupChatScreen] Struttura estratta da match:', strutturaData.name);
+      }
     }
+    
     loadMessages();
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [conversationId, matchId, role, paramBookingId]);
+  }, [conversationId, matchId, role, paramBookingId, match]);
+
+  useEffect(() => {
+    console.log('📊 [GroupChatScreen] bookingInfo aggiornato:', bookingInfo);
+  }, [bookingInfo]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -151,7 +189,12 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
   const loadMatchInfo = async (matchIdParam?: string) => {
     const targetMatchId = matchIdParam || matchId;
-    if (!token || !targetMatchId) return;
+    if (!token || !targetMatchId) {
+      console.log('⚠️ [loadMatchInfo] Token o matchId mancante:', { token: !!token, targetMatchId });
+      return;
+    }
+
+    console.log('📡 [loadMatchInfo] Chiamata API per matchId:', targetMatchId);
 
     try {
       const res = await fetch(
@@ -161,6 +204,8 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
       if (res.ok) {
         const data = await res.json();
+        console.log('✅ [loadMatchInfo] Dati ricevuti:', data);
+
         const userParticipant = data.players?.find(
           (p: any) => p.user?._id === user?.id || p.user === user?.id
         );
@@ -184,14 +229,47 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
             data.players?.filter((p: any) => p.status === "confirmed" || p.status === "pending")
               .length || 0,
         });
+      } else {
+        console.error('❌ [loadMatchInfo] Errore API:', res.status, res.statusText);
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ [loadMatchInfo] Dettagli errore:', errorData);
+
+        showAlert({
+          type: 'error',
+          title: 'Errore caricamento match',
+          message: `Impossibile caricare i dettagli del match. Codice: ${res.status}`,
+        });
+
+        // Fallback: usa parametri passati se disponibili
+        if (match || struttura) {
+          console.log('🔄 [loadMatchInfo] Uso fallback da parametri passati');
+          setBookingInfo({
+            bookingId: match?.booking?._id || match?._id,
+            strutturaName: struttura?.name || match?.booking?.campo?.struttura?.name || "Struttura",
+            date: match?.booking?.date || match?.date,
+            startTime: match?.booking?.startTime || match?.startTime,
+            endTime: match?.booking?.endTime || match?.endTime,
+            participantsCount: match?.players?.length || 0,
+          });
+        }
       }
     } catch (error) {
-      console.error("Errore caricamento info match:", error);
+      console.error("❌ [loadMatchInfo] Errore di rete:", error);
+      showAlert({
+        type: 'error',
+        title: 'Errore di connessione',
+        message: 'Impossibile connettersi al server. Riprova più tardi.',
+      });
     }
   };
 
   const loadBookingInfo = async (bookingId: string) => {
-    if (!token || !bookingId) return;
+    if (!token || !bookingId) {
+      console.log('⚠️ [loadBookingInfo] Token o bookingId mancante:', { token: !!token, bookingId });
+      return;
+    }
+
+    console.log('📡 [loadBookingInfo] Chiamata API per bookingId:', bookingId);
 
     try {
       const endpoint = role === "owner"
@@ -204,6 +282,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
       if (res.ok) {
         const data = await res.json();
+        console.log('✅ [loadBookingInfo] Dati ricevuti:', data);
 
         setBookingInfo({
           bookingId: data._id,
@@ -213,9 +292,24 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
           endTime: data.endTime,
           participantsCount: data.players?.length || 0,
         });
+      } else {
+        console.error('❌ [loadBookingInfo] Errore API:', res.status, res.statusText);
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ [loadBookingInfo] Dettagli errore:', errorData);
+
+        showAlert({
+          type: 'error',
+          title: 'Errore caricamento prenotazione',
+          message: `Impossibile caricare i dettagli della prenotazione. Codice: ${res.status}`,
+        });
       }
     } catch (error) {
-      console.error("Errore caricamento info booking:", error);
+      console.error("❌ [loadBookingInfo] Errore di rete:", error);
+      showAlert({
+        type: 'error',
+        title: 'Errore di connessione',
+        message: 'Impossibile connettersi al server. Riprova più tardi.',
+      });
     }
   };
 
@@ -310,8 +404,8 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
           onPress: async () => {
             try {
               const endpoint = role === "owner"
-                ? `${API_URL}/owner/conversazioni/${conversationId}`
-                : `${API_URL}/conversazioni/${conversationId}`;
+                ? `${API_URL}/api/conversations/${conversationId}`
+                : `${API_URL}/api/conversations/${conversationId}`;
 
               const response = await fetch(endpoint, {
                 method: "DELETE",
@@ -383,8 +477,10 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
     const senderColor = getSenderColor(item.sender._id);
     const isOwner = item.senderType === "owner";
 
+    // Usa struttura dai parametri o dall'oggetto match
+    const strutturaData = struttura || match?.booking?.campo?.struttura || match?.campo?.struttura;
     const strutturaAvatarUrl =
-      struttura?.images?.[0] ? resolveImageUrl(struttura.images[0]) : undefined;
+      strutturaData?.images?.[0] ? resolveImageUrl(strutturaData.images[0]) : undefined;
 
     return (
       <View

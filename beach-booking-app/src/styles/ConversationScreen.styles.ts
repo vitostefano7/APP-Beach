@@ -367,7 +367,7 @@ export const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
     justifyContent: "flex-end",
   },
   modalContent: {
@@ -445,5 +445,33 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 2,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  backButton: {
+    padding: 5,
+  },
+  headerWithBack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitleWithBack: {
+    textAlign: 'center',
+    marginBottom: 0,
+    flex: 1,
   },
 });

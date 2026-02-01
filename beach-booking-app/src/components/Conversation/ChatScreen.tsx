@@ -207,8 +207,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           onPress: async () => {
             try {
               const endpoint = role === "owner"
-                ? `${API_URL}/owner/conversazioni/${conversationId}`
-                : `${API_URL}/conversazioni/${conversationId}`;
+                ? `${API_URL}/api/conversations/${conversationId}`
+                : `${API_URL}/api/conversations/${conversationId}`;
 
               const response = await fetch(endpoint, {
                 method: "DELETE",
