@@ -82,15 +82,15 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
   }, [navigation, role]);
 
   useEffect(() => {
-    if (role === "player") {
+    if (matchId) {
       loadMatchInfo();
-    } else {
-      loadConversation();
+    } else if (paramBookingId) {
+      loadBookingInfo(paramBookingId);
     }
     loadMessages();
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [conversationId, matchId, role]);
+  }, [conversationId, matchId, role, paramBookingId]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -142,9 +142,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.matchId) {
-          await loadMatchInfo(data.matchId);
-        }
+        // Rimossa chiamata a loadMatchInfo, ora gestita nell'useEffect
       }
     } catch (error) {
       console.error("Errore caricamento conversazione:", error);
@@ -189,6 +187,35 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
       }
     } catch (error) {
       console.error("Errore caricamento info match:", error);
+    }
+  };
+
+  const loadBookingInfo = async (bookingId: string) => {
+    if (!token || !bookingId) return;
+
+    try {
+      const endpoint = role === "owner"
+        ? `${API_URL}/owner/bookings/${bookingId}`
+        : `${API_URL}/bookings/${bookingId}`;
+
+      const res = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        setBookingInfo({
+          bookingId: data._id,
+          strutturaName: data.campo?.struttura?.name || "Struttura",
+          date: data.date,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          participantsCount: data.players?.length || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Errore caricamento info booking:", error);
     }
   };
 
