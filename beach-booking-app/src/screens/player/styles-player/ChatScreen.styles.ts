@@ -21,6 +21,8 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
 
   backButton: {
@@ -107,6 +109,7 @@ export const styles = StyleSheet.create({
   messageContainerMine: {
     alignSelf: "flex-end",
     justifyContent: "flex-end",
+    width: '100%',
   },
 
   messageContainerTheirs: {
@@ -187,6 +190,7 @@ export const styles = StyleSheet.create({
 
   messageTextMine: {
     color: "#1a1a1a",
+    textAlign: "right",
   },
 
   messageTextTheirs: {
@@ -201,6 +205,7 @@ export const styles = StyleSheet.create({
 
   messageTimeMine: {
     color: "#666",
+    textAlign: "right",
   },
 
   messageTimeTheirs: {

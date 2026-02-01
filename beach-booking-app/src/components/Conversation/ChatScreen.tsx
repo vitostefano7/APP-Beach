@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
+  StyleSheet,
 } from "react-native";
 import { Keyboard, Dimensions } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +19,6 @@ import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react"
 
 import API_URL from "../../config/api";
 import { AuthContext } from "../../context/AuthContext";
-import { styles } from "../../screens/player/styles-player/ChatScreen.styles";
 import Avatar from "../Avatar/Avatar";
 import { resolveImageUrl } from "../../utils/imageUtils";
 
@@ -39,6 +39,7 @@ type Message = {
 type UserProfile = {
   _id: string;
   name: string;
+  surname?: string;
   email: string;
   avatarUrl?: string | null;
   phone?: string;
@@ -100,26 +101,25 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   }, [conversationId]);
 
   useEffect(() => {
-    if (role === "player") {
-      const keyboardDidShowListener = Keyboard.addListener(
-        Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-        (e) => {
-          const adjustedHeight =
-            Platform.OS === "android"
-              ? e.endCoordinates.height - 1
-              : e.endCoordinates.height;
-          console.log("⌨️ [ChatScreen] Tastiera APERTA:", {
-            role,
-            platform: Platform.OS,
-            keyboardHeight: adjustedHeight,
-            screenHeight: e.endCoordinates.screenY,
-          });
-          setKeyboardHeight(adjustedHeight);
-          setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }, 100);
-        }
-      );
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        const adjustedHeight =
+          Platform.OS === "android"
+            ? e.endCoordinates.height - 1
+            : e.endCoordinates.height;
+        console.log("⌨️ [ChatScreen] Tastiera APERTA:", {
+          role,
+          platform: Platform.OS,
+          keyboardHeight: adjustedHeight,
+          screenHeight: e.endCoordinates.screenY,
+        });
+        setKeyboardHeight(adjustedHeight);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
 
       const keyboardDidHideListener = Keyboard.addListener(
         Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
@@ -137,22 +137,14 @@ export default function ChatScreen({ role }: ChatScreenProps) {
         keyboardDidShowListener.remove();
         keyboardDidHideListener.remove();
       };
-    } else {
-      const showSub = Keyboard.addListener("keyboardDidShow", () => {
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      });
-
-      return () => showSub.remove();
-    }
   }, [role]);
 
   useEffect(() => {
-    if (role === "owner" && userId && !userProfile && !loadingProfile) {
+    // Carica il profilo utente se non è una chat con struttura
+    if (!struttura && (userId || otherUser?._id) && !userProfile && !loadingProfile) {
       loadUserProfile();
     }
-  }, [role, userId, userProfile, loadingProfile]);
+  }, [struttura, userId, otherUser, userProfile, loadingProfile]);
 
   const loadMessages = async () => {
     if (!token) return;
@@ -177,11 +169,14 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   };
 
   const loadUserProfile = async () => {
-    if (!token || !userId) return;
+    if (!token) return;
+    
+    const targetUserId = userId || otherUser?._id;
+    if (!targetUserId) return;
 
     try {
       setLoadingProfile(true);
-      const res = await fetch(`${API_URL}/users/${userId}`, {
+      const res = await fetch(`${API_URL}/users/${targetUserId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -239,16 +234,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           },
         },
       ]
-    );
-  };
-
-  const handleOpenProfile = () => {
-    if (role === "owner") {
-      setShowUserProfile(true);
-      if (!userProfile) {
-        loadUserProfile();
-      }
-    }
+    });
   };
 
   const sendMessage = async () => {
@@ -344,65 +330,67 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           isConsecutive && styles.messageContainerConsecutive,
         ]}
       >
-        {!isMine && showAvatar && (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              name={otherName}
-              avatarUrl={
-                otherAvatarUrl
-                  ? role === "player" && !item.sender.avatarUrl
-                    ? resolveImageUrl(otherAvatarUrl)
-                    : otherAvatarUrl
-                  : undefined
-              }
-              size={32}
-              backgroundColor="#E3F2FD"
-              textColor="#2196F3"
-            />
+        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+          {!isMine && showAvatar && (
+            <View style={styles.avatarContainer}>
+              <Avatar
+                name={otherName}
+                avatarUrl={
+                  otherAvatarUrl
+                    ? role === "player" && !item.sender.avatarUrl
+                      ? resolveImageUrl(otherAvatarUrl)
+                      : otherAvatarUrl
+                    : undefined
+                }
+                size={32}
+                backgroundColor="#E3F2FD"
+                textColor="#2196F3"
+              />
+            </View>
+          )}
+
+          {!isMine && !showAvatar && <View style={styles.avatarSpacer} />}
+
+          <View
+            style={[
+              styles.messageBubble,
+              isMine ? styles.messageBubbleMine : styles.messageBubbleTheirs,
+              isConsecutive &&
+                (isMine ? styles.bubbleConsecutiveMine : styles.bubbleConsecutiveTheirs),
+            ]}
+          >
+            <Text
+              style={[
+                styles.messageText,
+                isMine ? styles.messageTextMine : styles.messageTextTheirs,
+              ]}
+            >
+              {item.content}
+            </Text>
+            <Text
+              style={[
+                styles.messageTime,
+                isMine ? styles.messageTimeMine : styles.messageTimeTheirs,
+              ]}
+            >
+              {formatTime(item.createdAt)}
+            </Text>
           </View>
-        )}
 
-        {!isMine && !showAvatar && <View style={styles.avatarSpacer} />}
+          {isMine && showAvatar && (
+            <View style={styles.avatarContainerMine}>
+              <Avatar
+                name={myName}
+                avatarUrl={myAvatarUrl}
+                size={32}
+                backgroundColor="#E3F2FD"
+                textColor="#2196F3"
+              />
+            </View>
+          )}
 
-        <View
-          style={[
-            styles.messageBubble,
-            isMine ? styles.messageBubbleMine : styles.messageBubbleTheirs,
-            isConsecutive &&
-              (isMine ? styles.bubbleConsecutiveMine : styles.bubbleConsecutiveTheirs),
-          ]}
-        >
-          <Text
-            style={[
-              styles.messageText,
-              isMine ? styles.messageTextMine : styles.messageTextTheirs,
-            ]}
-          >
-            {item.content}
-          </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isMine ? styles.messageTimeMine : styles.messageTimeTheirs,
-            ]}
-          >
-            {formatTime(item.createdAt)}
-          </Text>
+          {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
         </View>
-
-        {isMine && showAvatar && (
-          <View style={styles.avatarContainerMine}>
-            <Avatar
-              name={myName}
-              avatarUrl={myAvatarUrl}
-              size={32}
-              backgroundColor="#E3F2FD"
-              textColor="#2196F3"
-            />
-          </View>
-        )}
-
-        {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
   };
@@ -434,24 +422,18 @@ export default function ChatScreen({ role }: ChatScreenProps) {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
 
-          {role === "player" ? (
+          {struttura ? (
+            /* Chat con struttura */
             <Pressable
               style={styles.headerCenter}
               onPress={() => {
-                if (struttura) {
-                  navigation.navigate("FieldDetails", { struttura });
-                } else if (isUserChat && otherUser) {
-                  navigation.navigate("ProfiloUtente", { userId: otherUser._id });
-                }
+                navigation.navigate("FieldDetails", { struttura });
               }}
-              disabled={!struttura && !isUserChat}
             >
               <Avatar
-                name={strutturaName}
+                name={strutturaName || "Struttura"}
                 avatarUrl={
-                  isUserChat && otherUser?.avatarUrl
-                    ? otherUser.avatarUrl
-                    : struttura?.images?.[0]
+                  struttura?.images?.[0]
                     ? resolveImageUrl(struttura.images[0])
                     : undefined
                 }
@@ -461,23 +443,44 @@ export default function ChatScreen({ role }: ChatScreenProps) {
               />
               <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                  {strutturaName}
+                  {strutturaName || "Struttura"}
                 </Text>
-                </View>
+              </View>
             </Pressable>
           ) : (
-            <Pressable style={styles.headerCenter} onPress={handleOpenProfile}>
-              <View style={styles.headerAvatar}>
-                <Ionicons name="person" size={24} color="#2196F3" />
-              </View>
+            /* Chat con utente */
+            <Pressable
+              style={styles.headerCenter}
+              onPress={() => {
+                const targetUserId = userId || otherUser?._id;
+                if (targetUserId) {
+                  const routeName = role === "owner" ? "UserProfile" : "ProfiloUtente";
+                  navigation.navigate(routeName, { userId: targetUserId });
+                }
+              }}
+            >
+              <Avatar
+                name={
+                  userProfile?.surname 
+                    ? `${userProfile.name} ${userProfile.surname}`
+                    : otherUser?.surname
+                    ? `${otherUser.name} ${otherUser.surname}`
+                    : userProfile?.name || userName || otherUser?.name || "Utente"
+                }
+                surname={userProfile?.surname || otherUser?.surname}
+                avatarUrl={userProfile?.avatarUrl || otherUser?.avatarUrl}
+                size={44}
+                backgroundColor="#E3F2FD"
+                textColor="#2196F3"
+              />
               <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                  {userName}
+                  {userProfile?.surname 
+                    ? `${userProfile.name} ${userProfile.surname}`
+                    : otherUser?.surname
+                    ? `${otherUser.name} ${otherUser.surname}`
+                    : userProfile?.name || userName || otherUser?.name || "Utente"}
                 </Text>
-                <View style={styles.onlineIndicator}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.onlineText}>Online</Text>
-                </View>
               </View>
             </Pressable>
           )}
@@ -517,11 +520,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
             styles.inputContainer,
             {
               paddingBottom: Math.max(insets.bottom, 12),
+              marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
             },
-            role === "player" &&
-              keyboardHeight > 0 && {
-                marginBottom: keyboardHeight + 10,
-              },
           ]}
           onLayout={(event) => {
             const { y, height } = event.nativeEvent.layout;
@@ -537,7 +537,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
               distanceFromBottom: (screenHeight - containerBottom).toFixed(2),
               keyboardHeight,
               insetsBottom: insets.bottom,
-              marginBottom: role === "player" && keyboardHeight > 0 ? keyboardHeight + 10 : 0,
+              marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
               paddingBottom: Math.max(insets.bottom, 12),
               isVisible: containerBottom <= screenHeight ? "✅ VISIBILE" : "❌ TAGLIATO",
             });
@@ -688,3 +688,324 @@ export default function ChatScreen({ role }: ChatScreenProps) {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerCenter: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  profileButton: {
+    padding: 8,
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  messagesList: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  messageContainer: {
+    marginBottom: 16,
+    maxWidth: "80%",
+  },
+  messageContainerMine: {
+    alignSelf: "flex-end",
+    alignItems: "flex-end",
+  },
+  messageContainerTheirs: {
+    alignSelf: "flex-start",
+    alignItems: "flex-start",
+  },
+  messageContainerConsecutive: {
+    marginBottom: 4,
+  },
+  avatarContainer: {
+    marginRight: 8,
+  },
+  avatarContainerMine: {
+    marginLeft: 8,
+  },
+  avatarSpacer: {
+    width: 40,
+    height: 32,
+  },
+  messageBubble: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderBottomRightRadius: 4,
+    maxWidth: "100%",
+  },
+  messageBubbleMine: {
+    backgroundColor: "#007AFF",
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 20,
+  },
+  messageBubbleTheirs: {
+    backgroundColor: "#e9ecef",
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 20,
+  },
+  bubbleConsecutiveMine: {
+    borderBottomLeftRadius: 20,
+  },
+  bubbleConsecutiveTheirs: {
+    borderBottomRightRadius: 20,
+  },
+  messageText: {
+    color: "#fff",
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  messageTextMine: {
+    color: "#fff",
+  },
+  messageTextTheirs: {
+    color: "#1a1a1a",
+  },
+  messageTime: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  messageTimeMine: {
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "right",
+  },
+  messageTimeTheirs: {
+    color: "#666",
+    textAlign: "left",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#e9ecef",
+  },
+  inputWrapper: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 44,
+    maxHeight: 100,
+    justifyContent: "center",
+  },
+  input: {
+    fontSize: 16,
+    color: "#1a1a1a",
+    minHeight: 24,
+    maxHeight: 80,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#007AFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendButtonActive: {
+    backgroundColor: "#007AFF",
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#ddd",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+  modalLoading: {
+    padding: 40,
+    alignItems: "center",
+  },
+  modalLoadingText: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 16,
+  },
+  profileContent: {
+    padding: 20,
+  },
+  profileAvatarContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  profileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#e9ecef",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileInfo: {
+    gap: 16,
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  profileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileRowContent: {
+    flex: 1,
+  },
+  profileLabel: {
+    fontSize: 12,
+    color: "#666",
+    textTransform: "uppercase",
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  profileValue: {
+    fontSize: 16,
+    color: "#1a1a1a",
+    fontWeight: "500",
+  },
+  modalError: {
+    padding: 40,
+    alignItems: "center",
+  },
+  modalErrorText: {
+    fontSize: 16,
+    color: "#dc3545",
+    marginBottom: 8,
+  },
+  modalErrorSubtext: {
+    fontSize: 14,
+    color: "#666",
+  },
+});

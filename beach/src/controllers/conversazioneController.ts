@@ -30,9 +30,9 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
 
     const [directConversations, groupConversations] = await Promise.all([
       Conversation.find(directQuery)
-        .populate('user', 'name email avatarUrl')
+        .populate('user', 'name surname email avatarUrl')
         .populate('struttura', 'name images')
-        .populate('owner', 'name email')
+        .populate('owner', 'name surname email avatarUrl')
         .sort({ lastMessageAt: -1 }),
       
       Conversation.find(groupQuery)
@@ -195,6 +195,7 @@ export const getOrCreateConversation = async (req: AuthRequest, res: Response) =
     if (!conversation) {
       console.log('➕ Creazione nuova conversazione...');
       conversation = await Conversation.create({
+        type: 'direct',
         user: userId,
         struttura: strutturaId,
         owner: struttura.owner,
@@ -279,6 +280,7 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
     // Se non esiste, creala
     if (!conversation) {
       conversation = await Conversation.create({
+        type: 'direct',
         user: userId,
         struttura: struttura._id,
         owner: ownerId,
@@ -507,10 +509,10 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
           (p: any) => p.user?.toString() === userId || p.user?._id?.toString() === userId
         );
         
-        if (playerInMatch && playerInMatch.status !== 'confirmed') {
+        if (playerInMatch && playerInMatch.status !== 'confirmed' && playerInMatch.status !== 'pending') {
           canSend = false;
           return res.status(403).json({ 
-            message: 'Devi confermare la partecipazione per inviare messaggi',
+            message: 'Devi essere invitato o confermare la partecipazione per inviare messaggi',
             reason: 'not_confirmed'
           });
         }
@@ -754,13 +756,16 @@ export const getOrCreateDirectConversationWithUser = async (req: AuthRequest, re
       return res.status(404).json({ message: 'Utente non trovato' });
     }
 
-    // Trova conversazione esistente tra i due utenti (group con esattamente 2 participants)
+    // Trova conversazione esistente tra i due utenti
+    // Cerca prima come conversazione "direct" (vecchio schema)
     let conversation = await Conversation.findOne({
-      type: 'group',
-      participants: { $all: [currentUserId, userId], $size: 2 },
-      match: { $exists: false } // Non è una chat di match
+      $or: [
+        { type: 'direct', user: currentUserId, owner: userId },
+        { type: 'direct', user: userId, owner: currentUserId }
+      ]
     })
-      .populate('participants', 'name email avatarUrl')
+      .populate('user', 'name surname email avatarUrl')
+      .populate('owner', 'name surname email avatarUrl')
       .sort({ lastMessageAt: -1 });
 
     console.log('🔍 [Direct Chat] Existing conversation found:', !!conversation);
@@ -768,21 +773,22 @@ export const getOrCreateDirectConversationWithUser = async (req: AuthRequest, re
     // Se non esiste, creala
     if (!conversation) {
       console.log('➕ [Direct Chat] Creating new conversation');
-      const groupName = `Chat con ${targetUser.name}`;
+      
       const newConversation = await Conversation.create({
-        type: 'group',
-        participants: [currentUserId, userId],
-        groupName,
+        type: 'direct',
+        user: currentUserId,
+        owner: userId,
         lastMessage: '',
         lastMessageAt: new Date(),
-        unreadCount: {},
-      } as any);
+        unreadByUser: 0,
+        unreadByOwner: 0,
+      });
 
-      const createdConv: any = Array.isArray(newConversation) ? newConversation[0] : newConversation;
-      console.log('✅ [Direct Chat] New conversation created:', createdConv._id);
+      console.log('✅ [Direct Chat] New conversation created:', newConversation._id);
       
-      conversation = await Conversation.findById(createdConv._id)
-        .populate('participants', 'name email avatarUrl');
+      conversation = await Conversation.findById(newConversation._id)
+        .populate('user', 'name surname email avatarUrl')
+        .populate('owner', 'name surname email avatarUrl');
     }
 
     console.log('✅ [Direct Chat] Returning conversation:', conversation?._id);

@@ -169,7 +169,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
         if (role === "player") {
           setCanSendMessages(
-            !userParticipant || userParticipant.status === "confirmed"
+            !userParticipant || userParticipant.status === "confirmed" || userParticipant.status === "pending"
           );
         }
 
@@ -183,7 +183,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
           startTime: data.booking?.startTime || data.startTime,
           endTime: data.booking?.endTime || data.endTime,
           participantsCount:
-            data.players?.filter((p: any) => p.status === "confirmed")
+            data.players?.filter((p: any) => p.status === "confirmed" || p.status === "pending")
               .length || 0,
         });
       }
@@ -343,7 +343,8 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
   const handleOpenProfile = (targetUserId?: string) => {
     if (!targetUserId || targetUserId === user?.id) return;
-    navigation.navigate("ProfiloUtente", { userId: targetUserId });
+    const routeName = role === "owner" ? "UserProfile" : "ProfiloUtente";
+    navigation.navigate(routeName, { userId: targetUserId });
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -520,16 +521,12 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
                   {bookingInfo?.strutturaName || "Struttura"}
                 </Text>
                 <Text style={additionalStyles.subHeaderDay} numberOfLines={1}>
-                  {bookingInfo?.date
+                  {`📅 ${bookingInfo?.date
                     ? new Date(bookingInfo.date).toLocaleDateString("it-IT", {
                         day: "2-digit",
                         month: "2-digit",
                       })
-                    : "Data"}
-                  {" - "}
-                  {bookingInfo?.startTime || "Ora"}
-                  {" - "}
-                  {bookingInfo?.participantsCount || 0} partecipanti
+                    : "Data"} - 🕒 ${bookingInfo?.startTime || "Ora"} - 👥 ${bookingInfo?.participantsCount || 0} partecipanti`}
                 </Text>
               </View>
               <Pressable
@@ -550,7 +547,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
                 disabled={!bookingInfo?.bookingId}
               >
                 <Ionicons name="calendar-outline" size={18} color="#2196F3" />
-                <Text style={additionalStyles.detailsButtonText}>Dettaglio</Text>
+                <Text style={additionalStyles.detailsButtonText}>Dettagli</Text>
               </Pressable>
             </View>
 
@@ -562,7 +559,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
                   color="#FF9800"
                 />
                 <Text style={additionalStyles.warningText}>
-                  Conferma la tua partecipazione al match per inviare messaggi
+                  Devi essere invitato o confermare la partecipazione al match per inviare messaggi
                 </Text>
               </View>
             )}
@@ -616,10 +613,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
                 baseStyles.inputContainer,
                 {
                   paddingBottom: Math.max(insets.bottom, 12),
-                  marginBottom:
-                    role === "player" && keyboardHeight > 0
-                      ? keyboardHeight + 10
-                      : 0,
+                  marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
                 },
               ]}
               onLayout={(event) => {
@@ -636,7 +630,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
                   distanceFromBottom: (screenHeight - containerBottom).toFixed(2),
                   keyboardHeight,
                   insetsBottom: insets.bottom,
-                  marginBottom: role === "player" && keyboardHeight > 0 ? keyboardHeight + 10 : 0,
+                  marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
                   paddingBottom: Math.max(insets.bottom, 12),
                   isVisible: containerBottom <= screenHeight ? "✅ VISIBILE" : "❌ TAGLIATO",
                 });

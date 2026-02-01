@@ -12,6 +12,7 @@ type Conversation = {
   user?: {
     _id: string;
     name: string;
+    surname?: string;
     email: string;
     avatarUrl?: string;
   };
@@ -23,7 +24,9 @@ type Conversation = {
   owner?: {
     _id: string;
     name: string;
+    surname?: string;
     email: string;
+    avatarUrl?: string;
   };
   groupName?: string;
   participants?: Array<{
@@ -96,7 +99,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   };
 
   const renderConversation = () => {
-    if (conversation.type === 'group') {
+    if (conversation.match) {
       const matchInfo = conversation.match?.booking;
       const campo = matchInfo?.campo;
       const struttura = campo?.struttura || conversation.struttura;
@@ -113,12 +116,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         });
       }
       const timeLabel = matchInfo?.startTime || "";
-      const participantsCount = conversation.match?.participants?.length || 0;
-      const metaLine = [dayLabel || "Data", timeLabel || "Ora", `${participantsCount} partecipanti`].join(" - ");
+      const participantsCount = conversation.match?.players?.filter(p => p.status === "confirmed" || p.status === "pending").length || 0;
+      const metaLine = [`📅 ${dayLabel || "Data"}`, `🕒 ${timeLabel || "Ora"}`, `👥 ${participantsCount} partecipanti`].join(" - ");
 
       return (
         <Pressable
-          style={styles.conversationCard}
+          style={[styles.conversationCardGroup, unreadCount > 0 && styles.conversationCardUnread]}
           onPress={() => {
             navigation.navigate("GroupChat", {
               conversationId: conversation._id,
@@ -128,7 +131,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                 strutturaName: struttura?.name,
                 date: matchInfo?.date,
                 startTime: matchInfo?.startTime,
-                participantsCount: conversation.match?.participants?.length || 0,
+                participantsCount: conversation.match?.players?.filter(p => p.status === "confirmed" || p.status === "pending").length || 0,
                 bookingId: matchInfo?._id,
               },
             });
@@ -186,19 +189,49 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
     // Direct conversation
     const otherPerson = isOwner ? conversation.user : conversation.owner;
+    const otherPersonFullName = otherPerson?.surname 
+      ? `${otherPerson.name} ${otherPerson.surname}`
+      : otherPerson?.name;
     const strutturaName = conversation.struttura?.name || "Struttura";
     const strutturaImages = conversation.struttura?.images || [];
 
+    // Determina lo stile in base a chi sta parlando
+    let cardStyle;
+    if (isOwner) {
+      // Owner che parla con un user
+      cardStyle = styles.conversationCardUser;
+    } else if (conversation.struttura) {
+      // Player che parla con una struttura
+      cardStyle = styles.conversationCardStruttura;
+    } else {
+      // Player che parla con un altro player
+      cardStyle = styles.conversationCardUserToUser;
+    }
+
     return (
       <Pressable
-        style={styles.conversationCard}
+        style={[cardStyle, unreadCount > 0 && styles.conversationCardUnread]}
         onPress={() => {
-          navigation.navigate("Chat", {
-            conversationId: conversation._id,
-            strutturaName: strutturaName,
-            otherPersonName: otherPerson?.name || "Utente",
-            struttura: conversation.struttura,
-          });
+          if (isOwner) {
+            // Owner chatta con utente
+            navigation.navigate("Chat", {
+              conversationId: conversation._id,
+              userName: otherPersonFullName || conversation.user?.name || "Utente",
+              userId: conversation.user?._id,
+              otherUser: conversation.user,
+              isUserChat: true,
+            });
+          } else {
+            // Player chatta con struttura o altro player
+            navigation.navigate("Chat", {
+              conversationId: conversation._id,
+              strutturaName: strutturaName,
+              otherPersonName: otherPerson?.name || "Utente",
+              struttura: conversation.struttura,
+              isUserChat: !conversation.struttura,
+              otherUser: otherPerson,
+            });
+          }
           setTimeout(() => refreshUnreadCount(), 1000);
         }}
       >
@@ -206,11 +239,13 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           {isOwner ? (
             <Avatar
               name={conversation.user?.name}
+              surname={conversation.user?.surname}
               avatarUrl={conversation.user?.avatarUrl}
               size={50}
               fallbackIcon="person"
             />
-          ) : (
+          ) : conversation.struttura ? (
+            // Player parla con struttura
             strutturaImages.length > 0 ? (
               <Image
                 source={{ uri: strutturaImages[0] }}
@@ -221,12 +256,26 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                 <Ionicons name="business-outline" size={24} color="#999" />
               </View>
             )
-          )}
+          ) : (
+            // Player parla con player
+            <Avatar
+              name={otherPerson?.name}
+              surname={otherPerson?.surname}
+              avatarUrl={otherPerson?.avatarUrl}
+              size={50}
+              fallbackIcon="person"
+            />
+          )
+          }
 
           <View style={styles.conversationInfo}>
             <View style={styles.conversationHeader}>
               <Text style={styles.conversationTitle} numberOfLines={1}>
-                {isOwner ? conversation.user?.name : strutturaName}
+                {isOwner 
+                  ? (conversation.user?.surname ? `${conversation.user.name} ${conversation.user.surname}` : conversation.user?.name)
+                  : conversation.struttura 
+                    ? strutturaName 
+                    : otherPersonFullName || "Utente"}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={styles.conversationTime}>
@@ -243,21 +292,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                 </Pressable>
               </View>
             </View>
-
-            {isOwner && conversation.struttura && (
-              <View style={styles.strutturaRow}>
-                <Ionicons name="business-outline" size={12} color="#666" />
-                <Text style={styles.strutturaName} numberOfLines={1}>
-                  {conversation.struttura.name}
-                </Text>
-              </View>
-            )}
-
-            {!isOwner && (
-              <Text style={styles.conversationSubtitle} numberOfLines={1}>
-                🏢 Chat con la struttura
-              </Text>
-            )}
 
             {conversation.lastMessage && (
               <Text
