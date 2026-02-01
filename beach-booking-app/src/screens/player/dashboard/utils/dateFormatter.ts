@@ -23,9 +23,9 @@ export const formatDate = (dateStr: string): string => {
       return "Domani";
     } else {
       return date.toLocaleDateString("it-IT", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
       });
     }
   } catch (error) {

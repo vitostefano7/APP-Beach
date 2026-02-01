@@ -815,6 +815,9 @@ export default function HomeScreen() {
   };
 
   const validPendingInvites = getValidPendingInvites(pendingInvites || [], user?.id || "");
+
+  console.log("Dashboard - pendingInvites raw:", pendingInvites);
+  console.log("Dashboard - validPendingInvites:", validPendingInvites);
   
   const completedMatches = recentMatches.filter((match: any) => 
     match.status === "completed" && match.score?.sets?.length > 0

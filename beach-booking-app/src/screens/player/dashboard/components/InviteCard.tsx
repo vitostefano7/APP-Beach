@@ -134,17 +134,23 @@ const InviteCard: React.FC<InviteCardProps> = ({
     cutoffTime.setHours(cutoffTime.getHours() - CUTOFF_HOURS_BEFORE);
     
     const now = new Date();
-    const minutesRemaining = Math.floor((cutoffTime - now) / (1000 * 60));
+    const diff = cutoffTime.getTime() - now.getTime();
+    const minutesRemaining = Math.floor(diff / (1000 * 60));
     
     if (minutesRemaining <= 0) return "";
     
     if (minutesRemaining < 60) {
-      return `Scade tra ${minutesRemaining} minuti`;
+      return `Scade tra ${minutesRemaining} ${minutesRemaining === 1 ? 'minuto' : 'minuti'}`;
     } else if (minutesRemaining < 120) {
       return `Scade tra 1 ora`;
     } else {
       const hoursRemaining = Math.floor(minutesRemaining / 60);
-      return `Scade tra ${hoursRemaining} ore`;
+      if (hoursRemaining > 24) {
+        const daysRemaining = Math.floor(hoursRemaining / 24);
+        return `Scade tra ${daysRemaining} ${daysRemaining === 1 ? 'giorno' : 'giorni'}`;
+      } else {
+        return `Scade tra ${hoursRemaining} ${hoursRemaining === 1 ? 'ora' : 'ore'}`;
+      }
     }
   };
 
@@ -155,14 +161,6 @@ const InviteCard: React.FC<InviteCardProps> = ({
       style={styles.inviteCard}
       onPress={handleCardPress}
     >
-      {/* Badge per il tempo rimanente (opzionale) */}
-      {timeRemaining && (
-        <View style={styles.timeRemainingBadge}>
-          <Ionicons name="time-outline" size={12} color="#FF9800" />
-          <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
-        </View>
-      )}
-
       <View style={styles.inviteHeader}>
         <View style={styles.inviteLeft}>
           <Avatar
@@ -178,10 +176,18 @@ const InviteCard: React.FC<InviteCardProps> = ({
             </Text>
             {booking?.campo?.struttura?.name && (
               <View style={styles.inviteDetails}>
-                <Ionicons name="location-outline" size={12} color="#666" />
-                <Text style={styles.inviteDetailText}>
-                  {booking.campo.struttura.name}
-                </Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 3}}>
+                  <Ionicons name="location-outline" size={12} color="#666" />
+                  <Text style={styles.inviteDetailText}>
+                    {booking.campo.struttura.name}
+                  </Text>
+                </View>
+                {timeRemaining && (
+                  <View style={styles.timeRemainingBadge}>
+                    <Ionicons name="time-outline" size={12} color="#FF9800" />
+                    <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
+                  </View>
+                )}
               </View>
             )}
           </View>

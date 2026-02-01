@@ -819,7 +819,7 @@ export const styles = StyleSheet.create({
   inviteDetails: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    justifyContent: "space-between",
   },
   inviteDetailText: {
     fontSize: 11,
@@ -909,9 +909,6 @@ export const styles = StyleSheet.create({
     color: "white",
   },
   timeRemainingBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,

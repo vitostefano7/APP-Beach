@@ -65,8 +65,9 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
     const now = new Date();
     const diff = registrationDeadline.getTime() - now.getTime();
     if (diff <= 0) return { text: 'Chiuso', color: '#ff0000' };
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const totalMinutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     const totalHours = hours + minutes / 60;
     let color = '#666';
     if (totalHours <= 3) {
@@ -75,8 +76,14 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
       color = '#ffcc00'; // yellow
     }
     let text;
-    if (hours > 0) text = `${hours}h ${minutes}m`;
-    else text = `${minutes}m`;
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      text = `${days} ${days === 1 ? 'giorno' : 'giorni'}`;
+    } else if (hours > 0) {
+      text = `${hours} ${hours === 1 ? 'ora' : 'ore'} ${minutes}m`;
+    } else {
+      text = `${minutes} ${minutes === 1 ? 'minuto' : 'minuti'}`;
+    }
     return { text, color };
   };
 
