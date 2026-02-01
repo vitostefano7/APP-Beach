@@ -53,9 +53,17 @@ export type UserPreferences = {
     lat: number;
     lng: number;
     radius: number;
+    // 🆕 Città suggerita automaticamente (fallback intelligente)
+    suggestedCity?: string;
+    suggestedLat?: number;
+    suggestedLng?: number;
+    suggestedUpdatedAt?: string;
   };
   favoriteSports?: string[];
   favoriteStrutture: string[];
+  // 🆕 Storia città giocate
+  playHistory?: Record<string, number>;
+  lastVisitedCity?: string;
 };
 
 /* =========================

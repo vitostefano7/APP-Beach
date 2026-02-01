@@ -663,195 +663,110 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       let data: Struttura[] = await res.json();
       console.log('📦 Dati ricevuti:', data.length, 'strutture');
 
+      // 🆕 SISTEMA FALLBACK A 3 LIVELLI
       const filterCity = filters.city;
-      const prefCity = preferencesRef.current?.preferredLocation?.city;
+      const primaryCity = preferencesRef.current?.preferredLocation?.city;
+      const suggestedCity = preferencesRef.current?.preferredLocation?.suggestedCity;
+      const suggestedLat = preferencesRef.current?.preferredLocation?.suggestedLat;
+      const suggestedLng = preferencesRef.current?.preferredLocation?.suggestedLng;
       
-      console.log("=== DEBUG STRUTTURE ===");
+      // Determina quale città usare (priorità: filtro manuale > primaria > suggerita)
+      const activeCity = filterCity || primaryCity || suggestedCity || null;
+      
+      console.log("=== NUOVO SISTEMA FALLBACK ===");
       console.log("📍 Totale strutture caricate:", data.length);
-      console.log("🏙️ Filtro città attivo:", filterCity);
-      console.log("⭐ Città preferita:", prefCity);
-      console.log("🚫 User cleared city:", userClearedCity);
-      console.log("📍 Preferenze location:", preferencesRef.current?.preferredLocation);
+      console.log("🔍 Filtro manuale città:", filterCity);
+      console.log("⭐ Città preferita primaria:", primaryCity);
+      console.log("🤖 Città suggerita automatica:", suggestedCity);
+      console.log("✅ Città attiva finale:", activeCity);
       
-      if (userClearedCity) {
-        console.log("🎯 CASO: Utente ha rimosso il filtro città - fallback alla città più giocata");
-        console.log("   Città preferita attuale:", preferencesRef.current?.preferredLocation?.city);
-        console.log("   PlayHistory:", playHistory);
-        // Trova città più giocata
-        const cities = Object.keys(playHistory);
-        if (cities.length > 0) {
-          const mostPlayed = cities.reduce((a, b) => playHistory[a] > playHistory[b] ? a : b);
-          console.log("   Città più giocata:", mostPlayed, "partite:", playHistory[mostPlayed]);
-          // Geocoding per filtrare
-          try {
-            const geocodeUrl = 
-              `https://nominatim.openstreetmap.org/search?` +
-              `q=${encodeURIComponent(mostPlayed)},Italia&` +
-              `format=json&limit=1`;
-            
-            const geocodeRes = await fetch(geocodeUrl, {
-              headers: { 'User-Agent': 'SportBookingApp/1.0' },
-            });
-            
-            const geocodeData = await geocodeRes.json();
-            if (geocodeData && geocodeData.length > 0) {
-              const filterLat = parseFloat(geocodeData[0].lat);
-              const filterLng = parseFloat(geocodeData[0].lon);
-              const radius = 30;
-              
-              data = data.map((s) => ({
-                ...s,
-                distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng)
-              }));
-              
-              const beforeFilter = data.length;
-              data = data.filter((s) => (s.distance || 0) <= radius);
-              console.log(`   Strutture entro ${radius}km da ${mostPlayed}: ${data.length}/${beforeFilter}`);
-              data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-              
-              setActiveCity(mostPlayed);
-              setActiveRadius(radius);
-            } else {
-              console.log("   Geocoding fallito per", mostPlayed);
-              setActiveCity(null);
-              setActiveRadius(null);
-            }
-          } catch (geoError) {
-            console.error("   Errore geocoding fallback:", geoError);
-            setActiveCity(null);
-            setActiveRadius(null);
-          }
-        } else if (preferencesRef.current?.preferredLocation?.city) {
-          const fallbackCity = preferencesRef.current.preferredLocation.city;
-          console.log("   Nessuna storia, uso città preferita:", fallbackCity);
-          // Geocoding per filtrare
-          try {
-            const geocodeUrl = 
-              `https://nominatim.openstreetmap.org/search?` +
-              `q=${encodeURIComponent(fallbackCity)},Italia&` +
-              `format=json&limit=1`;
-            
-            const geocodeRes = await fetch(geocodeUrl, {
-              headers: { 'User-Agent': 'SportBookingApp/1.0' },
-            });
-            
-            const geocodeData = await geocodeRes.json();
-            if (geocodeData && geocodeData.length > 0) {
-              const filterLat = parseFloat(geocodeData[0].lat);
-              const filterLng = parseFloat(geocodeData[0].lon);
-              const radius = 30;
-              
-              data = data.map((s) => ({
-                ...s,
-                distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng)
-              }));
-              
-              const beforeFilter = data.length;
-              data = data.filter((s) => (s.distance || 0) <= radius);
-              console.log(`   Strutture entro ${radius}km da ${fallbackCity}: ${data.length}/${beforeFilter}`);
-              data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-              
-              setActiveCity(fallbackCity);
-              setActiveRadius(radius);
-            } else {
-              console.log("   Geocoding fallito per", fallbackCity);
-              setActiveCity(null);
-              setActiveRadius(null);
-            }
-          } catch (geoError) {
-            console.error("   Errore geocoding fallback:", geoError);
-            setActiveCity(null);
-            setActiveRadius(null);
-          }
-        } else {
-          console.log("   Nessuna città disponibile, non filtro");
-          setActiveCity(null);
-          setActiveRadius(null);
+      if (activeCity) {
+        // Usa GPS se disponibile, altrimenti usa coordinate preferenze o suggested
+        let centerLat: number | null = null;
+        let centerLng: number | null = null;
+        let citySource = '';
+        
+        if (isUsingGPS && gpsLat && gpsLng) {
+          centerLat = gpsLat;
+          centerLng = gpsLng;
+          citySource = 'GPS';
+        } else if (filterCity === primaryCity && preferencesRef.current?.preferredLocation?.lat) {
+          centerLat = preferencesRef.current.preferredLocation.lat;
+          centerLng = preferencesRef.current.preferredLocation.lng;
+          citySource = 'Preferenza primaria';
+        } else if (!filterCity && !primaryCity && suggestedLat && suggestedLng) {
+          centerLat = suggestedLat;
+          centerLng = suggestedLng;
+          citySource = 'Suggerita automatica';
         }
-      }
-      else if (!filterCity && !prefCity) {
-        console.log("🎯 CASO: Nessun filtro città e nessuna preferenza");
+        
+        // Se abbiamo coordinate, usa quelle; altrimenti geocodifica
+        if (centerLat && centerLng) {
+          console.log(`🎯 Usando coordinate da: ${citySource}`, { lat: centerLat, lng: centerLng });
+          const radius = preferencesRef.current?.preferredLocation?.radius || 30;
+          
+          data = data.map((s) => ({
+            ...s,
+            distance: calculateDistance(centerLat!, centerLng!, s.location.lat, s.location.lng)
+          }));
+          
+          const beforeFilter = data.length;
+          data = data.filter((s) => (s.distance || 0) <= radius);
+          console.log(`✅ Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
+          data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+          
+          setActiveCity(activeCity);
+          setActiveRadius(radius);
+        } else {
+          // Geocodifica città
+          console.log("🗺️ Geocodifica necessaria per:", activeCity);
+          try {
+            const geocodeUrl = 
+              `https://nominatim.openstreetmap.org/search?` +
+              `q=${encodeURIComponent(activeCity)},Italia&` +
+              `format=json&limit=1`;
+            
+            const geocodeRes = await fetch(geocodeUrl, {
+              headers: { 'User-Agent': 'SportBookingApp/1.0' },
+            });
+            
+            const geocodeData = await geocodeRes.json();
+            
+            if (geocodeData && geocodeData.length > 0) {
+              const filterLat = parseFloat(geocodeData[0].lat);
+              const filterLng = parseFloat(geocodeData[0].lon);
+              const radius = 30;
+              
+              console.log("✅ Geocoding riuscito:", { lat: filterLat, lng: filterLng });
+              
+              data = data.map((s) => ({
+                ...s,
+                distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng)
+              }));
+              
+              const beforeFilter = data.length;
+              data = data.filter((s) => (s.distance || 0) <= radius);
+              console.log(`✅ Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
+              data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+              
+              setActiveCity(activeCity);
+              setActiveRadius(radius);
+            } else {
+              console.log("⚠️ Geocoding fallito, mostro tutte le strutture");
+              setActiveCity(null);
+              setActiveRadius(null);
+            }
+          } catch (geoError) {
+            console.error("❌ Errore geocoding:", geoError);
+            setActiveCity(null);
+            setActiveRadius(null);
+          }
+        }
+      } else {
+        // Caso rarissimo: nessuna città disponibile
+        console.log("⚠️ Nessuna città disponibile (nessun filtro, preferenza o suggerimento)");
         setActiveCity(null);
         setActiveRadius(null);
-      } 
-      else if (filterCity && filterCity !== prefCity) {
-        console.log("🎯 CASO: Filtro città diverso da preferenza - geocoding", filterCity);
-        try {
-          const geocodeUrl = 
-            `https://nominatim.openstreetmap.org/search?` +
-            `q=${encodeURIComponent(filterCity)},Italia&` +
-            `format=json&limit=1`;
-          
-          const geocodeRes = await fetch(geocodeUrl, {
-            headers: { 'User-Agent': 'SportBookingApp/1.0' },
-          });
-          
-          const geocodeData = await geocodeRes.json();
-          console.log("   Geocode risposta:", geocodeData);
-          
-          if (geocodeData && geocodeData.length > 0) {
-            const filterLat = parseFloat(geocodeData[0].lat);
-            const filterLng = parseFloat(geocodeData[0].lon);
-            const radius = preferences?.preferredLocation?.radius || 30;
-            
-            console.log("   Centro geocodato:", { lat: filterLat, lng: filterLng, radius });
-            
-            data = data.map((s) => {
-              const distance = calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng);
-              console.log(`   📍 ${s.name}: ${distance.toFixed(2)} km ${distance <= radius ? "✅" : "❌"}`);
-              return {
-                ...s,
-                distance
-              };
-            });
-            
-            const beforeFilter = data.length;
-            data = data.filter((s) => (s.distance || 0) <= radius);
-            console.log(`   Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
-            data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-            
-            setActiveCity(filterCity);
-            setActiveRadius(radius);
-          } else {
-            console.log("   ⚠️ Geocoding fallito");
-            setActiveCity(null);
-            setActiveRadius(null);
-          }
-        } catch (geoError) {
-          console.error("   ❌ Errore geocoding:", geoError);
-          setActiveCity(null);
-          setActiveRadius(null);
-        }
-      }
-      else if ((preferencesRef.current?.preferredLocation || isUsingGPS) && filterCity) {
-        console.log("🎯 CASO: Filtro per città preferita o GPS con coordinate");
-        const city = filterCity;
-        const radius = isUsingGPS ? 30 : (preferencesRef.current.preferredLocation?.radius || 30);
-        const centerLat = isUsingGPS ? gpsLat : preferencesRef.current.preferredLocation?.lat;
-        const centerLng = isUsingGPS ? gpsLng : preferencesRef.current.preferredLocation?.lng;
-        
-        console.log("   Centro:", isUsingGPS ? "GPS" : "preferenze", { lat: centerLat, lng: centerLng, radius });
-        
-        data = data.map((s) => {
-          const distance = calculateDistance(centerLat!, centerLng!, s.location.lat, s.location.lng);
-          console.log(`   📍 ${s.name} (${s.location.city}):`, {
-            coords: `${s.location.lat}, ${s.location.lng}`,
-            distanza: `${distance.toFixed(2)} km`,
-            dentroRaggio: distance <= radius ? "✅ SÌ" : "❌ NO"
-          });
-          return {
-            ...s,
-            distance
-          };
-        });
-        
-        const beforeFilter = data.length;
-        data = data.filter((s) => (s.distance || 0) <= radius);
-        console.log(`   Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
-        data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-        
-        setActiveCity(city);
-        setActiveRadius(radius);
       }
 
       if (preferencesRef.current?.favoriteStrutture) {
@@ -874,7 +789,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       isLoadingStruttureRef.current = false;
       setIsLoadingStrutture(false);
     }
-  }, [filters, userClearedCity]);
+  }, [filters, userClearedCity, isUsingGPS, gpsLat, gpsLng]);
 
   const geocodeAndCenterMap = useCallback(async (city: string) => {
     try {

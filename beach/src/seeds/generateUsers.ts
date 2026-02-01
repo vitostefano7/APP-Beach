@@ -60,9 +60,35 @@ export async function generateUsers(avatarUrls: string[]) {
     "13.7768,45.6495": "Trieste",
   };
 
+  // Lista di città italiane per playHistory casuale
+  const italianCities = ["Milano", "Roma", "Napoli", "Torino", "Palermo", "Genova", "Bologna", "Firenze"];
+
   for (const user of players) {
     const coordsKey = `${user.location.coordinates[0]},${user.location.coordinates[1]}`;
     const city = cityMapping[coordsKey] || "Roma";
+    
+    // 🆕 Genera playHistory casuale (storia partite per città)
+    const playHistory = new Map<string, number>();
+    const numCitiesPlayed = Math.floor(Math.random() * 3) + 1; // 1-3 città
+    
+    // Aggiungi la città principale con più partite
+    playHistory.set(city, Math.floor(Math.random() * 10) + 5); // 5-15 partite
+    
+    // Aggiungi altre città casuali con meno partite
+    const otherCities = italianCities.filter(c => c !== city);
+    for (let i = 0; i < numCitiesPlayed - 1 && i < otherCities.length; i++) {
+      const randomCity = otherCities[Math.floor(Math.random() * otherCities.length)];
+      if (!playHistory.has(randomCity)) {
+        playHistory.set(randomCity, Math.floor(Math.random() * 5) + 1); // 1-5 partite
+      }
+    }
+    
+    // Trova città più giocata per suggestedCity
+    const mostPlayedCity = Array.from(playHistory.entries()).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+    
+    // Converti Map in oggetto plain per Mongoose
+    const playHistoryObj = Object.fromEntries(playHistory);
+    
     await UserPreferences.create({
       user: user._id,
       preferredLocation: {
@@ -70,13 +96,21 @@ export async function generateUsers(avatarUrls: string[]) {
         lat: user.location.coordinates[1],
         lng: user.location.coordinates[0],
         radius: 30,
+        // 🆕 Città suggerita automaticamente (calcolata da playHistory)
+        suggestedCity: mostPlayedCity,
+        suggestedLat: user.location.coordinates[1],
+        suggestedLng: user.location.coordinates[0],
+        suggestedUpdatedAt: new Date(),
       },
+      // 🆕 Storia partite per città (convertita da Map a oggetto)
+      playHistory: playHistoryObj,
+      lastVisitedCity: city,
       pushNotifications: false,
       darkMode: false,
     });
   }
 
-  console.log('USER PREFERENCES OK');
+  console.log('✅ USER PREFERENCES OK (con playHistory e città suggerita)');
 
   return { users, players, owners: ownersList };
 }

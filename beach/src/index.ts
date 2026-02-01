@@ -102,7 +102,8 @@ async function start() {
   app.use("/friends", friendshipRoutes);
   app.use("/notifications", notificationRoutes);
   app.use("/community", communityRoutes);
-
+  
+  // 🧪 Test routes (rimuovere in produzione)
   /* =========================
      AUTH TEST
   ========================= */

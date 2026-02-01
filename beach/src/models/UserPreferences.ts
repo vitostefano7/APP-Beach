@@ -17,6 +17,12 @@ export interface IUserPreferences extends Document {
     lat: number;
     lng: number;
     radius?: number; // Raggio in km per cercare strutture vicine (default 10km)
+    
+    // 🆕 Città suggerita automaticamente (fallback intelligente)
+    suggestedCity?: string;
+    suggestedLat?: number;
+    suggestedLng?: number;
+    suggestedUpdatedAt?: Date; // Ultimo aggiornamento calcolo automatico
   };
   
   // Strutture preferite (stellina)
@@ -27,6 +33,10 @@ export interface IUserPreferences extends Document {
   
   // Fascia oraria preferita
   preferredTimeSlot?: "morning" | "afternoon" | "evening";
+  
+  // 🆕 Storia delle città dove ha giocato (per calcolare suggestedCity)
+  playHistory?: Record<string, number>; // { "Milano": 5, "Roma": 3 }
+  lastVisitedCity?: string;
 }
 
 const UserPreferencesSchema = new Schema<IUserPreferences>(
@@ -69,6 +79,11 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
         min: 1,
         max: 100,
       },
+      // 🆕 Città suggerita automaticamente
+      suggestedCity: String,
+      suggestedLat: Number,
+      suggestedLng: Number,
+      suggestedUpdatedAt: Date,
     },
 
     // ========== STRUTTURE FAVORITE ==========
@@ -89,6 +104,17 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
     preferredTimeSlot: {
       type: String,
       enum: ["morning", "afternoon", "evening"],
+    },
+    
+    // ========== PLAY HISTORY ==========
+    playHistory: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+    
+    lastVisitedCity: {
+      type: String,
     },
   },
   { 

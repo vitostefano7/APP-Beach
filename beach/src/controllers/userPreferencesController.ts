@@ -6,6 +6,78 @@ import Struttura from '../models/Strutture';
 import Campo from '../models/Campo';
 
 /**
+ * 🧠 Helper: Calcola città suggerita dal playHistory
+ */
+const calculateSuggestedCity = async (preferences: any) => {
+  const playHistory = preferences.playHistory;
+  
+  // Se non c'è history, non fare nulla
+  if (!playHistory || (playHistory instanceof Map ? playHistory.size === 0 : Object.keys(playHistory).length === 0)) {
+    console.log('⚠️ [calculateSuggestedCity] Nessun playHistory disponibile');
+    return;
+  }
+  
+  // Converti Map in oggetto se necessario
+  const historyObj = playHistory instanceof Map ? Object.fromEntries(playHistory) : playHistory;
+  
+  // Trova città con più partite
+  const cities = Object.keys(historyObj);
+  if (cities.length === 0) {
+    console.log('⚠️ [calculateSuggestedCity] PlayHistory vuoto');
+    return;
+  }
+  
+  const mostPlayedCity = cities.reduce((a, b) => 
+    historyObj[a] > historyObj[b] ? a : b
+  );
+  
+  console.log('🎯 [calculateSuggestedCity] Città più giocata:', mostPlayedCity, 'partite:', historyObj[mostPlayedCity]);
+  
+  // Geocoding per ottenere coordinate
+  try {
+    const geocodeUrl = 
+      `https://nominatim.openstreetmap.org/search?` +
+      `q=${encodeURIComponent(mostPlayedCity)},Italia&` +
+      `format=json&limit=1`;
+    
+    const geocodeRes = await fetch(geocodeUrl, {
+      headers: { 'User-Agent': 'SportBookingApp/1.0' },
+    });
+    
+    const geocodeData = await geocodeRes.json();
+    
+    if (geocodeData && geocodeData.length > 0) {
+      const lat = parseFloat(geocodeData[0].lat);
+      const lng = parseFloat(geocodeData[0].lon);
+      
+      // Aggiorna città suggerita solo se diversa
+      if (!preferences.preferredLocation) {
+        preferences.preferredLocation = {};
+      }
+      
+      const needsUpdate = 
+        preferences.preferredLocation.suggestedCity !== mostPlayedCity ||
+        !preferences.preferredLocation.suggestedUpdatedAt ||
+        (Date.now() - preferences.preferredLocation.suggestedUpdatedAt.getTime()) > 30 * 24 * 60 * 60 * 1000; // 30 giorni
+      
+      if (needsUpdate) {
+        preferences.preferredLocation.suggestedCity = mostPlayedCity;
+        preferences.preferredLocation.suggestedLat = lat;
+        preferences.preferredLocation.suggestedLng = lng;
+        preferences.preferredLocation.suggestedUpdatedAt = new Date();
+        
+        await preferences.save();
+        console.log('✅ [calculateSuggestedCity] Città suggerita aggiornata:', mostPlayedCity);
+      } else {
+        console.log('ℹ️ [calculateSuggestedCity] Città suggerita già aggiornata');
+      }
+    }
+  } catch (error) {
+    console.error('❌ [calculateSuggestedCity] Errore geocoding:', error);
+  }
+};
+
+/**
  * 📌 GET /users/preferences
  * Ottieni preferenze dell'utente loggato
  */
@@ -23,6 +95,9 @@ export const getUserPreferences = async (req: AuthRequest, res: Response) => {
         user: req.user!.id,
       });
     }
+    
+    // 🆕 Calcola città suggerita se necessario
+    await calculateSuggestedCity(preferences);
 
     console.log('✅ [getUserPreferences] Preferenze recuperate');
     res.json(preferences);
