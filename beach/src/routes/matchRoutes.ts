@@ -16,6 +16,7 @@ import {
   updateInviteResponse,
   leaveMatch,
   addPlayerToMatch,
+  getFutureMatchesFromFollowedStructures,
 } from "../controllers/matchController";
 import { requireAuth } from "../middleware/authMiddleware";
 
@@ -28,6 +29,9 @@ router.get("/me", requireAuth, getMyMatches);
 
 // Inviti pendenti - DEVE ESSERE PRIMA di /:matchId
 router.get('/pending-invites', requireAuth, getPendingInvites);
+
+// Lista match futuri delle strutture seguite
+router.get("/future-followed", requireAuth, getFutureMatchesFromFollowedStructures);
 
 // Lista match pubblici disponibili (GET prima di POST)
 router.get("/", requireAuth, getPublicMatches);

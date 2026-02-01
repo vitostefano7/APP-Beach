@@ -46,9 +46,7 @@ const ConversationSchema: Schema = new Schema(
     struttura: {
       type: Schema.Types.ObjectId,
       ref: 'Struttura',
-      required: function(this: IConversation) {
-        return this.type === 'direct';
-      },
+      required: false,  // Opzionale: presente solo per chat player→struttura o owner→user
     },
     owner: {
       type: Schema.Types.ObjectId,

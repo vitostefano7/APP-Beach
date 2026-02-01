@@ -3,6 +3,8 @@ import mongoose, { Types } from "mongoose";
 import Match from "../models/Match";
 import Booking from "../models/Booking";
 import User from "../models/User";
+import Struttura from "../models/Strutture";
+import StrutturaFollower from "../models/StrutturaFollower";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { getDefaultMaxPlayersForSport, validateMaxPlayersForSport } from "../utils/matchSportRules";
 import { createNotification } from "../utils/notificationHelper";
@@ -1806,6 +1808,86 @@ export const addPlayerToMatch = async (req: AuthRequest, res: Response) => {
     res.json(match);
   } catch (err) {
     console.error("❌ addPlayerToMatch error:", err);
+    res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
+ * GET /matches/future-followed
+ * Ottiene le partite future delle strutture seguite
+ */
+export const getFutureMatchesFromFollowedStructures = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user!.id;
+    console.log('getFutureMatchesFromFollowedStructures called for user:', userId);
+
+    // Importa User per controllare il ruolo
+    const user = await User.findById(userId);
+    const isOwner = user?.role === 'owner';
+    console.log('User role:', user?.role, 'isOwner:', isOwner);
+
+    let strutturaIds: any[] = [];
+
+    if (isOwner) {
+      // Per owner, usa le proprie strutture
+      const strutture = await Struttura.find({ owner: userId }).select('_id');
+      strutturaIds = strutture.map((s: any) => s._id);
+      console.log('Owner strutture:', strutturaIds);
+    } else {
+      // Per player, usa strutture seguite
+      const followedStructures = await StrutturaFollower.find({
+        follower: userId,
+        active: true
+      }).select('followed');
+      console.log('followedStructures:', followedStructures);
+      strutturaIds = followedStructures.map((f: any) => f.followed);
+    }
+
+    console.log('strutturaIds:', strutturaIds);
+
+    if (strutturaIds.length === 0) {
+      console.log('No strutture, returning empty array');
+      return res.json([]);
+    }
+
+    // Trova match futuri
+    const now = new Date();
+    console.log('Current date:', now);
+    const matches = await Match.find({
+      status: { $in: ['open', 'full', 'in_progress'] }
+    })
+    .populate({
+      path: 'booking',
+      populate: {
+        path: 'campo',
+        populate: {
+          path: 'struttura'
+        }
+      }
+    })
+    .populate('players.user', 'username name surname avatarUrl')
+    .populate('createdBy', 'username name surname avatarUrl')
+    .sort({ 'booking.date': 1 });
+    console.log('All matches found:', matches.length);
+
+    // Filtra per strutture e date future
+    const futureMatches = matches.filter(match => {
+      const booking = match.booking as any;
+      if (!booking || !booking.campo || !booking.campo.struttura) return false;
+      const strutturaId = booking.campo.struttura._id.toString();
+      const isInStruttura = strutturaIds.some((id: any) => id.toString() === strutturaId);
+      const isFuture = new Date(booking.date) > now;
+      console.log('Match:', match._id, 'strutturaId:', strutturaId, 'isInStruttura:', isInStruttura, 'isFuture:', isFuture);
+      return isInStruttura && isFuture;
+    });
+    console.log('Future matches after filter:', futureMatches.length);
+
+    res.json(futureMatches);
+  } catch (err) {
+    console.error("❌ getFutureMatchesFromFollowedStructures error:", err);
     res.status(500).json({ message: "Errore server" });
   }
 };
