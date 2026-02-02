@@ -58,7 +58,7 @@ export default function LoginScreen({ navigation }: any) {
       // 🔐 salva token + user nel context
       // Estrai i dati utente dalla risposta del server
       const userData = {
-        id: data.user._id,
+        id: data.user._id || data.user.id,
         role: data.user.role,
         name: data.user.name,
         surname: data.user.surname,
@@ -68,6 +68,7 @@ export default function LoginScreen({ navigation }: any) {
         avatarUrl: data.user.avatarUrl,
         profilePrivacy: data.user.profilePrivacy,
       };
+      
       login(data.token, userData);
     } catch (error) {
       console.error("Errore login:", error);

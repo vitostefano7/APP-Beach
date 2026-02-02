@@ -51,16 +51,6 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
 
   const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId, struttura, match } = route.params;
 
-  console.log('📥 [GroupChatScreen] Parametri ricevuti:', {
-    conversationId,
-    groupName,
-    matchId,
-    headerInfo,
-    paramBookingId,
-    struttura,
-    match
-  });
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -195,10 +185,16 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
     }
 
     console.log('📡 [loadMatchInfo] Chiamata API per matchId:', targetMatchId);
+    console.log('🏢 [loadMatchInfo] Struttura disponibile:', struttura);
 
     try {
+      // Per gli owner, passiamo strutturaId per verificare l'autorizzazione
+      const urlParams = role === 'owner' && struttura?._id 
+        ? `?strutturaId=${struttura._id}` 
+        : '';
+      
       const res = await fetch(
-        `${API_URL}/matches/${targetMatchId}`,
+        `${API_URL}/matches/${targetMatchId}${urlParams}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -469,7 +465,11 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isMine = item.sender._id === user?.id;
+    // Per owner, il confronto deve tenere conto di tutte le possibili strutture dell'oggetto user
+    const userId = user?.id || (user as any)?._id;
+    const senderId = item.sender._id?.toString() || item.sender._id;
+    const isMine = senderId === userId?.toString();
+    
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
     const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;

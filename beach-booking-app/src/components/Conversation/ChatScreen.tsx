@@ -62,10 +62,12 @@ export default function ChatScreen({ role }: ChatScreenProps) {
     conversationId,
     strutturaName,
     struttura,
+    strutturaAvatar,
     isUserChat,
     otherUser,
     userName,
     userId,
+    userAvatar,
   } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -297,7 +299,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isMine = item.sender._id === user?.id;
+    // Usa senderType per determinare se è un mio messaggio
+    const isMine = role === "owner" ? item.senderType === "owner" : item.senderType === "user";
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
     const showAvatar = !nextMessage || nextMessage.sender._id !== item.sender._id;
@@ -305,12 +308,14 @@ export default function ChatScreen({ role }: ChatScreenProps) {
 
     const otherAvatarUrl =
       role === "owner"
-        ? item.sender.avatarUrl || userProfile?.avatarUrl
-        : item.sender.avatarUrl || struttura?.images?.[0];
+        ? userAvatar || userProfile?.avatarUrl || item.sender.avatarUrl
+        : strutturaAvatar || struttura?.images?.[0] || item.sender.avatarUrl;
 
     const myAvatarUrl =
       role === "owner"
-        ? struttura?.images?.[0]
+        ? strutturaAvatar
+          ? resolveImageUrl(strutturaAvatar)
+          : struttura?.images?.[0]
           ? resolveImageUrl(struttura.images[0])
           : undefined
         : user?.avatarUrl;
@@ -422,8 +427,45 @@ export default function ChatScreen({ role }: ChatScreenProps) {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
 
-          {struttura ? (
-            /* Chat con struttura */
+          {role === "owner" || !struttura ? (
+            /* Chat con utente (sempre per owner, o player senza struttura) */
+            <Pressable
+              style={styles.headerCenter}
+              onPress={() => {
+                const targetUserId = userId || otherUser?._id;
+                if (targetUserId) {
+                  const routeName = role === "owner" ? "UserProfile" : "ProfiloUtente";
+                  navigation.navigate(routeName, { userId: targetUserId });
+                }
+              }}
+            >
+              <Avatar
+                name={
+                  userProfile?.surname 
+                    ? `${userProfile.name} ${userProfile.surname}`
+                    : otherUser?.surname
+                    ? `${otherUser.name} ${otherUser.surname}`
+                    : userProfile?.name || userName || otherUser?.name || "Utente"
+                }
+                surname={userProfile?.surname || otherUser?.surname}
+                avatarUrl={userProfile?.avatarUrl || otherUser?.avatarUrl || userAvatar}
+                size={44}
+                backgroundColor="#E3F2FD"
+                textColor="#2196F3"
+              />
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  {userName || 
+                   (userProfile?.surname 
+                    ? `${userProfile.name} ${userProfile.surname}`
+                    : otherUser?.surname
+                    ? `${otherUser.name} ${otherUser.surname}`
+                    : userProfile?.name || otherUser?.name || "Utente")}
+                </Text>
+              </View>
+            </Pressable>
+          ) : (
+            /* Chat con struttura (solo per player) */
             <Pressable
               style={styles.headerCenter}
               onPress={() => {
@@ -444,42 +486,6 @@ export default function ChatScreen({ role }: ChatScreenProps) {
               <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
                   {strutturaName || "Struttura"}
-                </Text>
-              </View>
-            </Pressable>
-          ) : (
-            /* Chat con utente */
-            <Pressable
-              style={styles.headerCenter}
-              onPress={() => {
-                const targetUserId = userId || otherUser?._id;
-                if (targetUserId) {
-                  const routeName = role === "owner" ? "UserProfile" : "ProfiloUtente";
-                  navigation.navigate(routeName, { userId: targetUserId });
-                }
-              }}
-            >
-              <Avatar
-                name={
-                  userProfile?.surname 
-                    ? `${userProfile.name} ${userProfile.surname}`
-                    : otherUser?.surname
-                    ? `${otherUser.name} ${otherUser.surname}`
-                    : userProfile?.name || userName || otherUser?.name || "Utente"
-                }
-                surname={userProfile?.surname || otherUser?.surname}
-                avatarUrl={userProfile?.avatarUrl || otherUser?.avatarUrl}
-                size={44}
-                backgroundColor="#E3F2FD"
-                textColor="#2196F3"
-              />
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {userProfile?.surname 
-                    ? `${userProfile.name} ${userProfile.surname}`
-                    : otherUser?.surname
-                    ? `${otherUser.name} ${otherUser.surname}`
-                    : userProfile?.name || userName || otherUser?.name || "Utente"}
                 </Text>
               </View>
             </Pressable>

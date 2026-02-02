@@ -1,484 +1,395 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
-import { SafeAreaView, View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../../context/AuthContext";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import API_URL from "../../config/api";
+/**
+ * DettaglioPrenotazioneSharedScreen
+ * 
+ * Schermata condivisa per la visualizzazione dei dettagli di una prenotazione.
+ * Viene utilizzata sia dai player che dagli owner, con comportamenti differenziati
+ * tramite la prop `role`.
+ * 
+ * Caratteristiche:
+ * - Componenti modulari riutilizzabili
+ * - Hook custom per logica condivisa
+ * - Render condizionato in base al ruolo (player/owner)
+ * - Gestione state centralizzata
+ * 
+ * @param {UserRole} role - 'player' o 'owner'
+ * @param {string} bookingId - ID della prenotazione da visualizzare
+ * @param {function} onNavigateBack - Callback per tornare indietro
+ */
 
-// Centralized components
-import MatchSection from "../../components/booking/MatchSection";
-import InviteModal from "../../components/booking/InviteModal";
-import OwnerRoleSection from "../../components/booking/OwnerRoleSection";
-import PlayerRoleSection from "../../components/booking/PlayerRoleSection";
-import { useMatchLogic } from "../../hooks/booking/useMatchLogic";
-import { getTeamColors, getTeamIcon } from "../../utils/booking/bookingUtils";
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Text,
+  Pressable,
+  Linking,
+  StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-// Other components
-import ScoreModal from "../../components/ScoreModal";
-import { submitMatchScore } from "../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
-import BookingDetailsCard from "../player/prenotazioni/DettaglioPrenotazione/components/BookingDetailsCard";
-import { calculateDuration } from "../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
-import { AnimatedCard } from "../player/prenotazioni/DettaglioPrenotazione/components/AnimatedComponents";
-import { Avatar } from "../../components/Avatar";
+// Shared components
+import {
+  BookingHeader,
+  FieldInfoCard,
+  BookingDetailsCard,
+  AnimatedCard,
+  AnimatedButton,
+  useBookingData,
+  useMatchActions,
+  calculateDuration,
+  isMatchInProgress,
+  isMatchPassed,
+  isRegistrationOpen,
+  getMatchStatus,
+  getTimeUntilRegistrationDeadline,
+  UserRole,
+} from '../../components/booking';
 
-interface DettaglioPrenotazioneScreenProps {
-  role: 'player' | 'owner';
+// Navigation types
+import { useNavigation } from '@react-navigation/native';
+
+interface DettaglioPrenotazioneSharedScreenProps {
+  role: UserRole;
+  bookingId: string;
+  onNavigateBack?: () => void;
 }
 
-export default function DettaglioPrenotazioneScreen({ role }: DettaglioPrenotazioneScreenProps) {
-  const { token, user } = useContext(AuthContext);
+export const DettaglioPrenotazioneSharedScreen: React.FC<DettaglioPrenotazioneSharedScreenProps> = ({
+  role,
+  bookingId,
+  onNavigateBack,
+}) => {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { bookingId } = route.params;
 
-  const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState<any>(null);
-  const [showClientProfile, setShowClientProfile] = useState(false);
-  const [loadingGroupChat, setLoadingGroupChat] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
-  const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+  // Hook per gestire i dati del booking
+  const {
+    booking,
+    loading,
+    error,
+    user,
+    userId,
+    token,
+    isCreator,
+    currentUserPlayer,
+    isPendingInvite,
+    isInMatch,
+    loadBooking,
+    updateBookingState,
+  } = useBookingData({
+    bookingId,
+    role,
+    onNavigateBack: onNavigateBack || (() => navigation.goBack()),
+  });
 
-  // Score modal visibility
-  const [scoreModalVisible, setScoreModalVisible] = useState(false);
+  // Hook per gestire le azioni sul match
+  const {
+    acceptingInvite,
+    leavingMatch,
+    handleJoinMatch,
+    handleLeaveMatch,
+    handleRespondToInvite,
+    handleInvitePlayer,
+    handleRemovePlayer,
+    handleAssignTeam,
+    handleSubmitScore,
+    handleCancelBooking,
+  } = useMatchActions({
+    booking,
+    token,
+    userId,
+    updateBookingState,
+    loadBooking,
+  });
 
-  // Invite modal states
-  const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [inviteToTeam, setInviteToTeam] = useState<"A" | "B" | null>(null);
-  const [inviteToSlot, setInviteToSlot] = useState<number | null>(null);
+  // Computed values
+  const confirmedPlayers = useMemo(
+    () => booking?.match?.players?.filter(p => p.status === "confirmed") || [],
+    [booking]
+  );
 
-  const loadBooking = async () => {
-    if (!token) return;
+  const canJoin = useMemo(() => {
+    if (!booking?.match) return false;
+    return !isInMatch && booking.match.status === "open" && isRegistrationOpen(booking);
+  }, [booking, isInMatch]);
 
+  // Handlers
+  const handleOpenMaps = () => {
+    if (!booking?.campo?.struttura?.location) return;
+
+    const { address, city } = booking.campo.struttura.location;
+    const query = address ? `${address}, ${city}` : city;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    
+    Linking.openURL(url).catch(err => {
+      console.error("Errore apertura mappa:", err);
+    });
+  };
+
+  const handleOpenStrutturaDetails = () => {
+    if (!booking?.campo?.struttura?._id) return;
+    navigation.navigate("DettaglioStruttura", { struttura: booking.campo.struttura });
+  };
+
+  const handleOpenStrutturaChat = async () => {
+    if (!booking?.campo?.struttura?._id || !token) return;
+    
+    // Import dinamico per evitare dipendenze circolari
+    const { openStrutturaChat } = await import('../player/struttura/FieldDetailsScreen/api/fieldDetails.api');
+    
     try {
-      const endpoint = role === 'owner' ? `${API_URL}/api/bookings/owner/${bookingId}` : `${API_URL}/api/bookings/${bookingId}`;
-      const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
+      const conversation = await openStrutturaChat(booking.campo.struttura._id, token);
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: booking.campo.struttura.name,
+        struttura: booking.campo.struttura,
       });
-
-      if (!res.ok) {
-        throw new Error("Errore nel caricamento della prenotazione");
-      }
-
-      const data = await res.json();
-      setBooking(data);
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
-    } finally {
-      setLoading(false);
+      console.error("Errore apertura chat:", error);
     }
   };
 
-  const handleRemovePlayer = async (playerUserId: string) => {
-    if (!booking?.match?._id || !token) return;
-
-    Alert.alert(
-      "Rimuovi giocatore",
-      "Sei sicuro di voler rimuovere questo giocatore dal match?",
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: "Rimuovi",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const res = await fetch(`${API_URL}/api/matches/${booking.match._id}/remove-player`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ playerUserId }),
-              });
-
-              if (!res.ok) {
-                throw new Error("Errore nella rimozione del giocatore");
-              }
-
-              Alert.alert("Successo", "Giocatore rimosso dal match");
-              loadBooking();
-            } catch (error: any) {
-              Alert.alert("Errore", error.message);
-            }
-          },
-        },
-      ]
-    );
+  // Get header title based on state and role
+  const getHeaderTitle = () => {
+    if (!booking) return 'Prenotazione';
+    
+    if (booking.status === 'cancelled') return 'Cancellata';
+    
+    if (isMatchInProgress(booking)) return 'Partita in Corso';
+    if (isMatchPassed(booking)) return 'Partita Conclusa';
+    
+    return 'Prossima Partita';
   };
 
-  const handleInvitePlayer = async (username: string) => {
-    if (!booking?.match?._id) return;
-
-    try {
-      const body: any = { 
-        username,
-        ...(inviteToTeam && { team: inviteToTeam })
-      };
-
-      if (inviteToSlot !== null) {
-        body.slot = inviteToSlot;
-      }
-
-      const res = await fetch(`${API_URL}/api/matches/${booking.match._id}/invite`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Errore nell'invito");
-      }
-
-      Alert.alert("Successo", "Invito inviato con successo");
-      setInviteModalVisible(false);
-      setInviteToTeam(null);
-      setInviteToSlot(null);
-      loadBooking();
-    } catch (error: any) {
-      Alert.alert("Errore", error.message);
-    }
-  };
-
-  const openChat = async () => {
-    try {
-      const userId = role === 'owner' ? booking.user._id : booking.campo.struttura.owner._id;
-      const res = await fetch(`${API_URL}/api/conversations/user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const res2 = await fetch(`${API_URL}/api/conversations`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            participantId: userId,
-            strutturaId: booking.campo.struttura._id,
-          }),
-        });
-
-        if (!res2.ok) {
-          throw new Error();
-        }
-
-        const conversation = await res2.json();
-        navigation.navigate("Chat", {
-          conversationId: conversation._id,
-          strutturaName: booking.campo.struttura.name,
-          userName: role === 'owner' ? booking.user.name : booking.campo.struttura.owner.name,
-          userId: userId,
-          struttura: booking.campo.struttura,
-        });
-      } else {
-        const conversations = await res.json();
-        const conversation = conversations.find(
-          (c: any) => c.struttura._id === booking.campo.struttura._id
-        );
-
-        if (conversation) {
-          navigation.navigate("Chat", {
-            conversationId: conversation._id,
-            strutturaName: booking.campo.struttura.name,
-            userName: role === 'owner' ? booking.user.name : booking.campo.struttura.owner.name,
-            userId: userId,
-            struttura: booking.campo.struttura,
-          });
-        } else {
-          const res2 = await fetch(`${API_URL}/api/conversations`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              participantId: userId,
-              strutturaId: booking.campo.struttura._id,
-            }),
-          });
-
-          if (!res2.ok) {
-            throw new Error();
-          }
-
-          const conversation = await res2.json();
-          navigation.navigate("Chat", {
-            conversationId: conversation._id,
-            strutturaName: booking.campo.struttura.name,
-            userName: role === 'owner' ? booking.user.name : booking.campo.struttura.owner.name,
-            userId: userId,
-            struttura: booking.campo.struttura,
-          });
-        }
-      }
-    } catch (error) {
-      Alert.alert("Errore", "Impossibile aprire la chat");
-    }
-  };
-
-  const openUserProfile = (userId?: string) => {
-    if (!userId || userId === user?.id) return;
-    navigation.navigate('ProfiloUtente', { userId });
-  };
-
-  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
-    if (!booking?.match?._id || !token) return;
-
-    try {
-      await submitMatchScore(booking.match._id, winner, sets, token);
-      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
-      setScoreModalVisible(false);
-      loadBooking();
-    } catch (error: any) {
-      Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
-      throw error;
-    }
-  };
-
-  const handleInviteToTeam = (team: "A" | "B", slot: number) => {
-    setInviteToTeam(team);
-    setInviteToSlot(slot);
-    setInviteModalVisible(true);
-  };
-
-  useEffect(() => {
-    loadBooking();
-  }, [bookingId, token]);
-
+  // Loading state
   if (loading) {
     return (
-      <SafeAreaView>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text>Caricamento...</Text>
+          <Text style={styles.loadingText}>Caricamento...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!booking) {
+  // Error state
+  if (error || !booking) {
     return (
-      <SafeAreaView>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Prenotazione non trovata</Text>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#F44336" />
+          <Text style={styles.errorText}>
+            {error || 'Impossibile caricare la prenotazione'}
+          </Text>
+          <AnimatedButton
+            style={styles.retryButton}
+            onPress={onNavigateBack || (() => navigation.goBack())}
+          >
+            <Text style={styles.retryButtonText}>Torna indietro</Text>
+          </AnimatedButton>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Main render
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+    <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={{
-        backgroundColor: 'white',
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        elevation: 2
-      }}>
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
-            <View style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: '#f0f0f0',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Ionicons name="arrow-back" size={18} color="#2196F3" />
-            </View>
-          </Pressable>
-
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4
-            }}>
-              <Ionicons
-                name={booking.status === 'confirmed' ? 'checkmark-circle' : 'time'}
-                size={16}
-                color={booking.status === 'confirmed' ? '#4CAF50' : '#F44336'}
-              />
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '500',
-                color: booking.status === 'confirmed' ? '#4CAF50' : '#F44336'
-              }}>
-                {booking.status === 'confirmed' ? 'Confermata' : 'In attesa'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ width: 32 }} />
-        </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingTop: 30, paddingHorizontal: 16, paddingBottom: 30 }}>
-          {/* Struttura Info */}
-          <AnimatedCard delay={100}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>
-                  {booking.campo.struttura.name}
-                </Text>
-                <Text style={{ fontSize: 16, color: '#666', marginBottom: 8 }}>
-                  {booking.campo.name}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="football" size={16} color="#2196F3" />
-                  <Text style={{ fontSize: 14, color: '#666' }}>
-                    {booking.campo.sport}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
-                {booking.campo.struttura.images && booking.campo.struttura.images[0] ? (
-                  <Image
-                    source={{ uri: booking.campo.struttura.images[0] }}
-                    style={{ width: 60, height: 60, borderRadius: 8 }}
-                  />
-                ) : (
-                  <Ionicons name="business" size={24} color="#999" />
-                )}
-              </View>
-            </View>
-
-            <Pressable
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                backgroundColor: '#f8f9fa',
-                borderRadius: 8,
-                marginTop: 8
-              }}
-              onPress={() => {
-                const address = `${booking.campo.struttura.address}, ${booking.campo.struttura.city}`;
-                const url = `https://maps.google.com/?q=${encodeURIComponent(address)}`;
-                Linking.openURL(url);
-              }}
-            >
-              <Ionicons name="location-outline" size={18} color="#666" />
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>
-                  {booking.campo.struttura.address}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#666' }}>
-                  {booking.campo.struttura.city}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#999" />
-            </Pressable>
-          </AnimatedCard>
-
-          {/* Role-specific sections */}
-          {role === 'owner' && (
-            <OwnerRoleSection
-              booking={booking}
-              onBookingUpdate={setBooking}
-              openChat={openChat}
-            />
-          )}
-
-          {role === 'player' && (
-            <PlayerRoleSection
-              booking={booking}
-              onBookingUpdate={setBooking}
-            />
-          )}
-
-          {/* Booking Details */}
-          <AnimatedCard delay={200}>
-            <BookingDetailsCard
-              date={booking.date}
-              startTime={booking.startTime}
-              endTime={booking.endTime}
-              price={booking.price}
-              createdAt={booking.createdAt}
-            />
-          </AnimatedCard>
-
-          {/* Match Section */}
-          <MatchSection
-            booking={booking}
-            onBookingUpdate={setBooking}
-            handleRemovePlayer={handleRemovePlayer}
-            handleInviteToTeam={handleInviteToTeam}
-            openUserProfile={openUserProfile}
-            role={role}
-          />
-        </View>
-      </ScrollView>
-
-      {/* Modals */}
-      <InviteModal
-        visible={inviteModalVisible}
-        onClose={() => {
-          setInviteModalVisible(false);
-          setInviteToTeam(null);
-          setInviteToSlot(null);
-        }}
-        inviteToTeam={inviteToTeam}
-        inviteToSlot={inviteToSlot}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        handleSearchUsers={async (query: string) => {
-          if (!token || !query.trim()) return;
-
-          try {
-            setSearching(true);
-            const headers = { Authorization: `Bearer ${token}` };
-
-            const confirmedPlayers = booking?.match?.players?.filter((p: any) => p.status === "confirmed") || [];
-            const followedByIds = confirmedPlayers.map((p: any) => p.user._id).join(',');
-
-            const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}&filter=all&followedBy=${followedByIds}`, { headers });
-
-            if (!res.ok) {
-              throw new Error("Errore nella ricerca");
-            }
-
-            const data = await res.json();
-            setSearchResults(data);
-          } catch (error: any) {
-            Alert.alert("Errore", error.message);
-          } finally {
-            setSearching(false);
-          }
-        }}
-        searching={searching}
-        searchResults={searchResults}
-        handleInvitePlayer={handleInvitePlayer}
-        suppressInvitePress={false}
+      <BookingHeader
+        onBack={onNavigateBack || (() => navigation.goBack())}
+        title={getHeaderTitle()}
+        showCancelButton={role === 'player' && isCreator}
+        onCancel={handleCancelBooking}
       />
 
-      {role === 'owner' && (
-        <ScoreModal
-          visible={scoreModalVisible}
-          onClose={() => setScoreModalVisible(false)}
-          onSave={handleSubmitScore}
-          currentScore={booking.match?.score}
-          matchStatus={booking.match?.status}
-          sportType="beachvolley"
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Field Info Card */}
+        <FieldInfoCard
+          struttura={booking.campo.struttura}
+          campo={{
+            name: booking.campo.name,
+            sport: booking.campo.sport,
+          }}
+          onStrutturaPress={handleOpenStrutturaDetails}
+          onChatPress={role === 'player' ? handleOpenStrutturaChat : undefined}
+          onMapPress={handleOpenMaps}
+          showChatButton={role === 'player'}
         />
-      )}
+
+        {/* Booking Details */}
+        <AnimatedCard delay={150}>
+          <BookingDetailsCard
+            date={booking.date}
+            startTime={booking.startTime}
+            endTime={booking.endTime}
+            duration={calculateDuration(booking.startTime, booking.endTime)}
+            price={booking.price}
+            createdAt={booking.createdAt}
+            isPublic={booking.match?.isPublic}
+          />
+        </AnimatedCard>
+
+        {/* CTA Join Match - Solo per player non nel match */}
+        {role === 'player' && canJoin && (
+          <AnimatedCard delay={180}>
+            <Pressable 
+              style={styles.joinMatchCTA}
+              onPress={() => handleJoinMatch()}
+            >
+              <View style={styles.joinMatchCTAContent}>
+                <View style={styles.joinMatchCTAIconContainer}>
+                  <Ionicons name="people" size={24} color="#fff" />
+                </View>
+                <View style={styles.joinMatchCTATextContainer}>
+                  <Text style={styles.joinMatchCTATitle}>Unisciti a questa partita!</Text>
+                  <Text style={styles.joinMatchCTASubtitle}>
+                    {confirmedPlayers.length}/{booking.match?.maxPlayers || 0} giocatori • {
+                      (booking.match?.maxPlayers || 0) - confirmedPlayers.length
+                    } posti disponibili
+                    {getTimeUntilRegistrationDeadline(booking) && 
+                      ` • ${getTimeUntilRegistrationDeadline(booking)} rimasti`
+                    }
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward-circle" size={28} color="#fff" />
+              </View>
+            </Pressable>
+          </AnimatedCard>
+        )}
+
+        {/* TODO: Match Section - Da implementare */}
+        {booking.match && (
+          <AnimatedCard delay={200}>
+            <View style={styles.placeholderCard}>
+              <Text style={styles.placeholderText}>
+                Match Section - Da implementare
+              </Text>
+              <Text style={styles.placeholderSubtext}>
+                Qui andrà la visualizzazione dei giocatori, team e punteggi
+              </Text>
+            </View>
+          </AnimatedCard>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  retryButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  joinMatchCTA: {
+    backgroundColor: '#4CAF50',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  joinMatchCTAContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  joinMatchCTAIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  joinMatchCTATextContainer: {
+    flex: 1,
+  },
+  joinMatchCTATitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: 'white',
+    marginBottom: 4,
+  },
+  joinMatchCTASubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+  },
+  placeholderCard: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#f0f0f0',
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#999',
+    marginBottom: 8,
+  },
+  placeholderSubtext: {
+    fontSize: 13,
+    color: '#bbb',
+    textAlign: 'center',
+  },
+});
+
+export default DettaglioPrenotazioneSharedScreen;

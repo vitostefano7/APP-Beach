@@ -1069,6 +1069,7 @@ export const getPublicMatches = async (req: AuthRequest, res: Response) => {
 export const getMatchById = async (req: AuthRequest, res: Response) => {
   try {
     const { matchId } = req.params;
+    const { strutturaId } = req.query;
     const userId = req.user!.id;
 
     if (!mongoose.Types.ObjectId.isValid(matchId)) {
@@ -1082,6 +1083,7 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
     console.log('🔍 [getMatchById] Richiesta per:', {
       matchId,
       userId,
+      strutturaId,
       userAgent: req.headers['user-agent']
     });
 
@@ -1098,7 +1100,7 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
             select: "name sport struttura",
             populate: {
               path: "struttura",
-              select: "name location",
+              select: "name location owner",
             },
           },
           {
@@ -1131,20 +1133,33 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
     
     const isCreator = (matchObj as any).createdBy?._id?.toString() === userId;
 
+    // Verifica se l'utente è owner della struttura
+    const strutturaOwnerId = (matchObj as any).booking?.campo?.struttura?.owner?.toString();
+    const isStrutturaOwner = strutturaOwnerId === userId;
+    
+    // Se è fornito strutturaId, verifica che corrisponda
+    const isOwnerOfRequestedStruttura = strutturaId 
+      ? strutturaId === (matchObj as any).booking?.campo?.struttura?._id?.toString() && isStrutturaOwner
+      : isStrutturaOwner;
+
     console.log('🔐 [getMatchById] Controllo autorizzazione:', {
       isPublic: match.isPublic,
       isPlayer,
       isCreator,
-      shouldAllow: match.isPublic || isPlayer || isCreator
+      isStrutturaOwner,
+      isOwnerOfRequestedStruttura,
+      strutturaOwnerId,
+      shouldAllow: match.isPublic || isPlayer || isCreator || isOwnerOfRequestedStruttura
     });
 
-    // Se il match è privato, controlla i permessi
-    if (!match.isPublic && !isPlayer && !isCreator) {
+    // Se il match è privato, controlla i permessi (incluso owner della struttura)
+    if (!match.isPublic && !isPlayer && !isCreator && !isOwnerOfRequestedStruttura) {
       console.log('🔒 [getMatchById] Accesso negato - Match privato');
       console.log('📋 [DEBUG] Dettagli utente richiedente:', {
         userId,
         userMatchesPlayers: (matchObj as any).players?.map((p: any) => p.user?._id),
-        createdById: (matchObj as any).createdBy?._id
+        createdById: (matchObj as any).createdBy?._id,
+        strutturaOwnerId
       });
       
       return res.status(403).json({ 
@@ -1153,6 +1168,7 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
           isPublic: match.isPublic,
           isPlayer,
           isCreator,
+          isStrutturaOwner,
           userId,
           matchId: match._id
         }

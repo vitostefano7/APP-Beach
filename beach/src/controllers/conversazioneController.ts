@@ -244,6 +244,7 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
   try {
     const ownerId = req.user?.id;
     const { userId } = req.params;
+    const { strutturaId } = req.query;
 
     if (!ownerId) {
       return res.status(401).json({ message: 'Non autorizzato' });
@@ -261,10 +262,19 @@ export const getOrCreateConversationWithUser = async (req: AuthRequest, res: Res
       return res.status(404).json({ message: 'Cliente non trovato' });
     }
 
-    // Trova la struttura dell'owner
-    const struttura = await Struttura.findOne({ owner: ownerId });
-    if (!struttura) {
-      return res.status(404).json({ message: 'Struttura non trovata' });
+    // Trova la struttura corretta: usa strutturaId se fornito, altrimenti la prima dell'owner
+    let struttura;
+    if (strutturaId && typeof strutturaId === 'string') {
+      struttura = await Struttura.findOne({ _id: strutturaId, owner: ownerId });
+      if (!struttura) {
+        return res.status(404).json({ message: 'Struttura non trovata o non appartiene all\'owner' });
+      }
+    } else {
+      // Fallback alla prima struttura (per retrocompatibilità)
+      struttura = await Struttura.findOne({ owner: ownerId });
+      if (!struttura) {
+        return res.status(404).json({ message: 'Struttura non trovata' });
+      }
     }
 
     // Cerca conversazione esistente tra owner e user per questa struttura
