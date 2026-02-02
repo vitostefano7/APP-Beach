@@ -603,7 +603,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   }, [token]);
 
   const updatePreferredLocation = useCallback(async (city: string, lat: number, lng: number) => {
-    if (!token) return;
+    console.log('📡 [updatePreferredLocation] Inizio chiamata con:', { city, lat, lng });
+    if (!token) {
+      console.log('❌ [updatePreferredLocation] Nessun token disponibile');
+      return;
+    }
     
     try {
       const res = await fetch(`${API_URL}/users/preferences/location`, {
@@ -620,15 +624,18 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         }),
       });
       
+      console.log('📡 [updatePreferredLocation] Risposta HTTP:', res.status, res.statusText);
+      
       if (res.ok) {
-        console.log('✅ Città preferita aggiornata:', city);
+        console.log('✅ [updatePreferredLocation] Città preferita aggiornata:', city);
         // Ricarica preferenze per aggiornare lo stato
         await loadPreferences();
       } else {
-        console.error('❌ Errore aggiornamento città preferita');
+        const errorText = await res.text();
+        console.error('❌ [updatePreferredLocation] Errore aggiornamento:', res.status, errorText);
       }
     } catch (error) {
-      console.error('Errore aggiornamento preferenze:', error);
+      console.error('❌ [updatePreferredLocation] Errore di rete:', error);
     }
   }, [token, loadPreferences]);
 
@@ -857,10 +864,12 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
   // Aggiorna città preferita dall'ultimo luogo visitato
   useEffect(() => {
-    if (lastVisitedCity && token) {
+    console.log('🔄 [useEffect] lastVisitedCity cambiato:', lastVisitedCity, 'token presente:', !!token);
+    if (lastVisitedCity && token && !preferences?.preferredLocation?.city) {
+      console.log('📍 [useEffect] Chiamo updatePreferredLocation per:', lastVisitedCity);
       updatePreferredLocation(lastVisitedCity, 0, 0); // Coordinate placeholder, forse geocodare
     }
-  }, [lastVisitedCity, token]);
+  }, [lastVisitedCity, token, preferences?.preferredLocation?.city]);
 
   useEffect(() => {
     if (!token || !preferencesLoaded) return;
