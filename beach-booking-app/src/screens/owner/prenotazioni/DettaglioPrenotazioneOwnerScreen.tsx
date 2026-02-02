@@ -20,31 +20,26 @@ import { styles } from "../styles/DettaglioPrenotazioneOwnerScreen.styles";
 import { Avatar } from "../../../components/Avatar";
 import SportIcon from '../../../components/SportIcon';
 import { resolveAvatarUrl } from "../../../utils/avatar";
+import { FontAwesome5 } from "@expo/vector-icons";
 
-// Componenti animati e gradients
+// Componenti condivisi
 import {
   AnimatedCard,
   AnimatedButton,
   FadeInView,
   SlideInView,
   ScaleInView,
-} from "./DettaglioPrenotazione/components/AnimatedComponents";
-
-import {
   SuccessGradient,
   WarningGradient,
   WinnerGradient,
   TeamAGradient,
   TeamBGradient,
-} from "./DettaglioPrenotazione/components/GradientComponents";
-
-import BookingDetailsCard from "./DettaglioPrenotazione/components/BookingDetailsCard";
-import { calculateDuration } from "./DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
-
-// Import componenti owner per la visualizzazione match
-import ScoreDisplay from "./DettaglioPrenotazione/components/ScoreDisplay";
-import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
-import TeamSection from "./DettaglioPrenotazione/components/TeamSection";
+  BookingDetailsCard,
+  calculateDuration,
+  formatDate,
+  ScoreDisplay,
+} from "../../../components/booking";
+import PlayerCardWithTeam from "../../player/prenotazioni/DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import ScoreModal from "../../../components/ScoreModal";
 import { submitMatchScore } from "../../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
 
@@ -565,32 +560,65 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   const openChat = async () => {
     try {
-      console.log('💬 Apertura chat con user:', booking.user._id);
-      
+      console.log('💬 [OWNER] Apertura chat Owner (Struttura) → Cliente');
+      console.log('👤 [OWNER] Cliente:', {
+        userId: booking.user._id,
+        userName: booking.user.name,
+        userSurname: booking.user.surname,
+      });
+      console.log('🏢 [OWNER] Struttura:', {
+        strutturaId: booking.campo.struttura._id,
+        strutturaName: booking.campo.struttura.name
+      });
+
+      // Per gli owner, usiamo GET /api/conversations/user/:userId
+      // Questo endpoint crea/ottiene una conversazione Owner (Struttura) → Cliente
+      // IMPORTANTE: passiamo strutturaId per usare la struttura corretta della prenotazione
+      console.log('📤 [OWNER] Richiesta conversazione Owner-Cliente');
+
       const res = await fetch(
-        `${API_URL}/api/conversations/user/${booking.user._id}`,
+        `${API_URL}/api/conversations/user/${booking.user._id}?strutturaId=${booking.campo.struttura._id}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
         }
       );
 
       if (!res.ok) {
-        console.error('❌ Errore creazione conversazione:', res.status);
-        throw new Error();
+        console.error('❌ [OWNER] Errore creazione conversazione:', res.status);
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ [OWNER] Error details:', errorData);
+        throw new Error(errorData.message || 'Errore creazione conversazione');
       }
 
       const conversation = await res.json();
-      console.log('✅ Conversazione ottenuta:', conversation._id);
-
-      navigation.navigate("Chat", {
+      console.log('✅ [OWNER] Conversazione Owner-Cliente ottenuta:', {
         conversationId: conversation._id,
-        strutturaName: booking.campo.struttura.name,
-        userName: booking.user.name,
-        userId: booking.user._id,
-        struttura: booking.campo.struttura,
+        conversationType: conversation.type,
+        struttura: conversation.struttura,
+        user: conversation.user,
+        owner: conversation.owner
       });
+
+      // Per Owner→Cliente: mostra il nome del cliente nell'header
+      const navigationParams = {
+        conversationId: conversation._id,
+        userName: `${booking.user.name} ${booking.user.surname || ''}`.trim(),
+        userId: booking.user._id,
+        userAvatar: booking.user.avatarUrl,
+        // Passa la struttura per mostrare il suo avatar come mittente owner
+        struttura: booking.campo.struttura,
+        strutturaName: booking.campo.struttura.name,
+        strutturaAvatar: booking.campo.struttura.images?.[0],
+      };
+
+      console.log('🚀 [OWNER] Navigazione a Chat con parametri:', navigationParams);
+
+      navigation.navigate("Chat", navigationParams);
     } catch (error) {
-      console.error("❌ Errore apertura chat:", error);
+      console.error("❌ [OWNER] Errore apertura chat:", error);
       Alert.alert("Errore", "Impossibile aprire la chat");
     }
   };
@@ -607,16 +635,29 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
     try {
       setLoadingGroupChat(true);
-      const res = await fetch(`${API_URL}/api/conversations/match/${booking.match._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      console.log('💬 [OWNER] Apertura chat gruppo match');
+      console.log('🏢 [OWNER] Struttura:', {
+        strutturaId: booking.campo.struttura._id,
+        strutturaName: booking.campo.struttura.name
       });
+      
+      // Per gli owner, passiamo strutturaId per verificare che sono owner della struttura
+      const res = await fetch(
+        `${API_URL}/api/conversations/match/${booking.match._id}?strutturaId=${booking.campo.struttura._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       if (!res.ok) {
         const error = await res.json();
+        console.error('❌ [OWNER] Errore caricamento chat gruppo:', error);
         throw new Error(error.message || "Errore caricamento chat");
       }
 
       const conversation = await res.json();
+      console.log('✅ [OWNER] Chat gruppo caricata:', conversation._id);
+      
       navigation.navigate("GroupChat", {
         conversationId: conversation._id,
         groupName: `Match - ${booking.campo?.struttura?.name || 'Gruppo'}`,
@@ -755,47 +796,117 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={[styles.content, { paddingTop: 30 }]}>
-          <AnimatedCard delay={100}>
-            <View style={styles.strutturaHeader}>
-              <View style={styles.sportIconBox}>
-                <SportIcon
-                  sport={booking.campo?.sport || 'beach_volley'}
-                  size={24}
-                  color="#2196F3"
-                />
-              </View>
-              <View style={styles.strutturaInfo}>
-                <Text style={[styles.strutturaName, { fontSize: 16 }]}>
-                  {booking.campo?.struttura?.name || "Struttura"}
-                </Text>
-                <Text style={[styles.campoName, { fontSize: 14 }]}>
-                  {booking.campo?.name || "Campo"}
-                </Text>
-              </View>
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 100 }}
+      >
+        {/* Campo Info Card - Versione compatta identica al player */}
+        <AnimatedCard delay={100}>
+          <View style={styles.fieldInfoCard}>
+            <View style={styles.fieldInfoHeader}>
+              <Ionicons name="location-sharp" size={20} color="#FF9800" />
+              <Text style={styles.fieldInfoTitle}>Dove giochi</Text>
             </View>
+            
+            <View style={styles.fieldInfoList}>
+              {/* Struttura */}
+              <FadeInView delay={200}>
+                <View style={styles.fieldInfoRow}>
+                  <View style={styles.fieldIconCircle}>
+                    <Ionicons name="business" size={18} color="#2196F3" />
+                  </View>
+                  <View style={styles.fieldInfoContent}>
+                    <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
+                    <Text style={styles.fieldInfoValue}>{booking.campo.struttura.name}</Text>
+                  </View>
+                </View>
+              </FadeInView>
 
-            <Pressable style={styles.locationCard} onPress={openMaps}>
-              <View style={styles.locationIcon}>
-                <Ionicons name="location" size={18} color="#F44336" />
-              </View>
-              <View style={styles.locationInfo}>
-                <Text style={[styles.locationAddress, { fontSize: 14 }]}>
-                  {booking.campo?.struttura?.location?.address || "Indirizzo non disponibile"}
-                </Text>
-                <Text style={[styles.locationCity, { fontSize: 12 }]}>
-                  {booking.campo?.struttura?.location?.city || ""}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#999" />
-            </Pressable>
-          </AnimatedCard>
+              <View style={styles.fieldInfoDivider} />
 
-          <AnimatedCard delay={150}>
+              {/* Sport e Campo - Due colonne */}
+              <View style={styles.sportCampoGrid}>
+                <FadeInView delay={300} style={styles.sportCampoColumn}>
+                  <View style={styles.sportCampoBox}>
+                    <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                      {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley' || booking.campo.sport === 'volley') ? (
+                        <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />
+                      ) : (
+                        <Ionicons 
+                          name={
+                            booking.campo.sport === 'calcio' ? 'football' :
+                            booking.campo.sport === 'tennis' ? 'tennisball' :
+                            booking.campo.sport === 'basket' ? 'basketball' : 'barbell'
+                          } 
+                          size={18} 
+                          color="#FF9800" 
+                        />
+                      )}
+                    </View>
+                    <View style={styles.fieldInfoContent}>
+                      <Text style={styles.fieldInfoLabel}>SPORT</Text>
+                      <Text style={styles.fieldInfoValue}>
+                        {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley')
+                          ? 'Beach Volley' 
+                          : booking.campo.sport.charAt(0).toUpperCase() + booking.campo.sport.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </FadeInView>
+
+                <FadeInView delay={350} style={styles.sportCampoColumn}>
+                  <View style={styles.sportCampoBox}>
+                    <View style={[styles.fieldIconCircle, { backgroundColor: '#E8F5E9' }]}>
+                      <Ionicons name="grid-outline" size={18} color="#4CAF50" />
+                    </View>
+                    <View style={styles.fieldInfoContent}>
+                      <Text style={styles.fieldInfoLabel}>CAMPO</Text>
+                      <Text style={styles.fieldInfoValue}>{booking.campo.name}</Text>
+                    </View>
+                  </View>
+                </FadeInView>
+              </View>
+
+              <View style={styles.fieldInfoDivider} />
+
+              {/* Località - Cliccabile */}
+              <FadeInView delay={400}>
+                <View style={styles.fieldInfoRow}>
+                  <View style={[styles.fieldIconCircle, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="location" size={18} color="#2196F3" />
+                  </View>
+                  <View style={styles.fieldInfoContent}>
+                    <Text style={styles.fieldInfoLabel}>LOCALITÀ</Text>
+                    <View style={styles.locationRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.fieldInfoValue}>{booking.campo.struttura.location.city}</Text>
+                        {booking.campo.struttura.location.address && (
+                          <Text style={styles.fieldInfoSubValue}>{booking.campo.struttura.location.address}</Text>
+                        )}
+                      </View>
+                      <Pressable 
+                        style={styles.mapButton}
+                        onPress={openMaps}
+                        android_ripple={{ color: 'rgba(156, 39, 176, 0.1)', radius: 40 }}
+                      >
+                        <Ionicons name="navigate" size={14} color="#2196F3" />
+                        <Text style={styles.mapButtonText}>Indicazioni</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </FadeInView>
+            </View>
+          </View>
+        </AnimatedCard>
+
+          <AnimatedCard delay={150} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="person-outline" size={18} color="#2196F3" />
-              <Text style={[styles.cardTitle, { fontSize: 16 }]}>Cliente</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="person-outline" size={20} color="#2196F3" />
+                <Text style={styles.cardTitle}>Cliente</Text>
+              </View>
             </View>
 
             <View style={styles.clientCard}>
@@ -807,20 +918,20 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   name={booking.user?.name}
                   surname={booking.user?.surname}
                   avatarUrl={booking.user?.avatarUrl}
-                  size={40}
+                  size={48}
                   fallbackIcon="person"
                 />
                 <View style={styles.clientInfo}>
-                  <Text style={[styles.clientName, { fontSize: 16 }]}>
+                  <Text style={styles.clientName}>
                     {booking.user?.name || "Utente"} {booking.user?.surname || ""}
                   </Text>
                   {booking.user?.email && (
-                    <Text style={[styles.clientEmail, { fontSize: 14 }]}>
+                    <Text style={styles.clientEmail}>
                       {booking.user.email}
                     </Text>
                   )}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#999" />
+                <Ionicons name="chevron-forward" size={20} color="#999" />
               </Pressable>
               
               <Pressable style={styles.chatButtonInline} onPress={openChat}>
@@ -838,11 +949,12 @@ export default function OwnerDettaglioPrenotazioneScreen() {
               duration={calculateDuration(booking.startTime, booking.endTime)}
               price={booking.price}
               createdAt={booking.createdAt}
+              isPublic={booking.match?.isPublic}
             />
           </AnimatedCard>
 
           {booking.match ? (
-            <AnimatedCard delay={200}>
+            <AnimatedCard delay={200} style={styles.card}>
               {/* Header */}
               <View style={styles.cardHeader}>
                 <FadeInView delay={300}>
@@ -1157,7 +1269,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           )}
 
           <View style={{ height: 30 }} />
-        </View>
       </ScrollView>
 
       {/* Modal Profilo Cliente */}

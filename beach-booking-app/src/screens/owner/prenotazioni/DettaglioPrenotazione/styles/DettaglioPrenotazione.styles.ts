@@ -2573,45 +2573,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // ==================== OWNER CLIENT SECTION ====================
-  ownerClientSection: {
-    gap: 16,
-  },
-  clientInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
-  },
-  clientTextInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  clientNameText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1a1a1a",
-  },
-  clientEmailText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  chatButton: {
-    backgroundColor: "#E3F2FD",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  chatButtonText: {
-    color: "#2196F3",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
   // ==================== CANCEL BOOKING ====================
   cancelCard: {
     marginHorizontal: 16,
