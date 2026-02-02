@@ -25,6 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import API_URL from "../config/api";
 import { AuthContext } from "../context/AuthContext";
+import { useCustomAlert } from "../hooks/useCustomAlert";
 
 type UserPreferences = {
   pushNotifications: boolean;
@@ -41,6 +42,7 @@ type UserPreferences = {
 
 export default function PreferencesScreen({ navigation }: any) {
   const { token, user, updateUser } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -173,21 +175,23 @@ export default function PreferencesScreen({ navigation }: any) {
     console.log("🔒 [PREF] Profile Privacy:", profilePrivacy);
 
     if (city.trim() && !selectedCoordinates) {
-      Alert.alert(
-        "Seleziona una citta",
-        "Per favore scegli la citta dai suggerimenti per confermare le coordinate."
-      );
+      showAlert({
+        type: 'warning',
+        title: 'Seleziona una citta',
+        message: 'Per favore scegli la citta dai suggerimenti per confermare le coordinate.'
+      });
       return;
     }
 
     // Validazione raggio
     const radiusValue = parseInt(radius) || 30;
     if (radiusValue < 1 || radiusValue > 100) {
-      Alert.alert(
-        "Raggio non valido",
-        "Il raggio deve essere compreso tra 1 e 100 km.",
-        [{ text: "OK", style: "default" }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Raggio non valido',
+        message: 'Il raggio deve essere compreso tra 1 e 100 km.',
+        buttons: [{ text: "OK", style: "default" }]
+      });
       return;
     }
 
@@ -283,16 +287,16 @@ export default function PreferencesScreen({ navigation }: any) {
 
       if (generalRes.ok) {
         console.log("✅ [PREF] Salvataggio completato!");
-        Alert.alert("Successo", "Preferenze salvate con successo!");
+        showAlert({ type: 'success', title: 'Successo', message: 'Preferenze salvate con successo!' });
         navigation.goBack();
       } else {
         console.error("❌ [PREF] Errore nel salvataggio generale");
-        Alert.alert("Errore", "Impossibile salvare le preferenze");
+        showAlert({ type: 'error', title: 'Errore', message: 'Impossibile salvare le preferenze' });
       }
     } catch (error) {
       console.error("💥 [PREF] Errore durante salvataggio:", error);
       console.error("📍 [PREF] Stack trace:", (error as Error).stack);
-      Alert.alert("Errore", "Impossibile salvare le preferenze");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile salvare le preferenze' });
     } finally {
       setSaving(false);
       console.log("🏁 [PREF] Processo completato");
@@ -648,6 +652,7 @@ export default function PreferencesScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

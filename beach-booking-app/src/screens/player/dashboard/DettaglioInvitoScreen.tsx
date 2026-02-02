@@ -16,11 +16,13 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 
 const DettaglioInvito = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   
   const { inviteId, inviteData } = route.params as any;
   const [loading, setLoading] = useState(!inviteData);
@@ -121,12 +123,13 @@ const DettaglioInvito = () => {
       });
 
       if (res.ok) {
-        Alert.alert(
-          response === "accept" ? "Invito accettato!" : "Invito rifiutato",
-          response === "accept" 
+        showAlert({
+          type: response === "accept" ? 'success' : 'info',
+          title: response === "accept" ? "Invito accettato!" : "Invito rifiutato",
+          message: response === "accept" 
             ? "La partita è stata aggiunta alle tue prenotazioni." 
             : "Hai rifiutato l'invito.",
-          [
+          buttons: [
             {
               text: "OK",
               onPress: () => {
@@ -142,16 +145,16 @@ const DettaglioInvito = () => {
               }
             }
           ]
-        );
+        });
       } else if (res.status === 404) {
-        Alert.alert("Errore", "Invito non trovato o già risposto");
+        showAlert({ type: 'error', title: 'Errore', message: 'Invito non trovato o già risposto' });
       } else if (res.status === 403) {
-        Alert.alert("Errore", "Non sei autorizzato a rispondere a questo invito");
+        showAlert({ type: 'error', title: 'Errore', message: 'Non sei autorizzato a rispondere a questo invito' });
       } else {
         throw new Error("Errore nella risposta");
       }
     } catch (error) {
-      Alert.alert("Errore", "Impossibile rispondere all'invito. Riprova.");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile rispondere all\'invito. Riprova.' });
       console.error("Errore risposta invito:", error);
     } finally {
       setResponding(false);
@@ -194,7 +197,7 @@ const DettaglioInvito = () => {
     const encodedAddress = encodeURIComponent(address);
     const url = `https://maps.google.com/?q=${encodedAddress}`;
     Linking.openURL(url).catch(err => 
-      Alert.alert("Errore", "Impossibile aprire Google Maps")
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile aprire Google Maps' })
     );
   };
 
@@ -202,7 +205,7 @@ const DettaglioInvito = () => {
     const encodedAddress = encodeURIComponent(address);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
     Linking.openURL(url).catch(err => 
-      Alert.alert("Errore", "Impossibile aprire le indicazioni")
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile aprire le indicazioni' })
     );
   };
 
@@ -552,6 +555,7 @@ const DettaglioInvito = () => {
 
         <View style={styles.footerSpacer} />
       </ScrollView>
+      <AlertComponent />
     </SafeAreaView>
   );
 };

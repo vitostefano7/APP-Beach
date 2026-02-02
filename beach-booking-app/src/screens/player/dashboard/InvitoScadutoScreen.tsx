@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useContext } from "react";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import styles from "./InvitoScaduto.styles"; // Crea questo file di stili
@@ -21,6 +22,7 @@ export default function InvitoScadutoScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { token, user } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   
   const { inviteId, inviteData, timeSinceExpiration } = route.params;
   const [loading, setLoading] = useState(!inviteData);
@@ -52,7 +54,7 @@ export default function InvitoScadutoScreen() {
       }
     } catch (error) {
       console.error("Errore caricamento invito:", error);
-      Alert.alert("Errore", "Impossibile caricare i dettagli dell'invito");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare i dettagli dell\'invito' });
     } finally {
       setLoading(false);
     }
@@ -302,5 +304,6 @@ export default function InvitoScadutoScreen() {
         </View>
       </View>
     </SafeAreaView>
+    <AlertComponent />
   );
 }

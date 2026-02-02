@@ -4,7 +4,6 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert,
   Linking,
   Modal,
   TextInput,
@@ -21,6 +20,7 @@ import { Avatar } from "../../../components/Avatar";
 import SportIcon from '../../../components/SportIcon';
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
 
 // Componenti condivisi
 import {
@@ -50,6 +50,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { bookingId } = route.params;
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
@@ -237,7 +238,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       else if (!passed) reason = 'La partita non è ancora conclusa.';
       else if (!noScore) reason = 'Risultato già presente.';
       else if (!teamsComplete) reason = 'I team non sono completi.';
-      Alert.alert('Impossibile inserire risultato', reason);
+      showAlert({ type: 'error', title: 'Impossibile inserire risultato', message: reason });
     }
 
     // Ripulisci il parametro per evitare riaperture
@@ -266,7 +267,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       setBooking(data);
     } catch (error) {
       console.error("❌ Errore caricamento booking:", error);
-      Alert.alert("Errore", "Impossibile caricare i dettagli");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare i dettagli' });
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -445,14 +446,14 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         }));
       }
 
-      Alert.alert("✅ Invito inviato!", "L'utente è stato invitato al match");
+      showAlert({ type: 'success', title: 'Invito inviato!', message: "L'utente è stato invitato al match" });
       setInviteModalVisible(false);
       setSearchQuery("");
       setSearchResults([]);
       setInviteToTeam(null);
       setInviteToSlot(null);
     } catch (error: any) {
-      Alert.alert("Errore", error.message);
+      showAlert({ type: 'error', title: 'Errore', message: error.message });
     }
   };
 
@@ -468,11 +469,11 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
     try {
       await submitMatchScore(booking.match._id, winner, sets, token);
-      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
+      showAlert({ type: 'success', title: 'Risultato salvato!', message: 'Il risultato del match è stato registrato con successo' });
       setScoreModalVisible(false);
       loadBooking();
     } catch (error: any) {
-      Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
+      showAlert({ type: 'error', title: 'Errore', message: error.message || 'Impossibile salvare il risultato' });
       throw error;
     }
   };
@@ -480,14 +481,15 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const handleRemovePlayer = async (playerUserId: string) => {
     if (!booking?.matchId) return;
 
-    Alert.alert(
-      "Rimuovi giocatore",
-      "Sei sicuro di voler rimuovere questo giocatore dal match?",
-      [
-        { text: "Annulla", style: "cancel" },
+    showAlert({
+      type: 'warning',
+      title: 'Rimuovi giocatore',
+      message: 'Sei sicuro di voler rimuovere questo giocatore dal match?',
+      buttons: [
+        { text: 'Annulla', style: 'cancel' },
         {
-          text: "Rimuovi",
-          style: "destructive",
+          text: 'Rimuovi',
+          style: 'destructive',
           onPress: async () => {
             try {
               const res = await fetch(`${API_URL}/matches/${booking.matchId}/players/${playerUserId}`, {
@@ -511,29 +513,30 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                 }
               }));
 
-              Alert.alert("Successo", "Giocatore rimosso dal match");
+              showAlert({ type: 'success', title: 'Successo', message: 'Giocatore rimosso dal match' });
             } catch (error: any) {
-              Alert.alert("Errore", error.message);
+              showAlert({ type: 'error', title: 'Errore', message: error.message });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleCancel = () => {
-    Alert.alert(
-      "Annulla prenotazione",
-      "Sei sicuro di voler annullare questa prenotazione? Il cliente verrà notificato.",
-      [
-        { text: "No", style: "cancel" },
+    showAlert({
+      type: 'warning',
+      title: 'Annulla prenotazione',
+      message: 'Sei sicuro di voler annullare questa prenotazione? Il cliente verrà notificato.',
+      buttons: [
+        { text: 'No', style: 'cancel' },
         {
-          text: "Sì, annulla",
-          style: "destructive",
+          text: 'Sì, annulla',
+          style: 'destructive',
           onPress: cancelBooking,
         },
-      ]
-    );
+      ],
+    });
   };
 
   const cancelBooking = async () => {
@@ -545,11 +548,14 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
       if (!res.ok) throw new Error();
 
-      Alert.alert("Successo", "Prenotazione cancellata", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      showAlert({
+        type: 'success',
+        title: 'Successo',
+        message: 'Prenotazione cancellata',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }],
+      });
     } catch {
-      Alert.alert("Errore", "Impossibile cancellare la prenotazione");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile cancellare la prenotazione' });
     }
   };
 
@@ -620,7 +626,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
       navigation.navigate("Chat", navigationParams);
     } catch (error) {
       console.error("❌ [OWNER] Errore apertura chat:", error);
-      Alert.alert("Errore", "Impossibile aprire la chat");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile aprire la chat' });
     }
   };
 
@@ -630,7 +636,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   const handleOpenGroupChat = async () => {
     if (!booking?.match?._id) {
-      Alert.alert("Errore", "Match non disponibile");
+      showAlert({ type: 'error', title: 'Errore', message: 'Match non disponibile' });
       return;
     }
 
@@ -666,7 +672,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         struttura: booking.campo?.struttura,
       });
     } catch (error: any) {
-      Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
+      showAlert({ type: 'error', title: 'Errore', message: error.message || 'Impossibile aprire la chat di gruppo' });
     } finally {
       setLoadingGroupChat(false);
     }
@@ -679,17 +685,19 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
   const handleInviteToTeam = (team: "A" | "B", slotNumber: number) => {
     if (isMatchInProgress()) {
-      Alert.alert(
-        "Match in corso",
-        "Non è possibile invitare giocatori durante il match. Attendi la fine della partita."
-      );
+      showAlert({
+        type: 'warning',
+        title: 'Match in corso',
+        message: 'Non è possibile invitare giocatori durante il match. Attendi la fine della partita.',
+      });
       return;
     }
     if (!isRegistrationOpen()) {
-      Alert.alert(
-        "Registrazione chiusa",
-        "La deadline per le registrazioni è passata. Non è più possibile invitare giocatori."
-      );
+      showAlert({
+        type: 'warning',
+        title: 'Registrazione chiusa',
+        message: 'La deadline per le registrazioni è passata. Non è più possibile invitare giocatori.',
+      });
       return;
     }
     setInviteToTeam(team);
@@ -976,7 +984,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   <View style={{ padding: 10, alignItems: 'center' }}>
                     <AnimatedButton onPress={() => {
                       if (unassignedPlayers.length > 0) {
-                        Alert.alert('Giocatori non assegnati', 'Assegna tutti i giocatori ai team prima di inserire il risultato');
+                        showAlert({ type: 'warning', title: 'Giocatori non assegnati', message: 'Assegna tutti i giocatori ai team prima di inserire il risultato' });
                         return;
                       }
                       setScoreModalVisible(true);
@@ -1555,6 +1563,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         />
       )}
 
+      <AlertComponent />
     </SafeAreaView>
   );
 }

@@ -14,9 +14,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { AuthContext } from "../context/AuthContext";
 import API_URL from "../config/api";
+import { useCustomAlert } from "../hooks/useCustomAlert";
 
 export default function RegisterScreen({ navigation }: any) {
   const { login } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,10 +39,11 @@ export default function RegisterScreen({ navigation }: any) {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert(
-          "Permesso negato",
-          "Devi concedere il permesso per accedere alle foto"
-        );
+        showAlert({
+          type: 'error',
+          title: 'Permesso negato',
+          message: 'Devi concedere il permesso per accedere alle foto'
+        });
         return;
       }
 
@@ -56,7 +59,7 @@ export default function RegisterScreen({ navigation }: any) {
       }
     } catch (error) {
       console.error("Errore selezione immagine:", error);
-      Alert.alert("Errore", "Impossibile selezionare l'immagine");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile selezionare l\'immagine' });
     }
   };
 
@@ -66,10 +69,11 @@ export default function RegisterScreen({ navigation }: any) {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert(
-          "Permesso negato",
-          "Devi concedere il permesso per usare la fotocamera"
-        );
+        showAlert({
+          type: 'error',
+          title: 'Permesso negato',
+          message: 'Devi concedere il permesso per usare la fotocamera'
+        });
         return;
       }
 
@@ -85,7 +89,7 @@ export default function RegisterScreen({ navigation }: any) {
       }
     } catch (error) {
       console.error("Errore fotocamera:", error);
-      Alert.alert("Errore", "Impossibile scattare la foto");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile scattare la foto' });
     }
   };
 
@@ -93,49 +97,49 @@ export default function RegisterScreen({ navigation }: any) {
   const selectAvatar = () => {
     if (avatarUri) {
       // Se c'è già un'immagine selezionata, mostra anche "Rimuovi foto"
-      Alert.alert(
-        "Scegli immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
+      showAlert({
+        type: 'info',
+        title: 'Scegli immagine profilo',
+        message: 'Come vuoi caricare la tua foto?',
+        buttons: [
+          { text: "Annulla", onPress: () => {}, style: "cancel" },
           { text: "Galleria", onPress: pickImage },
           { text: "Fotocamera", onPress: takePhoto },
-          { 
-            text: "Rimuovi foto", 
+          {
+            text: "Rimuovi foto",
             onPress: () => setAvatarUri(null),
-            style: "destructive" as const
-          },
-        ],
-        { cancelable: true }
-      );
+            style: "destructive"
+          }
+        ]
+      });
     } else {
       // Se non c'è immagine, solo galleria e fotocamera
-      Alert.alert(
-        "Scegli immagine profilo",
-        "Come vuoi caricare la tua foto?",
-        [
-          { text: "Annulla", onPress: () => {}, style: "cancel" as const },
+      showAlert({
+        type: 'info',
+        title: 'Scegli immagine profilo',
+        message: 'Come vuoi caricare la tua foto?',
+        buttons: [
+          { text: "Annulla", onPress: () => {}, style: "cancel" },
           { text: "Galleria", onPress: pickImage },
-          { text: "Fotocamera", onPress: takePhoto },
-        ],
-        { cancelable: true }
-      );
+          { text: "Fotocamera", onPress: takePhoto }
+        ]
+      });
     }
   };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert("Errore", "Compila tutti i campi obbligatori");
+      showAlert({ type: 'error', title: 'Errore', message: 'Compila tutti i campi obbligatori' });
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Errore", "Le password non coincidono");
+      showAlert({ type: 'error', title: 'Errore', message: 'Le password non coincidono' });
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert("Errore", "La password deve essere almeno 8 caratteri");
+      showAlert({ type: 'error', title: 'Errore', message: 'La password deve essere almeno 8 caratteri' });
       return;
     }
 
@@ -176,7 +180,7 @@ export default function RegisterScreen({ navigation }: any) {
       console.log("🖼️ Avatar nella risposta:", data.avatarUrl);
 
       if (!res.ok) {
-        Alert.alert("Errore registrazione", data.message || "Riprova");
+        showAlert({ type: 'error', title: 'Errore registrazione', message: data.message || "Riprova" });
         return;
       }
 
@@ -192,7 +196,7 @@ export default function RegisterScreen({ navigation }: any) {
 
     } catch (error) {
       console.error("Register error:", error);
-      Alert.alert("Errore", "Impossibile registrarsi. Riprova più tardi.");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile registrarsi. Riprova più tardi.' });
     } finally {
       setLoading(false);
     }
@@ -349,6 +353,7 @@ export default function RegisterScreen({ navigation }: any) {
           </Pressable>
         </View>
       </KeyboardAwareScrollView>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

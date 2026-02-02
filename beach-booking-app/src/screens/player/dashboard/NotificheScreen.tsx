@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNotifications, Notification } from './hooks/useNotifications';
 import { AuthContext } from '../../../context/AuthContext';
+import { useCustomAlert } from '../../../hooks/useCustomAlert';
 import API_URL from '../../../config/api';
 import { styles } from '../styles-player/NotificheScreen.styles';
 
@@ -22,6 +23,7 @@ type FilterType = 'all' | 'unread';
 const NotificheScreen = () => {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   const {
     notifications,
     unreadCount,
@@ -174,20 +176,21 @@ const NotificheScreen = () => {
     
     const success = await acceptFollowRequest(notification.relatedId, notification._id);
     if (success) {
-      Alert.alert('Successo', 'Richiesta di follow accettata');
+      showAlert({ type: 'success', title: 'Successo', message: 'Richiesta di follow accettata' });
       await fetchUnreadCount();
     } else {
-      Alert.alert('Errore', 'Non è stato possibile accettare la richiesta');
+      showAlert({ type: 'error', title: 'Errore', message: 'Non è stato possibile accettare la richiesta' });
     }
   };
 
   const handleRejectRequest = async (notification: Notification) => {
     if (!notification.relatedId) return;
 
-    Alert.alert(
-      'Rifiuta richiesta',
-      'Vuoi rifiutare questa richiesta di follow?',
-      [
+    showAlert({
+      type: 'warning',
+      title: 'Rifiuta richiesta',
+      message: 'Vuoi rifiutare questa richiesta di follow?',
+      buttons: [
         { text: 'Annulla', style: 'cancel' },
         {
           text: 'Rifiuta',
@@ -197,19 +200,20 @@ const NotificheScreen = () => {
             if (success) {
               await fetchUnreadCount();
             } else {
-              Alert.alert('Errore', 'Non è stato possibile rifiutare la richiesta');
+              showAlert({ type: 'error', title: 'Errore', message: 'Non è stato possibile rifiutare la richiesta' });
             }
           },
-        },
+        }
       ]
-    );
+    });
   };
 
   const handleDelete = (notificationId: string) => {
-    Alert.alert(
-      'Elimina notifica',
-      'Vuoi eliminare questa notifica?',
-      [
+    showAlert({
+      type: 'warning',
+      title: 'Elimina notifica',
+      message: 'Vuoi eliminare questa notifica?',
+      buttons: [
         {
           text: 'Annulla',
           style: 'cancel',
@@ -220,16 +224,17 @@ const NotificheScreen = () => {
           onPress: () => deleteNotification(notificationId),
         },
       ]
-    );
+    });
   };
 
   const handleMarkAllAsRead = () => {
     if (unreadCount === 0) return;
 
-    Alert.alert(
-      'Segna tutte come lette',
-      `Vuoi segnare tutte le ${unreadCount} notifiche come lette?`,
-      [
+    showAlert({
+      type: 'info',
+      title: 'Segna tutte come lette',
+      message: `Vuoi segnare tutte le ${unreadCount} notifiche come lette?`,
+      buttons: [
         {
           text: 'Annulla',
           style: 'cancel',
@@ -242,7 +247,7 @@ const NotificheScreen = () => {
           },
         },
       ]
-    );
+    });
   };
 
   const getNotificationIcon = (type: Notification['type']) => {
@@ -492,6 +497,7 @@ const NotificheScreen = () => {
           />
         )}
       </SafeAreaView>
+      <AlertComponent />
     </GestureHandlerRootView>
   );
 };

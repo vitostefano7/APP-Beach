@@ -2,6 +2,7 @@ import React, { useState, Fragment } from "react";
 import { View, Text, Pressable, Alert, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useCustomAlert } from "../../../../../hooks/useCustomAlert";
 
 import { Avatar } from "../../../../../components/Avatar";
 import { Player } from "../types/DettaglioPrenotazione.types";
@@ -48,6 +49,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   maxPlayersPerTeam = 2,
 }) => {
   const navigation = useNavigation<any>();
+  const { showAlert, AlertComponent } = useCustomAlert();
   const [leaving, setLeaving] = useState(false);
   const [showTeamChangeModal, setShowTeamChangeModal] = useState(false);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
@@ -119,7 +121,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
       setShowLeaveConfirmModal(false);
       await onLeave();
     } catch (error) {
-      Alert.alert("Errore", "Impossibile abbandonare il match");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile abbandonare il match' });
     } finally {
       setLeaving(false);
     }
@@ -334,6 +336,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
           </View>
         </View>
       </Modal>
+      <AlertComponent />
     </Fragment>
   );
 };

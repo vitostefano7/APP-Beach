@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import { styles } from "./styles/OwnerDashboardScreen.styles";
+import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
 import OwnerHeader from "./components/OwnerHeader";
 import QuickStatsRow from "./components/QuickStatsRow";
 import BookingTodayCard from "./components/BookingTodayCard";
@@ -93,6 +94,7 @@ type Match = {
 export default function OwnerDashboardScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -561,6 +563,8 @@ export default function OwnerDashboardScreen() {
           </View>
         )}
       </ScrollView>
+
+      <AlertComponent />
     </SafeAreaView>
   );
 }

@@ -26,6 +26,7 @@ import * as Location from "expo-location";
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { resolveImageUrl } from "../../../utils/imageUtils";
 
 // ✅ Import stili
@@ -404,6 +405,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const mapRef = useRef<MapView | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const { token } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   const preferencesRef = useRef<UserPreferences | null>(null);
   const isLoadingStruttureRef = useRef(false);
   const lastRegionRef = useRef<Region | null>(null);
@@ -1008,14 +1010,15 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       }
     } catch (error) {
       console.log("Errore nel centrare sulla posizione:", error);
-      Alert.alert(
-        "GPS non disponibile",
-        "La posizione corrente non è disponibile. Assicurati che i servizi di localizzazione siano abilitati nelle impostazioni del dispositivo.",
-        [
+      showAlert({
+        type: 'error',
+        title: 'GPS non disponibile',
+        message: 'La posizione corrente non è disponibile. Assicurati che i servizi di localizzazione siano abilitati nelle impostazioni del dispositivo.',
+        buttons: [
           { text: "Annulla", style: "cancel" },
           { text: "Apri Impostazioni", onPress: () => Linking.openSettings() }
         ]
-      );
+      });
     }
   };
 
@@ -1929,6 +1932,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           </View>
         </View>
       </Modal>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

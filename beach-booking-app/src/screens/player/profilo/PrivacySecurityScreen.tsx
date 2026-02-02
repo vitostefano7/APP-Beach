@@ -16,12 +16,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState, useContext } from "react";
 import { useTheme } from "./ThemeContext";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import API_URL from "../../../config/api";
 
 export default function PrivacySecurityScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const { token } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -48,22 +50,22 @@ export default function PrivacySecurityScreen() {
 
   const validatePassword = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert("Errore", "Compila tutti i campi");
+      showAlert({ type: 'error', title: 'Errore', message: 'Compila tutti i campi' });
       return false;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert("Errore", "La nuova password deve essere almeno 8 caratteri");
+      showAlert({ type: 'error', title: 'Errore', message: 'La nuova password deve essere almeno 8 caratteri' });
       return false;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Errore", "Le password non coincidono");
+      showAlert({ type: 'error', title: 'Errore', message: 'Le password non coincidono' });
       return false;
     }
 
     if (currentPassword === newPassword) {
-      Alert.alert("Errore", "La nuova password deve essere diversa da quella attuale");
+      showAlert({ type: 'error', title: 'Errore', message: 'La nuova password deve essere diversa da quella attuale' });
       return false;
     }
 
@@ -90,36 +92,37 @@ export default function PrivacySecurityScreen() {
       const data = await res.json();
 
       if (res.ok) {
-        Alert.alert("Successo", "Password modificata con successo");
+        showAlert({ type: 'success', title: 'Successo', message: 'Password modificata con successo' });
         handleCloseModal();
       } else {
-        Alert.alert("Errore", data.message || "Password attuale non corretta");
+        showAlert({ type: 'error', title: 'Errore', message: data.message || "Password attuale non corretta" });
       }
     } catch (error) {
       console.error("Error changing password:", error);
-      Alert.alert("Errore", "Impossibile modificare la password");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile modificare la password' });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleTwoFactor = () => {
-    Alert.alert("Autenticazione a due fattori", "Funzionalità in arrivo");
+    showAlert({ type: 'info', title: 'Autenticazione a due fattori', message: 'Funzionalità in arrivo' });
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      "Elimina account",
-      "Questa azione è irreversibile. Tutti i tuoi dati verranno eliminati permanentemente.",
-      [
+    showAlert({
+      type: 'warning',
+      title: 'Elimina account',
+      message: 'Questa azione è irreversibile. Tutti i tuoi dati verranno eliminati permanentemente.',
+      buttons: [
         { text: "Annulla", style: "cancel" },
         {
           text: "Elimina",
           style: "destructive",
-          onPress: () => Alert.alert("Account eliminato", "Funzionalità in arrivo"),
-        },
+          onPress: () => showAlert({ type: 'info', title: 'Account eliminato', message: 'Funzionalità in arrivo' }),
+        }
       ]
-    );
+    });
   };
 
   return (
@@ -388,6 +391,7 @@ export default function PrivacySecurityScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

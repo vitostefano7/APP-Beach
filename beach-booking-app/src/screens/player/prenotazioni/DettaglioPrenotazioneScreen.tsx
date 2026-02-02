@@ -32,6 +32,7 @@ import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPren
 import TeamSelectionModal from "./DettaglioPrenotazione/components/TeamSelectionModal";
 import ScoreModal from "./DettaglioPrenotazione/components/ScoreModal";
 import styles from "./DettaglioPrenotazione/styles/DettaglioPrenotazione.styles";
+import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
 
 // Componenti condivisi globali
 import {
@@ -58,6 +59,8 @@ export default function DettaglioPrenotazioneScreen() {
   const route = useRoute<any>();
   console.log('🔍 [DettaglioPrenotazione] Route object:', route);
   const { bookingId, openScoreModal, openJoinModal, fromOpenMatch } = route?.params || {};
+
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   // Funzione helper per ottenere ID utente sicuro
   const getUserId = (user: any) => {
@@ -522,7 +525,7 @@ export default function DettaglioPrenotazioneScreen() {
   const handleOpenGroupChat = async () => {
     const matchId = booking?.matchId;
     if (!matchId || matchId === "undefined") {
-      Alert.alert("Errore", "Match non disponibile");
+      showAlert({ type: 'error', title: 'Errore', message: 'Match non disponibile' });
       return;
     }
 
@@ -558,12 +561,12 @@ export default function DettaglioPrenotazioneScreen() {
 
   const handleOpenStrutturaChat = async () => {
     if (!booking?.campo?.struttura?._id) {
-      Alert.alert("Errore", "Struttura non disponibile");
+      showAlert({ type: 'error', title: 'Errore', message: 'Struttura non disponibile' });
       return;
     }
 
     if (!token) {
-      Alert.alert("Errore", "Effettua il login per chattare con la struttura");
+      showAlert({ type: 'error', title: 'Errore', message: 'Effettua il login per chattare con la struttura' });
       return;
     }
 
@@ -623,15 +626,14 @@ export default function DettaglioPrenotazioneScreen() {
         const error = await res.json();
         // Gestione specifica per team sovraffollato
         if (error.overcrowdedTeam) {
-          Alert.alert(
-            "Team Sovraffollato",
-            `${error.message}\n\nTeam ${error.overcrowdedTeam}: ${error.currentCount}/${error.maxAllowed} giocatori`,
-            [
-              { text: "OK", style: "default" }
-            ]
-          );
+          showAlert({
+            type: 'warning',
+            title: "Team Sovraffollato",
+            message: `${error.message}\n\nTeam ${error.overcrowdedTeam}: ${error.currentCount}/${error.maxAllowed} giocatori`,
+            buttons: [{ text: "OK", style: "default" }]
+          });
         } else {
-          Alert.alert("Errore", error.message || "Errore assegnazione team");
+          showAlert({ type: 'error', title: 'Errore', message: error.message || "Errore assegnazione team" });
         }
         return;
       }
@@ -653,7 +655,7 @@ export default function DettaglioPrenotazioneScreen() {
         };
       });
     } catch (error: any) {
-      Alert.alert("Errore", error.message || "Impossibile assegnare il giocatore");
+      showAlert({ type: 'error', title: 'Errore', message: error.message || "Impossibile assegnare il giocatore" });
     }
   };
 
@@ -1983,6 +1985,7 @@ export default function DettaglioPrenotazioneScreen() {
           </ScaleInView>
         </View>
       </Modal>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

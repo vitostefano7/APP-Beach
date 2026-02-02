@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +22,7 @@ import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../util
 
 export default function ConfermaPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   
@@ -173,7 +175,7 @@ export default function ConfermaPrenotazioneScreen() {
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error("❌ Errore prenotazione:", error);
-      Alert.alert("Errore", error.message || "Impossibile completare la prenotazione");
+      showAlert({ type: 'error', title: 'Errore', message: error.message || "Impossibile completare la prenotazione" });
     } finally {
       setLoading(false);
     }
@@ -476,6 +478,7 @@ export default function ConfermaPrenotazioneScreen() {
         bookingId={createdBookingId}
         navigation={navigation}
       />
+      <AlertComponent />
     </SafeAreaView>
   );
 }

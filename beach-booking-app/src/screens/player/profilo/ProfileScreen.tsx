@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 import { styles } from "../styles-player/ProfileScreen.styles";
@@ -452,10 +453,15 @@ const loadPosts = async () => {
   };
 
   const handleLogout = () => {
-    Alert.alert("Conferma uscita", "Vuoi uscire dal tuo account", [
-      { text: "Annulla", style: "cancel" },
-      { text: "Esci", style: "destructive", onPress: logout },
-    ]);
+    showAlert({
+      type: 'warning',
+      title: 'Conferma uscita',
+      message: 'Vuoi uscire dal tuo account',
+      buttons: [
+        { text: "Annulla", style: "cancel" },
+        { text: "Esci", style: "destructive", onPress: logout }
+      ]
+    });
   };
 
 
@@ -918,6 +924,7 @@ const loadPosts = async () => {
         </View>
         <View style={{ height: 40 }} />
       </ScrollView>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

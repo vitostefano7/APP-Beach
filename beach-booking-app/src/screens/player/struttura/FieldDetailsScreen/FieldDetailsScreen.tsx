@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Dimensions,
   FlatList,
+  Alert,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -16,6 +17,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
+import { useCustomAlert } from "../../../../hooks/useCustomAlert";
 import { styles } from "../../styles-player/FieldDetailsScreen.styles";
 import { styles as strutturaStyles } from "../../styles-player/StrutturaDetailScreen.styles";
 import API_URL from "../../../../config/api";
@@ -141,6 +143,7 @@ export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { token } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   // Support receiving either a full `struttura` object or just a `strutturaId` in params
   const { struttura: initialStruttura, strutturaId } = route.params ?? {};
@@ -568,7 +571,7 @@ export default function FieldDetailsScreen() {
   const handleJoinMatch = async (match: any) => {
     const bookingId = match.booking?._id;
     if (!bookingId) {
-      Alert.alert("Errore", "ID prenotazione non disponibile");
+      showAlert({ type: 'error', title: 'Errore', message: 'ID prenotazione non disponibile' });
       return;
     }
     navigation.navigate('DettaglioPrenotazione', { bookingId, openJoinModal: true });
@@ -2086,6 +2089,7 @@ export default function FieldDetailsScreen() {
         <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      <AlertComponent />
     </View>
   );
 }

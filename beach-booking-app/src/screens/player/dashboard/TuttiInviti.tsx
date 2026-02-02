@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useContext, useState, useCallback, useLayoutEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
@@ -21,6 +22,7 @@ import styles from "./TuttiInviti.styles";
 
 export default function TuttiInvitiScreen() {
   const { token, user } = useContext(AuthContext);
+  const { showAlert, AlertComponent } = useCustomAlert();
   const navigation = useNavigation<any>();
 
   useLayoutEffect(() => {
@@ -118,7 +120,7 @@ const loadAllMatches = async () => {
         // Non è JSON, lascia come testo
       }
       
-      Alert.alert("Errore", "Impossibile caricare gli inviti");
+      showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare gli inviti' });
     }
   } catch (error) {
     console.error("❌ Errore caricamento match:", error);
@@ -126,7 +128,7 @@ const loadAllMatches = async () => {
       console.error("   Message:", error.message);
       console.error("   Stack:", error.stack);
     }
-    Alert.alert("Errore", "Impossibile caricare gli inviti");
+    showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare gli inviti' });
   } finally {
     setLoading(false);
     setRefreshing(false);
@@ -331,7 +333,7 @@ const loadAllMatches = async () => {
         onPress={() => {
           const bookingId = booking?._id;
           if (!bookingId) {
-            Alert.alert("Errore", "Dettagli prenotazione non disponibili");
+            showAlert({ type: 'error', title: 'Errore', message: 'Dettagli prenotazione non disponibili' });
             return;
           }
           navigation.navigate("DettaglioPrenotazione", {
@@ -489,10 +491,11 @@ const loadAllMatches = async () => {
               style={[styles.quickActionButton, styles.quickDeclineButton]}
               onPress={(e) => {
                 e.stopPropagation();
-                Alert.alert(
-                  "Rifiuta invito",
-                  "Sei sicuro di voler rifiutare questo invito?",
-                  [
+                showAlert({
+                  type: 'warning',
+                  title: 'Rifiuta invito',
+                  message: 'Sei sicuro di voler rifiutare questo invito?',
+                  buttons: [
                     { text: "Annulla", style: "cancel" },
                     {
                       text: "Rifiuta",
@@ -500,7 +503,7 @@ const loadAllMatches = async () => {
                       onPress: () => respondToInvite(item._id, "decline")
                     }
                   ]
-                );
+                });
               }}
             >
               <Ionicons name="close" size={16} color="#F44336" />
@@ -510,17 +513,18 @@ const loadAllMatches = async () => {
               style={[styles.quickActionButton, styles.quickAcceptButton]}
               onPress={(e) => {
                 e.stopPropagation();
-                Alert.alert(
-                  "Accetta invito",
-                  "Sei sicuro di voler accettare questo invito?",
-                  [
+                showAlert({
+                  type: 'info',
+                  title: 'Accetta invito',
+                  message: 'Sei sicuro di voler accettare questo invito?',
+                  buttons: [
                     { text: "Annulla", style: "cancel" },
                     {
                       text: "Accetta",
                       onPress: () => respondToInvite(item._id, "accept")
                     }
                   ]
-                );
+                });
               }}
             >
               <Ionicons name="checkmark" size={16} color="white" />
@@ -603,21 +607,23 @@ const loadAllMatches = async () => {
 
       await loadAllMatches();
       
-      Alert.alert(
-        response === "accept" ? "Invito accettato!" : "Invito rifiutato",
-        response === "accept" 
+      showAlert({
+        type: response === "accept" ? 'success' : 'info',
+        title: response === "accept" ? "Invito accettato!" : "Invito rifiutato",
+        message: response === "accept" 
           ? "La partita è stata aggiunta alle tue prenotazioni." 
           : "Hai rifiutato l'invito.",
-        [{ text: "OK" }]
-      );
+        buttons: [{ text: "OK" }]
+      });
 
     } catch (error: any) {
       console.error("❌ Errore risposta invito:", error);
-      Alert.alert(
-        "Errore",
-        error.message || "Non è stato possibile rispondere all'invito",
-        [{ text: "OK" }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: error.message || "Non è stato possibile rispondere all'invito",
+        buttons: [{ text: "OK" }]
+      });
     }
   };
 
@@ -723,6 +729,7 @@ const loadAllMatches = async () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
+      <AlertComponent />
     </SafeAreaView>
   );
 }

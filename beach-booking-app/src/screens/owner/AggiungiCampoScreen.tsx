@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
+import { useCustomAlert } from "../../components/CustomAlert/CustomAlert";
 
 /* =======================
    INTERFACES
@@ -52,6 +53,7 @@ export default function AggiungiCampoScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { strutturaId } = route.params;
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
@@ -174,11 +176,11 @@ export default function AggiungiCampoScreen() {
   ======================= */
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert("Errore", "Il nome del campo è obbligatorio");
+      showAlert({ type: 'error', title: 'Errore', message: 'Il nome del campo è obbligatorio' });
       return;
     }
     if (!sport) {
-      Alert.alert("Errore", "Seleziona uno sport");
+      showAlert({ type: 'error', title: 'Errore', message: 'Seleziona uno sport' });
       return;
     }
 
@@ -208,15 +210,18 @@ export default function AggiungiCampoScreen() {
       });
 
       if (response.ok) {
-        Alert.alert("Successo", "Campo aggiunto con successo!", [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
+        showAlert({
+          type: 'success',
+          title: 'Successo',
+          message: 'Campo aggiunto con successo!',
+          buttons: [{ text: "OK", onPress: () => navigation.goBack() }]
+        });
       } else {
         const error = await response.json();
-        Alert.alert("Errore", error.message || "Impossibile aggiungere il campo");
+        showAlert({ type: 'error', title: 'Errore', message: error.message || "Impossibile aggiungere il campo" });
       }
     } catch (error) {
-      Alert.alert("Errore", "Errore di connessione");
+      showAlert({ type: 'error', title: 'Errore', message: 'Errore di connessione' });
       console.error(error);
     } finally {
       setLoading(false);
@@ -647,6 +652,7 @@ export default function AggiungiCampoScreen() {
 
       {/* PRICING MODAL */}
       {renderPricingModal()}
+      <AlertComponent />
     </SafeAreaView>
   );
 }
