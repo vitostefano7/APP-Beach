@@ -48,7 +48,7 @@ export default function RegisterScreen({ navigation }: any) {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -78,7 +78,7 @@ export default function RegisterScreen({ navigation }: any) {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -397,12 +397,12 @@ const styles = {
     overflow: "hidden" as const,
   },
   avatarImage: {
-    width: "100%",
-    height: "100%",
+    width: 120,
+    height: 120,
   },
   avatarPlaceholder: {
-    width: "100%",
-    height: "100%",
+    width: 120,
+    height: 120,
     backgroundColor: "#f5f5f5",
     borderWidth: 2,
     borderColor: "#ddd",

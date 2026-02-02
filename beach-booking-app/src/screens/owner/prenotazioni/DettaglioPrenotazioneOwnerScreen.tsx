@@ -20,7 +20,7 @@ import { Avatar } from "../../../components/Avatar";
 import SportIcon from '../../../components/SportIcon';
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 
 // Componenti condivisi
 import {

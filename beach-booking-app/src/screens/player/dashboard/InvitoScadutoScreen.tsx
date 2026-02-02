@@ -127,7 +127,8 @@ export default function InvitoScadutoScreen() {
   const createdBy = invite.createdBy || match?.createdBy;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <>
+      <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header con icona di scaduto */}
         <View style={styles.header}>
@@ -303,7 +304,8 @@ export default function InvitoScadutoScreen() {
           <Text style={styles.backButtonText}>Torna agli inviti</Text>
         </View>
       </View>
-    </SafeAreaView>
-    <AlertComponent />
+      </SafeAreaView>
+      <AlertComponent />
+    </>
   );
 }

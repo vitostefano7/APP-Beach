@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import { styles } from "./styles/OwnerDashboardScreen.styles";
-import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import OwnerHeader from "./components/OwnerHeader";
 import QuickStatsRow from "./components/QuickStatsRow";
 import BookingTodayCard from "./components/BookingTodayCard";

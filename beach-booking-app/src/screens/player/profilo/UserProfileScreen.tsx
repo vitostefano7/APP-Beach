@@ -8,18 +8,22 @@ import {
   Image,
   TextInput,
   StyleSheet,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Keyboard, KeyboardEvent } from 'react-native';
 
 import { AuthContext } from "../../../context/AuthContext";
 import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
 import { Avatar } from "../../../components/Avatar";
+import { CommunityTheme } from "../../components/Community/communityTheme";
 import { styles } from "../styles-player/UserProfileScreen.styles";
+import { PostCard } from '../../../components/Community/PostCard/PostCard';
 
 type UserProfileRouteProp = RouteProp<DashboardStackParamList, "ProfiloUtente">;
 type UserProfileNavigationProp = NativeStackNavigationProp<DashboardStackParamList, "ProfiloUtente">;
@@ -81,6 +85,9 @@ export default function UserProfileScreen() {
   const [visibleComments, setVisibleComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
   const [postingComment, setPostingComment] = useState<Set<string>>(new Set());
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [activeInputPostId, setActiveInputPostId] = useState<string | null>(null);
+  const currentScrollOffset = useRef(0);
 
   // Supporto opzionale blur (expo-blur). Se non presente useremo un overlay semitrasparente
   let BlurViewImpl: any = View;
@@ -107,6 +114,22 @@ export default function UserProfileScreen() {
     loadUserProfile();
     loadUserPosts();
   }, [userId]);
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      if (diffDays === 1) return '1 giorno fa';
+      if (diffDays < 7) return `${diffDays} giorni fa`;
+      return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    }
+    if (diffHours > 0) return `${diffHours}h fa`;
+    return 'Ora';
+  };
 
   const loadUserProfile = async () => {
     if (!token || !userId) return;
@@ -136,7 +159,7 @@ export default function UserProfileScreen() {
             });
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              json.friendshipId = statusData.friendshipId;
+              json.friendshipId = statusData.friendship?._id || statusData.friendshipId;
               console.log("🤝 [UserProfile] friendshipId:", json.friendshipId);
             }
           } catch (error) {
@@ -229,8 +252,9 @@ export default function UserProfileScreen() {
           const updated: UserProfileData = {
             ...prev,
             friendshipStatus: newStatus,
+            friendshipId: result.friendship?._id,
           };
-          console.log("✅ [UserProfile] Data updated, new friendshipStatus:", updated.friendshipStatus);
+          console.log("✅ [UserProfile] Data updated, new friendshipStatus:", updated.friendshipStatus, "friendshipId:", updated.friendshipId);
           return updated;
         });
       } else {
@@ -402,6 +426,82 @@ export default function UserProfileScreen() {
     }
   }; 
 
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Keyboard management for post cards
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener('keyboardWillShow', (e: KeyboardEvent) => {
+      console.log('🎹 [UserProfile] Keyboard WILL show:', {
+        height: e.endCoordinates.height,
+        screenY: e.endCoordinates.screenY,
+      });
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
+      console.log('🎹 [UserProfile] Keyboard DID show:', {
+        height: e.endCoordinates.height,
+      });
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
+      console.log('🎹 [UserProfile] Keyboard WILL hide');
+      setKeyboardHeight(0);
+      setActiveInputPostId(null);
+    });
+    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
+      console.log('🎹 [UserProfile] Keyboard DID hide');
+      setKeyboardHeight(0);
+      setActiveInputPostId(null);
+    });
+    return () => {
+      keyboardWillShow.remove();
+      keyboardDidShow.remove();
+      keyboardWillHide.remove();
+      keyboardDidHide.remove();
+    };
+  }, []);
+
+  const handleInputFocus = (postId: string, inputBottomEdge?: number) => {
+    console.log('📍 [UserProfile] Input focused on post:', postId, 'bottomEdge:', inputBottomEdge);
+    setActiveInputPostId(postId);
+    
+    if (inputBottomEdge && scrollViewRef.current) {
+      const screenHeight = Dimensions.get('window').height;
+      // Use current keyboardHeight or default to 288 (typical keyboard height)
+      const effectiveKeyboardHeight = keyboardHeight || 288;
+      const keyboardTop = screenHeight - effectiveKeyboardHeight;
+      
+      // Calculate gaps
+      const currentGap = keyboardTop - inputBottomEdge;
+      const desiredGap = 100; // 100px space between input and keyboard
+      
+      console.log('📏 [UserProfile] Scroll calculation:', {
+        screenHeight: Math.round(screenHeight),
+        keyboardTop: Math.round(keyboardTop),
+        inputBottomEdge: Math.round(inputBottomEdge),
+        currentGap: Math.round(currentGap),
+        desiredGap,
+        keyboardHeight: Math.round(effectiveKeyboardHeight),
+        currentScrollOffset: Math.round(currentScrollOffset.current),
+      });
+      
+      if (currentGap < desiredGap) {
+        const scrollAmount = desiredGap - currentGap;
+        const newOffset = currentScrollOffset.current + scrollAmount;
+        console.log(`⬆️ [UserProfile] Scrolling from ${Math.round(currentScrollOffset.current)}px to ${Math.round(newOffset)}px (+${Math.round(scrollAmount)}px)`);
+        
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, newOffset),
+            animated: true,
+          });
+        }, 100);
+      } else {
+        console.log('✅ [UserProfile] Gap is sufficient, no scroll needed');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -461,8 +561,13 @@ export default function UserProfileScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: 100 }}
+        onScroll={(e) => {
+          currentScrollOffset.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         {/* Profile Card */}
         <View style={styles.profileCard}>
@@ -630,66 +735,16 @@ export default function UserProfileScreen() {
 
             {posts.length > 0 ? (
               posts.map((post) => (
-                <View key={post._id} style={styles.postCard}>
-                  <View style={styles.postHeader}>
-                    <Avatar avatarUrl={post.user.avatarUrl} name={post.user.name} size={32} />
-                    <View style={styles.postHeaderText}>
-                      <Text style={styles.postAuthor}>{post.user.name}</Text>
-                      <Text style={styles.postTime}>{new Date(post.createdAt).toLocaleDateString('it-IT')}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.postContent}>{post.content}</Text>
-
-                  {post.image && (
-                    <Image source={{ uri: post.image }} style={styles.postImage} resizeMode="cover" />
-                  )}
-
-                  <View style={styles.postStats}>
-                    <Pressable style={styles.postStat} onPress={() => handleLike(post._id)}>
-                      <Ionicons name={post.likes.includes(currentUser?.id || '') ? "heart" : "heart-outline"} size={18} color={post.likes.includes(currentUser?.id || '') ? "#E91E63" : "#666"} />
-                      <Text style={styles.postStatText}>{post.likes.length}</Text>
-                    </Pressable>
-                    <Pressable style={styles.postStat} onPress={() => toggleComments(post._id)}>
-                      <Ionicons name="chatbubble-outline" size={16} color={visibleComments[post._id] ? '#2196F3' : '#666'} />
-                      <Text style={[styles.postStatText, { color: visibleComments[post._id] ? '#2196F3' : '#666' }]}>{post.comments.length}</Text>
-                    </Pressable>
-                  </View>
-
-                  {visibleComments[post._id] && (
-                    <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 }}>
-                      {post.comments.length > 0 && (
-                        <View style={{ marginBottom: 10 }}>
-                          {post.comments.map(comment => (
-                            <View key={comment._id} style={{ flexDirection: 'row', marginBottom: 10 }}>
-                              <Avatar avatarUrl={comment.user.avatarUrl} name={comment.user.name} surname={comment.user.surname || comment.user.lastName} size={28} />
-                              <View style={{ marginLeft: 8, flex: 1 }}>
-                                <Text style={{ fontWeight: 'bold' }}>{comment.user.surname || comment.user.lastName ? `${comment.user.name} ${comment.user.surname || comment.user.lastName}` : comment.user.name}</Text>
-                                <Text>{comment.text}</Text>
-                              </View>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-
-                      {isFriend && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8 }}>
-                          <Avatar avatarUrl={currentUser?.avatarUrl} name={currentUser?.name || 'Tu'} size={32} />
-                          <View style={{ flex: 1, marginLeft: 8, flexDirection: 'row', alignItems: 'center' }}>
-                            <TextInput style={{ flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, color: '#333' }} placeholder="Scrivi un commento..." value={commentInputs[post._id] || ''} onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [post._id]: text }))} multiline maxLength={500} />
-                            <Pressable style={{ marginLeft: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: commentInputs[post._id]?.trim() && !postingComment.has(post._id) ? '#2196F3' : '#ccc', alignItems: 'center', justifyContent: 'center' }} onPress={() => handlePostComment(post._id)} disabled={!commentInputs[post._id]?.trim() || postingComment.has(post._id)}>
-                              {postingComment.has(post._id) ? (
-                                <ActivityIndicator size="small" color="white" />
-                              ) : (
-                                <Ionicons name="send" size={16} color="white" />
-                              )}
-                            </Pressable>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  currentUserId={currentUser?.id}
+                  token={token}
+                  onLike={handleLike}
+                  onShare={() => {}}
+                  isLiked={post.likes.includes(currentUser?.id || '')}
+                  onInputFocus={handleInputFocus}
+                />
               ))
             ) : !loadingPosts ? (
               <View style={styles.emptyPosts}>

@@ -223,15 +223,18 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
       {/* Footer con tasto Unisci */}
       {onJoin && (
         <View style={styles.openMatchFooter}>
-          {costPerPlayer > 0 && (
-            <View style={styles.costContainer}>
-              <Ionicons name="cash-outline" size={14} color="#2196F3" />
-              <Text style={styles.costText}>Costo: €{costPerPlayer.toFixed(2)}</Text>
-            </View>
-          )}
           <Pressable style={styles.joinButton} onPress={onJoin}>
             <Ionicons name="person-add-outline" size={16} color="white" />
-            <Text style={styles.joinButtonText}>Unisci alla partita</Text>
+            <Text style={styles.joinButtonText}>
+              Unisciti alla partita
+              {costPerPlayer > 0 && (
+                <>
+                  {' - '}
+                  <Ionicons name="wallet-outline" size={14} color="white" />
+                  {' €' + costPerPlayer.toFixed(2)}
+                </>
+              )}
+            </Text>
           </Pressable>
         </View>
       )}

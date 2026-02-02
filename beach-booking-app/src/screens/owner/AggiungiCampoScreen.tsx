@@ -16,7 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import API_URL from "../../config/api";
-import { useCustomAlert } from "../../components/CustomAlert/CustomAlert";
+import { useCustomAlert } from "../../hooks/useCustomAlert";
 
 /* =======================
    INTERFACES

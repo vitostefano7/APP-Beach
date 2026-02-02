@@ -22,7 +22,7 @@ import * as Network from 'expo-network';
 
 import API_URL from "../../config/api";
 import { Avatar } from "../../components/Avatar";
-import { useCustomAlert } from "../../components/CustomAlert";
+import { useCustomAlert } from "../../hooks/useCustomAlert";
 import { AvatarPicker } from "../../components/AvatarPicker";
 import { resolveAvatarUrl } from "../../utils/avatar";
 

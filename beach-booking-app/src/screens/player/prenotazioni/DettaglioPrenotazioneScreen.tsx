@@ -32,7 +32,7 @@ import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPren
 import TeamSelectionModal from "./DettaglioPrenotazione/components/TeamSelectionModal";
 import ScoreModal from "./DettaglioPrenotazione/components/ScoreModal";
 import styles from "./DettaglioPrenotazione/styles/DettaglioPrenotazione.styles";
-import { useCustomAlert } from "../../../components/CustomAlert/CustomAlert";
+import { useCustomAlert } from "../../../hooks/useCustomAlert";
 
 // Componenti condivisi globali
 import {

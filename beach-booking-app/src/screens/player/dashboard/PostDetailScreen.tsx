@@ -25,7 +25,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/PostDetailScreen.styles';
 import API_URL from '../../../config/api';
-import { useCustomAlert } from '../../../components/CustomAlert/CustomAlert';
+import { useCustomAlert } from '../../../hooks/useCustomAlert';
 
 type Comment = {
   _id: string;

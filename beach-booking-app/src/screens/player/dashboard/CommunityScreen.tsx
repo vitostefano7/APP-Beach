@@ -22,7 +22,7 @@ import {
 } from '../../../components/Community';
 import { usePosts, usePostInteractions } from '../../../components/Community/hooks';
 import { Post, CommunityTab } from '../../../types/community.types';
-import { useCustomAlert } from '../../../components/CustomAlert/CustomAlert';
+import { useCustomAlert } from '../../../hooks/useCustomAlert';
 
 export default function CommunityScreen() {
   console.log('🚀 COMMUNITY SCREEN (PLAYER) MOUNTED');

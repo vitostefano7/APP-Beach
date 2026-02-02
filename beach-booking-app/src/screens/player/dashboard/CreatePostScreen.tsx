@@ -18,7 +18,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/CreatePostScreen.styles';
 import API_URL from '../../../config/api';
-import { useCustomAlert } from '../../../components/CustomAlert/CustomAlert';
+import { useCustomAlert } from '../../../hooks/useCustomAlert';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation<any>();

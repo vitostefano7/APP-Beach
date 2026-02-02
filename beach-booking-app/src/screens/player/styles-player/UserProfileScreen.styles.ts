@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { CommunityTheme } from "../../../components/Community/communityTheme";
 
 export const styles = StyleSheet.create({
   safe: {
@@ -280,18 +281,12 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   postCard: {
-    backgroundColor: '#F5F9FF',
-    borderRadius: 12,
-    marginBottom: 12,
-    marginHorizontal: 12,
-    padding: 14,
-    shadowColor: '#2196F3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(33, 150, 243, 0.15)',
+    backgroundColor: CommunityTheme.colors.cardBackground,
+    borderRadius: CommunityTheme.borderRadius.md,
+    marginHorizontal: CommunityTheme.spacing.lg,
+    marginBottom: CommunityTheme.spacing.md,
+    padding: CommunityTheme.spacing.lg,
+    ...CommunityTheme.shadows.card,
   },
   postHeader: {
     flexDirection: 'row',
@@ -303,45 +298,36 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   postAuthor: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    ...CommunityTheme.typography.postAuthor,
   },
   postTime: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 2,
+    ...CommunityTheme.typography.postTime,
   },
   postContent: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
+    ...CommunityTheme.typography.postContent,
     marginBottom: 10,
   },
   postImage: {
     width: '100%',
-    height: 180,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(33, 150, 243, 0.1)',
+    height: 300,
+    borderRadius: CommunityTheme.borderRadius.md,
+    marginBottom: CommunityTheme.spacing.md,
   },
   postStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    paddingTop: 10,
+    paddingTop: CommunityTheme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(33, 150, 243, 0.15)',
+    borderTopColor: CommunityTheme.colors.borderLight,
+    gap: CommunityTheme.spacing.xxl,
   },
   postStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   postStatText: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
+    color: CommunityTheme.colors.textSecondary,
     fontWeight: '500',
   },
   emptyPosts: {
@@ -417,5 +403,77 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     color: '#2196F3',
     fontWeight: '600',
+  },
+
+  // Comments Section
+  commentsSection: {
+    marginTop: CommunityTheme.spacing.md,
+    paddingTop: CommunityTheme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: CommunityTheme.colors.borderLight,
+  },
+  commentsListContainer: {
+    maxHeight: 400,
+    marginBottom: CommunityTheme.spacing.md,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: CommunityTheme.spacing.md,
+    gap: CommunityTheme.spacing.sm,
+    alignItems: 'center',
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentBubble: {
+    backgroundColor: CommunityTheme.colors.background,
+    borderRadius: CommunityTheme.borderRadius.sm,
+    padding: CommunityTheme.spacing.sm,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: CommunityTheme.colors.textPrimary,
+  },
+  commentTime: {
+    fontSize: 11,
+    color: CommunityTheme.colors.textTertiary,
+  },
+  commentText: {
+    fontSize: 14,
+    color: CommunityTheme.colors.textPrimary,
+    lineHeight: 18,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: CommunityTheme.spacing.sm,
+    backgroundColor: CommunityTheme.colors.background,
+    borderRadius: CommunityTheme.borderRadius.lg,
+    padding: CommunityTheme.spacing.sm,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 14,
+    color: CommunityTheme.colors.textPrimary,
+    maxHeight: 80,
+    paddingVertical: 4,
+  },
+  sendButton: {
+    padding: 8,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
 });

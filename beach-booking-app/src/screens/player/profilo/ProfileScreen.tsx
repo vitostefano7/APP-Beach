@@ -22,7 +22,6 @@ import { styles } from "../styles-player/ProfileScreen.styles";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { Avatar } from "../../../components/Avatar/Avatar";
-import { useCustomAlert } from "../../../components/CustomAlert";
 import { AvatarPicker } from "../../../components/AvatarPicker";
 import { StatsCarousel } from "./components/StatsCarousel";
 
