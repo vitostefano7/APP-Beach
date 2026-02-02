@@ -664,6 +664,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F44336",
     paddingVertical: 16,
     borderRadius: 12,
+    marginHorizontal: 16,
     shadowColor: "#F44336",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

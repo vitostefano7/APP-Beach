@@ -221,6 +221,7 @@ export const DettaglioPrenotazioneSharedScreen: React.FC<DettaglioPrenotazioneSh
           onChatPress={role === 'player' ? handleOpenStrutturaChat : undefined}
           onMapPress={handleOpenMaps}
           showChatButton={role === 'player'}
+          role={role}
         />
 
         {/* Booking Details */}

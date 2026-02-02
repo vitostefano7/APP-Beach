@@ -37,8 +37,9 @@ import {
   BookingDetailsCard,
   calculateDuration,
   formatDate,
-  ScoreDisplay,
+  FieldInfoCard,
 } from "../../../components/booking";
+import ScoreDisplay from "../../../components/booking/components/ScoreDisplay";
 import PlayerCardWithTeam from "../../player/prenotazioni/DettaglioPrenotazione/components/DettaglioPrenotazione.components";
 import ScoreModal from "../../../components/ScoreModal";
 import { submitMatchScore } from "../../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
@@ -801,105 +802,17 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 100 }}
       >
-        {/* Campo Info Card - Versione compatta identica al player */}
-        <AnimatedCard delay={100}>
-          <View style={styles.fieldInfoCard}>
-            <View style={styles.fieldInfoHeader}>
-              <Ionicons name="location-sharp" size={20} color="#FF9800" />
-              <Text style={styles.fieldInfoTitle}>Dove giochi</Text>
-            </View>
-            
-            <View style={styles.fieldInfoList}>
-              {/* Struttura */}
-              <FadeInView delay={200}>
-                <View style={styles.fieldInfoRow}>
-                  <View style={styles.fieldIconCircle}>
-                    <Ionicons name="business" size={18} color="#2196F3" />
-                  </View>
-                  <View style={styles.fieldInfoContent}>
-                    <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
-                    <Text style={styles.fieldInfoValue}>{booking.campo.struttura.name}</Text>
-                  </View>
-                </View>
-              </FadeInView>
-
-              <View style={styles.fieldInfoDivider} />
-
-              {/* Sport e Campo - Due colonne */}
-              <View style={styles.sportCampoGrid}>
-                <FadeInView delay={300} style={styles.sportCampoColumn}>
-                  <View style={styles.sportCampoBox}>
-                    <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                      {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley' || booking.campo.sport === 'volley') ? (
-                        <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />
-                      ) : (
-                        <Ionicons 
-                          name={
-                            booking.campo.sport === 'calcio' ? 'football' :
-                            booking.campo.sport === 'tennis' ? 'tennisball' :
-                            booking.campo.sport === 'basket' ? 'basketball' : 'barbell'
-                          } 
-                          size={18} 
-                          color="#FF9800" 
-                        />
-                      )}
-                    </View>
-                    <View style={styles.fieldInfoContent}>
-                      <Text style={styles.fieldInfoLabel}>SPORT</Text>
-                      <Text style={styles.fieldInfoValue}>
-                        {(booking.campo.sport === 'beach_volley' || booking.campo.sport === 'beach volley')
-                          ? 'Beach Volley' 
-                          : booking.campo.sport.charAt(0).toUpperCase() + booking.campo.sport.slice(1)}
-                      </Text>
-                    </View>
-                  </View>
-                </FadeInView>
-
-                <FadeInView delay={350} style={styles.sportCampoColumn}>
-                  <View style={styles.sportCampoBox}>
-                    <View style={[styles.fieldIconCircle, { backgroundColor: '#E8F5E9' }]}>
-                      <Ionicons name="grid-outline" size={18} color="#4CAF50" />
-                    </View>
-                    <View style={styles.fieldInfoContent}>
-                      <Text style={styles.fieldInfoLabel}>CAMPO</Text>
-                      <Text style={styles.fieldInfoValue}>{booking.campo.name}</Text>
-                    </View>
-                  </View>
-                </FadeInView>
-              </View>
-
-              <View style={styles.fieldInfoDivider} />
-
-              {/* Località - Cliccabile */}
-              <FadeInView delay={400}>
-                <View style={styles.fieldInfoRow}>
-                  <View style={[styles.fieldIconCircle, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="location" size={18} color="#2196F3" />
-                  </View>
-                  <View style={styles.fieldInfoContent}>
-                    <Text style={styles.fieldInfoLabel}>LOCALITÀ</Text>
-                    <View style={styles.locationRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.fieldInfoValue}>{booking.campo.struttura.location.city}</Text>
-                        {booking.campo.struttura.location.address && (
-                          <Text style={styles.fieldInfoSubValue}>{booking.campo.struttura.location.address}</Text>
-                        )}
-                      </View>
-                      <Pressable 
-                        style={styles.mapButton}
-                        onPress={openMaps}
-                        android_ripple={{ color: 'rgba(156, 39, 176, 0.1)', radius: 40 }}
-                      >
-                        <Ionicons name="navigate" size={14} color="#2196F3" />
-                        <Text style={styles.mapButtonText}>Indicazioni</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-              </FadeInView>
-            </View>
-          </View>
-        </AnimatedCard>
+        {/* Campo Info Card */}
+        <FieldInfoCard
+          struttura={booking.campo.struttura}
+          campo={{
+            name: booking.campo.name,
+            sport: booking.campo.sport,
+          }}
+          onStrutturaPress={() => {/* TODO: implementare apertura dettagli struttura */}}
+          onMapPress={openMaps}
+          role="owner"
+        />
 
           <AnimatedCard delay={150} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -949,7 +862,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
               duration={calculateDuration(booking.startTime, booking.endTime)}
               price={booking.price}
               createdAt={booking.createdAt}
-              isPublic={booking.match?.isPublic}
+              isPublic={booking.match?.isPublic ?? false}
             />
           </AnimatedCard>
 

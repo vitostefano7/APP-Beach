@@ -21,6 +21,7 @@ interface FieldInfoCardProps {
   onChatPress?: () => void;
   onMapPress?: () => void;
   showChatButton?: boolean; // Solo per player
+  role?: string;
 }
 
 export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
@@ -30,6 +31,7 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
   onChatPress,
   onMapPress,
   showChatButton = false,
+  role,
 }) => {
   const getSportDisplayName = (sport: string) => {
     if (sport === 'beach_volley' || sport === 'beach volley') {
@@ -51,38 +53,59 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
     return <Ionicons name={iconName as any} size={18} color="#FF9800" />;
   };
 
+  const title = role === 'owner' ? 'Luogo della prenotazione' : 'Dove giochi';
+
   return (
     <AnimatedCard delay={100}>
       <View style={styles.fieldInfoCard}>
         <View style={styles.fieldInfoHeader}>
           <Ionicons name="location-sharp" size={20} color="#FF9800" />
-          <Text style={styles.fieldInfoTitle}>Dove giochi</Text>
+          <Text style={styles.fieldInfoTitle}>{title}</Text>
         </View>
         
         <View style={styles.fieldInfoList}>
           {/* Struttura */}
           <FadeInView delay={200}>
-            <Pressable style={styles.fieldInfoRow} onPress={onStrutturaPress}>
-              <View style={styles.fieldIconCircle}>
-                <Ionicons name="business" size={18} color="#2196F3" />
+            {onStrutturaPress ? (
+              <Pressable style={styles.fieldInfoRow} onPress={onStrutturaPress}>
+                <View style={styles.fieldIconCircle}>
+                  <Ionicons name="business" size={18} color="#2196F3" />
+                </View>
+                <View style={styles.fieldInfoContent}>
+                  <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
+                  <Text style={styles.fieldInfoValue}>{struttura.name}</Text>
+                </View>
+                {showChatButton && onChatPress && (
+                  <Pressable 
+                    style={styles.chatIconButton}
+                    onPress={onChatPress}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+                  </Pressable>
+                )}
+              </Pressable>
+            ) : (
+              <View style={styles.fieldInfoRow}>
+                <View style={styles.fieldIconCircle}>
+                  <Ionicons name="business" size={18} color="#2196F3" />
+                </View>
+                <View style={styles.fieldInfoContent}>
+                  <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
+                  <Text style={styles.fieldInfoValue}>{struttura.name}</Text>
+                </View>
+                {showChatButton && onChatPress && (
+                  <Pressable 
+                    style={styles.chatIconButton}
+                    onPress={onChatPress}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
+                  </Pressable>
+                )}
               </View>
-              <View style={styles.fieldInfoContent}>
-                <Text style={styles.fieldInfoLabel}>STRUTTURA</Text>
-                <Text style={styles.fieldInfoValue}>{struttura.name}</Text>
-              </View>
-              {showChatButton && onChatPress && (
-                <Pressable 
-                  style={styles.chatIconButton}
-                  onPress={onChatPress}
-                  hitSlop={10}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#2196F3" />
-                </Pressable>
-              )}
-            </Pressable>
+            )}
           </FadeInView>
-
-          <View style={styles.fieldInfoDivider} />
 
           {/* Sport e Campo - Due colonne */}
           <View style={styles.sportCampoGrid}>
@@ -112,8 +135,6 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
               </View>
             </FadeInView>
           </View>
-
-          <View style={styles.fieldInfoDivider} />
 
           {/* Località - Cliccabile */}
           <FadeInView delay={400}>
@@ -156,10 +177,11 @@ const styles = StyleSheet.create({
     padding: 20,
     marginHorizontal: 16,
     marginTop: 20,
+    marginBottom: 12,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -175,21 +197,31 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   fieldInfoList: {
-    gap: 0,
+    gap: 8,
   },
   fieldInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 12,
     gap: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   fieldIconCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   fieldInfoContent: {
     flex: 1,
@@ -221,12 +253,12 @@ const styles = StyleSheet.create({
   fieldInfoDivider: {
     height: 1,
     backgroundColor: '#f0f0f0',
-    marginVertical: 4,
+    marginVertical: 8,
   },
   sportCampoGrid: {
     flexDirection: 'row',
     gap: 12,
-    paddingVertical: 8,
+    paddingVertical: 0,
   },
   sportCampoColumn: {
     flex: 1,
@@ -235,6 +267,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   locationRow: {
     flexDirection: 'row',
