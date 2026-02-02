@@ -1,0 +1,667 @@
+import React, { useContext, useEffect, useState, useRef } from "react";
+import { SafeAreaView, View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Image } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "../../context/AuthContext";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import API_URL from "../../config/api";
+
+// Centralized components
+import MatchSection from "../../components/booking/MatchSection";
+import InviteModal from "../../components/booking/InviteModal";
+import OwnerRoleSection from "../../components/booking/OwnerRoleSection";
+import PlayerRoleSection from "../../components/booking/PlayerRoleSection";
+import { useMatchLogic } from "../../hooks/booking/useMatchLogic";
+import { getTeamColors, getTeamIcon } from "../../utils/booking/bookingUtils";
+
+// Other components
+import ScoreModal from "../../components/ScoreModal";
+import { submitMatchScore } from "../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
+import BookingDetailsCard from "../player/prenotazioni/DettaglioPrenotazione/components/BookingDetailsCard";
+import { calculateDuration } from "../player/prenotazioni/DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
+import { AnimatedCard } from "../player/prenotazioni/DettaglioPrenotazione/components/AnimatedComponents";
+import { Avatar } from "../../components/Avatar";
+
+interface DettaglioPrenotazioneScreenProps {
+  role: 'player' | 'owner';
+}
+
+export default function DettaglioPrenotazioneScreen({ role }: DettaglioPrenotazioneScreenProps) {
+  const { token, user } = useContext(AuthContext);
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { bookingId } = route.params;
+
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<any>(null);
+  const [showClientProfile, setShowClientProfile] = useState(false);
+  const [loadingGroupChat, setLoadingGroupChat] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+
+  // Score modal visibility
+  const [scoreModalVisible, setScoreModalVisible] = useState(false);
+
+  // Invite modal states
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [inviteToTeam, setInviteToTeam] = useState<"A" | "B" | null>(null);
+  const [inviteToSlot, setInviteToSlot] = useState<number | null>(null);
+  const suppressInvitePress = useRef(false);
+
+  // Use centralized match logic
+  const {
+    isMatchInProgress,
+    isMatchPassed,
+    getTimeUntilRegistrationDeadline,
+    isRegistrationOpen,
+    getMatchStatus,
+    getMatchStatusInfo,
+  } = useMatchLogic(booking);
+
+  // Load booking based on role
+  const loadBooking = async () => {
+    try {
+      setLoading(true);
+      const endpoint = role === 'owner' ? `/bookings/owner/${bookingId}` : `/bookings/${bookingId}`;
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (role === 'owner') {
+        data.matchId = data.match._id;
+      }
+      setBooking(data);
+    } catch (error) {
+      console.error("Errore caricamento booking:", error);
+      Alert.alert("Errore", "Impossibile caricare i dettagli");
+      navigation.goBack();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBooking();
+  }, []);
+
+  // Placeholder handlers - need to be implemented based on role
+  const handleOpenGroupChat = async () => {
+    if (!booking?.match?._id) {
+      Alert.alert("Errore", "Match non disponibile");
+      return;
+    }
+
+    try {
+      setLoadingGroupChat(true);
+      const res = await fetch(`${API_URL}/api/conversations/match/${booking.match._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore caricamento chat");
+      }
+
+      const conversation = await res.json();
+      navigation.navigate("GroupChat", {
+        conversationId: conversation._id,
+        groupName: `Match - ${booking.campo?.struttura?.name || 'Gruppo'}`,
+        matchId: booking.match._id,
+        struttura: booking.campo?.struttura,
+      });
+    } catch (error: any) {
+      Alert.alert("Errore", error.message || "Impossibile aprire la chat di gruppo");
+    } finally {
+      setLoadingGroupChat(false);
+    }
+  };
+
+  const handleRemovePlayer = async (playerUserId: string) => {
+    if (!booking?.matchId) return;
+
+    Alert.alert(
+      "Rimuovi giocatore",
+      "Sei sicuro di voler rimuovere questo giocatore dal match?",
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Rimuovi",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await fetch(`${API_URL}/matches/${booking.matchId}/players/${playerUserId}`, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Errore rimozione");
+              }
+
+              // Update local state
+              setBooking((prevBooking: any) => ({
+                ...prevBooking,
+                match: {
+                  ...prevBooking.match,
+                  players: prevBooking.match.players.filter((p: any) => p.user._id !== playerUserId)
+                }
+              }));
+
+              Alert.alert("Successo", "Giocatore rimosso dal match");
+            } catch (error: any) {
+              Alert.alert("Errore", error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+    if (!booking?.match?._id || !token) return;
+
+    try {
+      await submitMatchScore(booking.match._id, winner, sets, token);
+      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
+      setScoreModalVisible(false);
+      loadBooking();
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
+      throw error;
+    }
+  };
+
+  const openChat = async () => {
+    try {
+      const userId = role === 'owner' ? booking.user._id : booking.campo.struttura.owner._id;
+      const res = await fetch(`${API_URL}/api/conversations/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error();
+      }
+
+      const conversation = await res.json();
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: booking.campo.struttura.name,
+        userName: role === 'owner' ? booking.user.name : booking.campo.struttura.owner.name,
+        userId: userId,
+        struttura: booking.campo.struttura,
+      });
+    } catch (error) {
+      Alert.alert("Errore", "Impossibile aprire la chat");
+    }
+  };
+
+  const openUserProfile = (userId?: string) => {
+    if (!userId || userId === user?.id) return;
+    navigation.navigate('ProfiloUtente', { userId });
+  };
+
+  const handleInvitePlayer = async (username: string) => {
+    if (!booking?.matchId) return;
+
+    try {
+      const body: any = { 
+        username,
+        ...(inviteToTeam && { team: inviteToTeam })
+      };
+      
+      const res = await fetch(`${API_URL}/matches/${booking.matchId}/invite`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore invito");
+      }
+
+      // Update local state
+      const invitedUser = searchResults.find(user => user.username === username);
+      if (invitedUser) {
+        setBooking((prevBooking: any) => ({
+          ...prevBooking,
+          match: {
+            ...prevBooking.match,
+            players: [
+              ...prevBooking.match.players,
+              {
+                user: invitedUser,
+                status: 'confirmed',
+                team: inviteToTeam || null,
+              }
+            ]
+          }
+        }));
+      }
+
+      Alert.alert("✅ Invito inviato!", "L'utente è stato invitato al match");
+      setInviteModalVisible(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      setInviteToTeam(null);
+      setInviteToSlot(null);
+    } catch (error: any) {
+      Alert.alert("Errore", error.message);
+    }
+  };
+
+  const handleSearchUsers = async (query: string) => {
+    if (query.length < 2 || !booking?.matchId) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const confirmedPlayers = booking?.match?.players?.filter((p: any) => p.status === "confirmed") || [];
+      const followedByIds = confirmedPlayers.map((p: any) => p.user._id).join(',');
+
+      const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}&filter=all&followedBy=${followedByIds}`, { headers });
+
+      if (!res.ok) {
+        setSearchResults([]);
+        return;
+      }
+
+      const allUsers = await res.json();
+      const alreadyInMatch = booking.match?.players?.map((p: any) => p.user._id) || [];
+      const filtered = allUsers.filter((u: any) => !alreadyInMatch.includes(u._id));
+
+      const sorted = filtered.sort((a: any, b: any) => {
+        if (a.isFollowed && !b.isFollowed) return -1;
+        if (!a.isFollowed && b.isFollowed) return 1;
+
+        const queryLower = query.toLowerCase();
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        const aSurname = (a.surname || '').toLowerCase();
+        const bSurname = (b.surname || '').toLowerCase();
+
+        const aNameStarts = aName.startsWith(queryLower);
+        const bNameStarts = bName.startsWith(queryLower);
+        if (aNameStarts && !bNameStarts) return -1;
+        if (!aNameStarts && bNameStarts) return 1;
+
+        const aSurnameStarts = aSurname.startsWith(queryLower);
+        const bSurnameStarts = bSurname.startsWith(queryLower);
+        if (aSurnameStarts && !bSurnameStarts) return -1;
+        if (!aSurnameStarts && bSurnameStarts) return 1;
+
+        const nameA = (a.name || '') + ' ' + (a.surname || '');
+        const nameB = (b.name || '') + ' ' + (b.surname || '');
+        return nameA.localeCompare(nameB);
+      });
+
+      setSearchResults(sorted);
+    } catch (error) {
+      console.error("Errore ricerca:", error);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleInvitePlayer = async (username: string) => {
+    if (!booking?.matchId) return;
+
+    try {
+      const body: any = {
+        username,
+        ...(inviteToTeam && { team: inviteToTeam })
+      };
+
+      const res = await fetch(`${API_URL}/matches/${booking.matchId}/invite`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore invito");
+      }
+
+      const invitedUser = searchResults.find(user => user.username === username);
+      if (invitedUser) {
+        setBooking((prevBooking: any) => ({
+          ...prevBooking,
+          match: {
+            ...prevBooking.match,
+            players: [
+              ...prevBooking.match.players,
+              {
+                user: invitedUser,
+                status: 'confirmed',
+                team: inviteToTeam || null,
+              }
+            ]
+          }
+        }));
+      }
+
+      Alert.alert("✅ Invito inviato!", "L'utente è stato invitato al match");
+      setInviteModalVisible(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      setInviteToTeam(null);
+      setInviteToSlot(null);
+    } catch (error: any) {
+      Alert.alert("Errore", error.message);
+    }
+  };
+
+  const handleInviteToTeam = (team: "A" | "B", slot: number) => {
+    setInviteToTeam(team);
+    setInviteToSlot(slot);
+    setInviteModalVisible(true);
+  };
+
+  const openUserProfile = (userId: string) => {
+    if (!userId || userId === user?.id) return;
+    navigation.navigate('ProfiloUtente', { userId });
+  };
+
+  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+    if (!booking?.match?._id || !token) return;
+
+    try {
+      await submitMatchScore(booking.match._id, winner, sets, token);
+      Alert.alert('✅ Risultato salvato!', 'Il risultato del match è stato registrato con successo');
+      setScoreModalVisible(false);
+      loadBooking();
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
+    }
+  };
+
+  const openChat = async () => {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/conversations/user/${booking.user._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error();
+      }
+
+      const conversation = await res.json();
+      navigation.navigate("Chat", {
+        conversationId: conversation._id,
+        strutturaName: booking.campo.struttura.name,
+        userName: booking.user.name,
+        userId: booking.user._id,
+        struttura: booking.campo.struttura,
+      });
+    } catch (error) {
+      Alert.alert("Errore", "Impossibile aprire la chat");
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text>Caricamento...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!booking) return null;
+
+  // Calculated variables
+  const confirmedPlayers = booking?.match?.players?.filter((p: any) => p.status === "confirmed") || [];
+  const pendingPlayers = booking?.match?.players?.filter((p: any) => p.status === "pending") || [];
+  const maxPlayersPerTeam = booking?.match ? Math.floor(booking.match.maxPlayers / 2) : 0;
+  const teamAPlayers = booking?.match?.players?.filter((p: any) => p.team === "A" && p.status === "confirmed").length || 0;
+  const teamBPlayers = booking?.match?.players?.filter((p: any) => p.team === "B" && p.status === "confirmed").length || 0;
+  const unassignedPlayers = confirmedPlayers.filter((p: any) => !p.team);
+  const teamAConfirmed = confirmedPlayers.filter((p: any) => p.team === "A");
+  const teamBConfirmed = confirmedPlayers.filter((p: any) => p.team === "B");
+
+  return (
+    <SafeAreaView>
+      {/* Header */}
+      <View style={{ 
+        backgroundColor: 'white', 
+        borderBottomWidth: 1, 
+        borderBottomColor: '#e0e0e0',
+        paddingBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2
+      }}>
+        <View style={{ 
+          paddingHorizontal: 12, 
+          paddingTop: 8,
+          flexDirection: 'row', 
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: '#F5F5F5',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Ionicons name="arrow-back" size={18} color="#2196F3" />
+            </View>
+          </Pressable>
+          
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: booking.status === 'confirmed' ? '#E8F5E9' : '#FFEBEE',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+              gap: 4
+            }}>
+              <Ionicons 
+                name={booking.status === 'confirmed' 
+                  ? (new Date() > new Date(`${booking.date}T${booking.endTime}`) ? 'checkmark-done-circle' : new Date() >= new Date(`${booking.date}T${booking.startTime}`) ? 'play-circle' : 'time') 
+                  : 'close-circle'
+                } 
+                size={14} 
+                color={booking.status === 'confirmed' ? '#4CAF50' : '#F44336'} 
+              />
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '600',
+                color: booking.status === 'confirmed' ? '#4CAF50' : '#F44336'
+              }}>
+                {booking.status === 'confirmed' 
+                  ? (new Date() > new Date(`${booking.date}T${booking.endTime}`) ? 'Completata' : new Date() >= new Date(`${booking.date}T${booking.startTime}`) ? 'In Corso' : 'Confermata') 
+                  : 'Cancellata'
+                }
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ width: 32 }} />
+        </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingTop: 30, paddingHorizontal: 16, paddingBottom: 30 }}>
+
+          {/* Struttura Info */}
+          <AnimatedCard delay={100}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>
+                  {booking.campo.struttura.name}
+                </Text>
+                <Text style={{ fontSize: 16, color: '#666', marginBottom: 8 }}>
+                  {booking.campo.name}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="football" size={16} color="#2196F3" />
+                  <Text style={{ fontSize: 14, color: '#666' }}>
+                    {booking.campo.sport}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
+                {booking.campo.struttura.images && booking.campo.struttura.images.length > 0 ? (
+                  <Image
+                    source={{ uri: booking.campo.struttura.images[0] }}
+                    style={{ width: 60, height: 60, borderRadius: 8 }}
+                  />
+                ) : (
+                  <Ionicons name="business" size={24} color="#999" />
+                )}
+              </View>
+            </View>
+
+            <Pressable 
+              style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                padding: 12, 
+                backgroundColor: '#f8f9fa', 
+                borderRadius: 8,
+                marginBottom: 8
+              }}
+              onPress={() => {
+                const address = `${booking.campo.struttura.location.address}, ${booking.campo.struttura.location.city}`;
+                const url = `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+                Linking.openURL(url);
+              }}
+            >
+              <Ionicons name="location-outline" size={18} color="#666" />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>
+                  {booking.campo.struttura.location.address}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#666' }}>
+                  {booking.campo.struttura.location.city}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#999" />
+            </Pressable>
+          </AnimatedCard>
+
+          {/* Role-specific section */}
+          {role === 'owner' && (
+            <OwnerRoleSection
+              booking={booking}
+              setShowClientProfile={setShowClientProfile}
+              openChat={openChat}
+            />
+          )}
+          {role === 'player' && (
+            <PlayerRoleSection
+              booking={booking}
+              onBookingUpdate={setBooking}
+            />
+          )}
+
+        {/* Booking Details */}
+        <AnimatedCard delay={200}>
+          <BookingDetailsCard
+            date={booking.date}
+            startTime={booking.startTime}
+            endTime={booking.endTime}
+            duration={calculateDuration(booking.startTime, booking.endTime)}
+            price={booking.price}
+            createdAt={booking.createdAt}
+          />
+        </AnimatedCard>
+
+        {/* Match Section */}
+        {booking.match && (
+          <MatchSection
+            booking={booking}
+            user={user}
+            confirmedPlayers={confirmedPlayers}
+            pendingPlayers={pendingPlayers}
+            maxPlayersPerTeam={maxPlayersPerTeam}
+            teamAConfirmed={teamAConfirmed}
+            teamBConfirmed={teamBConfirmed}
+            unassignedPlayers={unassignedPlayers}
+            teamAPlayers={teamAPlayers}
+            teamBPlayers={teamBPlayers}
+            getMatchStatus={getMatchStatus}
+            getMatchStatusInfo={getMatchStatusInfo}
+            getTimeUntilRegistrationDeadline={getTimeUntilRegistrationDeadline}
+            isMatchPassed={isMatchPassed}
+            handleOpenGroupChat={handleOpenGroupChat}
+            loadingGroupChat={loadingGroupChat}
+            handleRemovePlayer={handleRemovePlayer}
+            handleInviteToTeam={handleInviteToTeam}
+            setScoreModalVisible={setScoreModalVisible}
+            role={role}
+          />
+        )}
+        </View>
+      </ScrollView>
+
+      {/* Modals */}
+      <InviteModal
+        visible={inviteModalVisible}
+        onClose={() => {
+          setInviteModalVisible(false);
+          setInviteToTeam(null);
+          setInviteToSlot(null);
+        }}
+        inviteToTeam={inviteToTeam}
+        inviteToSlot={inviteToSlot}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearchUsers={handleSearchUsers}
+        searching={searching}
+        searchResults={searchResults}
+        handleInvitePlayer={handleInvitePlayer}
+        openUserProfile={openUserProfile}
+        getTeamColors={getTeamColors}
+        getTeamIcon={getTeamIcon}
+        suppressInvitePress={suppressInvitePress}
+      />
+
+      {booking?.match && (
+        <ScoreModal
+          visible={scoreModalVisible}
+          onClose={() => setScoreModalVisible(false)}
+          onSave={handleSubmitScore}
+          currentScore={booking.match?.score}
+          matchStatus={booking.match?.status}
+          sportType="beachvolley"
+        />
+      )}
+    </SafeAreaView>
+  );
+}
