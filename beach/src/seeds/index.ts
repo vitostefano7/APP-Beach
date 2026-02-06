@@ -19,12 +19,14 @@ import StrutturaFollower from "../models/StrutturaFollower";
 import UserFollower from "../models/UserFollower";
 import Post from "../models/Post";
 import CommunityEvent from "../models/CommunityEvent";
+import Sport from "../models/Sport";
 
 // Import configuration
 import { MONGO_URI } from "./config";
 
 // Import modules
 import { uploadAvatarsToCloudinary, uploadStrutturaImagesToCloudinary } from "./cloudinaryUpload";
+import { seedSports, getSportMapping } from "./seedSports";
 import { generateUsers } from "./generateUsers";
 import { generateStrutture } from "./generateStrutture";
 import { generateCampi } from "./generateCampi";
@@ -47,6 +49,7 @@ async function seed() {
 
     /* -------- CLEAN -------- */
     await Promise.all([
+      Sport.deleteMany({}),
       Post.deleteMany({}),
       UserFollower.deleteMany({}),
       StrutturaFollower.deleteMany({}),
@@ -66,6 +69,10 @@ async function seed() {
       User.deleteMany({}),
     ]);
     console.log("🧹 Database pulito");
+
+    /* -------- SPORT -------- */
+    const sports = await seedSports();
+    const sportMapping = await getSportMapping();
 
     /* -------- AVATARS UPLOAD -------- */
     console.log(`☁️ Upload avatar...`);
@@ -104,7 +111,7 @@ async function seed() {
     console.log('--- DOPO generateStrutture ---');
 
     /* -------- CAMPI -------- */
-    const campi = await generateCampi(strutture);
+    const campi = await generateCampi(strutture, sportMapping);
 
     /* -------- CALENDAR -------- */
     const calendar = await generateCalendar(campi);
@@ -147,6 +154,7 @@ async function seed() {
     console.log("\n" + "=".repeat(50));
     console.log("🎉 SEED COMPLETATO!");
     console.log("=".repeat(50));
+    console.log(`🏀 Sport: ${sports.length}`);
     console.log(`👥 Utenti: ${users.length} (${players.length} giocatori, ${owners.length} proprietari)`);
     console.log(`🏖️ Strutture: ${strutture.length}`);
     console.log(`🏐 Campi: ${campi.length}`);

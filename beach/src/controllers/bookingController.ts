@@ -172,9 +172,16 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       if (np > (campo as any).maxPlayers) {
         return res.status(400).json({ message: `numberOfPeople non può superare maxPlayers del campo (${(campo as any).maxPlayers})` });
       }
-      // Per beach volley richiediamo numero pari (es. 4,6,8)
-      if ((campo as any).sport === "beach volley" && np % 2 !== 0) {
-        return res.status(400).json({ message: "Per beach volley numberOfPeople deve essere un numero pari (es. 4,6,8)" });
+
+      // Popola il campo sport per verificare se richiede numero pari
+      await campo.populate("sport");
+      const sport = (campo as any).sport;
+      
+      // Verifica se lo sport richiede numero pari di giocatori
+      if (sport && sport.requiresEvenPlayers && np % 2 !== 0) {
+        return res.status(400).json({ 
+          message: `${sport.name} richiede un numero pari di giocatori` 
+        });
       }
 
       // Se la struttura richiede l'uso delle tariffe per player, verifica che esista una voce corrispondente
@@ -304,13 +311,14 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
 
     // 🆕 Determina maxPlayers basandosi sul tipo di sport del campo
-    const sportType = campo.sport as "beach volley" | "volley";
+    await campo.populate("sport");
+    const sport = campo.sport as any;
     
-    // Se l'utente ha specificato maxPlayers (per beach volley), usa quello
-    // Altrimenti usa il default per lo sport
+    // Se l'utente ha specificato maxPlayers (numberOfPeople), usa quello
+    // Altrimenti usa il maxPlayers del campo (che è già validato contro lo sport)
     const finalMaxPlayers = (typeof numberOfPeople !== "undefined" && numberOfPeople)
       ? Number(numberOfPeople)
-      : (maxPlayers || getDefaultMaxPlayersForSport(sportType));
+      : campo.maxPlayers;
 
     console.log("🆕 Creando match associato...");
     // 🆕 Crea automaticamente un Match associato
@@ -330,7 +338,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       status: "open", // Cambiato da "draft" a "open" per rendere visibile il match
     });
 
-    console.log("✅ Match creato automaticamente:", match._id, `con ${finalMaxPlayers} giocatori max (${sportType})`);
+    console.log("✅ Match creato automaticamente:", match._id, `con ${finalMaxPlayers} giocatori max (${sport?.name || 'sport non specificato'})`);
 
     console.log("📤 Popolando dati prenotazione per risposta...");
     // Popola i dati per la risposta

@@ -531,7 +531,7 @@ async function getMostGamesPlayedSuggestions(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "most_games_played",
@@ -597,7 +597,7 @@ async function getFollowsStructureSuggestions(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "follows_structure",
@@ -676,7 +676,7 @@ async function getVipUserSuggestionsForOwner(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "vip_user",

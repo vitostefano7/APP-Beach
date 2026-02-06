@@ -11,7 +11,7 @@ export interface IUser extends Document {
   avatarUrl?: string;
   expoPushToken?: string;
   pushTokenUpdatedAt?: Date;
-  preferredSports?: ("volley" | "beach volley")[]; 
+  preferredSports?: mongoose.Types.ObjectId[]; // Ref to Sport
   profilePrivacy?: "public" | "private"; // 🆕 Privacy del profilo
   location?: {
     type: "Point";
@@ -85,8 +85,8 @@ const UserSchema = new Schema<IUser>(
 
     // 🆕 PREFERENZE SPORT
     preferredSports: {
-      type: [String],
-      enum: ["volley", "beach volley"],
+      type: [Schema.Types.ObjectId],
+      ref: "Sport",
       default: [],
     },
 

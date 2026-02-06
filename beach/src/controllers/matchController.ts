@@ -60,29 +60,36 @@ export const createMatchFromBooking = async (
     }
 
     console.log('⚙️ Determinazione maxPlayers...');
-    // Determina maxPlayers basandosi sul tipo di sport del campo
+    // Determina maxPlayers basandosi sul campo e sport
     const campo = (booking as any).campo;
     let finalMaxPlayers = maxPlayers;
     
-    if (campo?.sport) {
-      const sportType = campo.sport as "beach volley" | "volley";
+    if (campo) {
+      // Popola lo sport per accedere alle regole
+      await booking.populate({
+        path: 'campo',
+        populate: { path: 'sport', select: 'name minPlayers maxPlayers' }
+      });
       
-      // Se maxPlayers non è fornito, usa il default per lo sport
+      const sport = ((booking as any).campo as any).sport;
+      
+      // Se maxPlayers non è fornito, usa il maxPlayers del campo
       if (!maxPlayers) {
-        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
-        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
+        finalMaxPlayers = campo.maxPlayers;
+        console.log('✅ MaxPlayers dal campo:', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
-        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
-        if (!validation.valid) {
-          console.log('❌ MaxPlayers non valido:', validation.error);
-          return res.status(400).json({ message: validation.error });
+        if (sport && (maxPlayers < sport.minPlayers || maxPlayers > sport.maxPlayers)) {
+          console.log('❌ MaxPlayers non valido per', sport.name);
+          return res.status(400).json({ 
+            message: `${sport.name} richiede tra ${sport.minPlayers} e ${sport.maxPlayers} giocatori` 
+          });
         }
         finalMaxPlayers = maxPlayers;
         console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
-      // Fallback se non c'è sport
+      // Fallback se non c'è campo
       finalMaxPlayers = maxPlayers || 4;
       console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
@@ -133,29 +140,36 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('⚙️ Determinazione maxPlayers...');
-    // Determina maxPlayers basandosi sul tipo di sport del campo
+    // Determina maxPlayers basandosi sul campo e sport
     const campo = (bookingDoc as any).campo;
     let finalMaxPlayers = maxPlayers;
     
-    if (campo?.sport) {
-      const sportType = campo.sport as "beach volley" | "volley";
+    if (campo) {
+      // Popola lo sport per accedere alle regole
+      await bookingDoc.populate({
+        path: 'campo',
+        populate: { path: 'sport', select: 'name minPlayers maxPlayers' }
+      });
       
-      // Se maxPlayers non è fornito, usa il default per lo sport
+      const sport = ((bookingDoc as any).campo as any).sport;
+      
+      // Se maxPlayers non è fornito, usa il maxPlayers del campo
       if (!maxPlayers) {
-        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
-        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
+        finalMaxPlayers = campo.maxPlayers;
+        console.log('✅ MaxPlayers dal campo:', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
-        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
-        if (!validation.valid) {
-          console.log('❌ MaxPlayers non valido:', validation.error);
-          return res.status(400).json({ message: validation.error });
+        if (sport && (maxPlayers < sport.minPlayers || maxPlayers > sport.maxPlayers)) {
+          console.log('❌ MaxPlayers non valido per', sport.name);
+          return res.status(400).json({ 
+            message: `${sport.name} richiede tra ${sport.minPlayers} e ${sport.maxPlayers} giocatori` 
+          });
         }
         finalMaxPlayers = maxPlayers;
         console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
-      // Fallback se non c'è sport
+      // Fallback se non c'è campo
       finalMaxPlayers = maxPlayers || 4;
       console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
@@ -443,6 +457,12 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       
       console.log("🔍 [NOTIFICA] Controllo destinatari - Creatore:", creatorId, "Proprietario struttura:", strutturaOwner, "User che si unisce:", userId);
       
+      // Popola sport per usare nome corretto nelle notifiche
+      if (booking?.campo) {
+        await booking.populate({ path: 'campo', populate: { path: 'sport', select: 'name' } });
+      }
+      const sportName = ((booking as any)?.campo?.sport as any)?.name || 'sport';
+      
       // Notifica al creatore del match (se diverso dal giocatore che si unisce)
       if (creatorId && creatorId.toString() !== userId) {
         console.log("📝 [NOTIFICA] Creazione notifica per creatore match:", creatorId);
@@ -452,7 +472,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito al tuo match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         }, null, 2));
@@ -462,7 +482,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           new mongoose.Types.ObjectId(userId),
           "match_join",
           `Nuovo giocatore: ${userFullName}`,
-          `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          `${userFullName} si è unito al tuo match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
           "Booking" // Cambiamo il relatedModel a Booking
         );
@@ -478,7 +498,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         };
@@ -487,7 +507,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         }, null, 2));
@@ -497,7 +517,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           new mongoose.Types.ObjectId(userId),
           "match_join",
           `Nuovo giocatore: ${userFullName}`,
-          `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
           "Booking" // Cambiamo il relatedModel a Booking
         );

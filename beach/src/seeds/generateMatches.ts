@@ -80,7 +80,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     let winsB = 0;
     for (let s = 0; s < 3; s++) {
       if (winsA === 2 || winsB === 2) break;
-      // Beach volley: max 21 punti per squadra, no pareggi
+      // max 21 punti per squadra, no pareggi
       let teamA, teamB;
       do {
         teamA = randomInt(15, 21);
@@ -105,10 +105,13 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     matchCounters.completed++;
   }
 
-  // Match passati senza numberOfPeople (volley) - senza risultato
-  const pastVolley = pastBookings.filter((b: any) => !b.numberOfPeople);
-  for (const booking of pastVolley) {
+  // Match passati senza numberOfPeople (sport senza pricing per giocatori) - senza risultato
+  const pastWithoutPeople = pastBookings.filter((b: any) => !b.numberOfPeople);
+  for (const booking of pastWithoutPeople) {
     const creator = booking.user;
+    // Trova il campo per ottenere maxPlayers
+    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    const maxPlayers = campo?.maxPlayers || 12; // default 12 se campo non trovato
     
     matches.push({
       booking: booking._id,
@@ -122,7 +125,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
           respondedAt: new Date(booking.date),
         },
       ],
-      maxPlayers: 10, // volley
+      maxPlayers: maxPlayers,
       isPublic: false,
       playedAt: new Date(booking.date),
       status: "not_completed",

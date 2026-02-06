@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
-import { validateMaxPlayersForSport } from "../utils/matchSportRules";
 
 export interface IMatchPlayer {
   user: Types.ObjectId;
@@ -64,13 +63,13 @@ const MatchSetSchema = new Schema<IMatchSet>(
       type: Number,
       required: true,
       min: 0,
-      max: 30,
+      max: 99, // Aumentato per sport senza limite preciso (calcio, basket)
     },
     teamB: {
       type: Number,
       required: true,
       min: 0,
-      max: 30,
+      max: 99,
     },
   },
   { _id: false }
@@ -109,7 +108,7 @@ const MatchSchema = new Schema<IMatch>(
       type: Number,
       required: true,
       min: 2,
-      max: 12, // Aumentato per supportare volley (10) e futuri sport
+      max: 22, // Aumentato per supportare calcio (22), basket (10) e altri sport
     },
 
     isPublic: {
@@ -124,10 +123,10 @@ const MatchSchema = new Schema<IMatch>(
           validator: function (sets: IMatchSet[]) {
             // ✅ Array vuoto = match non ancora giocato (valido)
             if (!sets || sets.length === 0) return true;
-            // ✅ Altrimenti deve avere 2 o 3 set
-            return sets.length >= 2 && sets.length <= 3;
+            // ✅ Altrimenti deve avere almeno 1 set, max 5 (per flessibilità)
+            return sets.length >= 1 && sets.length <= 5;
           },
-          message: "Un match deve avere 2 o 3 set",
+          message: "Un match deve avere tra 1 e 5 set",
         },
       },
     },
@@ -189,22 +188,27 @@ MatchSchema.pre("save", async function () {
 
   // ✅ Validazione sport-specifica: controlla se maxPlayers è valido per il tipo di sport
   if (match.isModified("maxPlayers") || match.isNew) {
-    // Popola il booking per accedere al campo
+    // Popola il booking per accedere al campo e sport
     await match.populate({
       path: "booking",
       populate: {
         path: "campo",
-        select: "sport",
+        populate: {
+          path: "sport",
+          select: "minPlayers maxPlayers name",
+        },
       },
     });
 
     const booking = match.booking as any;
-    if (booking?.campo?.sport) {
-      const sportType = booking.campo.sport as "beach volley" | "volley";
-      const validation = validateMaxPlayersForSport(match.maxPlayers, sportType);
-      
-      if (!validation.valid) {
-        throw new Error(validation.error || "Numero di giocatori non valido per questo sport");
+    const sport = booking?.campo?.sport;
+    
+    if (sport) {
+      // Validazione dinamica contro Sport model
+      if (match.maxPlayers < sport.minPlayers || match.maxPlayers > sport.maxPlayers) {
+        throw new Error(
+          `${sport.name} richiede tra ${sport.minPlayers} e ${sport.maxPlayers} giocatori`
+        );
       }
     }
   }

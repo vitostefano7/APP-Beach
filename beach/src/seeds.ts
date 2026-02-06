@@ -23,6 +23,14 @@ import StrutturaFollower from "./models/StrutturaFollower";
 import UserFollower from "./models/UserFollower";
 import Post from "./models/Post";
 import CommunityEvent from "./models/CommunityEvent";
+import Sport from "./models/Sport";
+import { 
+  seedSports, 
+  getSportMapping, 
+  getRandomSportForEnvironment,
+  getRecommendedSurfaceForSport,
+  getMaxPlayersForSport
+} from "./seeds/seedSports";
 
 /* =========================
    CONFIG

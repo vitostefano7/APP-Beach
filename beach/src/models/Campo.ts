@@ -107,8 +107,8 @@ export interface PricingRules {
 export interface ICampo extends Document {
   struttura: mongoose.Types.ObjectId;
   name: string;
-  sport: "beach volley" | "volley";
-  surface: "sand" | "cement" | "pvc";
+  sport: mongoose.Types.ObjectId; // Riferimento al modello Sport
+  surface: "sand" | "cement" | "pvc" | "grass" | "synthetic" | "parquet" | "clay" | "tartan";
   maxPlayers: number;
   indoor: boolean;
   pricePerHour: number; // DEPRECATO - manteniamo per retrocompatibilità
@@ -224,7 +224,7 @@ const PeriodPriceOverrideSchema = new Schema<PeriodPriceOverride>(
 
 const PlayerCountPricingSchema = new Schema<PlayerCountPricing>(
   {
-    count: { type: Number, required: true, min: 4, max: 8 },
+    count: { type: Number, required: true, min: 2, max: 50 },
     label: { type: String, required: true },
     prices: { type: DurationPriceSchema, required: true },
   },
@@ -305,77 +305,25 @@ const CampoSchema = new Schema<ICampo>(
     },
 
     sport: {
-      type: String,
-      enum: ["beach volley", "volley"],
+      type: Schema.Types.ObjectId,
+      ref: "Sport",
       required: true,
     },
 
     surface: {
       type: String,
-      enum: ["sand", "cement", "pvc"],
+      enum: ["sand", "cement", "pvc", "grass", "synthetic", "parquet", "clay", "tartan"],
       required: true,
-      validate: {
-        validator: function (value: string) {
-          const doc = this as any;
-
-          if (doc.sport === "beach volley") {
-            return value === "sand";
-          }
-
-          if (doc.sport === "volley" && doc.indoor) {
-            return value === "pvc";
-          }
-
-          if (doc.sport === "volley" && !doc.indoor) {
-            return value === "cement";
-          }
-
-          return true;
-        },
-        message: function () {
-          const doc = this as any;
-
-          if (doc.sport === "beach volley") {
-            return "Beach volley deve avere superficie sabbia";
-          }
-          if (doc.sport === "volley" && doc.indoor) {
-            return "Volley indoor deve avere superficie PVC";
-          }
-          if (doc.sport === "volley" && !doc.indoor) {
-            return "Volley outdoor deve avere superficie cemento";
-          }
-          return "Superficie non valida";
-        },
-      },
+      // Rimosse validazioni hardcodate - le superfici raccomandate sono nel modello Sport
+      // ma non vincolanti per permettere flessibilità
     },
 
     maxPlayers: {
       type: Number,
-      default: function (this: any) {
-        // Default dinamico: volley -> 10, beach volley -> 4
-        if (this && this.sport === "volley") return 10;
-        return 4;
-      },
+      required: true,
       min: 1,
-      validate: {
-        validator: function (v: number) {
-          const doc: any = this;
-          if (!doc || !doc.sport) return true;
-          if (doc.sport === "volley") {
-            return v >= 2 && v <= 10;
-          }
-          if (doc.sport === "beach volley") {
-            return v >= 4 && v <= 8;
-          }
-          return true;
-        },
-        message: function (props: any) {
-          const doc: any = this;
-          if (doc && doc.sport === "volley") return "Volley: maxPlayers deve essere tra 2 e 10";
-          if (doc && doc.sport === "beach volley") return "Beach volley: maxPlayers deve essere tra 4 e 8";
-          return "maxPlayers non valido";
-        },
-      },
+      max: 50,
+      // La validazione contro i limiti specifici dello sport viene fatta nel pre-save hook
     },
 
     indoor: {

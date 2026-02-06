@@ -18,6 +18,7 @@ import struttureImagesRoutes from "./routes/struttureImagesRoutes";
 import friendshipRoutes from "./routes/friendshipRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import communityRoutes from "./routes/communityRoutes";
+import sportRoutes from "./routes/sportRoutes";
 
 import { requireAuth, AuthRequest } from "./middleware/authMiddleware";
 
@@ -89,6 +90,7 @@ async function start() {
   app.use("/users", userRoutes);
   app.use("/users", userPreferencesRoutes);
 
+  app.use("/sports", sportRoutes);
   app.use("/strutture", struttureImagesRoutes);
   app.use("/strutture", struttureRoutes);
 

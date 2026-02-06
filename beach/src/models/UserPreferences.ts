@@ -29,7 +29,7 @@ export interface IUserPreferences extends Document {
   favoriteStrutture: Types.ObjectId[];
   
   // Sport preferiti (per filtrare automaticamente)
-  favoriteSports?: string[];
+  favoriteSports?: Types.ObjectId[]; // Ref to Sport
   
   // Fascia oraria preferita
   preferredTimeSlot?: "morning" | "afternoon" | "evening";
@@ -95,8 +95,8 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
 
     // ========== SPORT PREFERITI ==========
     favoriteSports: {
-      type: [String],
-      enum: ["Beach Volley", "Volley"],
+      type: [Schema.Types.ObjectId],
+      ref: "Sport",
       default: [],
     },
 

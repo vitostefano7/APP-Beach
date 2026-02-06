@@ -1,0 +1,27 @@
+Gli sport che devi gestire sono:
+Volley: 12 partecipanti, 6vs6 (all'aperto e al chiuso)
+Beach Volley: min4 max8 partecipanti, 2vs2,3vs3,4vs4 (all'aperto e al chiuso)
+Beach Tennis: min2 max 4, 1v1,2v2 (all'aperto e al chiuso)
+Calcio: 22 partecipanti, 11vs11 (aperto)
+Calcetto: 10 partecipanti, 5vs5 (aperto e chiuso)
+Calciotto: 16 partepanti, 8vs8 (aperto)
+Calcio a 7: 14 partecipanti, 7vs7 (aperto)
+Basket: min4 max10,2v2, 3v3,4v4,5vs5 (aperto e chiuso)
+
+punteggi:
+volley: al meglio di 3 set, con ogni set vinto al massimo a 25 punti. Sul 24 pari si va a oltranza con vantaggi a +2
+beach volley: al meglio di 3 set, con ogni set vinto al massimo a 21 punti. Sul 20 pari si va a oltranza con vantaggi a +2
+beach tennis:Vince chi raggiunge prima 7 (o 9) giochi
+Calcio: qualsiasi da 0a0 in poi, può finire in pareggio
+Calcetto: uguale a Calcio
+Calciotto: uguale a Calcio
+calcio a 7: uguale a calcio
+Basket: uguale a calcio
+
+Superfici:
+volley: al chiuso su pvc, all'esterno cemento
+beach volley: sabbia chiuso e aperto
+beach tennis come beach volley
+calcio: erba vera, erba sintetica, terra
+calcetto, calciotto e calcio a 7 in erba sintetica
+basket: pvc al chiuso, cemento all'esterno

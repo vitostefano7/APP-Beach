@@ -8,7 +8,7 @@ export interface IEvent extends Document {
   struttura?: Types.ObjectId;
   startDate: Date;
   endDate: Date;
-  sport: "volley" | "beach volley";
+  sport: Types.ObjectId; // Ref to Sport
   maxParticipants?: number;
   isPublic: boolean;
   participants: Types.ObjectId[];
@@ -66,8 +66,8 @@ const EventSchema = new Schema<IEvent>(
     },
 
     sport: {
-      type: String,
-      enum: ["volley", "beach volley"],
+      type: Schema.Types.ObjectId,
+      ref: "Sport",
       required: true,
     },
 

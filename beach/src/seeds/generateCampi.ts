@@ -1,63 +1,116 @@
 // seeds/generateCampi.ts
 import Campo from "../models/Campo";
 import { randomInt, randomElement } from "./config";
+import mongoose from "mongoose";
+import { getRandomSportForEnvironment, getRecommendedSurfaceForSport, getMaxPlayersForSport } from "./seedSports";
 
-export async function generateCampi(strutture: any[]) {
+export async function generateCampi(strutture: any[], sportMapping: Record<string, mongoose.Types.ObjectId>) {
   console.log(`🏐 Creazione campi per ${strutture.length} strutture...`);
 
   const campiData: any[] = [];
 
-  // Ogni struttura ha esattamente 3 campi: 2 beach (maxPlayers=8) e 1 volley
-  strutture.forEach((struttura: any, idx: number) => {
-    // Campo 1: Beach Volley
-    for (let beachNum = 1; beachNum <= 2; beachNum++) {
-      const isBeach = true;
-      const isIndoor = false;
+  // Ogni struttura ha 3-4 campi con sport diversificati
+  for (const struttura of strutture) {
+    const numCampi = randomInt(3, 4);
 
-      // deterministico prezzo base e possibili tariffe per-player
+    for (let campoNum = 1; campoNum <= numCampi; campoNum++) {
+      const isIndoor = Math.random() > 0.6; // 40% indoor, 60% outdoor
+      
+      // Scegli sport casuale per l'ambiente
+      const sportInfo = await getRandomSportForEnvironment(isIndoor, sportMapping);
+      const sportCode = sportInfo.code;
+      const sportId = sportInfo.id;
+      
+      // Superficie raccomandata per lo sport
+      const surface = getRecommendedSurfaceForSport(sportCode, isIndoor);
+      
+      // MaxPlayers per lo sport
+      const maxPlayers = getMaxPlayersForSport(sportCode);
+
+      // Prezzo base
       const pricePerHour = randomInt(30, 50);
       const flatOne = randomInt(30, 50);
       const flatOneHalf = randomInt(42, 70);
       const baseOne = randomInt(30, 45);
       const baseOneHalf = randomInt(42, 63);
 
-      // ✅ playerCountPricing abilitato per campi beach volley
-      const enablePlayerPricing = true;
-      const playerPrices = [
-        {
-          count: 4,
-          label: "4 giocatori",
-          prices: {
-            oneHour: Math.max(8, Math.round(pricePerHour / 4)),
-            oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
-          },
-        },
-        {
-          count: 6,
-          label: "6 giocatori",
-          prices: {
-            oneHour: Math.max(6, Math.round(pricePerHour / 6)),
-            oneHourHalf: Math.max(8, Math.round((pricePerHour * 1.4) / 6)),
-          },
-        },
-        {
-          count: 8,
-          label: "8 giocatori",
-          prices: {
-            oneHour: Math.max(5, Math.round(pricePerHour / 8)),
-            oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 8)),
-          },
-        },
-      ];
-
-      const campoMaxPlayers = 8; // Beach sempre 8 giocatori max
+      // ✅ playerCountPricing abilitato solo per sport che lo permettono
+      const allowsPlayerPricing = ["beach_volley", "beach_tennis", "basket"].includes(sportCode);
+      const enablePlayerPricing = allowsPlayerPricing && Math.random() > 0.3;
+      
+      let playerPrices: any[] = [];
+      if (enablePlayerPricing) {
+        // Genera prezzi per player count basati sul maxPlayers dello sport
+        if (sportCode === "beach_volley") {
+          playerPrices = [
+            {
+              count: 4,
+              label: "4 giocatori",
+              prices: {
+                oneHour: Math.max(8, Math.round(pricePerHour / 4)),
+                oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
+              },
+            },
+            {
+              count: 6,
+              label: "6 giocatori",
+              prices: {
+                oneHour: Math.max(6, Math.round(pricePerHour / 6)),
+                oneHourHalf: Math.max(8, Math.round((pricePerHour * 1.4) / 6)),
+              },
+            },
+            {
+              count: 8,
+              label: "8 giocatori",
+              prices: {
+                oneHour: Math.max(5, Math.round(pricePerHour / 8)),
+                oneHourHalf: Math.max(7, Math.round((pricePerHour * 1.4) / 8)),
+              },
+            },
+          ];
+        } else if (sportCode === "beach_tennis") {
+          playerPrices = [
+            {
+              count: 2,
+              label: "2 giocatori",
+              prices: {
+                oneHour: Math.max(15, Math.round(pricePerHour / 2)),
+                oneHourHalf: Math.max(21, Math.round((pricePerHour * 1.4) / 2)),
+              },
+            },
+            {
+              count: 4,
+              label: "4 giocatori",
+              prices: {
+                oneHour: Math.max(8, Math.round(pricePerHour / 4)),
+                oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
+              },
+            },
+          ];
+        } else if (sportCode === "basket") {
+          playerPrices = [
+            {
+              count: 4,
+              label: "4 giocatori (2v2)",
+              prices: {
+                oneHour: Math.max(8, Math.round(pricePerHour / 4)),
+                oneHourHalf: Math.max(11, Math.round((pricePerHour * 1.4) / 4)),
+              },
+            },
+            {
+              count: 6,
+              label: "6 giocatori (3v3)",
+              prices: {
+                oneHour: Math.max(6, Math.round(pricePerHour / 6)),
+                oneHourHalf: Math.max(8, Math.round((pricePerHour * 1.4) / 6)),
+              },
+            },
+          ];
+        }
+      }
 
       // ✅ Pricing avanzato con esempi realistici
       const enableTimeSlot = Math.random() > 0.5;
-      const enableDateOverride = idx === 0 && beachNum === 1; // Solo primo campo beach della prima struttura
-      const enablePeriodOverride = idx === 1 && beachNum === 1; // Solo primo campo beach della seconda struttura
-
-      // TimeSlot con giorni specifici (weekend vs feriali)
       const timeSlots = enableTimeSlot
         ? [
             {
@@ -77,41 +130,24 @@ export async function generateCampi(strutture: any[]) {
           ]
         : [];
 
-      // Date override per eventi speciali
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateOverrides = enableDateOverride
-        ? [
-            {
-              date: formatDate(tomorrow),
-              label: "Evento Speciale",
-              prices: { oneHour: 25, oneHourHalf: 35 },
-            },
-          ]
-        : [];
-
-      // Period override per estate/inverno
-      const summerStart = new Date();
-      summerStart.setMonth(5, 1); // 1 giugno
-      const summerEnd = new Date();
-      summerEnd.setMonth(8, 30); // 30 settembre
-      const periodOverrides = enablePeriodOverride
-        ? [
-            {
-              startDate: formatDate(summerStart),
-              endDate: formatDate(summerEnd),
-              label: "Estate",
-              prices: { oneHour: randomInt(50, 65), oneHourHalf: randomInt(70, 91) },
-            },
-          ]
-        : [];
+      // Nome campo con sport type
+      const sportNames: Record<string, string> = {
+        volley: "Volley",
+        beach_volley: "Beach",
+        beach_tennis: "Beach Tennis",
+        calcio: "Calcio",
+        calcetto: "Calcetto",
+        calciotto: "Calciotto",
+        calcio_a_7: "Calcio a 7",
+        basket: "Basket",
+      };
 
       campiData.push({
         struttura: struttura._id,
-        name: `Campo Beach ${beachNum}`,
-        sport: "beach volley",
-        surface: "sand",
-        maxPlayers: campoMaxPlayers,
+        name: `Campo ${sportNames[sportCode] || sportCode} ${campoNum}`,
+        sport: sportId, // ObjectId dello sport
+        surface: surface,
+        maxPlayers: maxPlayers,
         indoor: isIndoor,
         pricePerHour: pricePerHour,
         isActive: true,
@@ -123,8 +159,8 @@ export async function generateCampi(strutture: any[]) {
             enabled: enableTimeSlot,
             slots: timeSlots,
           },
-          dateOverrides: { enabled: enableDateOverride, dates: dateOverrides },
-          periodOverrides: { enabled: enablePeriodOverride, periods: periodOverrides },
+          dateOverrides: { enabled: false, dates: [] },
+          periodOverrides: { enabled: false, periods: [] },
           playerCountPricing: { enabled: !!enablePlayerPricing, prices: playerPrices },
         },
         weeklySchedule: {
@@ -138,73 +174,9 @@ export async function generateCampi(strutture: any[]) {
         },
       });
     }
-
-    // Campo 3: Volley normale (indoor/outdoor)
-    const isIndoorVolley = Math.random() > 0.5;
-    const volleyPricePerHour = randomInt(30, 50);
-    const volleyFlatOne = randomInt(30, 50);
-    const volleyFlatOneHalf = randomInt(42, 70);
-    const volleyBaseOne = randomInt(30, 45);
-    const volleyBaseOneHalf = randomInt(42, 63);
-
-    const enableVolleyTimeSlot = Math.random() > 0.5;
-    const volleyTimeSlots = enableVolleyTimeSlot
-      ? [
-          {
-            start: "18:00",
-            end: "23:00",
-            label: "Serale Weekend",
-            prices: { oneHour: randomInt(45, 60), oneHourHalf: randomInt(63, 84) },
-            daysOfWeek: [5, 6, 0],
-          },
-          {
-            start: "18:00",
-            end: "23:00",
-            label: "Serale Feriale",
-            prices: { oneHour: randomInt(35, 50), oneHourHalf: randomInt(49, 70) },
-            daysOfWeek: [1, 2, 3, 4],
-          },
-        ]
-      : [];
-
-    campiData.push({
-      struttura: struttura._id,
-      name: "Campo Volley",
-      sport: "volley",
-      surface: isIndoorVolley ? "pvc" : "cement",
-      maxPlayers: 10,
-      indoor: isIndoorVolley,
-      pricePerHour: volleyPricePerHour,
-      isActive: true,
-      pricingRules: {
-        mode: Math.random() > 0.5 ? "flat" : "advanced",
-        flatPrices: { oneHour: volleyFlatOne, oneHourHalf: volleyFlatOneHalf },
-        basePrices: { oneHour: volleyBaseOne, oneHourHalf: volleyBaseOneHalf },
-        timeSlotPricing: {
-          enabled: enableVolleyTimeSlot,
-          slots: volleyTimeSlots,
-        },
-        dateOverrides: { enabled: false, dates: [] },
-        periodOverrides: { enabled: false, periods: [] },
-        playerCountPricing: { enabled: false, prices: [] },
-      },
-      weeklySchedule: {
-        monday: { enabled: true, open: "09:00", close: "22:00" },
-        tuesday: { enabled: true, open: "09:00", close: "22:00" },
-        wednesday: { enabled: true, open: "09:00", close: "22:00" },
-        thursday: { enabled: true, open: "09:00", close: "22:00" },
-        friday: { enabled: true, open: "09:00", close: "23:00" },
-        saturday: { enabled: true, open: "08:00", close: "23:00" },
-        sunday: { enabled: true, open: "08:00", close: "22:00" },
-      },
-    });
-  });
-
-  function formatDate(date: Date) {
-    return date.toISOString().split("T")[0];
   }
 
   const campi = await Campo.insertMany(campiData);
-  console.log(`✅ ${campi.length} campi creati`);
+  console.log(`✅ ${campi.length} campi creati (distribuiti su ${Object.keys(sportMapping).length} sport)`);
   return campi;
 }
