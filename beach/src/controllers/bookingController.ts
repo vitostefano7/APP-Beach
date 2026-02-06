@@ -872,11 +872,16 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
     const bookings = await Booking.find()
       .populate({
         path: "campo",
-        populate: {
-          path: "struttura",
-          match: { owner: ownerId },
-          select: "name location",
-        },
+        populate: [
+          {
+            path: "struttura",
+            match: { owner: ownerId },
+            select: "name location",
+          },
+          {
+            path: "sport",
+          },
+        ],
       })
       .populate("user", "name surname email avatarUrl")
       .sort({ date: 1, startTime: 1 })

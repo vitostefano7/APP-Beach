@@ -192,7 +192,7 @@ export const getAllCampiByStruttura = async (req: AuthRequest, res: Response) =>
     // Trova TUTTI i campi (anche isActive: false)
     const campi = await Campo.find({
       struttura: req.params.id,
-    }).sort({ name: 1 });
+    }).populate('sport').sort({ name: 1 });
     
     console.log(`✅ Trovati ${campi.length} campi totali`);
     console.log("📤 Invio lista tutti campi");

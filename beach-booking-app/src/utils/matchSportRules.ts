@@ -3,7 +3,7 @@
  * Frontend version
  */
 
-export type SportType = "Beach Volley" | "volley";
+export type SportType = "Volley" | "Beach Volley" | "Beach Tennis" | "Tennis" | "Padel" | "Calcio" | "Calcetto" | "Calciotto" | "Calcio a 7" | "Basket";
 
 export interface MaxPlayersRules {
   min: number;
@@ -18,6 +18,14 @@ export interface MaxPlayersRules {
  */
 export function getMaxPlayersRulesForSport(sport: SportType): MaxPlayersRules {
   switch (sport) {
+    case "Volley":
+      return {
+        min: 12,
+        max: 12,
+        allowedValues: [12], // 6v6
+        mustBeEven: true,
+        fixed: 12,
+      };
     case "Beach Volley":
       return {
         min: 4,
@@ -25,13 +33,65 @@ export function getMaxPlayersRulesForSport(sport: SportType): MaxPlayersRules {
         allowedValues: [4, 6, 8], // 2v2, 3v3, 4v4
         mustBeEven: true,
       };
-    case "volley":
+    case "Beach Tennis":
+      return {
+        min: 2,
+        max: 4,
+        allowedValues: [2, 4], // 1v1, 2v2
+        mustBeEven: true,
+      };
+    case "Tennis":
+      return {
+        min: 2,
+        max: 4,
+        allowedValues: [2, 4], // 1v1, 2v2
+        mustBeEven: true,
+      };
+    case "Padel":
+      return {
+        min: 2,
+        max: 4,
+        allowedValues: [2, 4], // 1v1, 2v2
+        mustBeEven: true,
+      };
+    case "Calcio":
+      return {
+        min: 22,
+        max: 22,
+        allowedValues: [22], // 11v11
+        mustBeEven: true,
+        fixed: 22,
+      };
+    case "Calcetto":
       return {
         min: 10,
         max: 10,
-        allowedValues: [10], // Solo 5v5
+        allowedValues: [10], // 5v5
         mustBeEven: true,
         fixed: 10,
+      };
+    case "Calciotto":
+      return {
+        min: 16,
+        max: 16,
+        allowedValues: [16], // 8v8
+        mustBeEven: true,
+        fixed: 16,
+      };
+    case "Calcio a 7":
+      return {
+        min: 14,
+        max: 14,
+        allowedValues: [14], // 7v7
+        mustBeEven: true,
+        fixed: 14,
+      };
+    case "Basket":
+      return {
+        min: 4,
+        max: 10,
+        allowedValues: [4, 6, 8, 10], // 2v2, 3v3, 4v4, 5v5
+        mustBeEven: true,
       };
     default:
       return {
@@ -98,14 +158,7 @@ export function getTeamFormationLabel(maxPlayers: number, sport?: SportType): st
  * Restituisce il nome visualizzato dello sport
  */
 export function getSportDisplayName(sport: SportType): string {
-  switch (sport) {
-    case "beach_volley":
-      return "Beach Volley";
-    case "volley":
-      return "Volley";
-    default:
-      return sport;
-  }
+  return sport;
 }
 
 /**
@@ -133,10 +186,20 @@ export function getPlayersPerTeam(maxPlayers: number): number {
  */
 export function getSportEmoji(sport: SportType): string {
   switch (sport) {
-    case "beach_volley":
+    case "Volley":
+    case "Beach Volley":
       return "🏐";
-    case "volley":
-      return "🏐";
+    case "Beach Tennis":
+    case "Tennis":
+    case "Padel":
+      return "🎾";
+    case "Calcio":
+    case "Calcetto":
+    case "Calciotto":
+    case "Calcio a 7":
+      return "⚽";
+    case "Basket":
+      return "🏀";
     default:
       return "⚽";
   }

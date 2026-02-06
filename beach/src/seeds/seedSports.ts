@@ -78,6 +78,56 @@ export const SPORTS_DATA = [
     sortOrder: 3,
   },
   {
+    name: "Tennis",
+    code: "tennis",
+    icon: "tennis",
+    color: "#009688",
+    minPlayers: 2,
+    maxPlayers: 4,
+    allowedFormations: ["1v1", "2v2"],
+    requiresEvenPlayers: true,
+    allowsIndoor: true,
+    allowsOutdoor: true,
+    recommendedSurfaces: {
+      indoor: ["pvc", "parquet"],
+      outdoor: ["grass", "clay", "cement"],
+    },
+    allowsPlayerPricing: true, // Piccoli gruppi
+    scoringSystem: "set-based",
+    scoringRules: {
+      setsToWin: 2, // Best of 3
+      pointsPerSet: 6, // 6 giochi per set
+      tiebreakAdvantage: 2, // +2 nel tiebreak
+    },
+    isActive: true,
+    sortOrder: 4,
+  },
+  {
+    name: "Padel",
+    code: "padel",
+    icon: "tennis",
+    color: "#00BCD4",
+    minPlayers: 2,
+    maxPlayers: 4,
+    allowedFormations: ["1v1", "2v2"],
+    requiresEvenPlayers: true,
+    allowsIndoor: true,
+    allowsOutdoor: true,
+    recommendedSurfaces: {
+      indoor: ["synthetic"],
+      outdoor: ["synthetic"],
+    },
+    allowsPlayerPricing: true, // Piccoli gruppi
+    scoringSystem: "set-based",
+    scoringRules: {
+      setsToWin: 2, // Best of 3
+      pointsPerSet: 6, // 6 giochi per set
+      tiebreakAdvantage: 2, // +2 nel tiebreak
+    },
+    isActive: true,
+    sortOrder: 5,
+  },
+  {
     name: "Calcio",
     code: "calcio",
     icon: "soccer",
@@ -97,7 +147,7 @@ export const SPORTS_DATA = [
       allowsDraw: true,
     },
     isActive: true,
-    sortOrder: 4,
+    sortOrder: 6,
   },
   {
     name: "Calcetto",
@@ -120,7 +170,7 @@ export const SPORTS_DATA = [
       allowsDraw: true,
     },
     isActive: true,
-    sortOrder: 5,
+    sortOrder: 7,
   },
   {
     name: "Calciotto",
@@ -142,7 +192,7 @@ export const SPORTS_DATA = [
       allowsDraw: true,
     },
     isActive: true,
-    sortOrder: 6,
+    sortOrder: 8,
   },
   {
     name: "Calcio a 7",
@@ -164,7 +214,7 @@ export const SPORTS_DATA = [
       allowsDraw: true,
     },
     isActive: true,
-    sortOrder: 7,
+    sortOrder: 9,
   },
   {
     name: "Basket",
@@ -187,7 +237,7 @@ export const SPORTS_DATA = [
       allowsDraw: false, // Basket va a overtime se necessario
     },
     isActive: true,
-    sortOrder: 8,
+    sortOrder: 10,
   },
 ];
 
@@ -232,11 +282,13 @@ export async function getRandomSportForEnvironment(
   isIndoor: boolean,
   sportMapping: Record<string, mongoose.Types.ObjectId>
 ): Promise<{ id: mongoose.Types.ObjectId; code: string }> {
-  const indoorSports = ["volley", "beach_volley", "beach_tennis", "calcetto", "basket"];
+  const indoorSports = ["volley", "beach_volley", "beach_tennis", "tennis", "padel", "calcetto", "basket"];
   const outdoorSports = [
     "volley",
     "beach_volley",
     "beach_tennis",
+    "tennis",
+    "padel",
     "calcio",
     "calcetto",
     "calciotto",

@@ -14,10 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
 
 import API_URL from "../../../config/api";
 import { resolveImageUrl } from "../../../utils/imageUtils";
+import { sportIcons } from "../../../utils/sportIcons";
 
 const { width } = Dimensions.get("window");
 
@@ -33,7 +34,7 @@ interface Struttura {
 interface Campo {
   _id: string;
   name: string;
-  sport: string;
+  sport: { name: string; code: string };
   surface: string;
   pricePerHour: number;
   isActive: boolean;
@@ -50,13 +51,6 @@ interface Booking {
   };
   status: string;
 }
-
-const SPORT_MAP: { [key: string]: string } = {
-  beach_volley: "Beach Volley",
-  padel: "Padel",
-  tennis: "Tennis",
-  volley: "Volley",
-};
 
 export default function StrutturaDashboardScreen() {
   const navigation = useNavigation<any>();
@@ -414,21 +408,20 @@ export default function StrutturaDashboardScreen() {
               <View key={campo._id} style={styles.campoCard}>
                 <View style={styles.campoHeader}>
                   <View style={styles.sportIcon}>
-                    {(campo.sport === "beach_volley" || campo.sport === "volley") ? (
-                      <FontAwesome5 name="volleyball-ball" size={18} color="#2196F3" />
-                    ) : (
-                      <Ionicons
-                        name="tennisball"
-                        size={18}
-                        color="#2196F3"
-                      />
-                    )}
+                    {(() => {
+                      const icon = sportIcons[campo.sport.code];
+                      if (!icon) return <Ionicons name="help-circle" size={18} color="#2196F3" />;
+                      if (icon.library === 'FontAwesome5') return <FontAwesome5 name={icon.name} size={18} color="#2196F3" />;
+                      if (icon.library === 'FontAwesome6') return <FontAwesome6 name={icon.name} size={18} color="#2196F3" />;
+                      if (icon.library === 'Ionicons') return <Ionicons name={icon.name} size={18} color="#2196F3" />;
+                      return <Ionicons name="help-circle" size={18} color="#2196F3" />;
+                    })()}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.campoName}>{campo.name}</Text>
                     <View style={styles.campoMeta}>
                       <Text style={styles.sportBadge}>
-                        {SPORT_MAP[campo.sport] || campo.sport}
+                        {campo.sport.name}
                       </Text>
                       {campo.indoor && (
                         <View style={styles.indoorBadge}>

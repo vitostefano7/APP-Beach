@@ -27,7 +27,7 @@ export default function SetupPreferencesScreen({ route, navigation }: any) {
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [selectedCoordinates, setSelectedCoordinates] = useState<{lat: number, lng: number} | null>(null);
 
-  const sports = ["Beach Volley", "Volley"];
+  const sports = ["Volley", "Beach Volley", "Beach Tennis", "Tennis", "Padel", "Calcio", "Calcetto", "Calciotto", "Calcio a 7", "Basket"];
 
   const toggleSport = (sport: string) => {
     if (selectedSports.includes(sport)) {

@@ -63,7 +63,7 @@ export default function PreferencesScreen({ navigation }: any) {
   const [showLocationPreview, setShowLocationPreview] = useState(false);
   const [previewCoordinates, setPreviewCoordinates] = useState<{lat: number, lng: number} | null>(null);
 
-  const sports = ["Beach Volley", "Volley"];
+  const sports = ["Volley", "Beach Volley", "Beach Tennis", "Tennis", "Padel", "Calcio", "Calcetto", "Calciotto", "Calcio a 7", "Basket"];
   const timeSlots = [
     { value: "morning", label: "Mattina (6:00 - 12:00)", icon: "sunny" },
     { value: "afternoon", label: "Pomeriggio (12:00 - 18:00)", icon: "partly-sunny" },
