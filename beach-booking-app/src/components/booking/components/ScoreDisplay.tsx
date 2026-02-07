@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar } from '../../../../components/Avatar';
+import { Avatar } from '../../Avatar';
 
 // Import centralized components
 import {

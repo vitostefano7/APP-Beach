@@ -291,10 +291,16 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
           {
             path: "campo",
             select: "name sport",
-            populate: {
-              path: "struttura",
-              select: "name location",
-            },
+            populate: [
+              {
+                path: "sport",
+                select: "name",
+              },
+              {
+                path: "struttura",
+                select: "name location",
+              },
+            ],
           },
           {
             path: "user",

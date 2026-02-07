@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, PressableProps, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // ==================== ANIMATED CARD ====================
 interface AnimatedCardProps {
@@ -320,3 +321,50 @@ export const ShakeView: React.FC<ShakeViewProps> = ({
     </Animated.View>
   );
 };
+
+// ==================== GRADIENT BACKGROUNDS ====================
+
+// Team A Gradient (Blue)
+export const TeamAGradient: React.FC<{ style?: ViewStyle; children?: React.ReactNode }> = ({ 
+  style, 
+  children 
+}) => (
+  <LinearGradient
+    colors={['#2196F3', '#1976D2', '#1565C0']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={style}
+  >
+    {children}
+  </LinearGradient>
+);
+
+// Team B Gradient (Red)
+export const TeamBGradient: React.FC<{ style?: ViewStyle; children?: React.ReactNode }> = ({ 
+  style, 
+  children 
+}) => (
+  <LinearGradient
+    colors={['#F44336', '#E53935', '#D32F2F']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={style}
+  >
+    {children}
+  </LinearGradient>
+);
+
+// Winner Gradient (Gold)
+export const WinnerGradient: React.FC<{ style?: ViewStyle; children?: React.ReactNode }> = ({ 
+  style, 
+  children 
+}) => (
+  <LinearGradient
+    colors={['#FFD700', '#FFC107', '#FF9800']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={style}
+  >
+    {children}
+  </LinearGradient>
+);

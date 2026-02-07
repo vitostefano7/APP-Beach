@@ -311,12 +311,32 @@ export default function OwnerDettaglioPrenotazioneScreen() {
     return team === "A" ? "people" : team === "B" ? "people" : "person-add";
   };
 
-  // Determine sport type for score validation (beachvolley | volleyball)
-  const getSportTypeFromString = (sportStr?: string): 'beachvolley' | 'volleyball' => {
-    const s = (sportStr || '').toLowerCase();
-    if (s.includes('beach')) return 'beachvolley';
-    if (s.includes('volley')) return 'volleyball';
-    return 'beachvolley';
+  // Determina il tipo di sport per lo ScoreModal
+  const getSportType = (campo?: any): string => {
+    if (!campo) return 'beach_volley';
+    
+    // Se campo.sport è un oggetto con code
+    if (typeof campo.sport === 'object' && campo.sport?.code) {
+      return campo.sport.code;
+    }
+    
+    // Se campo.sport è una stringa
+    const sportStr = (campo.sport || '').toLowerCase();
+    
+    // Mappa le possibili varianti al codice corretto
+    if (sportStr.includes('beach') && sportStr.includes('volley')) return 'beach_volley';
+    if (sportStr === 'volley' || sportStr === 'volleyball') return 'volley';
+    if (sportStr.includes('beach') && sportStr.includes('tennis')) return 'beach_tennis';
+    if (sportStr === 'tennis') return 'tennis';
+    if (sportStr === 'padel') return 'padel';
+    if (sportStr === 'calcio') return 'calcio';
+    if (sportStr === 'calcetto') return 'calcetto';
+    if (sportStr === 'calciotto') return 'calciotto';
+    if (sportStr.includes('calcio') && sportStr.includes('7')) return 'calcio_a_7';
+    if (sportStr === 'basket' || sportStr === 'basketball') return 'basket';
+    
+    // Default: beach volley
+    return 'beach_volley';
   };
 
   const isRegistrationOpen = () => {
@@ -464,7 +484,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   };
 
   // Submit score (owner)
-  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+  const handleSubmitScore = async (winner: 'A' | 'B' | null, sets: { teamA: number; teamB: number }[]) => {
     if (!booking?.match?._id || !token) return;
 
     try {
@@ -1559,7 +1579,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
           onSave={handleSubmitScore}
           currentScore={booking.match?.score}
           matchStatus={booking.match?.status}
-          sportType={getSportTypeFromString(booking?.campo?.sport)}
+          sportType={getSportType(booking?.campo)}
         />
       )}
 

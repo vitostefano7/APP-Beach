@@ -15,7 +15,12 @@ interface FieldInfoCardProps {
   };
   campo: {
     name: string;
-    sport: string;
+    sport: {
+      _id: string;
+      name: string;
+      code: string;
+      icon?: string;
+    } | string;
   };
   onStrutturaPress?: () => void;
   onChatPress?: () => void;
@@ -33,22 +38,24 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
   showChatButton = false,
   role,
 }) => {
-  const getSportDisplayName = (sport: string) => {
-    if (sport === 'beach_volley' || sport === 'beach volley') {
+  const getSportDisplayName = (sport: { _id: string; name: string; code: string; icon?: string } | string) => {
+    const sportName = typeof sport === 'string' ? sport : sport.name || sport.code;
+    if (sportName === 'beach_volley' || sportName === 'beach volley' || sportName === 'Beach Volley') {
       return 'Beach Volley';
     }
-    return sport.charAt(0).toUpperCase() + sport.slice(1);
+    return sportName.charAt(0).toUpperCase() + sportName.slice(1);
   };
 
-  const getSportIcon = (sport: string) => {
-    if (sport === 'beach_volley' || sport === 'beach volley' || sport === 'volley') {
+  const getSportIcon = (sport: { _id: string; name: string; code: string; icon?: string } | string) => {
+    const sportName = typeof sport === 'string' ? sport : sport.name || sport.code;
+    if (sportName === 'beach_volley' || sportName === 'beach volley' || sportName === 'volley' || sportName === 'Beach Volley' || sportName === 'Volley') {
       return <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />;
     }
     
     const iconName = 
-      sport === 'calcio' ? 'football' :
-      sport === 'tennis' ? 'tennisball' :
-      sport === 'basket' ? 'basketball' : 'barbell';
+      sportName === 'calcio' ? 'football' :
+      sportName === 'tennis' ? 'tennisball' :
+      sportName === 'basket' ? 'basketball' : 'barbell';
     
     return <Ionicons name={iconName as any} size={18} color="#FF9800" />;
   };

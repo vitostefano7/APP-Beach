@@ -441,6 +441,34 @@ export default function DettaglioPrenotazioneScreen() {
     return team === "A" ? "people" : team === "B" ? "people" : "person-add";
   };
 
+  // Determina il tipo di sport per lo ScoreModal
+  const getSportType = (campo?: any): string => {
+    if (!campo) return 'beach_volley';
+    
+    // Se campo.sport è un oggetto con code
+    if (typeof campo.sport === 'object' && campo.sport?.code) {
+      return campo.sport.code;
+    }
+    
+    // Se campo.sport è una stringa
+    const sportStr = (campo.sport || '').toLowerCase();
+    
+    // Mappa le possibili varianti al codice corretto
+    if (sportStr.includes('beach') && sportStr.includes('volley')) return 'beach_volley';
+    if (sportStr === 'volley' || sportStr === 'volleyball') return 'volley';
+    if (sportStr.includes('beach') && sportStr.includes('tennis')) return 'beach_tennis';
+    if (sportStr === 'tennis') return 'tennis';
+    if (sportStr === 'padel') return 'padel';
+    if (sportStr === 'calcio') return 'calcio';
+    if (sportStr === 'calcetto') return 'calcetto';
+    if (sportStr === 'calciotto') return 'calciotto';
+    if (sportStr.includes('calcio') && sportStr.includes('7')) return 'calcio_a_7';
+    if (sportStr === 'basket' || sportStr === 'basketball') return 'basket';
+    
+    // Default: beach volley
+    return 'beach_volley';
+  };
+
   const canCancelBooking = () => {
     if (!booking || !user) return false;
     // Solo il creatore della prenotazione può cancellarla
@@ -459,7 +487,7 @@ export default function DettaglioPrenotazioneScreen() {
     return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
   };
 
-  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+  const handleSubmitScore = async (winner: 'A' | 'B' | null, sets: { teamA: number; teamB: number }[]) => {
     if (!booking?.matchId || !token) return;
 
     try {
@@ -1862,8 +1890,7 @@ export default function DettaglioPrenotazioneScreen() {
           onSave={handleSubmitScore}
           currentScore={booking.match?.score}
           matchStatus={booking.match?.status}
-          teamAPlayers={teamAConfirmed}
-          teamBPlayers={teamBConfirmed}
+          sportType={getSportType(booking?.campo)}
         />
       )}
 

@@ -18,6 +18,7 @@ const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
 };
 
 const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin }) => {
+  console.log('Sport:', match.booking?.campo?.sport?.code);
   const confirmedPlayers = getPlayersCount(match.players, 'confirmed');
   const maxPlayers = match.maxPlayers || 0;
   const available = Math.max(maxPlayers - confirmedPlayers, 0);
@@ -131,9 +132,11 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
           </Text>
         </View>
         <View style={styles.openMatchInfoRow}>
-          <SportIcon sport={match.booking?.sport || 'beach_volleyball'} size={14} color="#2196F3" />
+          {match.booking?.campo?.sport?.code && (
+            <SportIcon sport={match.booking.campo.sport.code} size={14} color="#2196F3" />
+          )}
           <Text style={[styles.openMatchInfoText, { color: '#2196F3', fontWeight: '600' }]}>
-            {formatSportName(match.booking?.sport || 'beach_volleyball')}
+            {formatSportName(match.booking?.campo?.sport?.code)}
           </Text>
         </View>
       </View>

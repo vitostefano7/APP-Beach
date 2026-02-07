@@ -18,16 +18,27 @@ interface Set {
   teamB: number;
 }
 
+type SportCategory = 'set-points' | 'set-games' | 'point-based';
+
+interface SportConfig {
+  category: SportCategory;
+  maxPointsPerSet?: number; // Per volley/beach volley
+  maxGamesPerSet?: number; // Per tennis/padel
+  setsToWin: number;
+  allowsDraw?: boolean; // Per calcio/calcetto
+  label: string;
+}
+
 interface ScoreModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (winner: 'A' | 'B', sets: Set[]) => Promise<void>;
+  onSave: (winner: 'A' | 'B' | null, sets: Set[]) => Promise<void>; // null = pareggio
   currentScore?: {
     winner?: 'A' | 'B';
     sets: Set[];
   };
   matchStatus?: string;
-  sportType?: 'beachvolley' | 'volleyball'; // Default: beachvolley
+  sportType?: string; // es: 'volley', 'beach_volley', 'tennis', 'calcio', etc.
 }
 
 const ScoreModal: React.FC<ScoreModalProps> = ({
@@ -36,8 +47,84 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
   onSave,
   currentScore,
   matchStatus,
-  sportType = 'beachvolley',
+  sportType = 'beach_volley',
 }) => {
+  // Configurazione sport
+  const getSportConfig = (sport: string): SportConfig => {
+    const sportLower = sport.toLowerCase();
+    
+    // Volley e Beach Volley (set-points)
+    if (sportLower === 'volley' || sportLower === 'volleyball') {
+      return {
+        category: 'set-points',
+        maxPointsPerSet: 25,
+        setsToWin: 2,
+        label: 'Volley (max 25 punti/set, best of 3)',
+      };
+    }
+    if (sportLower === 'beach_volley' || sportLower === 'beach volley' || sportLower === 'beachvolley') {
+      return {
+        category: 'set-points',
+        maxPointsPerSet: 21,
+        setsToWin: 2,
+        label: 'Beach Volley (max 21 punti/set, best of 3)',
+      };
+    }
+    
+    // Tennis e Padel (set-games)
+    if (sportLower === 'tennis') {
+      return {
+        category: 'set-games',
+        maxGamesPerSet: 6,
+        setsToWin: 2,
+        label: 'Tennis (6 giochi/set, best of 3)',
+      };
+    }
+    if (sportLower === 'padel') {
+      return {
+        category: 'set-games',
+        maxGamesPerSet: 6,
+        setsToWin: 2,
+        label: 'Padel (6 giochi/set, best of 3)',
+      };
+    }
+    if (sportLower === 'beach_tennis' || sportLower === 'beach tennis') {
+      return {
+        category: 'set-games',
+        maxGamesPerSet: 7, // o 9 a seconda del format
+        setsToWin: 1, // Di solito è un singolo set
+        label: 'Beach Tennis (max 7-9 giochi)',
+      };
+    }
+    
+    // Sport point-based (calcio, basket, etc.)
+    if (sportLower.includes('calcio') || sportLower.includes('calcetto') || sportLower.includes('calciotto')) {
+      return {
+        category: 'point-based',
+        setsToWin: 1,
+        allowsDraw: true,
+        label: `${sport} (punteggio finale, pareggio consentito)`,
+      };
+    }
+    if (sportLower === 'basket' || sportLower === 'basketball') {
+      return {
+        category: 'point-based',
+        setsToWin: 1,
+        allowsDraw: true,
+        label: 'Basket (punteggio finale, pareggio consentito)',
+      };
+    }
+    
+    // Default: beach volley
+    return {
+      category: 'set-points',
+      maxPointsPerSet: 21,
+      setsToWin: 2,
+      label: 'Beach Volley (max 21 punti/set, best of 3)',
+    };
+  };
+
+  const sportConfig = getSportConfig(sportType);
   // Stato - 3 set fissi
   const [set1A, setSet1A] = useState('');
   const [set1B, setSet1B] = useState('');
@@ -74,7 +161,49 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
       return { valid: true }; // Set non giocato
     }
 
-    const maxPoints = sportType === 'volleyball' ? 25 : 21;
+    // Point-based sport: qualsiasi punteggio >= 0 è valido
+    if (sportConfig.category === 'point-based') {
+      if (scoreA === scoreB && !sportConfig.allowsDraw) {
+        return { valid: false, message: 'Il pareggio non è consentito per questo sport' };
+      }
+      return { valid: true };
+    }
+
+    // Set-games (tennis/padel/beach tennis)
+    if (sportConfig.category === 'set-games') {
+      const maxGames = sportConfig.maxGamesPerSet || 6;
+      const winner = scoreA > scoreB ? scoreA : scoreB;
+      const loser = scoreA > scoreB ? scoreB : scoreA;
+      const diff = Math.abs(scoreA - scoreB);
+
+      // Deve esserci un vincitore
+      if (diff === 0) {
+        return { valid: false, message: 'Un set non può finire in pareggio' };
+      }
+
+      // Se uno ha meno di maxGames, il vincitore deve averne esattamente maxGames
+      if (winner < maxGames) {
+        return { valid: false, message: `Per vincere un set serve almeno ${maxGames} giochi` };
+      }
+
+      // Se vincitore ha esattamente maxGames, perdente deve avere < maxGames-1
+      if (winner === maxGames && loser >= maxGames - 1) {
+        return { 
+          valid: false, 
+          message: `Sul ${maxGames-1}-${maxGames-1} si va a tiebreak. Serve ${maxGames}-${maxGames-2} o superiore con +2` 
+        };
+      }
+
+      // Se si va oltre maxGames (es. 7-5), serve +2
+      if (winner > maxGames && diff < 2) {
+        return { valid: false, message: `Oltre ${maxGames} giochi serve un vantaggio di almeno 2 giochi` };
+      }
+
+      return { valid: true };
+    }
+
+    // Set-points (volley/beach volley)
+    const maxPoints = sportConfig.maxPointsPerSet || 21;
     const winner = scoreA > scoreB ? scoreA : scoreB;
     const loser = scoreA > scoreB ? scoreB : scoreA;
     const diff = Math.abs(scoreA - scoreB);
@@ -90,7 +219,6 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
     }
 
     // Se il vincitore ha esattamente maxPoints, il perdente deve avere al massimo maxPoints-2
-    // Questo perché sul (maxPoints-1)-(maxPoints-1) si va ad oltranza
     if (winner === maxPoints && loser >= maxPoints - 1) {
       return { 
         valid: false, 
@@ -133,7 +261,46 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
   };
 
   const handleSave = async () => {
-    // Almeno 2 set devono avere punteggio
+    // Per point-based: basta il primo "set" (punteggio finale)
+    if (sportConfig.category === 'point-based') {
+      const set1HasScore = (parseInt(set1A) || 0) > 0 || (parseInt(set1B) || 0) > 0;
+      
+      if (!set1HasScore) {
+        Alert.alert('Errore', 'Inserisci il punteggio finale');
+        return;
+      }
+
+      const sets: Set[] = [
+        { teamA: parseInt(set1A) || 0, teamB: parseInt(set1B) || 0 },
+      ];
+
+      const validation = validateSetScore(sets[0].teamA, sets[0].teamB);
+      if (!validation.valid) {
+        Alert.alert('Errore', validation.message || 'Punteggio non valido');
+        return;
+      }
+
+      const winner = getMatchWinner();
+      if (!winner && !sportConfig.allowsDraw) {
+        Alert.alert('Errore', 'Il match non può finire in pareggio');
+        return;
+      }
+
+      try {
+        setSaving(true);
+        // Passa winner (può essere null per pareggio se allowsDraw è true)
+        await onSave(winner, sets);
+        onClose();
+      } catch (error: any) {
+        console.error('[ScoreModal] Errore salvataggio:', error);
+        Alert.alert('Errore', error.message || 'Impossibile salvare il risultato');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Per set-based: almeno 2 set devono avere punteggio
     const set1HasScore = (parseInt(set1A) || 0) > 0 || (parseInt(set1B) || 0) > 0;
     const set2HasScore = (parseInt(set2A) || 0) > 0 || (parseInt(set2B) || 0) > 0;
 
@@ -196,12 +363,12 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderContent}>
+              <View style={styles.modalHeaderContent}>
               <Ionicons name="trophy" size={28} color="white" />
               <View style={styles.modalHeaderText}>
                 <Text style={styles.modalTitle}>Inserisci Risultato</Text>
                 <Text style={styles.modalSubtitle}>
-                  {sportType === 'volleyball' ? 'Pallavolo' : 'Beach Volley'} - Max {sportType === 'volleyball' ? '25' : '21'} punti/set
+                  {sportConfig.label}
                 </Text>
               </View>
             </View>
@@ -221,6 +388,65 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Point-based: solo punteggio finale */}
+            {sportConfig.category === 'point-based' && (
+              <>
+                <View style={[styles.setRow, styles.lastSetRow]}>
+                  <View style={styles.setLabelContainer}>
+                    <Text style={styles.setLabel}>Punteggio Finale</Text>
+                    {set1Winner && (
+                      <View
+                        style={[
+                          styles.setWinnerBadge,
+                          set1Winner === 'A' ? styles.teamABadge : styles.teamBBadge,
+                        ]}
+                      >
+                        <Ionicons name="trophy" size={12} color="white" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.setInputsContainer}>
+                    <View style={styles.teamInputWrapper}>
+                      <Text style={styles.teamInputLabel}>Team A</Text>
+                      <TextInput
+                        style={[
+                          styles.scoreInput,
+                          set1Winner === 'A' && styles.scoreInputWinner,
+                        ]}
+                        value={set1A}
+                        onChangeText={setSet1A}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#999"
+                        maxLength={3}
+                        editable={!saving}
+                      />
+                    </View>
+                    <Text style={styles.scoreSeparator}>-</Text>
+                    <View style={styles.teamInputWrapper}>
+                      <Text style={styles.teamInputLabel}>Team B</Text>
+                      <TextInput
+                        style={[
+                          styles.scoreInput,
+                          set1Winner === 'B' && styles.scoreInputWinner,
+                        ]}
+                        value={set1B}
+                        onChangeText={setSet1B}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#999"
+                        maxLength={3}
+                        editable={!saving}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Set-based: 3 set */}
+            {sportConfig.category !== 'point-based' && (
+              <>
             {/* Set 1 */}
             <View style={styles.setRow}>
               <View style={styles.setLabelContainer}>
@@ -376,22 +602,38 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
                 </View>
               </View>
             </View>
+            </>
+            )}
 
             {/* Risultato Finale */}
-            {winner && (
+            {(winner || (sportConfig.category === 'point-based' && sportConfig.allowsDraw && set1A && set1B && set1A === set1B)) && (
               <View style={styles.winnerContainer}>
-                <View
-                  style={[
-                    styles.winnerCard,
-                    winner === 'A' ? styles.winnerCardTeamA : styles.winnerCardTeamB,
-                  ]}
-                >
-                  <Ionicons name="trophy" size={28} color="white" />
-                  <Text style={styles.winnerTitle}>Vincitore: Team {winner}</Text>
-                  <Text style={styles.winnerScore}>
-                    {winsA} - {winsB}
-                  </Text>
-                </View>
+                {winner ? (
+                  <View
+                    style={[
+                      styles.winnerCard,
+                      winner === 'A' ? styles.winnerCardTeamA : styles.winnerCardTeamB,
+                    ]}
+                  >
+                    <Ionicons name="trophy" size={28} color="white" />
+                    <Text style={styles.winnerTitle}>
+                      {sportConfig.category === 'point-based' ? 'Vincitore' : 'Vincitore Match'}: Team {winner}
+                    </Text>
+                    {sportConfig.category !== 'point-based' && (
+                      <Text style={styles.winnerScore}>
+                        {winsA} - {winsB}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <View style={[styles.winnerCard, styles.winnerCardDraw]}>
+                    <Ionicons name="swap-horizontal" size={28} color="white" />
+                    <Text style={styles.winnerTitle}>Pareggio</Text>
+                    <Text style={styles.winnerScore}>
+                      {set1A} - {set1B}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -399,9 +641,14 @@ const ScoreModal: React.FC<ScoreModalProps> = ({
             <View style={styles.helpTextContainer}>
               <Ionicons name="information-circle-outline" size={16} color="#666" />
               <Text style={styles.helpText}>
-                {sportType === 'volleyball' 
-                  ? 'Max 25 punti o ad oltranza con +2 di vantaggio (26-24, 27-25...). Vince chi conquista 2 set su 3.' 
-                  : 'Max 21 punti o ad oltranza con +2 di vantaggio (22-20, 23-21...). Vince chi conquista 2 set su 3.'}
+                {sportConfig.category === 'point-based' 
+                  ? sportConfig.allowsDraw 
+                    ? 'Inserisci il punteggio finale. Il pareggio è consentito.'
+                    : 'Inserisci il punteggio finale. Il pareggio non è consentito.'
+                  : sportConfig.category === 'set-games'
+                  ? `Max ${sportConfig.maxGamesPerSet} giochi o ad oltranza con +2 di vantaggio (es. ${(sportConfig.maxGamesPerSet || 6) + 1}-${(sportConfig.maxGamesPerSet || 6) - 1}). Vince chi conquista ${sportConfig.setsToWin} set${sportConfig.setsToWin > 1 ? ' su 3' : ''}.`
+                  : `Max ${sportConfig.maxPointsPerSet} punti o ad oltranza con +2 di vantaggio (es. ${(sportConfig.maxPointsPerSet || 21) + 1}-${(sportConfig.maxPointsPerSet || 21) - 1}). Vince chi conquista 2 set su 3.`
+                }
               </Text>
             </View>
           </ScrollView>
@@ -610,6 +857,9 @@ const styles = StyleSheet.create({
   },
   winnerCardTeamB: {
     backgroundColor: '#FF9800',
+  },
+  winnerCardDraw: {
+    backgroundColor: '#9E9E9E',
   },
   winnerTitle: {
     fontSize: 18,

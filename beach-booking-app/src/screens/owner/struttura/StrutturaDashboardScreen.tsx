@@ -377,7 +377,7 @@ export default function StrutturaDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="basketball" size={18} color="#2196F3" />
+              <Ionicons name="grid" size={18} color="#2196F3" />
               <Text style={styles.sectionTitle}>Campi</Text>
             </View>
             {campi.length > 0 && (

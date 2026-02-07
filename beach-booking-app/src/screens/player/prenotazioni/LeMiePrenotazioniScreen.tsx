@@ -17,6 +17,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
+import SportIcon from "../../../components/SportIcon";
 
 /* =========================
    TYPES
@@ -38,7 +39,12 @@ interface Booking {
   _id: string;
   campo: {
     name: string;
-    sport: string;
+    sport: {
+      _id: string;
+      name: string;
+      code: string;
+      icon?: string;
+    };
     struttura: {
       name: string;
       location: {
@@ -226,6 +232,11 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     }
   };
 
+  // Funzione helper per ottenere il nome dello sport
+  const getSportName = (sport: { _id: string; name: string; code: string; icon?: string }): string => {
+    return sport.name || sport.code || '';
+  };
+
   const formatDate = (dateStr: string) =>
     new Date(dateStr + "T12:00:00").toLocaleDateString("it-IT", {
       weekday: "long",
@@ -298,7 +309,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   // Estrazione valori unici per i filtri dalle prenotazioni già filtrate per stato (future/passate/tutte)
   const availableCities = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
   const availableStrutture = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.name).map(b => b.campo.struttura.name))].sort();
-  const availableSports = [...new Set(filteredBookings.filter(b => b.campo?.sport).map(b => b.campo.sport))].sort();
+  const availableSports = [...new Set(filteredBookings.filter(b => b.campo?.sport).map(b => getSportName(b.campo.sport)))].sort();
   const availableDays = [...new Set(filteredBookings.filter(b => b.date).map(b => {
     const date = new Date(b.date);
     return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -309,7 +320,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const finalFilteredBookings = sortedBookings.filter(booking => {
     if (selectedCity && booking.campo.struttura.location.city !== selectedCity) return false;
     if (selectedStruttura && booking.campo.struttura.name !== selectedStruttura) return false;
-    if (selectedSport && booking.campo.sport !== selectedSport) return false;
+    if (selectedSport && getSportName(booking.campo.sport) !== selectedSport) return false;
     if (selectedDay) {
       const bookingDay = new Date(booking.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
       if (bookingDay !== selectedDay) return false;
@@ -351,11 +362,15 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 
     return (
       <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
-        <Ionicons 
-          name={icon as any} 
-          size={16} 
-          color={value ? "#2196F3" : "#666"} 
-        />
+        {label === "Sport" && value ? (
+          <SportIcon sport={value} size={16} color={value ? "#2196F3" : "#666"} />
+        ) : (
+          <Ionicons 
+            name={icon as any} 
+            size={16} 
+            color={value ? "#2196F3" : "#666"} 
+          />
+        )}
         <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
           {value || label}
         </Text>
@@ -446,14 +461,14 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             <View style={styles.sportBadge}>
-              {(item.campo.sport === "beach_volley" || item.campo.sport === "beach volley" || item.campo.sport === "volley") ? (
+              {(getSportName(item.campo.sport) === "beach_volley" || getSportName(item.campo.sport) === "beach volley" || getSportName(item.campo.sport) === "volley") ? (
                 <FontAwesome5 name="volleyball-ball" size={12} color="#2196F3" />
               ) : (
                 <Ionicons 
                   name={
-                    item.campo.sport === "calcio" ? "football" :
-                    item.campo.sport === "tennis" ? "tennisball" :
-                    item.campo.sport === "basket" ? "basketball" :
+                    getSportName(item.campo.sport) === "calcio" ? "football" :
+                    getSportName(item.campo.sport) === "tennis" ? "tennisball" :
+                    getSportName(item.campo.sport) === "basket" ? "basketball" :
                     "fitness"
                   } 
                   size={12} 
@@ -461,9 +476,9 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                 />
               )}
               <Text style={styles.sportText}>
-                {(item.campo.sport === 'beach_volley' || item.campo.sport === 'beach volley')
+                {(getSportName(item.campo.sport) === 'beach_volley' || getSportName(item.campo.sport) === 'beach volley')
                   ? 'Beach Volley' 
-                  : item.campo.sport.charAt(0).toUpperCase() + item.campo.sport.slice(1)}
+                  : getSportName(item.campo.sport).charAt(0).toUpperCase() + getSportName(item.campo.sport).slice(1)}
               </Text>
             </View>
           </View>
@@ -918,7 +933,10 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                     setFilterModalVisible(false);
                   }}
                 >
-                  <Text style={styles.filterModalOptionText}>{option}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    {filterModalLabel === "Sport" && option !== "✨ Tutti" && <SportIcon sport={option} size={16} color="#2196F3" />}
+                    <Text style={styles.filterModalOptionText}>{option}</Text>
+                  </View>
                 </Pressable>
               ))}
             </ScrollView>

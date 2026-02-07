@@ -469,10 +469,16 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     })
       .populate({
         path: "campo",
-        populate: {
-          path: "struttura",
-          select: "name location images",
-        },
+        populate: [
+          {
+            path: "struttura",
+            select: "name location images",
+          },
+          {
+            path: "sport",
+            select: "name code icon",
+          }
+        ],
       })
       .sort({ date: -1, startTime: -1 });
 
@@ -574,10 +580,16 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     const booking = await Booking.findById(id)
       .populate({
         path: "campo",
-        populate: {
-          path: "struttura",
-          select: "name location images",
-        },
+        populate: [
+          {
+            path: "struttura",
+            select: "name location images",
+          },
+          {
+            path: "sport",
+            select: "name code icon",
+          }
+        ],
       })
       .populate("user", "name email");
 

@@ -70,6 +70,8 @@ interface Booking {
    UTILITY FUNCTIONS
 ========================= */
 const formatSportName = (sport: string) => {
+  if (!sport) return "Sport";
+  
   switch (sport) {
     case "beach_volleyball":
     case "beach_volley":
@@ -135,12 +137,18 @@ const isOngoingBooking = (booking: Booking): boolean => {
   }
 };
 
-const formatDate = (dateStr: string) =>
-  new Date(dateStr + "T12:00:00").toLocaleDateString("it-IT", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "Data non disponibile";
+  try {
+    return new Date(dateStr + "T12:00:00").toLocaleDateString("it-IT", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  } catch (error) {
+    return "Data non disponibile";
+  }
+};
 
 // Calcola quanto manca alla chiusura della registrazione (1 ora prima dell'inizio)
 const getRegistrationCloseStatus = (booking: Booking): string => {
@@ -358,6 +366,17 @@ const InfoRow = ({ icon, text }: { icon: string; text: string }) => (
 function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+  
+  // Debug logging
+  if (!item) {
+    console.log("⚠️ BookingCard: item is null/undefined");
+    return null;
+  }
+  
+  if (!item.campo) {
+    console.log("⚠️ BookingCard: item.campo is missing", item._id);
+  }
+  
   const isPast = isPastBooking(item);
   const isOngoing = isOngoingBooking(item);
   const isUpcoming = isUpcomingBooking(item);
@@ -375,6 +394,12 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
   const teamsComplete = teamAConfirmed === maxPlayersPerTeam && teamBConfirmed === maxPlayersPerTeam;
 
   const canOwnerInsert = needsScore && user?.role === 'owner' && teamsComplete;
+
+  // Safety check before rendering
+  if (!item || !item._id) {
+    console.log("⚠️ Invalid booking item, skipping render");
+    return null;
+  }
 
   return (
     <Pressable
@@ -452,13 +477,13 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
         <View style={styles.infoRowSub}>
              <Ionicons name="location-outline" size={16} color="#888" />
              <Text style={styles.locationText}>
-                {item.campo.struttura.name} • {item.campo.name}
+                {item.campo?.struttura?.name || "Struttura"} • {item.campo?.name || "Campo"}
              </Text>
         </View>
 
         <View style={styles.infoRowSub}>
-             <SportIcon sport={item.campo.sport} size={16} color="#888" />
-             <Text style={styles.locationText}>{formatSportName(item.campo.sport)}</Text>
+             <SportIcon sport={item.campo?.sport?.code || "beach_volley"} size={16} color="#888" />
+             <Text style={styles.locationText}>{formatSportName(item.campo?.sport?.code)}</Text>
         </View>
       </View>
 
@@ -579,6 +604,12 @@ export default function OwnerBookingsScreen() {
       const data = await res.json();
       
       console.log(`📋 Caricate ${data.length} prenotazioni owner`);
+      
+      // Debug: check first booking structure
+      if (data.length > 0) {
+        console.log("📝 Prima prenotazione:", JSON.stringify(data[0], null, 2));
+      }
+      
       setBookings(data);
       setLoading(false);
     } catch (err) {

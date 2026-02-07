@@ -3,14 +3,14 @@ import { Ionicons, FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import { sportIcons } from '../utils/sportIcons';
 
 interface SportIconProps {
-  sport: string;
+  sport?: string;
   size?: number;
   color?: string;
 }
 
 export default function SportIcon({ sport, size = 24, color = 'black' }: SportIconProps) {
   // Normalizza lo sport per il confronto
-  const normalizedSport = sport?.toLowerCase().replace(/\s+/g, '_') || '';
+  const normalizedSport = sport ? sport.toLowerCase().replace(/\s+/g, '_') : '';
 
   const iconData = sportIcons[normalizedSport];
 
