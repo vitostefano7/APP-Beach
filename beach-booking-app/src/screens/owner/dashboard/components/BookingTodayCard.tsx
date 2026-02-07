@@ -91,7 +91,9 @@ export default function BookingTodayCard({
           </View>
 
           <View style={styles.bookingRow}>
-            <SportIcon sport={booking.campo.sport} size={16} color="#666" />
+            {booking.campo.sport?.code && (
+              <SportIcon sport={booking.campo.sport.code} size={16} color="#666" />
+            )}
             <Text style={styles.bookingText}>{booking.campo.name}</Text>
           </View>
         </View>

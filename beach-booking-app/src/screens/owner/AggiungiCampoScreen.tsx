@@ -13,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
+import { sportIcons } from "../../utils/sportIcons";
 
 import API_URL from "../../config/api";
 import { useCustomAlert } from "../../hooks/useCustomAlert";
@@ -44,6 +45,22 @@ interface PricingRules {
   };
 }
 
+interface SportData {
+  _id: string;
+  name: string;
+  code: string;
+  minPlayers: number;
+  maxPlayers: number;
+  allowsIndoor: boolean;
+  allowsOutdoor: boolean;
+  recommendedSurfaces?: {
+    indoor?: string[];
+    outdoor?: string[];
+    any?: string[];
+  };
+  isActive: boolean;
+}
+
 /* =======================
    COMPONENT
 ======================= */
@@ -56,9 +73,11 @@ export default function AggiungiCampoScreen() {
   const { showAlert, AlertComponent } = useCustomAlert();
 
   const [loading, setLoading] = useState(false);
+  const [loadingSports, setLoadingSports] = useState(true);
+  const [sports, setSports] = useState<SportData[]>([]);
   const [name, setName] = useState("");
-  const [sport, setSport] = useState<"beach_volley" | "volley" | "">("");
-  const [surface, setSurface] = useState<"sand" | "cement" | "pvc" | "">("");
+  const [sport, setSport] = useState<string>("");
+  const [surface, setSurface] = useState<string>("");
   const [maxPlayers, setMaxPlayers] = useState("4");
   const [indoor, setIndoor] = useState(false);
 
@@ -73,17 +92,55 @@ export default function AggiungiCampoScreen() {
   const [showPricingModal, setShowPricingModal] = useState(false);
 
   /* =======================
-     LOGICA SUPERFICIE
+     CARICAMENTO SPORT DAL BACKEND
   ======================= */
   useEffect(() => {
-    if (sport === "beach_volley") {
-      setSurface("sand");
-    } else if (sport === "volley") {
-      setSurface(indoor ? "pvc" : "cement");
+    const fetchSports = async () => {
+      try {
+        const response = await fetch(`${API_URL}/sports`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setSports(data.data);
+        } else {
+          showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare gli sport' });
+        }
+      } catch (error) {
+        console.error('Errore caricamento sport:', error);
+        showAlert({ type: 'error', title: 'Errore', message: 'Errore nel caricamento degli sport' });
+      } finally {
+        setLoadingSports(false);
+      }
+    };
+
+    fetchSports();
+  }, []);
+
+  /* =======================
+     LOGICA SUPERFICIE E MAX PLAYERS
+  ======================= */
+  useEffect(() => {
+    const sportData = sports.find((s) => s.code === sport);
+    if (sportData) {
+      // Determina la superficie in base all'ambiente
+      let newSurface = "";
+      
+      if (sportData.recommendedSurfaces?.any && sportData.recommendedSurfaces.any.length > 0) {
+        // Se ha superfici "any", usa la prima (es. sabbia per beach volley)
+        newSurface = sportData.recommendedSurfaces.any[0];
+      } else if (indoor && sportData.recommendedSurfaces?.indoor) {
+        newSurface = sportData.recommendedSurfaces.indoor[0] || "";
+      } else if (!indoor && sportData.recommendedSurfaces?.outdoor) {
+        newSurface = sportData.recommendedSurfaces.outdoor[0] || "";
+      }
+      
+      setSurface(newSurface);
+      setMaxPlayers(sportData.maxPlayers.toString());
     } else {
       setSurface("");
+      setMaxPlayers("4");
     }
-  }, [sport, indoor]);
+  }, [sport, indoor, sports]);
 
   /* =======================
      PRICING HANDLERS
@@ -231,14 +288,59 @@ export default function AggiungiCampoScreen() {
   /* =======================
      LABEL HELPERS
   ======================= */
+  const renderSportIcon = (sportValue: string, isActive: boolean) => {
+    const iconConfig = sportIcons[sportValue];
+    if (!iconConfig) {
+      return <Ionicons name="fitness" size={18} color={isActive ? "white" : "#666"} />;
+    }
+
+    const iconColor = isActive ? "white" : "#666";
+    const IconComponent = iconConfig.library === "FontAwesome5" 
+      ? FontAwesome5 
+      : iconConfig.library === "FontAwesome6" 
+      ? FontAwesome6 
+      : Ionicons;
+
+    return <IconComponent name={iconConfig.name as any} size={18} color={iconColor} />;
+  };
+
+  const hasDifferentSurfaces = () => {
+    const sportData = sports.find((s) => s.code === sport);
+    if (!sportData) return false;
+
+    // Se ha "any", significa che la superficie è unica per entrambi
+    if (sportData.recommendedSurfaces?.any && sportData.recommendedSurfaces.any.length > 0) {
+      return false;
+    }
+
+    // Controlla se indoor e outdoor hanno superfici diverse
+    const indoorSurface = sportData.recommendedSurfaces?.indoor?.[0];
+    const outdoorSurface = sportData.recommendedSurfaces?.outdoor?.[0];
+    
+    return indoorSurface !== outdoorSurface;
+  };
+
   const getSurfaceLabel = () => {
-    if (sport === "beach_volley") {
-      return indoor ? "Sabbia (Indoor)" : "Sabbia (Outdoor)";
+    const surfaceLabels: { [key: string]: string } = {
+      sand: "Sabbia",
+      cement: "Cemento",
+      pvc: "PVC",
+      synthetic: "Sintetico",
+      clay: "Terra Battuta",
+      grass: "Erba",
+      resin: "Resina",
+    };
+
+    const surfaceLabel = surfaceLabels[surface] || "Superficie";
+    
+    // Se ha superfici diverse, mostra il tipo (Indoor/Outdoor)
+    if (hasDifferentSurfaces()) {
+      const typeLabel = indoor ? "Indoor" : "Outdoor";
+      return surface ? `${surfaceLabel} (${typeLabel})` : "Superficie";
     }
-    if (sport === "volley") {
-      return indoor ? "PVC (Indoor)" : "Cemento (Outdoor)";
-    }
-    return "Superficie";
+    
+    // Altrimenti mostra solo la superficie
+    return surfaceLabel;
   };
 
   const getPricingLabel = () => {
@@ -516,40 +618,41 @@ export default function AggiungiCampoScreen() {
         {/* SPORT */}
         <View style={styles.section}>
           <Text style={styles.label}>Sport *</Text>
-          <View style={styles.chipContainer}>
-            {[
-              { value: "beach_volley", label: "Beach Volley", icon: "fitness" },
-              { value: "volley", label: "Volley", icon: "basketball" },
-            ].map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.chip,
-                  sport === item.value && styles.chipActive,
-                ]}
-                onPress={() => setSport(item.value as any)}
-              >
-                <Ionicons
-                  name={item.icon as any}
-                  size={18}
-                  color={sport === item.value ? "white" : "#666"}
-                />
-                <Text
+          {loadingSports ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Caricamento sport...</Text>
+            </View>
+          ) : (
+            <View style={styles.chipContainer}>
+              {sports.map((item) => (
+                <Pressable
+                  key={item.code}
                   style={[
-                    styles.chipText,
-                    sport === item.value && styles.chipTextActive,
+                    styles.chip,
+                    sport === item.code && styles.chipActive,
                   ]}
+                  onPress={() => setSport(item.code)}
                 >
-                  {item.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                  {renderSportIcon(item.code, sport === item.code)}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      sport === item.code && styles.chipTextActive,
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* INDOOR / OUTDOOR */}
         {sport && (
           <View style={styles.section}>
+            <Text style={styles.label}>Copertura campo e superficie</Text>
+
             <View style={styles.switchCard}>
               <View style={styles.switchCardLeft}>
                 <Ionicons
@@ -560,15 +663,11 @@ export default function AggiungiCampoScreen() {
                 <View style={styles.switchCardText}>
                   <Text style={styles.switchCardTitle}>
                     {indoor
-                      ? "Campo coperto (Indoor)"
-                      : "Campo scoperto (Outdoor)"}
+                      ? "Al Chiuso"
+                      : "All'Aperto"}
                   </Text>
                   <Text style={styles.switchCardSubtitle}>
-                    {sport === "beach_volley"
-                      ? "Superficie: Sabbia"
-                      : indoor
-                      ? "Superficie: PVC"
-                      : "Superficie: Cemento"}
+                    Superficie: {getSurfaceLabel()}
                   </Text>
                 </View>
               </View>
@@ -578,29 +677,6 @@ export default function AggiungiCampoScreen() {
                 trackColor={{ false: "#e9ecef", true: "#2196F3" }}
                 thumbColor="white"
               />
-            </View>
-          </View>
-        )}
-
-        {/* SUPERFICIE */}
-        {sport && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Superficie</Text>
-            <View style={styles.surfaceDisplay}>
-              <Ionicons
-                name={
-                  surface === "sand"
-                    ? "beach"
-                    : surface === "pvc"
-                    ? "layers"
-                    : "construct"
-                }
-                size={20}
-                color="#4CAF50"
-              />
-              <Text style={styles.surfaceDisplayText}>
-                {getSurfaceLabel()}
-              </Text>
             </View>
           </View>
         )}
@@ -725,8 +801,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+  },
   chipContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   chip: {
@@ -794,6 +879,21 @@ const styles = StyleSheet.create({
   surfaceDisplayText: {
     fontSize: 16,
     fontWeight: "700",
+    color: "#2E7D32",
+  },
+  surfaceInfoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#E8F5E9",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
+  surfaceInfoText: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#2E7D32",
   },
   pricingButton: {

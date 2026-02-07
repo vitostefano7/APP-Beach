@@ -1002,6 +1002,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.2)",
+    borderRadius: 12,
   },
   teamAHeader: {
     backgroundColor: "#2196F3",

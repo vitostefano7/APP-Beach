@@ -281,7 +281,7 @@ export const isSameUser = (user: any, targetUser: any) => {
  */
 export const submitMatchScore = async (
   matchId: string,
-  winner: 'A' | 'B',
+  winner: 'A' | 'B' | null,
   sets: { teamA: number; teamB: number }[],
   token: string
 ) => {

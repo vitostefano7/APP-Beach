@@ -40,7 +40,12 @@ export interface BookingDetails {
   _id: string;
   campo: {
     name: string;
-    sport: string;
+    sport: {
+      _id: string;
+      name: string;
+      code: string;
+      icon?: string;
+    };
     struttura: {
       _id: string;
       name: string;

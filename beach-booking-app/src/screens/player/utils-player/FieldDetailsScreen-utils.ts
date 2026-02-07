@@ -6,12 +6,20 @@ export const SPORT_LABELS: Record<string, string> = {
   "beach volley": "Beach Volley",
   beach_volleyball: "Beach Volley",
   "beach volleyball": "Beach Volley",
+  beachvolley: "Beach Volley",
+  "beach-volley": "Beach Volley",
   volley: "Volley",
   volleyball: "Volley",
-  padel: "Padel",
+  beach_tennis: "Beach Tennis",
+  "beach tennis": "Beach Tennis",
   tennis: "Tennis",
+  padel: "Padel",
   calcio: "Calcio",
   football: "Calcio",
+  calcetto: "Calcetto",
+  calciotto: "Calciotto",
+  calcio_a_7: "Calcio a 7",
+  "calcio a 7": "Calcio a 7",
   basket: "Basket",
   basketball: "Basket",
 };
@@ -89,17 +97,23 @@ export function getAmenitiesDisplay(amenities: string[]): Array<{ key: string; l
   });
 }
 
-// ✅ Helper: ottieni icona sport
-export function getSportIcon(sport: string): string {
-  switch (sport) {
-    case "beach_volley":
-      return "volleyball-ball";
-    case "padel":
-    case "tennis":
-      return "tennisball";
-    default:
-      return "football";
-  }
+// ✅ Helper: ottieni label sport normalizzato
+export function getSportLabel(sport: string): string {
+  if (!sport) return sport;
+
+  // First try exact match
+  if (SPORT_LABELS[sport]) return SPORT_LABELS[sport];
+
+  // Try lowercase
+  const lower = sport.toLowerCase();
+  if (SPORT_LABELS[lower]) return SPORT_LABELS[lower];
+
+  // Try normalized (replace spaces, dashes, underscores with underscore)
+  const normalized = lower.replace(/[\s_-]+/g, '_');
+  if (SPORT_LABELS[normalized]) return SPORT_LABELS[normalized];
+
+  // Fallback to original
+  return sport;
 }
 
 // ✅ Date utils

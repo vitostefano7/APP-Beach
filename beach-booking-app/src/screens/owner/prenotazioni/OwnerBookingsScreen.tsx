@@ -27,7 +27,10 @@ interface Booking {
   campo: {
     _id: string;
     name: string;
-    sport: string;
+    sport: {
+      code: string;
+      name: string;
+    };
     struttura: {
       _id: string;
       name: string;
@@ -70,6 +73,8 @@ interface Booking {
    UTILITY FUNCTIONS
 ========================= */
 const formatSportName = (sport: string) => {
+  if (!sport) return "Sport";
+  
   switch (sport) {
     case "beach_volleyball":
     case "beach_volley":
@@ -135,12 +140,18 @@ const isOngoingBooking = (booking: Booking): boolean => {
   }
 };
 
-const formatDate = (dateStr: string) =>
-  new Date(dateStr + "T12:00:00").toLocaleDateString("it-IT", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "Data non disponibile";
+  try {
+    return new Date(dateStr + "T12:00:00").toLocaleDateString("it-IT", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  } catch (error) {
+    return "Data non disponibile";
+  }
+};
 
 // Calcola quanto manca alla chiusura della registrazione (1 ora prima dell'inizio)
 const getRegistrationCloseStatus = (booking: Booking): string => {
@@ -358,6 +369,17 @@ const InfoRow = ({ icon, text }: { icon: string; text: string }) => (
 function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+  
+  // Debug logging
+  if (!item) {
+    console.log("⚠️ BookingCard: item is null/undefined");
+    return null;
+  }
+  
+  if (!item.campo) {
+    console.log("⚠️ BookingCard: item.campo is missing", item._id);
+  }
+  
   const isPast = isPastBooking(item);
   const isOngoing = isOngoingBooking(item);
   const isUpcoming = isUpcomingBooking(item);
@@ -375,6 +397,12 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
   const teamsComplete = teamAConfirmed === maxPlayersPerTeam && teamBConfirmed === maxPlayersPerTeam;
 
   const canOwnerInsert = needsScore && user?.role === 'owner' && teamsComplete;
+
+  // Safety check before rendering
+  if (!item || !item._id) {
+    console.log("⚠️ Invalid booking item, skipping render");
+    return null;
+  }
 
   return (
     <Pressable
@@ -452,13 +480,13 @@ function BookingCard({ item, onPress }: { item: Booking; onPress: () => void }) 
         <View style={styles.infoRowSub}>
              <Ionicons name="location-outline" size={16} color="#888" />
              <Text style={styles.locationText}>
-                {item.campo.struttura.name} • {item.campo.name}
+                {item.campo?.struttura?.name || "Struttura"} • {item.campo?.name || "Campo"}
              </Text>
         </View>
 
         <View style={styles.infoRowSub}>
-             <SportIcon sport={item.campo.sport} size={16} color="#888" />
-             <Text style={styles.locationText}>{formatSportName(item.campo.sport)}</Text>
+             <SportIcon sport={item.campo?.sport?.code || "beach_volley"} size={16} color="#888" />
+             <Text style={styles.locationText}>{item.campo?.sport?.name || formatSportName(item.campo?.sport?.code)}</Text>
         </View>
       </View>
 
@@ -512,13 +540,16 @@ export default function OwnerBookingsScreen() {
   const [filterUsername, setFilterUsername] = useState("");
   const [filterStruttura, setFilterStruttura] = useState(route.params?.filterStrutturaId || "");
   const [filterCampo, setFilterCampo] = useState(route.params?.filterCampoId || "");
+  const [filterSport, setFilterSport] = useState("");
   const [filterDate, setFilterDate] = useState(route.params?.filterDate || "");
   
   const [strutture, setStrutture] = useState<Array<{ _id: string; name: string }>>([]);
   const [campi, setCampi] = useState<Array<{ _id: string; name: string; strutturaId: string }>>([]);
+  const [sports, setSports] = useState<Array<{ _id: string; name: string; code: string }>>([]);
   
   const [showStrutturaModal, setShowStrutturaModal] = useState(false);
   const [showCampoModal, setShowCampoModal] = useState(false);
+  const [showSportModal, setShowSportModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
@@ -561,6 +592,17 @@ export default function OwnerBookingsScreen() {
       }
 
       setCampi(allCampi);
+
+      // Carica gli sport
+      try {
+        const sportsRes = await fetch(`${API_URL}/sports`);
+        if (sportsRes.ok) {
+          const sportsData = await sportsRes.json();
+          setSports(sportsData.data || []);
+        }
+      } catch (err) {
+        console.log("⚠️ Errore caricamento sport");
+      }
     } catch (err) {
       console.log("❌ Errore caricamento dati owner");
     }
@@ -579,6 +621,12 @@ export default function OwnerBookingsScreen() {
       const data = await res.json();
       
       console.log(`📋 Caricate ${data.length} prenotazioni owner`);
+      
+      // Debug: check first booking structure
+      if (data.length > 0) {
+        console.log("📝 Prima prenotazione:", JSON.stringify(data[0], null, 2));
+      }
+      
       setBookings(data);
       setLoading(false);
     } catch (err) {
@@ -641,6 +689,9 @@ export default function OwnerBookingsScreen() {
     // Filter by campo
     if (filterCampo && b.campo?._id !== filterCampo) return false;
     
+    // Filter by sport
+    if (filterSport && b.campo?.sport?.code !== filterSport) return false;
+    
     // Filter by date
     if (filterDate && b.date !== filterDate) return false;
     
@@ -667,10 +718,11 @@ export default function OwnerBookingsScreen() {
     setFilterUsername("");
     setFilterStruttura("");
     setFilterCampo("");
+    setFilterSport("");
     setFilterDate("");
   };
 
-  const hasActiveFilters = filterUsername || filterStruttura || filterCampo || filterDate;
+  const hasActiveFilters = filterUsername || filterStruttura || filterCampo || filterSport || filterDate;
 
   /* =========================
      RENDER
@@ -832,6 +884,22 @@ export default function OwnerBookingsScreen() {
               </Text>
             </Pressable>
 
+            <Pressable
+              style={[styles.filterChip, filterSport && styles.filterChipActive]}
+              onPress={() => setShowSportModal(true)}
+            >
+              <Ionicons
+                name="football-outline"
+                size={16}
+                color={filterSport ? "white" : "#666"}
+              />
+              <Text style={[styles.filterChipText, filterSport && styles.filterChipTextActive]}>
+                {filterSport
+                  ? sports.find((s) => s.code === filterSport)?.name || "Sport"
+                  : "Sport"}
+              </Text>
+            </Pressable>
+
             {filterStruttura && campiFiltered.length > 0 && (
               <Pressable
                 style={[styles.filterChip, filterCampo && styles.filterChipActive]}
@@ -938,36 +1006,33 @@ export default function OwnerBookingsScreen() {
 
       {/* STRUTTURA MODAL */}
       <Modal visible={showStrutturaModal} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowStrutturaModal(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleziona Struttura</Text>
-              <Pressable onPress={() => setShowStrutturaModal(false)} hitSlop={10}>
-                <Ionicons name="close" size={24} color="#999" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona Struttura</Text>
             </View>
-
-            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
               <Pressable
-                style={[styles.optionItem, !filterStruttura && styles.optionItemSelected]}
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
                 onPress={() => {
                   setFilterStruttura("");
                   setFilterCampo("");
                   setShowStrutturaModal(false);
                 }}
               >
-                <Text style={[styles.optionText, !filterStruttura && styles.optionTextSelected]}>
-                  Tutte le strutture
-                </Text>
-                {!filterStruttura && <Ionicons name="checkmark" size={20} color="#2196F3" />}
+                <Text style={styles.filterModalOptionText}>✨ Tutte le strutture</Text>
               </Pressable>
-
-              {strutture.map((struttura) => (
+              {strutture.map((struttura, index) => (
                 <Pressable
                   key={struttura._id}
-                  style={[
-                    styles.optionItem,
-                    filterStruttura === struttura._id && styles.optionItemSelected,
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < strutture.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
                   ]}
                   onPress={() => {
                     setFilterStruttura(struttura._id);
@@ -975,126 +1040,184 @@ export default function OwnerBookingsScreen() {
                     setShowStrutturaModal(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      filterStruttura === struttura._id && styles.optionTextSelected,
-                    ]}
-                  >
+                  <Ionicons name="business-outline" size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>
                     {struttura.name}
                   </Text>
-                  {filterStruttura === struttura._id && (
-                    <Ionicons name="checkmark" size={20} color="#2196F3" />
-                  )}
                 </Pressable>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowStrutturaModal(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* CAMPO MODAL */}
       <Modal visible={showCampoModal} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowCampoModal(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleziona Campo</Text>
-              <Pressable onPress={() => setShowCampoModal(false)} hitSlop={10}>
-                <Ionicons name="close" size={24} color="#999" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona Campo</Text>
             </View>
-
-            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
               <Pressable
-                style={[styles.optionItem, !filterCampo && styles.optionItemSelected]}
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
                 onPress={() => {
                   setFilterCampo("");
                   setShowCampoModal(false);
                 }}
               >
-                <Text style={[styles.optionText, !filterCampo && styles.optionTextSelected]}>
-                  Tutti i campi
-                </Text>
-                {!filterCampo && <Ionicons name="checkmark" size={20} color="#2196F3" />}
+                <Text style={styles.filterModalOptionText}>✨ Tutti i campi</Text>
               </Pressable>
-
-              {campiFiltered.map((campo) => (
+              {campiFiltered.map((campo, index) => (
                 <Pressable
                   key={campo._id}
-                  style={[
-                    styles.optionItem,
-                    filterCampo === campo._id && styles.optionItemSelected,
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < campiFiltered.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
                   ]}
                   onPress={() => {
                     setFilterCampo(campo._id);
                     setShowCampoModal(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      filterCampo === campo._id && styles.optionTextSelected,
-                    ]}
-                  >
+                  <Ionicons name="basketball-outline" size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>
                     {campo.name}
                   </Text>
-                  {filterCampo === campo._id && (
-                    <Ionicons name="checkmark" size={20} color="#2196F3" />
-                  )}
                 </Pressable>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowCampoModal(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SPORT MODAL */}
+      <Modal visible={showSportModal} animationType="slide" transparent>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona Sport</Text>
+            </View>
+            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
+                onPress={() => {
+                  setFilterSport("");
+                  setShowSportModal(false);
+                }}
+              >
+                <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
+              </Pressable>
+              {sports.map((sport, index) => (
+                <Pressable
+                  key={sport._id}
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < sports.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
+                  ]}
+                  onPress={() => {
+                    setFilterSport(sport.code);
+                    setShowSportModal(false);
+                  }}
+                >
+                  <SportIcon sport={sport.code} size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>
+                    {sport.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowSportModal(false)}
+              >
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* CALENDAR MODAL */}
       <Modal visible={showCalendarModal} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowCalendarModal(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleziona Data</Text>
-              <Pressable onPress={() => setShowCalendarModal(false)} hitSlop={10}>
-                <Ionicons name="close" size={24} color="#999" />
-              </Pressable>
+        <View style={styles.centeredModalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Seleziona Data</Text>
             </View>
-
-            <Calendar
-              onDayPress={(day) => {
-                setFilterDate(day.dateString);
-                setShowCalendarModal(false);
-              }}
-              markedDates={{
-                [filterDate]: {
-                  selected: true,
-                  selectedColor: "#2196F3",
-                },
-              }}
-              theme={{
-                selectedDayBackgroundColor: "#2196F3",
-                todayTextColor: "#2196F3",
-                arrowColor: "#2196F3",
-                monthTextColor: "#333",
-                textMonthFontSize: 18,
-                textDayFontSize: 16,
-                textDayHeaderFontSize: 14,
-              }}
-              style={styles.calendar}
-            />
-
-            {filterDate && (
-              <Pressable
-                style={styles.clearDateButton}
-                onPress={() => {
-                  setFilterDate("");
+            <View style={styles.calendarContainer}>
+              <Calendar
+                onDayPress={(day) => {
+                  setFilterDate(day.dateString);
                   setShowCalendarModal(false);
                 }}
+                markedDates={{
+                  [filterDate]: {
+                    selected: true,
+                    selectedColor: "#2196F3",
+                  },
+                }}
+                theme={{
+                  selectedDayBackgroundColor: "#2196F3",
+                  todayTextColor: "#2196F3",
+                  arrowColor: "#2196F3",
+                  monthTextColor: "#333",
+                  textMonthFontSize: 18,
+                  textDayFontSize: 16,
+                  textDayHeaderFontSize: 14,
+                }}
+                style={styles.calendar}
+              />
+
+              {filterDate && (
+                <Pressable
+                  style={styles.clearDateButton}
+                  onPress={() => {
+                    setFilterDate("");
+                    setShowCalendarModal(false);
+                  }}
+                >
+                  <Text style={styles.clearDateText}>Rimuovi filtro data</Text>
+                </Pressable>
+              )}
+            </View>
+            <View style={styles.filterModalFooter}>
+              <Pressable
+                style={styles.filterModalCancel}
+                onPress={() => setShowCalendarModal(false)}
               >
-                <Text style={styles.clearDateText}>Rimuovi filtro data</Text>
+                <Text style={styles.filterModalCancelText}>Annulla</Text>
               </Pressable>
-            )}
-          </Pressable>
-        </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1665,5 +1788,84 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#666",
+  },
+
+  // Nuovi stili per i modal filtri centrati come in CercaPartita
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    marginHorizontal: 40,
+    width: "85%",
+    maxHeight: "75%",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
+  },
+  filterModalHeader: {
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    backgroundColor: "#2196F3",
+    minHeight: 70,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "white",
+    textAlign: "center",
+  },
+  filterModalContent: {
+    maxHeight: 350,
+    paddingTop: 8,
+  },
+  filterModalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginHorizontal: 12,
+    backgroundColor: "transparent",
+  },
+  filterModalOptionWithBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#e8e8e8",
+    marginBottom: 0,
+  },
+  filterModalOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+  },
+  filterModalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  filterModalCancel: {
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    alignItems: "center",
+  },
+  filterModalCancelText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "700",
   },
 });

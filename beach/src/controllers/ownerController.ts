@@ -291,10 +291,16 @@ export const getOwnerMatches = async (req: AuthRequest, res: Response) => {
           {
             path: "campo",
             select: "name sport",
-            populate: {
-              path: "struttura",
-              select: "name location",
-            },
+            populate: [
+              {
+                path: "sport",
+                select: "name",
+              },
+              {
+                path: "struttura",
+                select: "name location",
+              },
+            ],
           },
           {
             path: "user",
@@ -531,7 +537,7 @@ async function getMostGamesPlayedSuggestions(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "most_games_played",
@@ -597,7 +603,7 @@ async function getFollowsStructureSuggestions(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "follows_structure",
@@ -676,7 +682,7 @@ async function getVipUserSuggestionsForOwner(
             name: user.name,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "vip_user",

@@ -61,7 +61,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
   };
 
   // Format sport name
-  const formatSportName = (sport: string) => {
+  const formatSportName = (sport?: string) => {
+    if (!sport) return 'Sport';
     switch (sport) {
       case 'beach_volleyball':
         return 'Beach Volley';
@@ -124,12 +125,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
             </View>
 
-            <View style={styles.matchSportBadge}>
-              <SportIcon sport={match.booking?.sport || 'beach_volleyball'} size={16} color="#2196F3" />
-              <Text style={styles.matchSportText}>
-                {formatSportName(match.booking?.sport || 'beach_volleyball')}
-              </Text>
-            </View>
+            {match.booking?.campo?.sport?.code && (
+              <View style={styles.matchSportBadge}>
+                <SportIcon sport={match.booking.campo.sport.code} size={16} color="#2196F3" />
+                <Text style={styles.matchSportText}>
+                  {formatSportName(match.booking.campo.sport.code)}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Teams and Score */}
@@ -143,8 +146,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={[styles.openMatchTeamSlots, { flexWrap: 'wrap', height: undefined }]}> 
                 {(() => {
-                  const sport = match.booking?.sport || match.booking?.campo?.sport || '';
-                  const lowerSport = sport.toLowerCase();
+                  const sport = match.booking?.campo?.sport?.code || '';
+                  const lowerSport = typeof sport === 'string' ? sport.toLowerCase() : '';
                   const isBeachVolley = lowerSport.includes('beach') && lowerSport.includes('volley');
                   const teamSize = teamAPlayers.length;
                   // 2v2: una riga, 3v3: due righe (2 sopra, 1 sotto centrato)
@@ -439,8 +442,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               </View>
               <View style={[styles.openMatchTeamSlots, { flexWrap: 'wrap', height: undefined }]}> 
                 {(() => {
-                  const sport = match.booking?.sport || match.booking?.campo?.sport || '';
-                  const lowerSport = sport.toLowerCase();
+                  const sport = match.booking?.campo?.sport?.code || '';
+                  const lowerSport = typeof sport === 'string' ? sport.toLowerCase() : '';
                   const isBeachVolley = lowerSport.includes('beach') && lowerSport.includes('volley');
                   const teamSize = teamBPlayers.length;
                   if (isBeachVolley && teamSize === 2) {

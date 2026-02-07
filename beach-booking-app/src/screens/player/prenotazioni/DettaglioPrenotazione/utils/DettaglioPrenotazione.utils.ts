@@ -158,7 +158,7 @@ export const joinMatch = async (matchId: string, team: "A" | "B", token: string)
 
 export const submitMatchScore = async (
   matchId: string,
-  winner: "A" | "B",
+  winner: "A" | "B" | null,
   sets: { teamA: number; teamB: number }[],
   token: string
 ) => {
@@ -168,7 +168,7 @@ export const submitMatchScore = async (
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ score: { sets } }),
+    body: JSON.stringify({ score: { sets, winner } }),
   });
 
   if (!res.ok) {

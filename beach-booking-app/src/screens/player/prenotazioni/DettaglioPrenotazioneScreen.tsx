@@ -28,7 +28,7 @@ import {
   submitMatchScore
 } from "./DettaglioPrenotazione/utils/DettaglioPrenotazione.utils";
 import { getTeamFormationLabel } from "../../../utils/matchSportRules";
-import PlayerCardWithTeam from "./DettaglioPrenotazione/components/DettaglioPrenotazione.components";
+import PlayerCardWithTeam from "../../../components/booking/components/PlayerCardWithTeam";
 import TeamSelectionModal from "./DettaglioPrenotazione/components/TeamSelectionModal";
 import ScoreModal from "./DettaglioPrenotazione/components/ScoreModal";
 import styles from "./DettaglioPrenotazione/styles/DettaglioPrenotazione.styles";
@@ -51,6 +51,7 @@ import {
   calculateDuration,
 } from "../../../components/booking";
 import ScoreDisplay from "../../../components/booking/components/ScoreDisplay";
+import TeamSection from "../../../components/booking/components/TeamSection";
 
 export default function DettaglioPrenotazioneScreen() {
   console.log('🚀 [DettaglioPrenotazione] Componente inizializzato');
@@ -59,6 +60,8 @@ export default function DettaglioPrenotazioneScreen() {
   const route = useRoute<any>();
   console.log('🔍 [DettaglioPrenotazione] Route object:', route);
   const { bookingId, openScoreModal, openJoinModal, fromOpenMatch } = route?.params || {};
+
+  console.log('📖 [DettaglioPrenotazione] Apertura prenotazione con ID:', bookingId);
 
   const { showAlert, AlertComponent } = useCustomAlert();
 
@@ -441,6 +444,34 @@ export default function DettaglioPrenotazioneScreen() {
     return team === "A" ? "people" : team === "B" ? "people" : "person-add";
   };
 
+  // Determina il tipo di sport per lo ScoreModal
+  const getSportType = (campo?: any): string => {
+    if (!campo) return 'beach_volley';
+    
+    // Se campo.sport è un oggetto con code
+    if (typeof campo.sport === 'object' && campo.sport?.code) {
+      return campo.sport.code;
+    }
+    
+    // Se campo.sport è una stringa
+    const sportStr = (campo.sport || '').toLowerCase();
+    
+    // Mappa le possibili varianti al codice corretto
+    if (sportStr.includes('beach') && sportStr.includes('volley')) return 'beach_volley';
+    if (sportStr === 'volley' || sportStr === 'volleyball') return 'volley';
+    if (sportStr.includes('beach') && sportStr.includes('tennis')) return 'beach_tennis';
+    if (sportStr === 'tennis') return 'tennis';
+    if (sportStr === 'padel') return 'padel';
+    if (sportStr === 'calcio') return 'calcio';
+    if (sportStr === 'calcetto') return 'calcetto';
+    if (sportStr === 'calciotto') return 'calciotto';
+    if (sportStr.includes('calcio') && sportStr.includes('7')) return 'calcio_a_7';
+    if (sportStr === 'basket' || sportStr === 'basketball') return 'basket';
+    
+    // Default: beach volley
+    return 'beach_volley';
+  };
+
   const canCancelBooking = () => {
     if (!booking || !user) return false;
     // Solo il creatore della prenotazione può cancellarla
@@ -459,7 +490,7 @@ export default function DettaglioPrenotazioneScreen() {
     return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
   };
 
-  const handleSubmitScore = async (winner: 'A' | 'B', sets: { teamA: number; teamB: number }[]) => {
+  const handleSubmitScore = async (winner: 'A' | 'B' | null, sets: { teamA: number; teamB: number }[]) => {
     if (!booking?.matchId || !token) return;
 
     try {
@@ -945,20 +976,12 @@ export default function DettaglioPrenotazioneScreen() {
         throw new Error(error.message || "Errore nell'unione al match");
       }
 
-      // Update local state instead of reloading
+      // Usa il match aggiornato dalla risposta del backend
+      const updatedMatch = await res.json();
+      
       updateBookingState((prevBooking) => ({
         ...prevBooking,
-        match: {
-          ...prevBooking.match,
-          players: [
-            ...prevBooking.match.players,
-            {
-              user: user,
-              status: 'confirmed',
-              team: team || null,
-            }
-          ]
-        }
+        match: updatedMatch
       }));
 
       showCustomAlert("✅ Match unito!", "Ti sei unito al match con successo");
@@ -1367,6 +1390,7 @@ export default function DettaglioPrenotazioneScreen() {
             teamAPlayers={teamAConfirmed}
             teamBPlayers={teamBConfirmed}
             showEditLabel={isCreator && getMatchStatus() !== "cancelled"}
+            sportType={typeof booking.campo.sport === 'string' ? booking.campo.sport : booking.campo.sport.name || booking.campo.sport.code}
           />
         </FadeInView>
       )}
@@ -1399,103 +1423,44 @@ export default function DettaglioPrenotazioneScreen() {
       {confirmedPlayers.length > 0 && (
         <SlideInView delay={800} from="bottom">
           <View style={styles.teamsContainer}>
-            {/* Team A */}
-            <View style={styles.teamSection}>
-              <TeamAGradient style={styles.teamHeader}>
-                <Ionicons name="people-circle" size={20} color="white" />
-                <Text style={[styles.teamTitle, { color: "white" }]}>
-                  Team A ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
-                </Text>
-                <View style={styles.teamHeaderRight}>
-                  <Text style={[styles.teamCount, { color: "white" }]}>
-                    {teamAConfirmed.length}/{maxPlayersPerTeam}
-                  </Text>
-                  {teamAConfirmed.length === maxPlayersPerTeam && (
-                    <ScaleInView delay={900}>
-                      <Ionicons name="checkmark-circle" size={16} color="white" />
-                    </ScaleInView>
-                  )}
-                </View>
-              </TeamAGradient>
-
-              <View style={styles.teamSlotsContainer}>
-                {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
-                  const player = teamAConfirmed[index];
-                  const slotNumber = index + 1;
-
-                  return (
-                    <FadeInView key={`teamA-slot-${slotNumber}`} delay={1000 + index * 50}>
-                      <PlayerCardWithTeam
-                        player={player}
-                        isCreator={isCreator}
-                        currentUserId={getUserId(user)}
-                        onRemove={() => player && handleRemovePlayer(player.user._id)}
-                        onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
-                        onLeave={handleLeaveMatch}
-                        currentTeam="A"
-                        isEmptySlot={!player}
-                        onInviteToSlot={!player ? (isCreator ? () => handleInviteToTeam("A", slotNumber) : () => handleJoinMatch("A")) : undefined}
-                        slotNumber={slotNumber}
-                        matchStatus={getMatchStatus()}
-                        isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
-                        teamACount={teamAPlayers}
-                        teamBCount={teamBPlayers}
-                        maxPlayersPerTeam={maxPlayersPerTeam}
-                      />
-                    </FadeInView>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Team B */}
-            <View style={styles.teamSection}>
-              <TeamBGradient style={styles.teamHeader}>
-                <Ionicons name="people" size={20} color="white" />
-                <Text style={[styles.teamTitle, { color: "white" }]}>
-                  Team B ({getTeamFormationLabel(booking?.match?.maxPlayers || 4)})
-                </Text>
-                <View style={styles.teamHeaderRight}>
-                  <Text style={[styles.teamCount, { color: "white" }]}>
-                    {teamBConfirmed.length}/{maxPlayersPerTeam}
-                  </Text>
-                  {teamBConfirmed.length === maxPlayersPerTeam && (
-                    <ScaleInView delay={900}>
-                      <Ionicons name="checkmark-circle" size={16} color="white" />
-                    </ScaleInView>
-                  )}
-                </View>
-              </TeamBGradient>
-
-              <View style={styles.teamSlotsContainer}>
-                {Array(maxPlayersPerTeam).fill(null).map((_, index) => {
-                  const player = teamBConfirmed[index];
-                  const slotNumber = index + 1;
-
-                  return (
-                    <FadeInView key={`teamB-slot-${slotNumber}`} delay={1000 + index * 50}>
-                      <PlayerCardWithTeam
-                        player={player}
-                        isCreator={isCreator}
-                        currentUserId={getUserId(user)}
-                        onRemove={() => player && handleRemovePlayer(player.user._id)}
-                        onChangeTeam={(team) => player && handleAssignTeam(player.user._id, team)}
-                        onLeave={handleLeaveMatch}
-                        currentTeam="B"
-                        isEmptySlot={!player}
-                        onInviteToSlot={!player ? (isCreator ? () => handleInviteToTeam("B", slotNumber) : () => handleJoinMatch("B")) : undefined}
-                        slotNumber={slotNumber}
-                        matchStatus={getMatchStatus()}
-                        isOrganizer={player?.user?._id === booking.match?.createdBy?._id}
-                        teamACount={teamAPlayers}
-                        teamBCount={teamBPlayers}
-                        maxPlayersPerTeam={maxPlayersPerTeam}
-                      />
-                    </FadeInView>
-                  );
-                })}
-              </View>
-            </View>
+            <TeamSection
+              team="A"
+              players={teamAConfirmed}
+              isCreator={isCreator}
+              currentUserId={getUserId(user)}
+              onRemovePlayer={handleRemovePlayer}
+              onAssignTeam={handleAssignTeam}
+              maxPlayersPerTeam={maxPlayersPerTeam}
+              onInviteToTeam={handleInviteToTeam}
+              matchStatus={getMatchStatus()}
+              variant="player"
+              maxPlayers={booking?.match?.maxPlayers}
+              organizerId={booking.match?.createdBy?._id}
+              teamACount={teamAPlayers}
+              teamBCount={teamBPlayers}
+              showFormation={true}
+              onEmptySlotPress={(team, slotNumber) => isCreator ? handleInviteToTeam(team, slotNumber) : handleJoinMatch(team)}
+              onLeave={handleLeaveMatch}
+            />
+            <TeamSection
+              team="B"
+              players={teamBConfirmed}
+              isCreator={isCreator}
+              currentUserId={getUserId(user)}
+              onRemovePlayer={handleRemovePlayer}
+              onAssignTeam={handleAssignTeam}
+              maxPlayersPerTeam={maxPlayersPerTeam}
+              onInviteToTeam={handleInviteToTeam}
+              matchStatus={getMatchStatus()}
+              variant="player"
+              maxPlayers={booking?.match?.maxPlayers}
+              organizerId={booking.match?.createdBy?._id}
+              teamACount={teamAPlayers}
+              teamBCount={teamBPlayers}
+              showFormation={true}
+              onEmptySlotPress={(team, slotNumber) => isCreator ? handleInviteToTeam(team, slotNumber) : handleJoinMatch(team)}
+              onLeave={handleLeaveMatch}
+            />
           </View>
         </SlideInView>
       )}
@@ -1522,6 +1487,7 @@ export default function DettaglioPrenotazioneScreen() {
                     teamACount={teamAPlayers}
                     teamBCount={teamBPlayers}
                     maxPlayersPerTeam={maxPlayersPerTeam}
+                    variant="player"
                   />
                 </SlideInView>
               ))}
@@ -1826,12 +1792,12 @@ export default function DettaglioPrenotazioneScreen() {
         teamA={{
           current: teamAPlayers,
           max: maxPlayersPerTeam,
-          players: booking?.match?.players?.filter(p => p.team === "A") || []
+          players: booking?.match?.players?.filter(p => p.team === "A" && p.status === "confirmed") || []
         }}
         teamB={{
           current: teamBPlayers,
           max: maxPlayersPerTeam,
-          players: booking?.match?.players?.filter(p => p.team === "B") || []
+          players: booking?.match?.players?.filter(p => p.team === "B" && p.status === "confirmed") || []
         }}
         matchStatus={booking?.match?.status}
         maxPlayersPerTeam={maxPlayersPerTeam}
@@ -1862,8 +1828,7 @@ export default function DettaglioPrenotazioneScreen() {
           onSave={handleSubmitScore}
           currentScore={booking.match?.score}
           matchStatus={booking.match?.status}
-          teamAPlayers={teamAConfirmed}
-          teamBPlayers={teamBConfirmed}
+          sportType={getSportType(booking?.campo)}
         />
       )}
 

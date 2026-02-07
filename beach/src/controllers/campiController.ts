@@ -155,7 +155,7 @@ export const getCampiByStruttura = async (req: Request, res: Response) => {
     const campi = await Campo.find({
       struttura: req.params.id,
       isActive: true,
-    }).sort({ name: 1 });
+    }).populate('sport').sort({ name: 1 });
 
     console.log(`✅ Trovati ${campi.length} campi attivi`);
     console.log("📤 Invio lista campi attivi");
@@ -192,7 +192,7 @@ export const getAllCampiByStruttura = async (req: AuthRequest, res: Response) =>
     // Trova TUTTI i campi (anche isActive: false)
     const campi = await Campo.find({
       struttura: req.params.id,
-    }).sort({ name: 1 });
+    }).populate('sport').sort({ name: 1 });
     
     console.log(`✅ Trovati ${campi.length} campi totali`);
     console.log("📤 Invio lista tutti campi");
@@ -317,7 +317,7 @@ export const getCampoById = async (req: Request, res: Response) => {
     console.log("🏟️  GET /campi/:id");
     
     console.log("🔍 Cercando campo...");
-    const campo = await Campo.findById(req.params.id).populate("struttura");
+    const campo = await Campo.findById(req.params.id).populate("struttura").populate("sport");
 
     if (!campo) {
       console.log("❌ Campo non trovato:", req.params.id);

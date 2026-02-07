@@ -981,7 +981,7 @@ export const friendshipController = {
             surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "match_together",
@@ -1112,7 +1112,7 @@ export const friendshipController = {
             surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "mutual_friends",
@@ -1277,7 +1277,7 @@ export const friendshipController = {
             surname: user.surname,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            preferredSports: user.preferredSports,
+            preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
           },
           reason: {
             type: "same_venue",

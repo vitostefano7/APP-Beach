@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Avatar } from "../../../../../components/Avatar";
-import { styles } from "../../../styles/DettaglioPrenotazioneOwnerScreen.styles";
+import { Avatar } from "../../Avatar";
+import { createTeamSectionStyles } from "../styles/TeamSection.styles";
 
 interface Player {
   user: {
@@ -36,6 +36,7 @@ interface PlayerCardWithTeamProps {
   teamACount?: number;
   teamBCount?: number;
   maxPlayersPerTeam?: number;
+  variant: 'owner' | 'player'; // Aggiunto per distinguere
 }
 
 const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
@@ -57,23 +58,42 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   teamACount = 0,
   teamBCount = 0,
   maxPlayersPerTeam = 2,
+  variant,
 }) => {
+  const styles = createTeamSectionStyles(variant);
+
   const isCurrentUser = player?.user?._id === currentUserId;
   const isConfirmed = player?.status === "confirmed";
   const isDeclined = player?.status === "declined";
-  
-  // Per l'owner, permetti di invitare se è il creatore
-  const canChangeTeam = false;
-  const canRemove = isCreator && player && matchStatus !== "completed" && matchStatus !== "cancelled" && matchStatus !== "in_progress";
-  const canLeave = false;
-  const canInvite = isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
+
+  // Logica permessi diversa per variant
+  let canChangeTeam = false;
+  let canRemove = false;
+  let canLeave = false;
+  let canInvite = false;
+
+  if (variant === 'owner') {
+    canRemove = isCreator && player && matchStatus !== "completed" && matchStatus !== "cancelled" && matchStatus !== "in_progress";
+    canInvite = isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
+  } else {
+    // Player logic
+    canChangeTeam = (isCurrentUser || isCreator) && isConfirmed &&
+      matchStatus !== "completed" &&
+      matchStatus !== "cancelled" &&
+      matchStatus !== "in_progress";
+    canRemove = isCreator && player?.user?._id !== currentUserId &&
+      matchStatus !== "completed" &&
+      matchStatus !== "cancelled" &&
+      matchStatus !== "in_progress";
+    canLeave = isCurrentUser && isConfirmed && !isCreator && matchStatus !== "completed" && matchStatus !== "cancelled";
+  }
 
   // Se è uno slot vuoto
   if (isEmptySlot) {
     if (canInvite && onInviteToSlot) {
       return (
-        <Pressable 
-          style={[styles.playerSlot, styles.emptySlotInvite]} 
+        <Pressable
+          style={[styles.playerSlot, styles.emptySlotInvite]}
           onPress={onInviteToSlot}
         >
           <View style={[styles.playerAvatarCircle, styles.inviteAvatarCircle]}>
@@ -91,7 +111,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
         </Pressable>
       );
     }
-    
+
     return (
       <View style={[styles.playerSlot, { opacity: 0.5 }]}>
         <View style={styles.playerAvatarCircle}>
@@ -113,7 +133,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
   }
 
   return (
-    <Pressable 
+    <Pressable
       style={[
         styles.playerSlot,
         isPending && { opacity: 0.7 },
@@ -133,7 +153,7 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
 
       <View style={styles.playerInfoSlot}>
         <Text style={styles.playerNameSlot}>
-          {player.user?.name && player.user?.surname 
+          {player.user?.name && player.user?.surname
             ? `${player.user.name} ${player.user.surname}`
             : player.user?.name || "Giocatore"}
           {isOrganizer && (
@@ -157,14 +177,14 @@ const PlayerCardWithTeam: React.FC<PlayerCardWithTeamProps> = ({
       >
         <Ionicons
           name={
-            isConfirmed ? "checkmark-circle" : 
-            isPending ? "time" : 
+            isConfirmed ? "checkmark-circle" :
+            isPending ? "time" :
             "close-circle"
           }
           size={20}
           color={
-            isConfirmed ? "#4CAF50" : 
-            isPending ? "#FF9800" : 
+            isConfirmed ? "#4CAF50" :
+            isPending ? "#FF9800" :
             "#F44336"
           }
         />

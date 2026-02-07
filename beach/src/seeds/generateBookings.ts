@@ -50,71 +50,190 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
   const bookings: any[] = [];
   const today = new Date();
 
-  // Separa campi beach e volley
-  const beachCampi = campi.filter((c: any) => c.sport === "beach volley");
-  const volleyCampi = campi.filter((c: any) => c.sport === "volley");
+  // Popola lo sport per tutti i campi per poter filtrare
+  console.log("🔄 Popolamento sport per campi...");
+  const campiPopulated = await Promise.all(
+    campi.map(async (campo) => {
+      const populated = await campo.populate('sport');
+      return populated;
+    })
+  );
 
-  for (const player of players) {
-    // ============================================
-    // 4 PRENOTAZIONI PASSATE
-    // ============================================
-    
-    // 1. Beach volley con 4 giocatori
-    const pastDate1 = new Date(today);
-    pastDate1.setDate(pastDate1.getDate() - randomInt(2, 30));
-    const beachCampo1: any = randomElement(beachCampi);
-    const struttura1 = strutture.find((s: any) => s._id.toString() === beachCampo1.struttura.toString());
-    bookings.push(createBooking(player, beachCampo1, struttura1, pastDate1, 4));
-
-    // 2. Beach volley con 6 giocatori
-    const pastDate2 = new Date(today);
-    pastDate2.setDate(pastDate2.getDate() - randomInt(2, 30));
-    const beachCampo2: any = randomElement(beachCampi);
-    const struttura2 = strutture.find((s: any) => s._id.toString() === beachCampo2.struttura.toString());
-    bookings.push(createBooking(player, beachCampo2, struttura2, pastDate2, 6));
-
-    // 3. Beach volley con 8 giocatori
-    const pastDate3 = new Date(today);
-    pastDate3.setDate(pastDate3.getDate() - randomInt(2, 30));
-    const beachCampo3: any = randomElement(beachCampi);
-    const struttura3 = strutture.find((s: any) => s._id.toString() === beachCampo3.struttura.toString());
-    bookings.push(createBooking(player, beachCampo3, struttura3, pastDate3, 8));
-
-    // 4. Volley (campo interno)
-    const pastDate4 = new Date(today);
-    pastDate4.setDate(pastDate4.getDate() - randomInt(2, 30));
-    const volleyCampo: any = randomElement(volleyCampi);
-    const strutturaVolley = strutture.find((s: any) => s._id.toString() === volleyCampo.struttura.toString());
-    bookings.push(createBooking(player, volleyCampo, strutturaVolley, pastDate4, undefined));
-
-    // ============================================
-    // 2 PRENOTAZIONI OGGI (beach 6 o 8 giocatori)
-    // ============================================
-    for (let i = 0; i < 2; i++) {
-      const beachCampo: any = randomElement(beachCampi);
-      const struttura = strutture.find((s: any) => s._id.toString() === beachCampo.struttura.toString());
-      const numPeople = randomElement([6, 8]);
-      bookings.push(createBooking(player, beachCampo, struttura, today, numPeople));
-    }
-
-    // ============================================
-    // 4 PRENOTAZIONI FUTURE (beach 6 o 8 giocatori)
-    // ============================================
-    for (let i = 0; i < 4; i++) {
-      const futureDate = new Date(today);
-      futureDate.setDate(futureDate.getDate() + randomInt(1, 10));
-      const beachCampo: any = randomElement(beachCampi);
-      const struttura = strutture.find((s: any) => s._id.toString() === beachCampo.struttura.toString());
-      const numPeople = randomElement([6, 8]);
-      bookings.push(createBooking(player, beachCampo, struttura, futureDate, numPeople));
+  // Raggruppa campi per codice sport
+  const campiPerSport = new Map<string, any[]>();
+  for (const campo of campiPopulated) {
+    if (campo.sport?.code) {
+      if (!campiPerSport.has(campo.sport.code)) {
+        campiPerSport.set(campo.sport.code, []);
+      }
+      campiPerSport.get(campo.sport.code)!.push(campo);
     }
   }
 
+  const sportCodes = Array.from(campiPerSport.keys());
+  console.log(`📊 Sport disponibili: ${sportCodes.join(", ")}`);
+  sportCodes.forEach(code => {
+    console.log(`   - ${code}: ${campiPerSport.get(code)!.length} campi`);
+  });
+
+  for (const player of players) {
+    // ============================================
+    // ALMENO 1 PRENOTAZIONE PER OGNI SPORT
+    // ============================================
+    const sportBookingsCount = new Map<string, number>();
+    
+    // Inizializza contatori per ogni sport
+    sportCodes.forEach(code => sportBookingsCount.set(code, 0));
+    
+    // Lista di booking da creare
+    const playerBookings: any[] = [];
+    
+    // 1. Crea almeno 2 booking passati per ogni sport
+    for (const sportCode of sportCodes) {
+      for (let j = 0; j < 2; j++) { // Loop 2 volte per ogni sport
+        const campiForSport = campiPerSport.get(sportCode)!;
+        if (campiForSport.length === 0) continue;
+        
+        const campo: any = randomElement(campiForSport);
+        if (!campo || !campo.struttura) continue;
+        
+        const struttura = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
+        if (!struttura) continue;
+        
+        const pastDate = new Date(today);
+        pastDate.setDate(pastDate.getDate() - randomInt(2, 30));
+        
+        // Numero giocatori basato sullo sport
+        const sport = campo.sport;
+        let numPeople = undefined;
+        
+        if (sport?.allowsPlayerPricing && sport?.minPlayers) {
+          const possibleCounts = [];
+          for (let n = sport.minPlayers; n <= sport.maxPlayers; n += 2) {
+            possibleCounts.push(n);
+          }
+          numPeople = randomElement(possibleCounts);
+        }
+        
+        playerBookings.push(createBooking(player, campo, struttura, pastDate, numPeople));
+        sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
+      }
+    }
+    
+    // 2. Aggiungi altre prenotazioni passate casuali per varietà (2 booking)
+    for (let i = 0; i < 2; i++) {
+      const sportCode = randomElement(sportCodes);
+      const campiForSport = campiPerSport.get(sportCode)!;
+      if (campiForSport.length === 0) continue;
+      
+      const campo: any = randomElement(campiForSport);
+      if (!campo || !campo.struttura) continue;
+      
+      const struttura = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
+      if (!struttura) continue;
+      
+      const pastDate = new Date(today);
+      pastDate.setDate(pastDate.getDate() - randomInt(2, 30));
+      
+      const sport = campo.sport;
+      let numPeople = undefined;
+      
+      if (sport?.allowsPlayerPricing && sport?.minPlayers) {
+        const possibleCounts = [];
+        for (let n = sport.minPlayers; n <= sport.maxPlayers; n += 2) {
+          possibleCounts.push(n);
+        }
+        numPeople = randomElement(possibleCounts);
+      }
+      
+      playerBookings.push(createBooking(player, campo, struttura, pastDate, numPeople));
+      sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
+    }
+
+    // 3. Aggiungi 2 prenotazioni per oggi (sport casuali)
+    for (let i = 0; i < 2; i++) {
+      const sportCode = randomElement(sportCodes);
+      const campiForSport = campiPerSport.get(sportCode)!;
+      if (campiForSport.length === 0) continue;
+      
+      const campo: any = randomElement(campiForSport);
+      if (!campo || !campo.struttura) continue;
+      
+      const struttura = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
+      if (!struttura) continue;
+      
+      const sport = campo.sport;
+      let numPeople = undefined;
+      
+      if (sport?.allowsPlayerPricing && sport?.minPlayers) {
+        const possibleCounts = [];
+        for (let n = sport.minPlayers; n <= sport.maxPlayers; n += 2) {
+          possibleCounts.push(n);
+        }
+        numPeople = randomElement(possibleCounts);
+      }
+      
+      playerBookings.push(createBooking(player, campo, struttura, today, numPeople));
+      sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
+    }
+
+    // 4. Aggiungi 4 prenotazioni future (sport casuali)
+    for (let i = 0; i < 4; i++) {
+      const sportCode = randomElement(sportCodes);
+      const campiForSport = campiPerSport.get(sportCode)!;
+      if (campiForSport.length === 0) continue;
+      
+      const campo: any = randomElement(campiForSport);
+      if (!campo || !campo.struttura) continue;
+      
+      const struttura = strutture.find((s: any) => s._id.toString() === campo.struttura.toString());
+      if (!struttura) continue;
+      
+      const futureDate = new Date(today);
+      futureDate.setDate(futureDate.getDate() + randomInt(1, 10));
+      
+      const sport = campo.sport;
+      let numPeople = undefined;
+      
+      if (sport?.allowsPlayerPricing && sport?.minPlayers) {
+        const possibleCounts = [];
+        for (let n = sport.minPlayers; n <= sport.maxPlayers; n += 2) {
+          possibleCounts.push(n);
+        }
+        numPeople = randomElement(possibleCounts);
+      }
+      
+      playerBookings.push(createBooking(player, campo, struttura, futureDate, numPeople));
+      sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
+    }
+    
+    // Aggiungi tutti i booking del player
+    bookings.push(...playerBookings);
+  }
+
   const savedBookings = await Booking.insertMany(bookings);
+  
+  // Calcola statistiche per sport
+  const bookingsPerSport = new Map<string, number>();
+  for (const booking of savedBookings) {
+    const campo = campiPopulated.find((c: any) => c._id.toString() === booking.campo.toString());
+    if (campo?.sport?.code) {
+      bookingsPerSport.set(
+        campo.sport.code, 
+        (bookingsPerSport.get(campo.sport.code) || 0) + 1
+      );
+    }
+  }
+  
   console.log(`✅ Create ${savedBookings.length} prenotazioni`);
-  console.log(`   - ${players.length * 4} passate (per utente: 3 beach + 1 volley)`);
-  console.log(`   - ${players.length * 2} oggi`);
-  console.log(`   - ${players.length * 4} future`);
+  console.log(`   - ${players.length} giocatori`);
+  console.log(`   - Media ${(savedBookings.length / players.length).toFixed(1)} prenotazioni per giocatore`);
+  console.log(`📊 Distribuzione per sport:`);
+  Array.from(bookingsPerSport.entries())
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([code, count]) => {
+      console.log(`   - ${code}: ${count} booking`);
+    });
 
   // Disabilita gli slot prenotati nel calendario
   for (const booking of savedBookings) {

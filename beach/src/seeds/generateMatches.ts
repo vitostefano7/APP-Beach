@@ -26,9 +26,16 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     return struttura?.isCostSplittingEnabled || false;
   };
 
-  // Helper per ottenere maxPlayers da numberOfPeople del booking
+  // Helper per ottenere maxPlayers dal booking o dal campo
   const getMaxPlayers = (booking: any) => {
-    return booking.numberOfPeople || 4; // default 4 se non specificato
+    // Se il booking ha numberOfPeople (sport con pricing per giocatori), usa quello
+    if (booking.numberOfPeople) {
+      return booking.numberOfPeople;
+    }
+    
+    // Altrimenti usa maxPlayers del campo
+    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    return campo?.maxPlayers || 4; // default 4 se campo non trovato
   };
 
   // ============================================
@@ -74,21 +81,74 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       });
     }
 
-    // Genera risultato realistico
-    const sets: any[] = [];
-    let winsA = 0;
-    let winsB = 0;
-    for (let s = 0; s < 3; s++) {
-      if (winsA === 2 || winsB === 2) break;
-      // Beach volley: max 21 punti per squadra, no pareggi
+    // Genera risultato realistico in base al tipo di sport
+    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    const sportCode = typeof campo?.sport === 'object' ? campo.sport.code : campo?.sport;
+    const sportStr = (sportCode || '').toLowerCase();
+    
+    // Determina il tipo di sport
+    const isSetBased = sportStr.includes('volley') || sportStr.includes('tennis') || sportStr === 'padel';
+    const isPointBased = sportStr.includes('calcio') || sportStr.includes('calcetto') || 
+                         sportStr.includes('calciotto') || sportStr === 'basket';
+    
+    let sets: any[] = [];
+    let winner: 'A' | 'B' | null = null;
+    
+    if (isPointBased) {
+      // Sport point-based: un solo punteggio finale
+      // Calcio/Basket: punteggi tra 0-5 per calcio, 50-100 per basket
       let teamA, teamB;
-      do {
-        teamA = randomInt(15, 21);
-        teamB = randomInt(15, 21);
-      } while (teamA === teamB); // no pareggi
+      if (sportStr === 'basket') {
+        // Basket: punteggi più alti, pareggio raro ma possibile
+        teamA = randomInt(65, 95);
+        teamB = randomInt(65, 95);
+        // 10% possibilità di pareggio
+        if (Math.random() < 0.1) {
+          teamB = teamA;
+        }
+      } else {
+        // Calcio: punteggi bassi, pareggio comune
+        teamA = randomInt(0, 4);
+        teamB = randomInt(0, 4);
+        // 30% possibilità di pareggio
+        if (Math.random() < 0.3) {
+          teamB = teamA;
+        }
+      }
+      
       sets.push({ teamA, teamB });
-      if (teamA > teamB) winsA++;
-      else winsB++;
+      winner = teamA > teamB ? "A" : (teamB > teamA ? "B" : null);
+    } else {
+      // Sport set-based: 2-3 set
+      let winsA = 0;
+      let winsB = 0;
+      const maxPoints = sportStr.includes('beach') && sportStr.includes('volley') ? 21 : 
+                       sportStr === 'volley' ? 25 : 6; // 6 per tennis/padel
+      
+      for (let s = 0; s < 3; s++) {
+        if (winsA === 2 || winsB === 2) break;
+        
+        let teamA, teamB;
+        if (maxPoints === 6) {
+          // Tennis/Padel: giochi per set
+          do {
+            teamA = randomInt(4, 7);
+            teamB = randomInt(4, 7);
+          } while (teamA === teamB);
+        } else {
+          // Volley/Beach Volley: punti per set
+          const minPoints = Math.floor(maxPoints * 0.7);
+          do {
+            teamA = randomInt(minPoints, maxPoints);
+            teamB = randomInt(minPoints, maxPoints);
+          } while (teamA === teamB);
+        }
+        
+        sets.push({ teamA, teamB });
+        if (teamA > teamB) winsA++;
+        else winsB++;
+      }
+      winner = winsA > winsB ? "A" : "B";
     }
 
     matches.push({
@@ -98,31 +158,62 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       maxPlayers: maxPlayers,
       isPublic: canBePublic(booking._id),
       score: { sets },
-      winner: winsA > winsB ? "A" : "B",
+      winner: winner,
       playedAt: new Date(booking.date),
       status: "completed",
     });
     matchCounters.completed++;
   }
 
-  // Match passati senza numberOfPeople (volley) - senza risultato
-  const pastVolley = pastBookings.filter((b: any) => !b.numberOfPeople);
-  for (const booking of pastVolley) {
+  // Match passati senza numberOfPeople (sport senza pricing per giocatori) - senza risultato
+  const pastWithoutPeople = pastBookings.filter((b: any) => !b.numberOfPeople);
+  for (const booking of pastWithoutPeople) {
     const creator = booking.user;
+    // Trova il campo per ottenere maxPlayers
+    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    const maxPlayers = campo?.maxPlayers || 12; // default 12 se campo non trovato
+    
+    // Calcola il 50% dei giocatori
+    const numPlayers = Math.floor(maxPlayers / 2);
+    const playersPerTeam = Math.floor(numPlayers / 2);
+    
+    const matchPlayers: any[] = [];
+    const selectedPlayers: string[] = [creator.toString()];
+    
+    // Aggiungi il creatore al team A
+    matchPlayers.push({
+      user: creator,
+      team: "A",
+      status: "confirmed",
+      joinedAt: new Date(booking.date),
+      respondedAt: new Date(booking.date),
+    });
+    
+    // Aggiungi altri giocatori fino a numPlayers (50% di maxPlayers)
+    for (let j = 1; j < numPlayers; j++) {
+      let player: any;
+      do {
+        player = randomElement(players);
+      } while (selectedPlayers.includes(player._id.toString()));
+      selectedPlayers.push(player._id.toString());
+      
+      const joinDate = new Date(booking.date);
+      joinDate.setHours(joinDate.getHours() - randomInt(1, 24));
+      
+      matchPlayers.push({
+        user: player._id,
+        team: j < playersPerTeam ? "A" : "B",
+        status: "confirmed",
+        joinedAt: joinDate,
+        respondedAt: joinDate,
+      });
+    }
     
     matches.push({
       booking: booking._id,
       createdBy: creator,
-      players: [
-        {
-          user: creator,
-          team: "A",
-          status: "confirmed",
-          joinedAt: new Date(booking.date),
-          respondedAt: new Date(booking.date),
-        },
-      ],
-      maxPlayers: 10, // volley
+      players: matchPlayers,
+      maxPlayers: maxPlayers,
       isPublic: false,
       playedAt: new Date(booking.date),
       status: "not_completed",
@@ -135,9 +226,9 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   // Partite pubbliche che non si sono svolte per mancanza di giocatori
   // ============================================
   // Usa solo booking che NON sono già stati usati per i match completati
-  const usedBookingIds = new Set(matches.map(m => m.booking.toString()));
+  const usedPastBookingIds = new Set(matches.map(m => m.booking.toString()));
   const publicPastBookingsWithPeople = pastBookings
-    .filter((b: any) => b.numberOfPeople && canBePublic(b._id) && !usedBookingIds.has(b._id.toString()))
+    .filter((b: any) => b.numberOfPeople && canBePublic(b._id) && !usedPastBookingIds.has(b._id.toString()))
     .slice(0, Math.floor(pastBookings.length * 0.05)); // 5% dei booking passati
 
   for (const booking of publicPastBookingsWithPeople) {
@@ -190,36 +281,51 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   }
 
   // ============================================
-  // MATCH FUTURI APERTI (1 per player)
-  // Organizzatore + 1 altro utente
+  // MATCH FUTURI APERTI
+  // Almeno 1 match aperto per ogni sport di ogni struttura
   // ============================================
-  // Identifica i booking per le partite aperte (quelli con _isOpenMatch flag non viene salvato,
-  // quindi usiamo l'ultimo booking futuro di ogni utente)
-  const userFutureBookings: Map<string, any[]> = new Map();
-  for (const booking of futureBookings) {
-    const usrId = booking.user.toString();
-    if (!userFutureBookings.has(usrId)) {
-      userFutureBookings.set(usrId, []);
-    }
-    userFutureBookings.get(usrId)!.push(booking);
-  }
-
-  // Per ogni utente, prendi gli ultimi due booking futuri come "partite aperte"
-  const openMatchBookings: any[] = [];
-  const regularFutureBookings: any[] = [];
   
-  for (const [userId, userBookings] of userFutureBookings) {
-    // Ordina per data, gli ultimi due sono quelli per le partite aperte
-    userBookings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Raggruppa i campi per struttura e sport
+  const strutturaPerSport = new Map<string, Map<string, any[]>>();
+  for (const campo of campi) {
+    const strutturaId = campo.struttura.toString();
+    const sportCode = typeof campo.sport === 'object' ? campo.sport.code : campo.sport;
     
-    if (userBookings.length > 0) {
-      // Gli ultimi quattro booking futuri sono per le partite aperte
-      const numOpen = Math.min(4, userBookings.length);
-      openMatchBookings.push(...userBookings.slice(-numOpen));
-      // Il resto sono normali
-      regularFutureBookings.push(...userBookings.slice(0, -numOpen));
+    if (!strutturaPerSport.has(strutturaId)) {
+      strutturaPerSport.set(strutturaId, new Map());
+    }
+    const sportMap = strutturaPerSport.get(strutturaId)!;
+    if (!sportMap.has(sportCode)) {
+      sportMap.set(sportCode, []);
+    }
+    sportMap.get(sportCode)!.push(campo);
+  }
+  
+  // Match aperti: almeno 1 per ogni sport di ogni struttura
+  const openMatchBookings: any[] = [];
+  const usedBookingIds = new Set<string>();
+  
+  for (const [strutturaId, sportMap] of strutturaPerSport) {
+    for (const [sportCode, campiForSport] of sportMap) {
+      // Trova booking futuri per questo sport che non sono già stati usati
+      const availableBookings = futureBookings.filter((b: any) => {
+        if (usedBookingIds.has(b._id.toString())) return false;
+        const campo = campi.find((c: any) => c._id.toString() === b.campo.toString());
+        if (!campo) return false;
+        const bookingSportCode = typeof campo.sport === 'object' ? campo.sport.code : campo.sport;
+        return bookingSportCode === sportCode && campo.struttura.toString() === strutturaId;
+      });
+      
+      if (availableBookings.length > 0) {
+        const booking = randomElement(availableBookings);
+        openMatchBookings.push(booking);
+        usedBookingIds.add(booking._id.toString());
+      }
     }
   }
+  
+  // Booking rimanenti per match normali
+  const regularFutureBookings = futureBookings.filter((b: any) => !usedBookingIds.has(b._id.toString()));
 
   // Crea match aperti (organizzatore + 1 altro giocatore + inviti pending)
   for (const booking of openMatchBookings) {
@@ -250,9 +356,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       },
     ];
 
-    // Aggiungi inviti pending se pubblico
+    // Aggiungi inviti pending se pubblico (assicurati di non superare maxPlayers)
     if (isPublic) {
-      const numInvites = randomInt(2, Math.min(4, maxPlayers - 2)); // 2-4 inviti pending
+      const currentPlayers = matchPlayers.length;
+      const availableSlots = maxPlayers - currentPlayers;
+      const numInvites = availableSlots > 0 ? randomInt(1, Math.min(3, availableSlots)) : 0; // 1-3 inviti
       const selectedPlayers = [creator.toString(), otherPlayer._id.toString()];
       
       for (let i = 0; i < numInvites; i++) {
@@ -346,9 +454,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         },
       ];
 
-      // Aggiungi inviti pending se pubblico
+      // Aggiungi inviti pending se pubblico (assicurati di non superare maxPlayers)
       if (isPublic) {
-        const numInvites = randomInt(2, Math.min(5, maxPlayers - 1)); // 2-5 inviti
+        const currentPlayers = matchPlayers.length;
+        const availableSlots = maxPlayers - currentPlayers;
+        const numInvites = availableSlots > 0 ? randomInt(1, Math.min(4, availableSlots)) : 0; // 1-4 inviti
         const selectedPlayers = [creator.toString()];
         
         for (let i = 0; i < numInvites; i++) {
@@ -437,6 +547,162 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     }
   }
 
+  // ============================================
+  // MATCH APERTI EXTRA - 20 utenti con 10 partite aperte ciascuno
+  // ============================================
+  console.log(`🎲 Creazione match aperti extra per garantire copertura...`);
+  const Booking = (await import("../models/Booking")).default;
+  
+  // Popola i campi con lo sport
+  const campiPopulated = await Promise.all(
+    campi.map(async (campo: any) => {
+      if (!campo.sport || typeof campo.sport === 'string') {
+        return await campo.populate('sport');
+      }
+      return campo;
+    })
+  );
+  
+  // Seleziona 20 utenti random
+  const selectedUsers = [...players].sort(() => Math.random() - 0.5).slice(0, Math.min(20, players.length));
+  const extraBookings: any[] = [];
+  
+  for (const user of selectedUsers) {
+    // Crea 10 booking futuri per questo utente
+    for (let i = 0; i < 10; i++) {
+      // Seleziona struttura random
+      const struttura = randomElement(strutture);
+      if (!struttura) continue;
+      
+      // Seleziona campo random dalla struttura
+      const campiStruttura = campiPopulated.filter((c: any) => c.struttura.toString() === struttura._id.toString());
+      if (campiStruttura.length === 0) continue;
+      
+      const campo = randomElement(campiStruttura);
+      
+      // Data futura random (1-15 giorni)
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(futureDate.getDate() + randomInt(1, 15));
+      
+      // Orario e durata
+      const hour = randomInt(9, 20);
+      const duration = randomElement([1, 1.5]);
+      const startTime = `${String(hour).padStart(2, "0")}:00`;
+      const endHour = duration === 1 ? hour + 1 : hour + 1;
+      const endMinutes = duration === 1.5 ? "30" : "00";
+      const endTime = `${String(endHour).padStart(2, "0")}:${endMinutes}`;
+      
+      // Numero giocatori basato sullo sport
+      const sport = campo.sport;
+      let numPeople = undefined;
+      
+      if (sport?.allowsPlayerPricing && sport?.minPlayers) {
+        const possibleCounts = [];
+        for (let n = sport.minPlayers; n <= sport.maxPlayers; n += 2) {
+          possibleCounts.push(n);
+        }
+        numPeople = randomElement(possibleCounts);
+      }
+      
+      const totalPrice = randomInt(30, 50);
+      const bookingType = numPeople ? "public" : "private";
+      const paymentMode = bookingType === "public" ? "split" : "full";
+      const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
+      
+      extraBookings.push({
+        user: user._id,
+        campo: campo._id,
+        struttura: struttura._id,
+        date: futureDate.toISOString().split("T")[0],
+        startTime,
+        endTime,
+        duration,
+        price: totalPrice,
+        numberOfPeople: numPeople,
+        unitPrice: unitPrice,
+        payments: [],
+        status: "confirmed",
+        bookingType,
+        paymentMode,
+        ownerEarnings: totalPrice,
+      });
+    }
+  }
+  
+  // Salva i booking extra
+  const savedExtraBookings = await Booking.insertMany(extraBookings);
+  console.log(`✅ Creati ${savedExtraBookings.length} booking extra per match aperti`);
+  
+  // Crea i match aperti basati su questi booking
+  for (const booking of savedExtraBookings) {
+    const creator = booking.user;
+    const maxPlayers = getMaxPlayers(booking);
+    const isPublic = canBePublic(booking._id);
+    
+    // Trova un altro giocatore random che ha confermato
+    let otherPlayer: any;
+    do {
+      otherPlayer = randomElement(players);
+    } while (otherPlayer._id.toString() === creator.toString());
+    
+    const matchPlayers: any[] = [
+      {
+        user: creator,
+        team: "A",
+        status: "confirmed",
+        joinedAt: new Date(),
+        respondedAt: new Date(),
+      },
+      {
+        user: otherPlayer._id,
+        team: "B",
+        status: "confirmed",
+        joinedAt: new Date(),
+        respondedAt: new Date(),
+      },
+    ];
+    
+    // Aggiungi inviti pending se pubblico
+    if (isPublic) {
+      const currentPlayers = matchPlayers.length;
+      const availableSlots = maxPlayers - currentPlayers;
+      const numInvites = availableSlots > 0 ? randomInt(1, Math.min(3, availableSlots)) : 0;
+      const selectedPlayers = [creator.toString(), otherPlayer._id.toString()];
+      
+      for (let i = 0; i < numInvites; i++) {
+        let invitedPlayer: any;
+        do {
+          invitedPlayer = randomElement(players);
+        } while (selectedPlayers.includes(invitedPlayer._id.toString()));
+        selectedPlayers.push(invitedPlayer._id.toString());
+        
+        matchPlayers.push({
+          user: invitedPlayer._id,
+          team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+          status: "pending",
+          joinedAt: new Date(),
+        });
+        
+        const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
+        userInviteCount.set(invitedPlayer._id.toString(), currentCount + 1);
+      }
+      matchCounters.withInvites++;
+    }
+    
+    matches.push({
+      booking: booking._id,
+      createdBy: creator,
+      players: matchPlayers,
+      maxPlayers: maxPlayers,
+      isPublic: isPublic,
+      status: "open",
+    });
+    matchCounters.open++;
+  }
+  
+  console.log(`✅ Creati ${savedExtraBookings.length} match aperti extra distribuiti tra le strutture`);
+
   // Controllo: ogni match deve avere almeno l'organizzatore in un team
   const invalidMatches = matches.filter(m => m.players.length === 0 || !m.players.some((p: any) => p.user.toString() === m.createdBy.toString()));
   if (invalidMatches.length > 0) {
@@ -467,7 +733,6 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
 
   // 🔥 AGGIORNA I BOOKING CON IL RIFERIMENTO AL MATCH
   console.log(`🔄 Aggiornamento booking con riferimenti ai match...`);
-  const Booking = (await import("../models/Booking")).default;
   
   for (const match of savedMatches) {
     await Booking.findByIdAndUpdate(match.booking, {

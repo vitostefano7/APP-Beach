@@ -88,7 +88,7 @@ function AdvancedFiltersModal({
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  const sports = ["Beach Volley", "Volley"];
+  const sports = ["Volley", "Beach Volley", "Beach Tennis", "Tennis", "Padel", "Calcio", "Calcetto", "Calciotto", "Calcio a 7", "Basket"];
 
   useEffect(() => {
     setTempFilters(filters);

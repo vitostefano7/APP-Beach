@@ -224,7 +224,7 @@ export const getCampiByStruttura = async (
     const campi = await Campo.find({
       struttura: req.params.id,
       isActive: true,
-    }).sort({ pricePerHour: 1 });
+    }).populate('sport').sort({ pricePerHour: 1 });
 
     console.log('✅ [getCampiByStruttura] Campi trovati:', campi.length);
     res.json(campi);

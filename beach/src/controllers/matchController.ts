@@ -60,29 +60,36 @@ export const createMatchFromBooking = async (
     }
 
     console.log('⚙️ Determinazione maxPlayers...');
-    // Determina maxPlayers basandosi sul tipo di sport del campo
+    // Determina maxPlayers basandosi sul campo e sport
     const campo = (booking as any).campo;
     let finalMaxPlayers = maxPlayers;
     
-    if (campo?.sport) {
-      const sportType = campo.sport as "beach volley" | "volley";
+    if (campo) {
+      // Popola lo sport per accedere alle regole
+      await booking.populate({
+        path: 'campo',
+        populate: { path: 'sport', select: 'name minPlayers maxPlayers' }
+      });
       
-      // Se maxPlayers non è fornito, usa il default per lo sport
+      const sport = ((booking as any).campo as any).sport;
+      
+      // Se maxPlayers non è fornito, usa il maxPlayers del campo
       if (!maxPlayers) {
-        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
-        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
+        finalMaxPlayers = campo.maxPlayers;
+        console.log('✅ MaxPlayers dal campo:', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
-        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
-        if (!validation.valid) {
-          console.log('❌ MaxPlayers non valido:', validation.error);
-          return res.status(400).json({ message: validation.error });
+        if (sport && (maxPlayers < sport.minPlayers || maxPlayers > sport.maxPlayers)) {
+          console.log('❌ MaxPlayers non valido per', sport.name);
+          return res.status(400).json({ 
+            message: `${sport.name} richiede tra ${sport.minPlayers} e ${sport.maxPlayers} giocatori` 
+          });
         }
         finalMaxPlayers = maxPlayers;
         console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
-      // Fallback se non c'è sport
+      // Fallback se non c'è campo
       finalMaxPlayers = maxPlayers || 4;
       console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
@@ -133,29 +140,36 @@ export const createMatch = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('⚙️ Determinazione maxPlayers...');
-    // Determina maxPlayers basandosi sul tipo di sport del campo
+    // Determina maxPlayers basandosi sul campo e sport
     const campo = (bookingDoc as any).campo;
     let finalMaxPlayers = maxPlayers;
     
-    if (campo?.sport) {
-      const sportType = campo.sport as "beach volley" | "volley";
+    if (campo) {
+      // Popola lo sport per accedere alle regole
+      await bookingDoc.populate({
+        path: 'campo',
+        populate: { path: 'sport', select: 'name minPlayers maxPlayers' }
+      });
       
-      // Se maxPlayers non è fornito, usa il default per lo sport
+      const sport = ((bookingDoc as any).campo as any).sport;
+      
+      // Se maxPlayers non è fornito, usa il maxPlayers del campo
       if (!maxPlayers) {
-        finalMaxPlayers = getDefaultMaxPlayersForSport(sportType);
-        console.log('✅ MaxPlayers default per sport:', sportType, '->', finalMaxPlayers);
+        finalMaxPlayers = campo.maxPlayers;
+        console.log('✅ MaxPlayers dal campo:', finalMaxPlayers);
       } else {
         // Valida che maxPlayers sia valido per lo sport
-        const validation = validateMaxPlayersForSport(maxPlayers, sportType);
-        if (!validation.valid) {
-          console.log('❌ MaxPlayers non valido:', validation.error);
-          return res.status(400).json({ message: validation.error });
+        if (sport && (maxPlayers < sport.minPlayers || maxPlayers > sport.maxPlayers)) {
+          console.log('❌ MaxPlayers non valido per', sport.name);
+          return res.status(400).json({ 
+            message: `${sport.name} richiede tra ${sport.minPlayers} e ${sport.maxPlayers} giocatori` 
+          });
         }
         finalMaxPlayers = maxPlayers;
         console.log('✅ MaxPlayers validato:', finalMaxPlayers);
       }
     } else {
-      // Fallback se non c'è sport
+      // Fallback se non c'è campo
       finalMaxPlayers = maxPlayers || 4;
       console.log('⚠️ Fallback maxPlayers:', finalMaxPlayers);
     }
@@ -255,8 +269,9 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('🔍 Controllo limite giocatori...');
-    // Max players raggiunto?
-    if (match.players.length >= match.maxPlayers) {
+    // Max players raggiunto? (conta solo giocatori confermati + pending per gli inviti)
+    const nonDeclinedPlayersCount = match.players.filter((p: any) => p.status !== "declined").length;
+    if (nonDeclinedPlayersCount >= match.maxPlayers) {
       console.log('❌ Match pieno');
       return res.status(400).json({ message: "Match pieno" });
     }
@@ -397,8 +412,9 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Già nel match" });
     }
 
-    // Max players raggiunto?
-    if (match.players.length >= match.maxPlayers) {
+    // Max players raggiunto? (conta solo giocatori confermati)
+    const confirmedPlayersCount = match.players.filter((p: any) => p.status === "confirmed").length;
+    if (confirmedPlayersCount >= match.maxPlayers) {
       return res.status(400).json({ message: "Match pieno" });
     }
 
@@ -407,16 +423,36 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Team obbligatorio" });
     }
 
+    // Per match 1v1 (maxPlayers = 2), assegna automaticamente al team vuoto
+    let assignedTeam = team;
+    if (match.maxPlayers === 2 && !team) {
+      // Verifica quale team è vuoto
+      const hasTeamA = match.players.some((p: any) => p.team === "A" && p.status === "confirmed");
+      const hasTeamB = match.players.some((p: any) => p.team === "B" && p.status === "confirmed");
+      
+      // Assegna al team vuoto
+      if (!hasTeamA) {
+        assignedTeam = "A";
+      } else if (!hasTeamB) {
+        assignedTeam = "B";
+      } else {
+        // Entrambi i team hanno giocatori (non dovrebbe succedere)
+        assignedTeam = "A";
+      }
+      console.log(`🎯 [JOIN MATCH] Match 1v1 - Assegnazione automatica al Team ${assignedTeam}`);
+    }
+
     // Aggiungi player
     match.players.push({
       user: new mongoose.Types.ObjectId(userId),
-      team: team || undefined,
+      team: assignedTeam,
       status: "confirmed",
       joinedAt: new Date(),
     });
 
-    // Aggiorna status se pieno
-    if (match.players.length === match.maxPlayers) {
+    // Aggiorna status se pieno (conta solo giocatori confermati)
+    const newConfirmedCount = match.players.filter((p: any) => p.status === "confirmed").length;
+    if (newConfirmedCount === match.maxPlayers) {
       match.status = "full";
     }
 
@@ -443,6 +479,12 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       
       console.log("🔍 [NOTIFICA] Controllo destinatari - Creatore:", creatorId, "Proprietario struttura:", strutturaOwner, "User che si unisce:", userId);
       
+      // Popola sport per usare nome corretto nelle notifiche
+      if (booking?.campo) {
+        await booking.populate({ path: 'campo', populate: { path: 'sport', select: 'name' } });
+      }
+      const sportName = ((booking as any)?.campo?.sport as any)?.name || 'sport';
+      
       // Notifica al creatore del match (se diverso dal giocatore che si unisce)
       if (creatorId && creatorId.toString() !== userId) {
         console.log("📝 [NOTIFICA] Creazione notifica per creatore match:", creatorId);
@@ -452,7 +494,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito al tuo match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         }, null, 2));
@@ -462,7 +504,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           new mongoose.Types.ObjectId(userId),
           "match_join",
           `Nuovo giocatore: ${userFullName}`,
-          `${userFullName} si è unito al tuo match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          `${userFullName} si è unito al tuo match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
           "Booking" // Cambiamo il relatedModel a Booking
         );
@@ -478,7 +520,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         };
@@ -487,7 +529,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           senderId: userId,
           type: "match_join",
           title: `Nuovo giocatore: ${userFullName}`,
-          message: `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          message: `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           relatedId: booking?._id,
           relatedModel: "Booking"
         }, null, 2));
@@ -497,7 +539,7 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
           new mongoose.Types.ObjectId(userId),
           "match_join",
           `Nuovo giocatore: ${userFullName}`,
-          `${userFullName} si è unito a un match di ${booking?.campo?.sport || 'beach volley'} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
+          `${userFullName} si è unito a un match di ${sportName} sul campo ${booking?.campo?.name || 'campo'} (${(booking?.campo as any)?.struttura?.name || booking?.struttura?.name || 'struttura'})`,
           new mongoose.Types.ObjectId(booking?._id), // Passiamo la bookingId invece del matchId
           "Booking" // Cambiamo il relatedModel a Booking
         );
@@ -740,7 +782,9 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     console.log('🏆 [submitResult] Inizio inserimento risultato:', {
       matchId,
       userId,
-      score
+      score,
+      scoreSets: score?.sets,
+      scoreWinner: score?.winner
     });
 
     const match = await Match.findById(matchId);
@@ -767,13 +811,19 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
     });
     
     let isOwner = false;
-    // Verifica se l'utente è l'owner della struttura
+    // Verifica se l'utente è l'owner della struttura e recupera lo sport
     const booking = await Booking.findOne({ match: matchId }).populate({
       path: 'campo',
-      populate: {
-        path: 'struttura',
-        select: 'owner name'
-      }
+      populate: [
+        {
+          path: 'struttura',
+          select: 'owner name'
+        },
+        {
+          path: 'sport',
+          select: 'code name'
+        }
+      ]
     });
     
     console.log('📋 [submitResult] Booking trovato:', {
@@ -815,24 +865,70 @@ export const submitResult = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Score non valido" });
     }
 
-    if (score.sets.length < 2 || score.sets.length > 3) {
-      return res.status(400).json({ message: "Un match deve avere 2 o 3 set" });
-    }
-
-    // Calcola vincitore
-    let winsA = 0;
-    let winsB = 0;
-
-    score.sets.forEach((set: any) => {
-      if (set.teamA > set.teamB) winsA++;
-      if (set.teamB > set.teamA) winsB++;
+    // Determina il tipo di sport per validare correttamente i set
+    const sport = (booking as any)?.campo?.sport;
+    const sportCode = (typeof sport === 'object' ? sport.code : sport) || '';
+    const sportCodeLower = sportCode.toLowerCase();
+    
+    const isPointBased = sportCodeLower.includes('calcio') || 
+                         sportCodeLower.includes('calcetto') || 
+                         sportCodeLower.includes('calciotto') || 
+                         sportCodeLower === 'basket' ||
+                         sportCodeLower === 'basketball';
+    
+    console.log('🏅 [submitResult] Sport rilevato:', {
+      sportCode,
+      isPointBased,
+      setsCount: score.sets.length
     });
 
-    if (winsA === winsB) {
-      return res.status(400).json({ message: "Risultato non valido" });
+    // Validazione numero set in base al tipo di sport
+    if (isPointBased) {
+      // Sport point-based: deve avere esattamente 1 "set" (punteggio finale)
+      if (score.sets.length !== 1) {
+        return res.status(400).json({ message: "Per questo sport serve un solo punteggio finale" });
+      }
+    } else {
+      // Sport set-based: deve avere 2 o 3 set
+      if (score.sets.length < 2 || score.sets.length > 3) {
+        return res.status(400).json({ message: "Un match deve avere 2 o 3 set" });
+      }
     }
 
-    const winner: "A" | "B" = winsA > winsB ? "A" : "B";
+    // Calcola vincitore in base al tipo di sport
+    let winner: "A" | "B" | "draw";
+    let winsA = 0;
+    let winsB = 0;
+    
+    if (isPointBased) {
+      // Per sport point-based: il vincitore si basa sul punteggio diretto
+      const finalScore = score.sets[0];
+      if (finalScore.teamA > finalScore.teamB) {
+        winner = "A";
+        winsA = 1;
+        winsB = 0;
+      } else if (finalScore.teamB > finalScore.teamA) {
+        winner = "B";
+        winsA = 0;
+        winsB = 1;
+      } else {
+        winner = "draw"; // Pareggio consentito per calcio/basket
+        winsA = 0;
+        winsB = 0;
+      }
+    } else {
+      // Per sport set-based: conta i set vinti
+      score.sets.forEach((set: any) => {
+        if (set.teamA > set.teamB) winsA++;
+        if (set.teamB > set.teamA) winsB++;
+      });
+
+      if (winsA === winsB) {
+        return res.status(400).json({ message: "Risultato non valido: serve un vincitore" });
+      }
+
+      winner = winsA > winsB ? "A" : "B";
+    }
 
     // Verifica se è una modifica o un inserimento
     const isUpdate = match.score && match.score.sets && match.score.sets.length > 0;
@@ -978,10 +1074,16 @@ export const getMyMatches = async (req: AuthRequest, res: Response) => {
           {
             path: "campo",
             select: "name sport pricingRules",
-            populate: {
-              path: "struttura",
-              select: "name location images",
-            },
+            populate: [
+              {
+                path: "struttura",
+                select: "name location images",
+              },
+              {
+                path: "sport",
+                select: "code name icon",
+              },
+            ],
           },
           {
             path: "user",
@@ -1036,10 +1138,16 @@ export const getPublicMatches = async (req: AuthRequest, res: Response) => {
         populate: {
           path: "campo",
           select: "name sport",
-          populate: {
-            path: "struttura",
-            select: "name location images",
-          },
+          populate: [
+            {
+              path: "struttura",
+              select: "name location images",
+            },
+            {
+              path: "sport",
+              select: "code name icon",
+            },
+          ],
         },
       });
 
@@ -1098,10 +1206,16 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
           {
             path: "campo",
             select: "name sport struttura",
-            populate: {
-              path: "struttura",
-              select: "name location owner",
-            },
+            populate: [
+              {
+                path: "struttura",
+                select: "name location owner",
+              },
+              {
+                path: "sport",
+                select: "code name icon",
+              },
+            ],
           },
           {
             path: "user",
@@ -1593,11 +1707,7 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "ID match non valido" });
     }
 
-    // Validazione input
-    if (!winner || !["A", "B"].includes(winner)) {
-      return res.status(400).json({ message: "Winner deve essere 'A' o 'B'" });
-    }
-
+    // Validazione input base (validazione completa dopo il recupero dello sport)
     if (!sets || !Array.isArray(sets) || sets.length === 0) {
       return res.status(400).json({ message: "Sets è obbligatorio e deve essere un array non vuoto" });
     }
@@ -1618,16 +1728,24 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
     }
 
     // Verifica se l'utente è il creatore del match o l'owner della struttura
+    // E recupera lo sport per validazione
     let isAuthorized = match.createdBy.toString() === userId;
+    let booking: any = null;
     
     // Se non è il creatore, verifica se è l'owner della struttura
     if (!isAuthorized) {
-      const booking = await Booking.findOne({ match: matchId }).populate({
+      booking = await Booking.findOne({ match: matchId }).populate({
         path: 'campo',
-        populate: {
-          path: 'struttura',
-          select: 'owner name'
-        }
+        populate: [
+          {
+            path: 'struttura',
+            select: 'owner name'
+          },
+          {
+            path: 'sport',
+            select: 'code name'
+          }
+        ]
       });
       if (booking && booking.campo) {
         const struttura = (booking as any).campo?.struttura;
@@ -1635,6 +1753,15 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
           isAuthorized = true;
         }
       }
+    } else {
+      // Se è autorizzato come creatore, recupera comunque il booking per lo sport
+      booking = await Booking.findOne({ match: matchId }).populate({
+        path: 'campo',
+        populate: {
+          path: 'sport',
+          select: 'code name'
+        }
+      });
     }
 
     if (!isAuthorized) {
@@ -1646,11 +1773,48 @@ export const submitScore = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Non puoi inserire il risultato di un match cancellato" });
     }
 
+    // Determina il tipo di sport per validare correttamente i set
+    const sport = booking?.campo?.sport;
+    const sportCode = (typeof sport === 'object' ? sport.code : sport) || '';
+    const sportCodeLower = sportCode.toLowerCase();
+    
+    const isPointBased = sportCodeLower.includes('calcio') || 
+                         sportCodeLower.includes('calcetto') || 
+                         sportCodeLower.includes('calciotto') || 
+                         sportCodeLower === 'basket' ||
+                         sportCodeLower === 'basketball';
+    
+    console.log('🏅 [submitScore] Sport rilevato:', {
+      sportCode,
+      isPointBased,
+      setsCount: sets.length
+    });
+
+    // Validazione numero set in base al tipo di sport
+    if (isPointBased) {
+      // Sport point-based: deve avere esattamente 1 "set" (punteggio finale)
+      if (sets.length !== 1) {
+        return res.status(400).json({ message: "Per questo sport serve un solo punteggio finale" });
+      }
+      // Per sport point-based, winner può essere null/undefined (pareggio)
+      if (winner !== 'A' && winner !== 'B' && winner !== null && winner !== undefined) {
+        return res.status(400).json({ message: "Winner deve essere 'A', 'B' o null per pareggio" });
+      }
+    } else {
+      // Sport set-based: deve avere 2 o 3 set e winner obbligatorio
+      if (sets.length < 2 || sets.length > 3) {
+        return res.status(400).json({ message: "Un match deve avere 2 o 3 set" });
+      }
+      if (!winner || !['A', 'B'].includes(winner)) {
+        return res.status(400).json({ message: "Winner deve essere 'A' o 'B'" });
+      }
+    }
+
     // Verifica se è una modifica o un inserimento
     const isUpdate = match.score && match.score.sets && match.score.sets.length > 0;
 
     // Aggiorna il risultato
-    match.winner = winner;
+    match.winner = winner || 'draw'; // Se winner è null, imposta come draw
     match.score = { sets };
     match.status = "completed";
     match.playedAt = new Date();

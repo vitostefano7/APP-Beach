@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { AnimatedCard, FadeInView } from './AnimatedComponents';
-import SportIcon from '../../../SportIcon';
+import SportIcon from '../../SportIcon';
 
 interface FieldInfoCardProps {
   struttura: {
@@ -15,7 +15,12 @@ interface FieldInfoCardProps {
   };
   campo: {
     name: string;
-    sport: string;
+    sport: {
+      _id: string;
+      name: string;
+      code: string;
+      icon?: string;
+    } | string;
   };
   onStrutturaPress?: () => void;
   onChatPress?: () => void;
@@ -33,24 +38,12 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
   showChatButton = false,
   role,
 }) => {
-  const getSportDisplayName = (sport: string) => {
-    if (sport === 'beach_volley' || sport === 'beach volley') {
+  const getSportDisplayName = (sport: { _id: string; name: string; code: string; icon?: string } | string) => {
+    const sportName = typeof sport === 'string' ? sport : sport.name || sport.code;
+    if (sportName === 'beach_volley' || sportName === 'beach volley' || sportName === 'Beach Volley') {
       return 'Beach Volley';
     }
-    return sport.charAt(0).toUpperCase() + sport.slice(1);
-  };
-
-  const getSportIcon = (sport: string) => {
-    if (sport === 'beach_volley' || sport === 'beach volley' || sport === 'volley') {
-      return <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />;
-    }
-    
-    const iconName = 
-      sport === 'calcio' ? 'football' :
-      sport === 'tennis' ? 'tennisball' :
-      sport === 'basket' ? 'basketball' : 'barbell';
-    
-    return <Ionicons name={iconName as any} size={18} color="#FF9800" />;
+    return sportName.charAt(0).toUpperCase() + sportName.slice(1);
   };
 
   const title = role === 'owner' ? 'Luogo della prenotazione' : 'Dove giochi';
@@ -112,7 +105,7 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
             <FadeInView delay={300} style={styles.sportCampoColumn}>
               <View style={styles.sportCampoBox}>
                 <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                  {getSportIcon(campo.sport)}
+                  <SportIcon sport={getSportDisplayName(campo.sport)} size={18} color="#FF9800" />
                 </View>
                 <View style={styles.fieldInfoContent}>
                   <Text style={styles.fieldInfoLabel}>SPORT</Text>

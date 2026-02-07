@@ -14,7 +14,7 @@ type MatchCardProps = {
       endTime: string;
       campo: {
         name: string;
-        sport: string;
+        sport: string | { _id: string; name: string };
         struttura: {
           _id: string;
           name: string;
@@ -116,11 +116,23 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
 
   // Icona per sport
   const getSportIcon = () => {
-    const sport = booking.campo.sport.toLowerCase();
+    // Gestisce sia string che oggetto {_id, name}
+    const sportValue = typeof booking.campo.sport === 'string' 
+      ? booking.campo.sport 
+      : (booking.campo.sport as any)?.name || '';
+    const sport = sportValue.toLowerCase();
     if (sport.includes("padel")) return { library: "Ionicons", name: "tennisball" };
     if (sport.includes("calcetto") || sport.includes("calcio")) return { library: "Ionicons", name: "football" };
     if (sport.includes("volley")) return { library: "FontAwesome5", name: "volleyball-ball" };
     return { library: "Ionicons", name: "trophy" };
+  };
+
+  // Ottiene il nome dello sport da visualizzare
+  const getSportName = () => {
+    if (typeof booking.campo.sport === 'string') {
+      return booking.campo.sport;
+    }
+    return (booking.campo.sport as any)?.name || 'Sport';
   };
 
   return (
@@ -273,7 +285,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
               />
             )}
             <Text style={styles.matchVisibilityText}>
-              {booking.campo.sport}
+              {getSportName()}
             </Text>
           </View>
         </View>
