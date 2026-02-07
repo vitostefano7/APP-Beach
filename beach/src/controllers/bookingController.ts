@@ -989,10 +989,16 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
     const booking = await Booking.findById(id)
       .populate({
         path: "campo",
-        populate: {
-          path: "struttura",
-          select: "name location images owner",
-        },
+        populate: [
+          {
+            path: "struttura",
+            select: "name location images owner",
+          },
+          {
+            path: "sport",
+            select: "name code icon",
+          }
+        ],
       })
       .populate("user", "name surname email avatarUrl");
 

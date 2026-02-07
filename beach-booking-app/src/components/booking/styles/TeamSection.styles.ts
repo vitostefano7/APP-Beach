@@ -6,7 +6,7 @@ export const createTeamSectionStyles = (variant: 'owner' | 'player') => {
       fontSize: variant === 'owner' ? 15 : 16,
       fontWeight: variant === 'owner' ? "700" : "800",
       flex: 1,
-      color: variant === 'owner' ? undefined : "white",
+      color: "white",
       letterSpacing: variant === 'owner' ? undefined : -0.2,
     },
     teamHeaderRight: {
@@ -17,7 +17,7 @@ export const createTeamSectionStyles = (variant: 'owner' | 'player') => {
     teamCount: {
       fontSize: variant === 'owner' ? 13 : 14,
       fontWeight: "600",
-      color: variant === 'owner' ? undefined : "white",
+      color: "white",
     },
     teamSlotsContainer: {
       padding: variant === 'owner' ? 12 : 28,
