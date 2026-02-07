@@ -39,6 +39,7 @@ interface ScoreDisplayProps {
   teamAPlayers?: Player[];
   teamBPlayers?: Player[];
   showEditLabel?: boolean;
+  sportType?: string; // Nuova prop per il tipo di sport
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
@@ -49,12 +50,30 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   teamAPlayers = [],
   teamBPlayers = [],
   showEditLabel = false,
+  sportType, // Nuovo parametro
 }) => {
   if (!score || score.sets.length === 0) {
     return null;
   }
 
+  // Determina se è uno sport senza set (partita singola) - DEVE ESSERE PRIMA
+  const isSingleMatchSport = sportType && ['calcio', 'calcetto', 'calcio a 7', 'calciotto', 'basket'].includes(sportType.toLowerCase());
+  const detailLabel = isSingleMatchSport ? 'Dettaglio Partita' : 'Dettaglio Set';
+
+  // Filtra solo i set compilati (con almeno un punteggio > 0)
+  const compiledSets = score.sets.filter(set => set.teamA > 0 || set.teamB > 0);
+
   const getSetSummary = () => {
+    if (isSingleMatchSport && score.sets.length === 1) {
+      // Per sport senza set, il punteggio finale è il punteggio della singola partita
+      const singleSet = score.sets[0];
+      return {
+        teamAWins: singleSet.teamA,
+        teamBWins: singleSet.teamB,
+      };
+    }
+
+    // Logica originale per sport con set
     let teamAWins = 0;
     let teamBWins = 0;
 
@@ -68,11 +87,17 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 
 
   const { teamAWins, teamBWins } = getSetSummary();
+
+  // Determina il vincitore per sport senza set se non fornito
+  let effectiveWinner = score.winner;
+  if (isSingleMatchSport && score.sets.length === 1 && !score.winner) {
+    const singleSet = score.sets[0];
+    if (singleSet.teamA > singleSet.teamB) effectiveWinner = 'A';
+    else if (singleSet.teamB > singleSet.teamA) effectiveWinner = 'B';
+  }
+
   // Usa showEditLabel se fornito, altrimenti usa la logica di default
   const canEdit = showEditLabel !== undefined ? showEditLabel : (isInMatch && matchStatus !== "cancelled");
-
-  // Filtra solo i set compilati (con almeno un punteggio > 0)
-  const compiledSets = score.sets.filter(set => set.teamA > 0 || set.teamB > 0);
 
   return (
     <FadeInView delay={0}>
@@ -116,7 +141,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 fontSize: 14,
                 color: '#666',
               }}>
-                {compiledSets.length} set giocati
+                {compiledSets.length} {isSingleMatchSport ? 'partita giocata' : 'set giocati'}
               </Text>
             </View>
           </View>
@@ -146,13 +171,13 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                   paddingVertical: 8,
                   borderRadius: 20,
                   marginBottom: 8,
-                  ...(score.winner === 'A' && {
+                  ...(effectiveWinner === 'A' && {
                     borderWidth: 2,
                     borderColor: '#FFD700',
                   }),
                 }}
               >
-                {score.winner === 'A' && (
+                {effectiveWinner === 'A' && (
                   <Ionicons name="trophy" size={14} color="white" />
                 )}
                 <Text style={{
@@ -165,12 +190,12 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
               <Text style={{
                 fontSize: 32,
                 fontWeight: '700',
-                color: score.winner === 'A' ? '#2196F3' : '#1a1a1a',
+                color: effectiveWinner === 'A' ? '#2196F3' : '#1a1a1a',
                 marginBottom: 4,
               }}>
                 {teamAWins}
               </Text>
-              {score.winner === 'A' && (
+              {effectiveWinner === 'A' && (
                 <ScaleInView delay={300}>
                   <Text style={{
                     fontSize: 12,
@@ -195,13 +220,13 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                   paddingVertical: 8,
                   borderRadius: 20,
                   marginBottom: 8,
-                  ...(score.winner === 'B' && {
+                  ...(effectiveWinner === 'B' && {
                     borderWidth: 2,
                     borderColor: '#FFD700',
                   }),
                 }}
               >
-                {score.winner === 'B' && (
+                {effectiveWinner === 'B' && (
                   <Ionicons name="trophy" size={14} color="white" />
                 )}
                 <Text style={{
@@ -214,12 +239,12 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
               <Text style={{
                 fontSize: 32,
                 fontWeight: '700',
-                color: score.winner === 'B' ? '#F44336' : '#1a1a1a',
+                color: effectiveWinner === 'B' ? '#F44336' : '#1a1a1a',
                 marginBottom: 4,
               }}>
                 {teamBWins}
               </Text>
-              {score.winner === 'B' && (
+              {effectiveWinner === 'B' && (
                 <ScaleInView delay={300}>
                   <Text style={{
                     fontSize: 12,
@@ -233,7 +258,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
         </FadeInView>
 
         {/* Winner Banner */}
-        {score.winner && (
+        {effectiveWinner && (
           <ScaleInView delay={400}>
             <WinnerGradient style={{
               flexDirection: 'row',
@@ -250,25 +275,26 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                 fontWeight: '600',
                 fontSize: 14,
               }}>
-                Team {score.winner} ha vinto il match!
+                Team {effectiveWinner} ha vinto il match!
               </Text>
             </WinnerGradient>
           </ScaleInView>
         )}
 
-        {/* Sets Detail */}
-        <FadeInView delay={500}>
-          <View>
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: '#1a1a1a',
-              marginBottom: 12,
-            }}>Dettaglio Set</Text>
-            <View style={{ gap: 8 }}>
-              {score.sets
-                .filter(set => set.teamA > 0 || set.teamB > 0) // Mostra solo set compilati
-                .map((set, index) => {
+        {/* Sets Detail - Nascondi per sport senza set con una sola partita */}
+        {!(isSingleMatchSport && compiledSets.length === 1) && (
+          <FadeInView delay={500}>
+            <View>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#1a1a1a',
+                marginBottom: 12,
+              }}>{detailLabel}</Text>
+              <View style={{ gap: 8 }}>
+                {score.sets
+                  .filter(set => set.teamA > 0 || set.teamB > 0) // Mostra solo set compilati
+                  .map((set, index) => {
                 const winner = set.teamA > set.teamB ? 'A' : set.teamB > set.teamA ? 'B' : null;
 
                 return (
@@ -286,7 +312,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
                         fontWeight: '600',
                         color: '#666',
                         width: 60,
-                      }}>Set {index + 1}</Text>
+                      }}>{isSingleMatchSport ? 'Risultato' : `Set ${index + 1}`}</Text>
 
                       <View style={{
                         flexDirection: 'row',
@@ -359,6 +385,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             </View>
           </View>
         </FadeInView>
+        )}
       </View>
     </FadeInView>
   );

@@ -514,37 +514,58 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
         )}
 
         {/* RESULT */}
-        {item.matchSummary && (
-          <View style={styles.resultBox}>
-            <View style={styles.resultHeader}>
-              <Ionicons name="trophy" size={16} color="#FFC107" />
-              <Text
-                style={[
-                  styles.winner,
-                  item.matchSummary.winner === "A"
-                    ? styles.win
-                    : styles.lose,
-                ]}
-              >
-                {item.matchSummary.winner === "A" ? "VITTORIA" : "SCONFITTA"}
-              </Text>
-              <Text style={styles.finalScore}>
-                {item.matchSummary.sets.filter(s => s.teamA > s.teamB).length} - {item.matchSummary.sets.filter(s => s.teamB > s.teamA).length}
-              </Text>
-            </View>
+        {item.matchSummary && (() => {
+          const sportName = getSportName(item.campo.sport);
+          const isSingleMatchSport = ['calcio', 'calcetto', 'calcio a 7', 'calciotto', 'basket'].includes(sportName.toLowerCase());
+          
+          // Per sport senza set, calcola il punteggio diretto
+          let teamAScore, teamBScore;
+          if (isSingleMatchSport && item.matchSummary.sets.length === 1) {
+            teamAScore = item.matchSummary.sets[0].teamA;
+            teamBScore = item.matchSummary.sets[0].teamB;
+          } else {
+            // Per sport con set, conta i set vinti
+            teamAScore = item.matchSummary.sets.filter(s => s.teamA > s.teamB).length;
+            teamBScore = item.matchSummary.sets.filter(s => s.teamB > s.teamA).length;
+          }
 
-            <View style={styles.setsGrid}>
-              {item.matchSummary.sets.map((s, i) => (
-                <View key={i} style={styles.setItem}>
-                  <Text style={styles.setLabel}>Set {i + 1}</Text>
-                  <Text style={styles.setScore}>
-                    {s.teamA} - {s.teamB}
-                  </Text>
+          return (
+            <View style={styles.resultBox}>
+              <View style={styles.resultHeader}>
+                <Ionicons name="trophy" size={16} color="#FFC107" />
+                <Text
+                  style={[
+                    styles.winner,
+                    item.matchSummary.winner === "A"
+                      ? styles.win
+                      : styles.lose,
+                  ]}
+                >
+                  {item.matchSummary.winner === "A" ? "VITTORIA" : "SCONFITTA"}
+                </Text>
+                <Text style={styles.finalScore}>
+                  {teamAScore} - {teamBScore}
+                </Text>
+              </View>
+
+              {/* Nascondi la griglia dei set per sport senza set con un solo risultato */}
+              {!(isSingleMatchSport && item.matchSummary.sets.length === 1) && (
+                <View style={styles.setsGrid}>
+                  {item.matchSummary.sets.map((s, i) => (
+                    <View key={i} style={styles.setItem}>
+                      <Text style={styles.setLabel}>
+                        {isSingleMatchSport ? 'Risultato' : `Set ${i + 1}`}
+                      </Text>
+                      <Text style={styles.setScore}>
+                        {s.teamA} - {s.teamB}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              )}
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {/* FOOTER */}
         <View style={styles.cardFooter}>

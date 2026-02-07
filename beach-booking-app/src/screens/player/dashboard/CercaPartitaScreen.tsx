@@ -120,11 +120,12 @@ const parseMatchStart = (match: MatchItem) => {
   }
 };
 
-const getSportLabel = (sport?: string) => {
-  if (!sport) return "Sport";
-  if (sport === "beach_volley") return "Beach Volley";
-  return sport.charAt(0).toUpperCase() + sport.slice(1);
-};
+interface SportData {
+  _id: string;
+  name: string;
+  code: string;
+  allowedFormations: string[];
+}
 
 const getDuration = (startTime?: string, endTime?: string) => {
   if (!startTime || !endTime) return null;
@@ -182,11 +183,19 @@ export default function CercaPartitaScreen() {
   const [showMapModal, setShowMapModal] = useState(false);
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeFilter, setTimeFilter] = useState<string | null>(null);
-  const [sportFilter, setSportFilter] = useState<"beach_volley" | "volley" | null>(null);
+  const [sportFilter, setSportFilter] = useState<string | null>(null);
+  const [sports, setSports] = useState<SportData[]>([]);
+  const [loadingSports, setLoadingSports] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSportPicker, setShowSportPicker] = useState(false);
   const cityInputRef = useRef<TextInput>(null);
+
+  const getSportLabel = (sport?: string) => {
+    if (!sport) return "Sport";
+    const sportData = sports.find(s => s.code === sport);
+    return sportData ? sportData.name : sport.charAt(0).toUpperCase() + sport.slice(1).replace(/_/g, ' ');
+  };
 
   const [playersFilter, setPlayersFilter] = useState<string | null>(null);
   const [showPlayersPicker, setShowPlayersPicker] = useState(false);
@@ -326,12 +335,40 @@ export default function CercaPartitaScreen() {
     }
   }, [token, user?.id]);
 
+  const loadSports = useCallback(async () => {
+    try {
+      setLoadingSports(true);
+      console.log("[CercaPartita] Caricamento sport dal backend...");
 
+      const res = await fetch(`${API_URL}/sports`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Errore caricamento sport: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const sportsData: SportData[] = Array.isArray(data.data) ? data.data : [];
+
+      console.log(`[CercaPartita] Caricati ${sportsData.length} sport dal backend`);
+      setSports(sportsData);
+    } catch (error) {
+      console.error("[CercaPartita] Errore caricamento sport:", error);
+      setSports([]);
+    } finally {
+      setLoadingSports(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     loadUserPreferences();
     loadVisitedStrutture();
-  }, [loadUserPreferences, loadVisitedStrutture]);
+    loadSports();
+  }, [loadUserPreferences, loadVisitedStrutture, loadSports]);
 
   useEffect(() => {
     // Chiedi GPS dopo che lo screen è caricato (delay di 500ms)
@@ -372,7 +409,7 @@ export default function CercaPartitaScreen() {
   };
 
   const normalizeSport = (value?: string) => {
-    if (!value) return "";
+    if (!value || typeof value !== 'string') return "";
     return value.toLowerCase().replace(" ", "_");
   };
 
@@ -386,21 +423,33 @@ export default function CercaPartitaScreen() {
   }, []);
 
   const playersOptions = useMemo(() => {
-    if (sportFilter === "beach_volley") {
-      return ["2v2", "3v3", "4v4"];
-    } else if (sportFilter === "volley") {
-      return ["5v5"];
+    if (sportFilter) {
+      const sportData = sports.find(s => s.code === sportFilter);
+      return sportData ? sportData.allowedFormations : ["2v2", "3v3", "4v4", "5v5"];
     } else {
       return ["2v2", "3v3", "4v4", "5v5"];
     }
-  }, [sportFilter]);
+  }, [sportFilter, sports]);
+
+  // Reset playersFilter quando cambia sportFilter e il formato selezionato non è più valido
+  useEffect(() => {
+    if (sportFilter && playersFilter && !playersOptions.includes(playersFilter)) {
+      console.log(`[CercaPartita] Reset formato giocatori: ${playersFilter} non valido per sport ${sportFilter}`);
+      setPlayersFilter(null);
+    }
+  }, [sportFilter, playersFilter, playersOptions]);
 
   const getMaxPlayersFromFilter = (filter: string) => {
     switch (filter) {
+      case "1v1": return 2;
       case "2v2": return 4;
       case "3v3": return 6;
       case "4v4": return 8;
       case "5v5": return 10;
+      case "6v6": return 12;
+      case "7v7": return 14;
+      case "8v8": return 16;
+      case "11v11": return 22;
       default: return 0;
     }
   };
@@ -492,12 +541,12 @@ export default function CercaPartitaScreen() {
           console.log(`⚠️ [CercaPartita] ${structureName} non ha coordinate, fallback su città testuale`);
           if (cityFilter.trim()) {
             // Se c'è un filtro città manuale, controlla la corrispondenza testuale
-            if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
+            if (!structureCity || !structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
               return false;
             }
           } else if (userPreferences?.preferredLocation?.city) {
             // Se usiamo città preferita, controlla la corrispondenza testuale
-            if (!structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
+            if (!structureCity || !structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
               return false;
             }
           } else {
@@ -579,11 +628,11 @@ export default function CercaPartitaScreen() {
           // Fallback su città testuale se non ha coordinate
           console.log(`⚠️ [CercaPartita] 50km - ${structureName} non ha coordinate, fallback su città testuale`);
           if (cityFilter.trim()) {
-            if (!structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
+            if (!structureCity || !structureCity.toLowerCase().includes(cityFilter.trim().toLowerCase())) {
               return false;
             }
           } else if (userPreferences?.preferredLocation?.city) {
-            if (!structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
+            if (!structureCity || !structureCity.toLowerCase().includes(userPreferences.preferredLocation.city.toLowerCase())) {
               return false;
             }
           } else {
@@ -893,11 +942,7 @@ export default function CercaPartitaScreen() {
             styles.filterChipText,
             sportFilter && styles.filterChipTextActive,
           ]}>
-            {sportFilter === "beach_volley"
-              ? "Beach"
-              : sportFilter === "volley"
-              ? "Volley"
-              : "Sport"}
+            {sportFilter ? getSportLabel(sportFilter) : "Sport"}
           </Text>
           {sportFilter && (
             <Pressable
@@ -928,8 +973,13 @@ export default function CercaPartitaScreen() {
             styles.filterChipText,
             playersFilter && styles.filterChipTextActive,
           ]}>
-            {playersFilter || "#giocatori"}
+            {playersFilter || "Formato"}
           </Text>
+          {sportFilter && (
+            <View style={styles.filterChipIndicator}>
+              <Ionicons name="basketball" size={8} color="#2196F3" />
+            </View>
+          )}
           {playersFilter && (
             <Pressable
               style={styles.filterChipClear}
@@ -1237,31 +1287,45 @@ export default function CercaPartitaScreen() {
               <Text style={styles.filterModalTitle}>Scegli sport</Text>
             </View>
             <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.filterModalOption,
-                  styles.filterModalOptionWithBorder,
-                  pressed && { backgroundColor: "#E3F2FD" }
-                ]}
-                onPress={() => {
-                  setSportFilter("beach_volley");
-                  setShowSportPicker(false);
-                }}
-              >
-                <Text style={styles.filterModalOptionText}>Beach Volley</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.filterModalOption,
-                  pressed && { backgroundColor: "#E3F2FD" }
-                ]}
-                onPress={() => {
-                  setSportFilter("volley");
-                  setShowSportPicker(false);
-                }}
-              >
-                <Text style={styles.filterModalOptionText}>Volley</Text>
-              </Pressable>
+              {loadingSports ? (
+                <View style={styles.citySuggestionItem}>
+                  <ActivityIndicator size="small" color="#2196F3" />
+                  <Text style={styles.citySuggestionText}>Caricamento sport...</Text>
+                </View>
+              ) : (
+                <>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.filterModalOption,
+                      styles.filterModalOptionWithBorder,
+                      pressed && { backgroundColor: "#E3F2FD" }
+                    ]}
+                    onPress={() => {
+                      setSportFilter(null);
+                      setShowSportPicker(false);
+                    }}
+                  >
+                    <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
+                  </Pressable>
+                  {sports.map((sport, index) => (
+                    <Pressable
+                      key={sport._id}
+                      style={({ pressed }) => [
+                        styles.filterModalOption,
+                        index < sports.length - 1 && styles.filterModalOptionWithBorder,
+                        pressed && { backgroundColor: "#E3F2FD" }
+                      ]}
+                      onPress={() => {
+                        setSportFilter(sport.code);
+                        setShowSportPicker(false);
+                      }}
+                    >
+                      <SportIcon sport={sport.code} size={16} color="#2196F3" />
+                      <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{sport.name}</Text>
+                    </Pressable>
+                  ))}
+                </>
+              )}
             </ScrollView>
             <View style={styles.filterModalFooter}>
               <Pressable
@@ -1284,7 +1348,14 @@ export default function CercaPartitaScreen() {
         <View style={styles.centeredModalOverlay}>
           <View style={styles.filterModal}>
             <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Scegli formato</Text>
+              <Text style={styles.filterModalTitle}>
+                {sportFilter ? `Formati per ${getSportLabel(sportFilter)}` : 'Scegli formato partita'}
+              </Text>
+              {sportFilter && (
+                <Text style={styles.filterModalSubtitle}>
+                  Solo i formati disponibili per questo sport
+                </Text>
+              )}
             </View>
             <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
               <Pressable
@@ -1313,7 +1384,8 @@ export default function CercaPartitaScreen() {
                     setShowPlayersPicker(false);
                   }}
                 >
-                  <Text style={styles.filterModalOptionText}>{option}</Text>
+                  <Ionicons name="people" size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{option}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -1354,7 +1426,8 @@ export default function CercaPartitaScreen() {
                     setShowTimePicker(false);
                   }}
                 >
-                  <Text style={styles.filterModalOptionText}>{slot}</Text>
+                  <Ionicons name="time" size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{slot}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -1496,6 +1569,15 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E3F2FD",
+    marginLeft: 2,
+  },
+  filterChipIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#E3F2FD",
@@ -1850,7 +1932,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   filterModalHeader: {
-    flexDirection: "row",
+    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
@@ -1865,11 +1947,19 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
   },
+  filterModalSubtitle: {
+    fontSize: 12,
+    color: '#E3F2FD',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
   filterModalContent: {
     maxHeight: 350,
     paddingTop: 8,
   },
   filterModalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
     marginHorizontal: 12,

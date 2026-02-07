@@ -269,8 +269,9 @@ export const invitePlayer = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('🔍 Controllo limite giocatori...');
-    // Max players raggiunto?
-    if (match.players.length >= match.maxPlayers) {
+    // Max players raggiunto? (conta solo giocatori confermati + pending per gli inviti)
+    const nonDeclinedPlayersCount = match.players.filter((p: any) => p.status !== "declined").length;
+    if (nonDeclinedPlayersCount >= match.maxPlayers) {
       console.log('❌ Match pieno');
       return res.status(400).json({ message: "Match pieno" });
     }
@@ -411,8 +412,9 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Già nel match" });
     }
 
-    // Max players raggiunto?
-    if (match.players.length >= match.maxPlayers) {
+    // Max players raggiunto? (conta solo giocatori confermati)
+    const confirmedPlayersCount = match.players.filter((p: any) => p.status === "confirmed").length;
+    if (confirmedPlayersCount >= match.maxPlayers) {
       return res.status(400).json({ message: "Match pieno" });
     }
 
@@ -421,16 +423,36 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Team obbligatorio" });
     }
 
+    // Per match 1v1 (maxPlayers = 2), assegna automaticamente al team vuoto
+    let assignedTeam = team;
+    if (match.maxPlayers === 2 && !team) {
+      // Verifica quale team è vuoto
+      const hasTeamA = match.players.some((p: any) => p.team === "A" && p.status === "confirmed");
+      const hasTeamB = match.players.some((p: any) => p.team === "B" && p.status === "confirmed");
+      
+      // Assegna al team vuoto
+      if (!hasTeamA) {
+        assignedTeam = "A";
+      } else if (!hasTeamB) {
+        assignedTeam = "B";
+      } else {
+        // Entrambi i team hanno giocatori (non dovrebbe succedere)
+        assignedTeam = "A";
+      }
+      console.log(`🎯 [JOIN MATCH] Match 1v1 - Assegnazione automatica al Team ${assignedTeam}`);
+    }
+
     // Aggiungi player
     match.players.push({
       user: new mongoose.Types.ObjectId(userId),
-      team: team || undefined,
+      team: assignedTeam,
       status: "confirmed",
       joinedAt: new Date(),
     });
 
-    // Aggiorna status se pieno
-    if (match.players.length === match.maxPlayers) {
+    // Aggiorna status se pieno (conta solo giocatori confermati)
+    const newConfirmedCount = match.players.filter((p: any) => p.status === "confirmed").length;
+    if (newConfirmedCount === match.maxPlayers) {
       match.status = "full";
     }
 

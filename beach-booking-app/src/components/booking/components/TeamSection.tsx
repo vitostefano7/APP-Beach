@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import PlayerCardWithTeam from "./DettaglioPrenotazione.components";
-import { styles } from "../../../styles/DettaglioPrenotazioneOwnerScreen.styles";
+import PlayerCardWithTeam from "./PlayerCardWithTeam";
+import { createTeamSectionStyles } from "../styles/TeamSection.styles";
 
 // Import componenti gradients
-import { TeamAGradient, TeamBGradient } from "./GradientComponents";
+import { TeamAGradient, TeamBGradient } from "./AnimatedComponents";
 
 interface Player {
   user: {
@@ -29,6 +29,16 @@ interface TeamSectionProps {
   maxPlayersPerTeam: number;
   onInviteToTeam: (team: "A" | "B", slotNumber: number) => void;
   matchStatus: string;
+  variant: 'owner' | 'player';
+  // Optional for player
+  maxPlayers?: number;
+  organizerId?: string;
+  teamACount?: number;
+  teamBCount?: number;
+  showFormation?: boolean;
+  onEmptySlotPress?: (team: "A" | "B", slotNumber: number) => void; // For player joining
+  onLeave?: () => void; // For player leaving
+  // Optional for owner
   onPlayerPress?: (player: Player) => void;
 }
 
@@ -42,13 +52,26 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   maxPlayersPerTeam,
   onInviteToTeam,
   matchStatus,
+  variant,
+  maxPlayers,
+  organizerId,
+  teamACount = 0,
+  teamBCount = 0,
+  showFormation = false,
+  onEmptySlotPress,
+  onLeave,
   onPlayerPress,
 }) => {
-  const teamIcon = team === "A" ? "people-circle" : "people";
+  const styles = createTeamSectionStyles(variant);
+
+  const teamIcon = "people-circle";
+
+  // Calculate formation label if needed
+  const formationLabel = showFormation && maxPlayers ? ` (${Math.floor(maxPlayers / 2)}v${Math.floor(maxPlayers / 2)})` : '';
 
   // Crea array di slot (pieni e vuoti)
   const slots = Array(maxPlayersPerTeam).fill(null);
-  
+
   // Popola gli slot con i giocatori
   players.forEach((player, index) => {
     if (index < maxPlayersPerTeam) {
@@ -60,14 +83,14 @@ const TeamSection: React.FC<TeamSectionProps> = ({
   const canModify = matchStatus !== "completed" && matchStatus !== "cancelled";
 
   return (
-    <View style={styles.teamSectionPlayer}>
+    <View style={styles.teamSection}>
       {/* Header con gradient */}
       {team === "A" ? (
-        <TeamAGradient style={styles.teamHeaderPlayer}>
+        <TeamAGradient style={styles.teamHeader}>
           <Ionicons name={teamIcon} size={20} color="white" />
-          <Text style={[styles.teamTitlePlayer, { color: "white" }]}>Team {team}</Text>
+          <Text style={styles.teamTitle}>Team {team}{formationLabel}</Text>
           <View style={styles.teamHeaderRight}>
-            <Text style={[styles.teamCountPlayer, { color: "white" }]}>
+            <Text style={styles.teamCount}>
               {players.length}/{maxPlayersPerTeam}
             </Text>
             {players.length === maxPlayersPerTeam && (
@@ -76,11 +99,11 @@ const TeamSection: React.FC<TeamSectionProps> = ({
           </View>
         </TeamAGradient>
       ) : (
-        <TeamBGradient style={styles.teamHeaderPlayer}>
+        <TeamBGradient style={styles.teamHeader}>
           <Ionicons name={teamIcon} size={20} color="white" />
-          <Text style={[styles.teamTitlePlayer, { color: "white" }]}>Team {team}</Text>
+          <Text style={styles.teamTitle}>Team {team}{formationLabel}</Text>
           <View style={styles.teamHeaderRight}>
-            <Text style={[styles.teamCountPlayer, { color: "white" }]}>
+            <Text style={styles.teamCount}>
               {players.length}/{maxPlayersPerTeam}
             </Text>
             {players.length === maxPlayersPerTeam && (
@@ -93,7 +116,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({
       <View style={styles.teamSlotsContainer}>
         {slots.map((slotPlayer, index) => {
           const slotNumber = index + 1;
-          
+
           if (slotPlayer) {
             // Slot con giocatore
             return (
@@ -104,12 +127,17 @@ const TeamSection: React.FC<TeamSectionProps> = ({
                 currentUserId={currentUserId}
                 onRemove={() => onRemovePlayer(slotPlayer.user._id)}
                 onChangeTeam={(newTeam) => onAssignTeam(slotPlayer.user._id, newTeam)}
-                onLeave={() => {}}
+                onLeave={onLeave}
                 currentTeam={team}
                 isPending={slotPlayer.status === "pending"}
                 slotNumber={slotNumber}
                 matchStatus={matchStatus}
                 onPlayerPress={onPlayerPress}
+                isOrganizer={slotPlayer.user._id === organizerId}
+                teamACount={teamACount}
+                teamBCount={teamBCount}
+                maxPlayersPerTeam={maxPlayersPerTeam}
+                variant={variant}
               />
             );
           } else {
@@ -122,10 +150,11 @@ const TeamSection: React.FC<TeamSectionProps> = ({
                 currentUserId={currentUserId}
                 onRemove={() => {}}
                 onChangeTeam={() => {}}
-                onInviteToSlot={() => onInviteToTeam(team, slotNumber)}
+                onInviteToSlot={() => onEmptySlotPress ? onEmptySlotPress(team, slotNumber) : onInviteToTeam(team, slotNumber)}
                 slotNumber={slotNumber}
                 maxSlotsPerTeam={maxPlayersPerTeam}
                 matchStatus={matchStatus}
+                variant={variant}
               />
             );
           }
@@ -134,10 +163,11 @@ const TeamSection: React.FC<TeamSectionProps> = ({
 
       {players.length === 0 && (
         <View style={styles.emptyTeamCard}>
-          <Ionicons 
-            name="person-add" 
-            size={32} 
-            color="#ccc" 
+          <Ionicons
+            name="person-add"
+            size={32}
+            color="#ccc"
+            style={styles.emptyIcon}
           />
           <Text style={styles.emptyTeamText}>Nessun giocatore</Text>
           {isCreator && canModify && (

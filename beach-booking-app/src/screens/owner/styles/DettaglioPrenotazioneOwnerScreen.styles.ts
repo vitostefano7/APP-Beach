@@ -800,6 +800,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     gap: 8,
+    borderRadius: 12,
   },
   teamTitlePlayer: {
     fontSize: 15,

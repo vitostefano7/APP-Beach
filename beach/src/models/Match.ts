@@ -98,7 +98,9 @@ const MatchSchema = new Schema<IMatch>(
       validate: {
         validator: function (players: IMatchPlayer[]) {
           const match = this as IMatch;
-          return players.length <= match.maxPlayers;
+          // Conta solo i giocatori confermati (i pending/declined non occupano slot)
+          const confirmedPlayers = players.filter(p => p.status === "confirmed").length;
+          return confirmedPlayers <= match.maxPlayers;
         },
         message: "Troppi giocatori per questo match",
       },
