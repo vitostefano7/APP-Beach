@@ -18,6 +18,7 @@ import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
+import SportIcon from "../../../components/SportIcon";
 import styles from "./TuttiInviti.styles";
 
 export default function TuttiInvitiScreen() {
@@ -368,7 +369,7 @@ const loadAllMatches = async () => {
                 isExpired && styles.expiredText,
                 myStatus === "declined" && styles.declinedText
               ]}>
-                {item.createdBy?.name || "Utente"}
+                {item.createdBy?.name || "Utente"} {item.createdBy?.surname || ""}
               </Text>
               <Text style={[
                 styles.inviteText,
@@ -430,6 +431,16 @@ const loadAllMatches = async () => {
               isExpired && styles.expiredText
             ]}>
               {booking.startTime} - {booking.endTime}
+            </Text>
+          </View>
+
+          <View style={styles.matchInfoRow}>
+            <SportIcon sport={booking.campo?.sport?.code} size={16} color={isExpired ? "#999" : "#666"} />
+            <Text style={[
+              styles.matchInfoText,
+              isExpired && styles.expiredText
+            ]}>
+              {booking.campo?.sport?.name || "Sport"}
             </Text>
           </View>
 

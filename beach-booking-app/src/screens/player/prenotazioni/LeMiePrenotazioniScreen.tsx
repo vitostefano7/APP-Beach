@@ -461,20 +461,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             <View style={styles.sportBadge}>
-              {(getSportName(item.campo.sport) === "beach_volley" || getSportName(item.campo.sport) === "beach volley" || getSportName(item.campo.sport) === "volley") ? (
-                <FontAwesome5 name="volleyball-ball" size={12} color="#2196F3" />
-              ) : (
-                <Ionicons 
-                  name={
-                    getSportName(item.campo.sport) === "calcio" ? "football" :
-                    getSportName(item.campo.sport) === "tennis" ? "tennisball" :
-                    getSportName(item.campo.sport) === "basket" ? "basketball" :
-                    "fitness"
-                  } 
-                  size={12} 
-                  color="#2196F3" 
-                />
-              )}
+              <SportIcon sport={getSportName(item.campo.sport)} size={12} color="#2196F3" />
               <Text style={styles.sportText}>
                 {(getSportName(item.campo.sport) === 'beach_volley' || getSportName(item.campo.sport) === 'beach volley')
                   ? 'Beach Volley' 
@@ -934,7 +921,25 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    {filterModalLabel === "Sport" && option !== "✨ Tutti" && <SportIcon sport={option} size={16} color="#2196F3" />}
+                    {option !== "✨ Tutti" && (
+                      <>
+                        {filterModalLabel === "Sport" ? (
+                          <SportIcon sport={option} size={16} color="#2196F3" />
+                        ) : (
+                          <Ionicons 
+                            name={
+                              filterModalLabel === "Città" ? "location-outline" :
+                              filterModalLabel === "Struttura" ? "business-outline" :
+                              filterModalLabel === "Giorno" ? "calendar-outline" :
+                              filterModalLabel === "Orario" ? "time-outline" :
+                              "help-circle-outline"
+                            } 
+                            size={16} 
+                            color="#2196F3" 
+                          />
+                        )}
+                      </>
+                    )}
                     <Text style={styles.filterModalOptionText}>{option}</Text>
                   </View>
                 </Pressable>

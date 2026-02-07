@@ -35,6 +35,7 @@ import {
   getMonthStr,
   isPastDate,
   isPastSlot,
+  getSportLabel,
 } from "../../utils-player/FieldDetailsScreen-utils";
 
 import {
@@ -993,7 +994,7 @@ export default function FieldDetailsScreen() {
                     Tutti
                   </Text>
                 </Pressable>
-                {Array.from(new Set(campi.map(c => c.sport))).map((sport) => (
+                {Array.from(new Set(campi.map(c => c.sport.code))).map((sport) => (
                   <Pressable
                     key={sport}
                     style={[
@@ -1013,7 +1014,7 @@ export default function FieldDetailsScreen() {
                         sportFilter === sport && styles.sportFilterTextActive,
                       ]}
                     >
-                      {SPORT_LABELS[sport] || sport}
+                      {getSportLabel(sport)}
                     </Text>
                   </Pressable>
                 ))}
@@ -1029,7 +1030,7 @@ export default function FieldDetailsScreen() {
           )}
 
           {campi
-            .filter(campo => sportFilter === 'all' || campo.sport === sportFilter)
+            .filter(campo => sportFilter === 'all' || campo.sport.code === sportFilter)
             .map((campo) => {
             const isExpanded = expandedCampoId === campo._id;
             const currentMonth = currentMonths[campo._id] || new Date();
@@ -1042,7 +1043,7 @@ export default function FieldDetailsScreen() {
               : null;
 
             // Helpers for split pricing (used in duration cards, slot labels and button)
-            const isVolleyCampo = campo.sport === "beach_volley" || campo.sport === "volley";
+            const isVolleyCampo = campo.sport.code === "beach_volley" || campo.sport.code === "volley";
             const canSplitCampo = struttura?.isCostSplittingEnabled === true;
             const playerPricingCampo = (campo as any).pricingRules?.playerCountPricing;
             const getUnitPrice = (count: number, dur: number) => {
@@ -1059,7 +1060,7 @@ export default function FieldDetailsScreen() {
                   <View style={styles.campoHeader}>
                     <View style={styles.sportIconBox}>
                       <SportIcon
-                        sport={campo.sport}
+                        sport={campo.sport.code}
                         size={24}
                         color="#2196F3"
                       />
@@ -1070,7 +1071,7 @@ export default function FieldDetailsScreen() {
                       <View style={styles.campoMetaRow}>
                         <View style={styles.sportBadge}>
                           <Text style={styles.sportBadgeText}>
-                            {SPORT_LABELS[campo.sport] || campo.sport}
+                            {getSportLabel(campo.sport.code)}
                           </Text>
                         </View>
                         <View style={styles.surfaceBadge}>
@@ -1365,7 +1366,7 @@ export default function FieldDetailsScreen() {
                                             slots1h
                                           );
 
-                                        const isVolleyCard = campo.sport === "beach_volley" || campo.sport === "volley";
+                                        const isVolleyCard = campo.sport.code === "beach_volley" || campo.sport.code === "volley";
                                         const canSplitCard = struttura?.isCostSplittingEnabled === true;
                                         const playerPricingCard = (campo as any).pricingRules?.playerCountPricing;
                                         const unitPrice1h =
@@ -1507,7 +1508,7 @@ export default function FieldDetailsScreen() {
                                               >
                                                 {slots15h.length > 0 ? (
                                                   (() => {
-                                                    const isVolleyCard = campo.sport === "beach_volley" || campo.sport === "volley";
+                                                    const isVolleyCard = campo.sport.code === "beach_volley" || campo.sport.code === "volley";
                                                     const canSplitCard = struttura?.isCostSplittingEnabled === true;
                                                     const playerPricingCard = (campo as any).pricingRules?.playerCountPricing;
                                                     const unit = isVolleyCard && canSplitCard && playerPricingCard?.enabled
@@ -1694,7 +1695,7 @@ export default function FieldDetailsScreen() {
                                                 );
 
                                               // Determine if we should show per-player price (volley + struttura allows split)
-                                              const isVolley = campo.sport === "beach_volley" || campo.sport === "volley";
+                                              const isVolley = campo.sport.code === "beach_volley" || campo.sport.code === "volley";
                                               const canSplit = struttura?.isCostSplittingEnabled === true;
                                               const playerPricing = (campo as any).pricingRules?.playerCountPricing;
 
@@ -1898,7 +1899,7 @@ export default function FieldDetailsScreen() {
                                                     strutturaName:
                                                       struttura.name,
                                                     struttura: struttura,
-                                                    sport: campo.sport,
+                                                    sport: campo.sport.code,
                                                     date: selectedDateStr,
                                                     startTime:
                                                       selectedSlot[campo._id],

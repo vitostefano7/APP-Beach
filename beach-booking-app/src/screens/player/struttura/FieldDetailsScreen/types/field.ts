@@ -56,10 +56,24 @@ export type PricingRules = {
   };
 };
 
+export type Sport = {
+  _id: string;
+  name: string;
+  code: string;
+  icon: string;
+  color: string;
+  minPlayers: number;
+  maxPlayers: number;
+  allowsIndoor: boolean;
+  allowsOutdoor: boolean;
+  allowsPlayerPricing: boolean;
+  isActive: boolean;
+};
+
 export type Campo = {
   _id: string;
   name: string;
-  sport: "beach_volley" | "padel" | "tennis";
+  sport: Sport; // Ora popolato
   surface: "sand" | "hardcourt" | "grass" | "pvc" | "cement";
   indoor: boolean;
   pricePerHour: number;

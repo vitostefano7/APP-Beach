@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { AnimatedCard, FadeInView } from './AnimatedComponents';
-import SportIcon from '../../../SportIcon';
+import SportIcon from '../../SportIcon';
 
 interface FieldInfoCardProps {
   struttura: {
@@ -44,20 +44,6 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
       return 'Beach Volley';
     }
     return sportName.charAt(0).toUpperCase() + sportName.slice(1);
-  };
-
-  const getSportIcon = (sport: { _id: string; name: string; code: string; icon?: string } | string) => {
-    const sportName = typeof sport === 'string' ? sport : sport.name || sport.code;
-    if (sportName === 'beach_volley' || sportName === 'beach volley' || sportName === 'volley' || sportName === 'Beach Volley' || sportName === 'Volley') {
-      return <FontAwesome5 name="volleyball-ball" size={18} color="#FF9800" />;
-    }
-    
-    const iconName = 
-      sportName === 'calcio' ? 'football' :
-      sportName === 'tennis' ? 'tennisball' :
-      sportName === 'basket' ? 'basketball' : 'barbell';
-    
-    return <Ionicons name={iconName as any} size={18} color="#FF9800" />;
   };
 
   const title = role === 'owner' ? 'Luogo della prenotazione' : 'Dove giochi';
@@ -119,7 +105,7 @@ export const FieldInfoCard: React.FC<FieldInfoCardProps> = ({
             <FadeInView delay={300} style={styles.sportCampoColumn}>
               <View style={styles.sportCampoBox}>
                 <View style={[styles.fieldIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                  {getSportIcon(campo.sport)}
+                  <SportIcon sport={getSportDisplayName(campo.sport)} size={18} color="#FF9800" />
                 </View>
                 <View style={styles.fieldInfoContent}>
                   <Text style={styles.fieldInfoLabel}>SPORT</Text>
