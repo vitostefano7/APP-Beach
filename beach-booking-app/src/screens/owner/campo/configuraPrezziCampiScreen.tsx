@@ -69,14 +69,9 @@ interface PricingRules {
     enabled: boolean;
     periods: PeriodOverride[];
   };
-  playerCountPricing: {
-    enabled: boolean;
-    prices: PlayerCountPrice[];
-  };
 }
 
 const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-const PLAYER_COUNTS = [4, 6, 8];
 
 /* =======================
    COMPONENT
@@ -204,97 +199,6 @@ export default function ConfiguraPrezziCampoScreen() {
         oneHour: prev.basePrices?.oneHour || 20,
         oneHourHalf: prev.basePrices?.oneHourHalf || 28,
         [type]: num,
-      },
-    }));
-  };
-
-  /* =======================
-     HANDLERS - PLAYER COUNT
-  ======================= */
-
-  const togglePlayerCountPricing = () => {
-    setPricing((prev) => ({
-      ...prev,
-      playerCountPricing: {
-        ...prev.playerCountPricing,
-        enabled: !prev.playerCountPricing.enabled,
-      },
-    }));
-  };
-
-  const addPlayerCountPrice = () => {
-    // Trova il primo numero di giocatori non ancora configurato
-    const existingCounts = pricing.playerCountPricing.prices.map(p => p.count);
-    const availableCount = PLAYER_COUNTS.find(c => !existingCounts.includes(c));
-    
-    if (!availableCount) {
-      Alert.alert("Attenzione", "Hai già configurato tutti i numeri di giocatori disponibili");
-      return;
-    }
-
-    const labels: { [key: number]: string } = {
-      4: "4 giocatori (2 vs 2)",
-      6: "6 giocatori (3 vs 3)",
-      8: "8 giocatori (4 vs 4)",
-    };
-
-    setPricing((prev) => ({
-      ...prev,
-      playerCountPricing: {
-        ...prev.playerCountPricing,
-        prices: [
-          ...prev.playerCountPricing.prices,
-          {
-            count: availableCount,
-            label: labels[availableCount],
-            prices: { oneHour: 30, oneHourHalf: 42 },
-          },
-        ],
-      },
-    }));
-  };
-
-  const updatePlayerCountPrice = (index: number, field: string, value: any) => {
-    setPricing((prev) => {
-      const newPrices = [...prev.playerCountPricing.prices];
-      
-      if (field === "count") {
-        newPrices[index] = {
-          ...newPrices[index],
-          count: parseInt(value) || 4,
-        };
-      } else if (field === "label") {
-        newPrices[index] = {
-          ...newPrices[index],
-          label: value,
-        };
-      } else if (field === "prices.oneHour" || field === "prices.oneHourHalf") {
-        const priceField = field.split(".")[1] as "oneHour" | "oneHourHalf";
-        newPrices[index] = {
-          ...newPrices[index],
-          prices: {
-            ...newPrices[index].prices,
-            [priceField]: parseFloat(value) || 0,
-          },
-        };
-      }
-      
-      return {
-        ...prev,
-        playerCountPricing: {
-          ...prev.playerCountPricing,
-          prices: newPrices,
-        },
-      };
-    });
-  };
-
-  const removePlayerCountPrice = (index: number) => {
-    setPricing((prev) => ({
-      ...prev,
-      playerCountPricing: {
-        ...prev.playerCountPricing,
-        prices: prev.playerCountPricing.prices.filter((_, i) => i !== index),
       },
     }));
   };
@@ -690,22 +594,7 @@ export default function ConfiguraPrezziCampoScreen() {
       }
     }
 
-    // Livello 5: Player count pricing (solo per Beach Volley)
-    if (campoSport === "beach_volley" && pricing.playerCountPricing.enabled && pricing.playerCountPricing.prices.length > 0) {
-      pricing.playerCountPricing.prices
-        .sort((a, b) => a.count - b.count)
-        .forEach((pc) => {
-          simulations.push({
-            emoji: "👥",
-            title: pc.label,
-            subtitle: `Prezzo per ${pc.count} partecipanti`,
-            oneHour: pc.prices.oneHour,
-            oneHourHalf: pc.prices.oneHourHalf,
-          });
-        });
-    }
-
-    // Livello 6: Base price
+    // Livello 5: Base price
     simulations.push({
       emoji: "💵",
       title: "Prezzo Base",
@@ -752,12 +641,23 @@ export default function ConfiguraPrezziCampoScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={22} color="#333" />
         </Pressable>
-        <View style={{ flex: 1 }}>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Gestisci Prezzi</Text>
           <Text style={styles.headerSubtitle}>{campoName}</Text>
         </View>
+        <Pressable
+          style={[styles.headerSaveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="checkmark" size={22} color="white" />
+          )}
+        </Pressable>
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -1139,91 +1039,6 @@ export default function ConfiguraPrezziCampoScreen() {
                 </View>
               )}
             </View>
-
-            {/* PREZZI PER NUMERO GIOCATORI - Solo per Beach Volley */}
-            {campoSport === "beach_volley" && (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>👥 Prezzi per Numero Giocatori</Text>
-                  <Switch
-                    value={pricing.playerCountPricing.enabled}
-                    onValueChange={togglePlayerCountPricing}
-                  />
-                </View>
-                <Text style={styles.cardDescription}>
-                  Prezzi specifici per numero di partecipanti - Si applicano quando nessuna regola di date, periodi o fasce orarie è attiva (priorità appena sopra il prezzo base)
-                </Text>
-
-                {pricing.playerCountPricing.enabled && (
-                  <View style={styles.configContent}>
-                    {pricing.playerCountPricing.prices
-                      .sort((a, b) => a.count - b.count)
-                      .map((playerPrice, index) => {
-                        const actualIndex = pricing.playerCountPricing.prices.indexOf(playerPrice);
-                        return (
-                          <View key={actualIndex} style={styles.playerCountCard}>
-                            <View style={styles.overrideHeader}>
-                              <View style={styles.playerCountSelector}>
-                                <Ionicons name="people" size={20} color="#2196F3" />
-                                <Text style={styles.playerCountText}>
-                                  {playerPrice.count} giocatori
-                                </Text>
-                              </View>
-                              <Pressable onPress={() => removePlayerCountPrice(actualIndex)}>
-                                <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                              </Pressable>
-                            </View>
-
-                            <TextInput
-                              style={styles.playerCountLabelInput}
-                              value={playerPrice.label}
-                              onChangeText={(v) => updatePlayerCountPrice(actualIndex, "label", v)}
-                              placeholder="Descrizione (es. 2 vs 2)"
-                            />
-
-                            <View style={styles.slotPriceRow}>
-                              <View style={{ flex: 1, marginRight: 8 }}>
-                                <Text style={styles.slotPriceLabel}>1h</Text>
-                                <View style={styles.priceInputContainer}>
-                                  <Text style={styles.euroSign}>€</Text>
-                                  <TextInput
-                                    style={styles.priceInputField}
-                                    value={playerPrice.prices.oneHour.toString()}
-                                    onChangeText={(v) =>
-                                      updatePlayerCountPrice(actualIndex, "prices.oneHour", v)
-                                    }
-                                    keyboardType="decimal-pad"
-                                  />
-                                </View>
-                              </View>
-
-                              <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={styles.slotPriceLabel}>1.5h</Text>
-                                <View style={styles.priceInputContainer}>
-                                  <Text style={styles.euroSign}>€</Text>
-                                  <TextInput
-                                    style={styles.priceInputField}
-                                    value={playerPrice.prices.oneHourHalf.toString()}
-                                    onChangeText={(v) =>
-                                      updatePlayerCountPrice(actualIndex, "prices.oneHourHalf", v)
-                                    }
-                                    keyboardType="decimal-pad"
-                                  />
-                                </View>
-                              </View>
-                            </View>
-                          </View>
-                        );
-                      })}
-
-                    <Pressable style={styles.addButton} onPress={addPlayerCountPrice}>
-                      <Ionicons name="add-circle" size={20} color="#2196F3" />
-                      <Text style={styles.addButtonText}>Aggiungi configurazione giocatori</Text>
-                    </Pressable>
-                  </View>
-                )}
-              </View>
-            )}
           </>
         )}
 
@@ -1232,17 +1047,6 @@ export default function ConfiguraPrezziCampoScreen() {
           <Text style={styles.cardTitle}>📊 Simulazione Prezzi</Text>
           {renderSimulation()}
         </View>
-
-        {/* SAVE */}
-        <Pressable
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? "Salvataggio..." : "💾 Salva Configurazione"}
-          </Text>
-        </Pressable>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1431,52 +1235,58 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
+    padding: 16,
     backgroundColor: "#ffffff",
     gap: 12,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#667eea",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+  },
+  headerSaveButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: { 
-    fontSize: 20, 
-    fontWeight: "800", 
-    color: "#1f2937",
+    fontSize: 15, 
+    fontWeight: "600", 
+    color: "#1a1a1a",
+    textAlign: "center",
   },
   headerSubtitle: { 
     fontSize: 13, 
-    color: "#667eea", 
+    color: "#666", 
     marginTop: 2,
-    fontWeight: "600",
+    fontWeight: "400",
+    textAlign: "center",
   },
   container: { padding: 16 },
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: "#e0e7ff",
+    borderColor: "#eee",
   },
   cardHeader: {
     flexDirection: "row",
@@ -1485,10 +1295,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardTitle: { 
-    fontSize: 17, 
-    fontWeight: "800", 
+    fontSize: 15, 
+    fontWeight: "600", 
     marginBottom: 8, 
-    color: "#1f2937",
+    color: "#1a1a1a",
   },
   cardDescription: { 
     fontSize: 13, 
@@ -1501,41 +1311,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#f8fafc",
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#f9f9f9",
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   radioOptionActive: {
-    backgroundColor: "#eef2ff",
-    borderColor: "#667eea",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: "#E3F2FD",
+    borderColor: "#2196F3",
   },
   radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#667eea",
+    borderColor: "#2196F3",
     alignItems: "center",
     justifyContent: "center",
   },
   radioCircleInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#667eea",
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#2196F3",
   },
   radioLabel: { 
     fontSize: 15, 
-    fontWeight: "700", 
-    color: "#1f2937",
+    fontWeight: "600", 
+    color: "#1a1a1a",
   },
   radioDescription: { 
     fontSize: 12, 
@@ -1547,89 +1352,79 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
-    backgroundColor: "#f8fafc",
+    marginBottom: 12,
+    backgroundColor: "#f9f9f9",
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   priceLabel: { 
     fontSize: 15, 
-    fontWeight: "700", 
-    color: "#1f2937",
+    fontWeight: "600", 
+    color: "#333",
   },
   priceInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "white",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
     minWidth: 100,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   euroSign: { 
-    fontSize: 16, 
-    fontWeight: "800", 
+    fontSize: 15, 
+    fontWeight: "600", 
     marginRight: 6, 
-    color: "#667eea",
+    color: "#2196F3",
   },
   priceInputField: {
-    fontSize: 17,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "600",
     flex: 1,
     textAlign: "right",
-    color: "#1f2937",
+    color: "#333",
   },
   configContent: { marginTop: 12 },
   timeSlotCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: "#e0e7ff",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: "#fafafa",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   timeSlotHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-    paddingBottom: 10,
+    marginBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e7ff",
+    borderBottomColor: "#eee",
   },
   timeSlotLabelInput: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     flex: 1,
-    color: "#1f2937",
+    color: "#333",
   },
   daysSelector: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#f0f4ff",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#c7d2fe",
+    borderColor: "#BBDEFB",
   },
   daysSelectorText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#667eea",
+    fontWeight: "500",
+    color: "#2196F3",
     flex: 1,
   },
   timeSlotTimeRow: {
@@ -1639,78 +1434,73 @@ const styles = StyleSheet.create({
   },
   timeInputWrapper: { flex: 1 },
   timeLabel: { 
-    fontSize: 11, 
-    color: "#667eea", 
+    fontSize: 12, 
+    color: "#666", 
     marginBottom: 6, 
-    fontWeight: "700",
+    fontWeight: "500",
   },
   timeInput: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 10,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
     padding: 10,
     fontSize: 14,
     textAlign: "center",
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
-    fontWeight: "700",
-    color: "#1f2937",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    fontWeight: "500",
+    color: "#333",
   },
   slotPriceRow: {
     flexDirection: "row",
     gap: 10,
   },
   slotPriceLabel: {
-    fontSize: 11,
-    color: "#667eea",
+    fontSize: 12,
+    color: "#666",
     marginBottom: 6,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   overrideCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: "#fce7f3",
-    shadowColor: "#ec4899",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: "#fafafa",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   overrideHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-    paddingBottom: 10,
+    marginBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#fce7f3",
+    borderBottomColor: "#eee",
   },
   overrideLabelInput: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     flex: 1,
-    color: "#1f2937",
+    color: "#333",
   },
   dateInput: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 10,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
     padding: 10,
     fontSize: 14,
     textAlign: "center",
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
-    fontWeight: "700",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    fontWeight: "500",
     marginBottom: 12,
-    color: "#1f2937",
+    color: "#333",
   },
   dateInputPressable: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 10,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
     padding: 12,
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
+    borderWidth: 1,
+    borderColor: "#ddd",
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -1718,14 +1508,14 @@ const styles = StyleSheet.create({
   },
   dateInputText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#1f2937",
+    fontWeight: "500",
+    color: "#333",
   },
   dateLabel: {
-    fontSize: 11,
-    color: "#667eea",
+    fontSize: 12,
+    color: "#666",
     marginBottom: 6,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   periodDatesRow: {
     flexDirection: "row",
@@ -1737,43 +1527,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "#667eea",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#2196F3",
   },
   addButtonText: { 
     fontSize: 14, 
-    fontWeight: "700", 
+    fontWeight: "600", 
     color: "white",
   },
   simulationCard: {
-    backgroundColor: "#f0fdf4",
-    borderWidth: 2,
-    borderColor: "#86efac",
-    shadowColor: "#22c55e",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    backgroundColor: "#f0f9ff",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
   },
   simulationContent: {
     gap: 10,
   },
   simulationHeader: {
     fontSize: 15,
-    fontWeight: "800",
-    color: "#16a34a",
+    fontWeight: "600",
+    color: "#1976D2",
     marginBottom: 12,
   },
   simulationScenario: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#16a34a",
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1976D2",
     marginBottom: 10,
   },
   simRow: {
@@ -1783,38 +1563,38 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: "white",
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 6,
   },
   simLabel: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#15803d",
+    fontWeight: "500",
+    color: "#333",
   },
   simPrice: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#166534",
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1976D2",
   },
   simCard: {
     backgroundColor: "white",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 8,
-    borderWidth: 2,
-    borderColor: "#bbf7d0",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
   },
   simCardTitle: {
     fontSize: 14,
-    fontWeight: "800",
-    color: "#16a34a",
+    fontWeight: "600",
+    color: "#1976D2",
     marginBottom: 4,
   },
   simCardSubtitle: {
-    fontSize: 11,
-    color: "#6b7280",
+    fontSize: 12,
+    color: "#666",
     marginBottom: 8,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   simCardPrices: {
     flexDirection: "row",
@@ -1822,8 +1602,8 @@ const styles = StyleSheet.create({
   },
   simCardPrice: {
     fontSize: 15,
-    fontWeight: "800",
-    color: "#166534",
+    fontWeight: "600",
+    color: "#1976D2",
   },
   simulationNote: {
     fontSize: 11,
@@ -1832,87 +1612,43 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "500",
   },
-  playerCountCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: "#dbeafe",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  playerCountSelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  playerCountText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#667eea",
-  },
-  playerCountLabelInput: {
-    fontSize: 14,
-    fontWeight: "600",
-    backgroundColor: "#f8fafc",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
-    color: "#1f2937",
-  },
   saveButton: {
-    backgroundColor: "#667eea",
-    padding: 18,
-    borderRadius: 16,
+    backgroundColor: "#2196F3",
+    padding: 16,
+    borderRadius: 8,
     alignItems: "center",
     marginTop: 12,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
   },
   saveButtonDisabled: { opacity: 0.5 },
   saveButtonText: { 
     color: "white", 
-    fontSize: 17, 
-    fontWeight: "900",
+    fontSize: 15, 
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(102, 126, 234, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
     paddingBottom: 40,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 20,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: "900",
+    fontSize: 18,
+    fontWeight: "600",
     marginBottom: 8,
-    color: "#1f2937",
+    color: "#1a1a1a",
   },
   modalDescription: {
     fontSize: 14,
-    color: "#6b7280",
-    marginBottom: 24,
+    color: "#666",
+    marginBottom: 20,
     lineHeight: 20,
-    fontWeight: "500",
+    fontWeight: "400",
   },
   daysGrid: {
     flexDirection: "row",
@@ -1921,70 +1657,55 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   dayChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#f8fafc",
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: "#f9f9f9",
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   dayChipSelected: {
-    backgroundColor: "#667eea",
-    borderColor: "#667eea",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
   },
   dayChipText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#6b7280",
+    fontWeight: "500",
+    color: "#666",
   },
   dayChipTextSelected: {
     color: "white",
   },
   modalCloseButton: {
-    backgroundColor: "#667eea",
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: "#2196F3",
+    padding: 14,
+    borderRadius: 8,
     alignItems: "center",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   modalCloseText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "600",
   },
   calendarMonthSelector: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 16,
     paddingHorizontal: 8,
-    paddingVertical: 12,
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
+    paddingVertical: 10,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
   },
   calendarMonthBtn: {
     padding: 8,
     backgroundColor: "white",
-    borderRadius: 10,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    borderRadius: 8,
   },
   calendarMonthText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1f2937",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
   },
   calendarGrid: {
     marginBottom: 20,
@@ -1998,8 +1719,8 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 12,
-    fontWeight: "800",
-    color: "#667eea",
+    fontWeight: "600",
+    color: "#2196F3",
   },
   calendarDays: {
     flexDirection: "row",
@@ -2014,14 +1735,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: "#f8fafc",
+    borderRadius: 8,
+    backgroundColor: "#f9f9f9",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#eee",
   },
   calendarDayText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#1f2937",
+    fontWeight: "500",
+    color: "#333",
   },
 });

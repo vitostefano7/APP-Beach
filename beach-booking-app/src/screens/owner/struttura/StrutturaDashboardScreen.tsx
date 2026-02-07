@@ -22,6 +22,13 @@ import { sportIcons } from "../../../utils/sportIcons";
 
 const { width } = Dimensions.get("window");
 
+interface OpeningHours {
+  [day: string]: {
+    closed: boolean;
+    slots?: { open: string; close: string }[];
+  };
+}
+
 interface Struttura {
   _id: string;
   name: string;
@@ -29,6 +36,7 @@ interface Struttura {
   location: { city: string };
   isActive: boolean;
   images?: string[];
+  openingHours?: OpeningHours;
 }
 
 interface Campo {
@@ -76,6 +84,7 @@ export default function StrutturaDashboardScreen() {
   const [bookingsCount, setBookingsCount] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [showHours, setShowHours] = useState(false);
 
   // 🎠 Carosello automatico ogni 3 secondi (pausa se utente interagisce)
   useEffect(() => {
@@ -347,23 +356,15 @@ export default function StrutturaDashboardScreen() {
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIcon, { backgroundColor: "#EEF6FF" }]}>
-              <Ionicons name="grid" size={16} color="#2196F3" />
+              <Ionicons name="grid" size={14} color="#2196F3" />
             </View>
-            <Text style={styles.kpiValue}>{campi.length}</Text>
-            <Text style={styles.kpiLabel}>Campi totali</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <View style={[styles.kpiIcon, { backgroundColor: "#E8F5E9" }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-            </View>
-            <Text style={styles.kpiValue}>{campiAttivi.length}</Text>
-            <Text style={styles.kpiLabel}>Campi attivi</Text>
+            <Text style={styles.kpiValue}>{campiAttivi.length}/{campi.length}</Text>
+            <Text style={styles.kpiLabel}>Campi Attivi/Totali</Text>
           </View>
 
           <Pressable style={[styles.kpiCard, styles.kpiCardClickable]} onPress={handleGoToBookings}>
             <View style={[styles.kpiIcon, { backgroundColor: "#F3E5F5" }]}>
-              <Ionicons name="calendar" size={16} color="#9C27B0" />
+              <Ionicons name="calendar" size={14} color="#9C27B0" />
             </View>
             <Text style={styles.kpiValue}>{bookingsCount}</Text>
             <Text style={styles.kpiLabel}>Prenotazioni</Text>
@@ -371,7 +372,111 @@ export default function StrutturaDashboardScreen() {
               <Ionicons name="arrow-forward" size={9} color="#9C27B0" />
             </View>
           </Pressable>
+
+          <Pressable 
+            style={[styles.kpiCard, styles.kpiCardClickable, showHours && styles.kpiCardActive]} 
+            onPress={() => setShowHours(!showHours)}
+          >
+            <View style={[styles.kpiIcon, { backgroundColor: "#FFF3E0" }]}>
+              <Ionicons name="time" size={14} color="#FF9800" />
+            </View>
+            <Text style={styles.kpiValue}>
+              {struttura.openingHours ? "7/7" : "N/A"}
+            </Text>
+            <Text style={styles.kpiLabel}>Orari</Text>
+            <View style={styles.tapHint}>
+              <Ionicons 
+                name={showHours ? "chevron-up" : "chevron-down"} 
+                size={9} 
+                color="#FF9800" 
+              />
+            </View>
+          </Pressable>
         </View>
+
+        {/* SEZIONE ORARI (visibile solo se showHours è true) */}
+        {showHours && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <Ionicons name="time" size={18} color="#FF9800" />
+                <Text style={styles.sectionTitle}>Orari di apertura</Text>
+              </View>
+              <Pressable
+                style={styles.editHoursButton}
+                onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })}
+              >
+                <Ionicons name="create-outline" size={13} color="#FF9800" />
+                <Text style={styles.editHoursText}>Modifica</Text>
+              </Pressable>
+            </View>
+
+          {!struttura.openingHours ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="time-outline" size={42} color="#ddd" />
+              <Text style={styles.emptyText}>Nessun orario configurato</Text>
+              <Pressable
+                style={[styles.addButton, { backgroundColor: "#FF9800" }]}
+                onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })}
+              >
+                <Ionicons name="add" size={16} color="white" />
+                <Text style={styles.addButtonText}>Imposta orari</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.hoursCard}>
+              {[
+                { key: "monday", label: "Lunedì" },
+                { key: "tuesday", label: "Martedì" },
+                { key: "wednesday", label: "Mercoledì" },
+                { key: "thursday", label: "Giovedì" },
+                { key: "friday", label: "Venerdì" },
+                { key: "saturday", label: "Sabato" },
+                { key: "sunday", label: "Domenica" },
+              ].map((day, index) => {
+                const dayInfo = struttura.openingHours?.[day.key];
+                const isClosed = !dayInfo || dayInfo.closed || !dayInfo.slots || dayInfo.slots.length === 0;
+                const isLastDay = index === 6;
+
+                // Prendi il primo slot se disponibile
+                const firstSlot = dayInfo?.slots?.[0];
+
+                return (
+                  <View
+                    key={day.key}
+                    style={[
+                      styles.hourRow,
+                      !isLastDay && styles.hourRowBorder,
+                    ]}
+                  >
+                    <View style={styles.dayLabelContainer}>
+                      <Text style={styles.dayLabel}>{day.label}</Text>
+                    </View>
+                    {isClosed ? (
+                      <View style={styles.closedBadge}>
+                        <Ionicons name="close-circle" size={11} color="#999" />
+                        <Text style={styles.closedText}>Chiuso</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.hourRange}>
+                        <View style={styles.timeBlock}>
+                          <Ionicons name="time-outline" size={11} color="#4CAF50" />
+                          <Text style={styles.timeText}>{firstSlot?.open || "N/A"}</Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={10} color="#ccc" />
+                        <View style={styles.timeBlock}>
+                          <Ionicons name="time-outline" size={11} color="#F44336" />
+                          <Text style={styles.timeText}>{firstSlot?.close || "N/A"}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+          </View>
+        )}
 
         {/* SEZIONE CAMPI */}
         <View style={styles.section}>
@@ -681,16 +786,20 @@ const styles = StyleSheet.create({
     borderColor: "#E1BEE7",
     backgroundColor: "#F9F3FA",
   },
+  kpiCardActive: {
+    borderColor: "#FFB74D",
+    backgroundColor: "#FFF8E1",
+  },
   kpiIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 5,
+    marginBottom: 4,
   },
   kpiValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 1,
@@ -904,6 +1013,83 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     fontSize: 12,
+  },
+
+  // HOURS SECTION
+  editHoursButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  editHoursText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FF9800",
+  },
+  hoursCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  hourRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+  },
+  hourRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  dayLabelContainer: {
+    width: 85,
+  },
+  dayLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+  closedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f8f8f8",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  closedText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#999",
+  },
+  hourRange: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  timeBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f8f8f8",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#1a1a1a",
   },
 
   // ERROR

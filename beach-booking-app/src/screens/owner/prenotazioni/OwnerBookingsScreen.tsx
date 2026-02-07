@@ -734,7 +734,7 @@ export default function OwnerBookingsScreen() {
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              {route.params?.fromDashboard && (
+              {(route.params?.fromDashboard || route.params?.filterCampoId || route.params?.filterStrutturaId || route.params?.filterDate) && (
                 <Pressable
                   onPress={() => navigation.goBack()}
                   style={styles.backButton}
@@ -742,9 +742,11 @@ export default function OwnerBookingsScreen() {
                   <Ionicons name="arrow-back" size={24} color="#2196F3" />
                 </Pressable>
               )}
-              <View style={styles.headerIconContainer}>
-                <Ionicons name="calendar" size={26} color="#2196F3" />
-              </View>
+              {!(route.params?.filterCampoId || route.params?.filterStrutturaId || route.params?.filterDate) && (
+                <View style={styles.headerIconContainer}>
+                  <Ionicons name="calendar" size={26} color="#2196F3" />
+                </View>
+              )}
             </View>
             <View style={styles.headerCenter}>
               <Text style={styles.title}>Prenotazioni</Text>
@@ -906,7 +908,7 @@ export default function OwnerBookingsScreen() {
                 onPress={() => setShowCampoModal(true)}
               >
                 <Ionicons
-                  name="basketball-outline"
+                  name="grid"
                   size={16}
                   color={filterCampo ? "white" : "#666"}
                 />
@@ -1093,7 +1095,7 @@ export default function OwnerBookingsScreen() {
                     setShowCampoModal(false);
                   }}
                 >
-                  <Ionicons name="basketball-outline" size={16} color="#2196F3" />
+                  <Ionicons name="grid" size={16} color="#2196F3" />
                   <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>
                     {campo.name}
                   </Text>

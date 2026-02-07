@@ -24,7 +24,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface Campo {
   _id: string;
   name: string;
-  sport: string;
+  sport: { name: string; code: string };
   surface: string;
   maxPlayers: number;
   indoor: boolean;
@@ -177,21 +177,16 @@ export default function DettaglioCampoScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* HEADER */}
-      <LinearGradient
-        colors={["#2196F3", "#1976D2"]}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={styles.header}>
         <Pressable
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color="white" />
+          <Ionicons name="arrow-back" size={22} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>{campo.name}</Text>
         <View style={{ width: 40 }} />
-      </LinearGradient>
+      </View>
 
       <Animated.ScrollView
         style={[styles.container, { opacity: fadeAnim }]}
@@ -243,14 +238,14 @@ export default function DettaglioCampoScreen() {
           <View style={styles.quickStatsRow}>
             <View style={styles.quickStatCard}>
               <LinearGradient
-                colors={SPORT_COLORS[campo.sport] || ["#2196F3", "#1976D2"]}
+                colors={SPORT_COLORS[campo.sport.code] || ["#2196F3", "#1976D2"]}
                 style={styles.quickStatGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name={SPORT_ICONS[campo.sport] || "football-outline"} size={24} color="white" />
+                <Ionicons name={SPORT_ICONS[campo.sport.code] || "football-outline"} size={24} color="white" />
               </LinearGradient>
-              <Text style={styles.quickStatValue}>{SPORT_MAP[campo.sport]}</Text>
+              <Text style={styles.quickStatValue}>{SPORT_MAP[campo.sport.code]}</Text>
               <Text style={styles.quickStatLabel}>Sport</Text>
             </View>
 
@@ -468,42 +463,6 @@ export default function DettaglioCampoScreen() {
                   </View>
                 </View>
               </View>
-
-              {/* Prezzi per Numero Giocatori */}
-              {campo.pricingRules.playerCountPricing?.enabled &&
-                campo.pricingRules.playerCountPricing.prices?.length > 0 && (
-                  <View style={styles.pricingCategory}>
-                    <View style={styles.pricingCategoryHeader}>
-                      <View style={[styles.priorityBadge, { backgroundColor: "#F44336" }]}>
-                        <Ionicons name="people" size={10} color="white" />
-                      </View>
-                      <Text style={styles.pricingCategoryTitle}>Per Numero Giocatori</Text>
-                    </View>
-                    {campo.pricingRules.playerCountPricing.prices
-                      .sort((a: any, b: any) => a.count - b.count)
-                      .map((playerPrice: any, index: number) => (
-                        <View key={index} style={styles.pricingItem}>
-                          <View style={styles.pricingItemHeader}>
-                            <Ionicons name="people-outline" size={16} color="#F44336" />
-                            <Text style={styles.pricingItemTitle}>{playerPrice.label}</Text>
-                            <View style={styles.playerCountBadge}>
-                              <Text style={styles.playerCountText}>{playerPrice.count}</Text>
-                            </View>
-                          </View>
-                          <View style={styles.pricingItemPrices}>
-                            <View style={styles.miniPriceBox}>
-                              <Text style={styles.miniPriceLabel}>1h</Text>
-                              <Text style={styles.miniPriceValue}>€{playerPrice.prices?.oneHour || 20}</Text>
-                            </View>
-                            <View style={styles.miniPriceBox}>
-                              <Text style={styles.miniPriceLabel}>1.5h</Text>
-                              <Text style={styles.miniPriceValue}>€{playerPrice.prices?.oneHourHalf || 28}</Text>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                  </View>
-                )}
             </View>
           )}
 
@@ -595,7 +554,7 @@ export default function DettaglioCampoScreen() {
                 navigation.navigate("ConfiguraPrezziCampo", {
                   campoId: campo._id,
                   campoName: campo.name,
-                  campoSport: campo.sport,
+                  campoSport: campo.sport.code,
                 })
               }
             >
@@ -678,32 +637,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
+    zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
+    width: 36,
+    height: 36,
     alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1a1a1a",
   },
 
   // MAIN CONTAINER
@@ -849,7 +802,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   quickStatValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 2,

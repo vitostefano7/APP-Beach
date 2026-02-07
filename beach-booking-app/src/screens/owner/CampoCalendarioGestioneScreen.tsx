@@ -71,6 +71,7 @@ export default function CampoCalendarioGestioneScreen() {
   const [editMode, setEditMode] = useState(false);
   const [dayBookings, setDayBookings] = useState<Booking[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+  const [datesWithBookings, setDatesWithBookings] = useState<Set<string>>(new Set());
 
   /* =====================================================
      LOAD CALENDAR
@@ -125,9 +126,34 @@ export default function CampoCalendarioGestioneScreen() {
         console.log("==================");
 
         setCalendarDays(data);
+
+        // Fetch bookings for the month to determine days with bookings
+        try {
+          const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+          const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+          const bookingsRes = await fetch(`${API_URL}/bookings/campo/${campoId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (bookingsRes.ok) {
+            const allBookings = await bookingsRes.json();
+            const monthBookings = allBookings.filter((b: any) => {
+              const bDate = new Date(b.date);
+              return bDate >= monthStart && bDate <= monthEnd && b.status === 'confirmed';
+            });
+            const dates: Set<string> = new Set(monthBookings.map((b: any) => b.date as string));
+            setDatesWithBookings(dates);
+            console.log(`✅ ${dates.size} giorni con prenotazioni nel mese`);
+          } else {
+            console.error("❌ Failed to load bookings for month");
+            setDatesWithBookings(new Set());
+          }
+        } catch (bookingErr) {
+          console.error("❌ Errore caricamento prenotazioni mensili:", bookingErr);
+          setDatesWithBookings(new Set());
+        }
       } catch (err) {
         console.error("❌ Errore calendario:", err);
-        Alert.alert("Errore", "Impossibile caricare il calendario");
       } finally {
         setLoading(false);
       }
@@ -202,7 +228,7 @@ export default function CampoCalendarioGestioneScreen() {
     return calendarDays.find((d) => d.date === dateStr) || null;
   };
 
-  const getDayStatus = (dayData: CalendarDay | null) => {
+  const getDayStatus = (dayData: CalendarDay | null, hasBookings: boolean) => {
     if (!dayData) return "unknown";
     if (dayData.isClosed || dayData.slots.length === 0) return "closed";
 
@@ -210,6 +236,7 @@ export default function CampoCalendarioGestioneScreen() {
     const total = dayData.slots.length;
 
     if (enabled === 0) return "full";
+    if (hasBookings) return "partial"; // If has bookings, show as partial even if all slots are enabled
     if (enabled === total) return "available";
     return "partial";
   };
@@ -660,7 +687,8 @@ export default function CampoCalendarioGestioneScreen() {
                   const dateStr = `${year}-${month}-${day}`;
 
                   const dayData = getDayData(date);
-                  const status = getDayStatus(dayData);
+                  const hasBookings = datesWithBookings.has(dateStr);
+                  const status = getDayStatus(dayData, hasBookings);
                   const isSelected = selectedDate === dateStr;
 
                   const today = new Date();
