@@ -934,12 +934,12 @@ export const styles = StyleSheet.create({
   matchHistoryCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    height: 260,
+    height: 300,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   matchGradientBorder: {
     padding: 3,

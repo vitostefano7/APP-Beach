@@ -1,28 +1,10 @@
+import { formatSportName as getSportLabelFromUtils, SPORT_LABELS } from '../../../utils/sportUtils';
+
 export const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 export const DAYS_SHORT = ["D", "L", "M", "M", "G", "V", "S"];
 
-export const SPORT_LABELS: Record<string, string> = {
-  beach_volley: "Beach Volley",
-  "beach volley": "Beach Volley",
-  beach_volleyball: "Beach Volley",
-  "beach volleyball": "Beach Volley",
-  beachvolley: "Beach Volley",
-  "beach-volley": "Beach Volley",
-  volley: "Volley",
-  volleyball: "Volley",
-  beach_tennis: "Beach Tennis",
-  "beach tennis": "Beach Tennis",
-  tennis: "Tennis",
-  padel: "Padel",
-  calcio: "Calcio",
-  football: "Calcio",
-  calcetto: "Calcetto",
-  calciotto: "Calciotto",
-  calcio_a_7: "Calcio a 7",
-  "calcio a 7": "Calcio a 7",
-  basket: "Basket",
-  basketball: "Basket",
-};
+// Re-export per retrocompatibilità
+export { SPORT_LABELS };
 
 export const SURFACE_LABELS: Record<string, string> = {
   sand: "Sabbia",
@@ -99,21 +81,7 @@ export function getAmenitiesDisplay(amenities: string[]): Array<{ key: string; l
 
 // ✅ Helper: ottieni label sport normalizzato
 export function getSportLabel(sport: string): string {
-  if (!sport) return sport;
-
-  // First try exact match
-  if (SPORT_LABELS[sport]) return SPORT_LABELS[sport];
-
-  // Try lowercase
-  const lower = sport.toLowerCase();
-  if (SPORT_LABELS[lower]) return SPORT_LABELS[lower];
-
-  // Try normalized (replace spaces, dashes, underscores with underscore)
-  const normalized = lower.replace(/[\s_-]+/g, '_');
-  if (SPORT_LABELS[normalized]) return SPORT_LABELS[normalized];
-
-  // Fallback to original
-  return sport;
+  return getSportLabelFromUtils(sport);
 }
 
 // ✅ Date utils

@@ -3,6 +3,8 @@
  * Frontend version
  */
 
+import { formatSportName } from './sportUtils';
+
 export type SportType = "Volley" | "Beach Volley" | "Beach Tennis" | "Tennis" | "Padel" | "Calcio" | "Calcetto" | "Calciotto" | "Calcio a 7" | "Basket";
 
 export interface MaxPlayersRules {

@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../../../../components/Avatar/Avatar';
 import SportIcon from '../../../../components/SportIcon';
+import { formatSportName } from '../../../../utils/sportUtils';
 import { styles } from '../styles';
 
 interface OpenMatchCardProps {
@@ -28,22 +29,6 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
 
   // Calculate cost per player for public matches
   const costPerPlayer = match.isPublic ? (match.booking?.price || 0) / maxPlayers : 0;
-
-  // Format sport name
-  const formatSportName = (sport: string) => {
-    switch (sport) {
-      case 'beach_volleyball':
-        return 'Beach Volley';
-      case 'volleyball':
-        return 'Pallavolo';
-      case 'padel':
-        return 'Padel';
-      case 'tennis':
-        return 'Tennis';
-      default:
-        return sport;
-    }
-  };
 
   // Calculate duration between start and end time
   const getDuration = (startTime: string, endTime: string) => {

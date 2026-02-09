@@ -46,7 +46,13 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   
   for (const booking of pastWithPeople) {
     const creator = booking.user;
-    const maxPlayers = getMaxPlayers(booking);
+    let maxPlayers = getMaxPlayers(booking);
+    
+    // ✅ Assicurati che maxPlayers sia pari per avere team bilanciati
+    if (maxPlayers % 2 !== 0) {
+      maxPlayers = maxPlayers - 1; // Riduci di 1 per renderlo pari
+    }
+    
     const playersPerTeam = maxPlayers / 2;
 
     const matchPlayers: any[] = [];
@@ -72,9 +78,13 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       const joinDate = new Date(booking.date);
       joinDate.setHours(joinDate.getHours() - randomInt(1, 24));
       
+      // ✅ Distribuzione bilanciata: primi playersPerTeam vanno in A, gli altri in B
+      const currentTeamACount = matchPlayers.filter(p => p.team === "A").length;
+      const team = currentTeamACount < playersPerTeam ? "A" : "B";
+      
       matchPlayers.push({
         user: player._id,
-        team: j < playersPerTeam ? "A" : "B",
+        team: team,
         status: "confirmed",
         joinedAt: joinDate,
         respondedAt: joinDate,
@@ -301,11 +311,17 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     sportMap.get(sportCode)!.push(campo);
   }
   
-  // Match aperti: almeno 1 per ogni sport di ogni struttura
+  // Match aperti: almeno 1 per ogni sport di ogni struttura CHE SUPPORTA SPLIT PAYMENT
   const openMatchBookings: any[] = [];
   const usedBookingIds = new Set<string>();
   
   for (const [strutturaId, sportMap] of strutturaPerSport) {
+    // ✅ VERIFICA CHE LA STRUTTURA SUPPORTI SPLIT PAYMENT
+    const struttura = strutture.find((s: any) => s._id.toString() === strutturaId);
+    if (!struttura?.isCostSplittingEnabled) {
+      continue; // Salta questa struttura se non supporta split payment
+    }
+    
     for (const [sportCode, campiForSport] of sportMap) {
       // Trova booking futuri per questo sport che non sono già stati usati
       const availableBookings = futureBookings.filter((b: any) => {
