@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
@@ -9,6 +9,7 @@ import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import StruttureStack from "./StruttureStack";
 import BookingsStack from "./BookingsStack";
 import DashboardStack from "./DashboardStack";
+import CommunityStack from "./CommunityStack";
 import ProfilePlayerStack from "./ProfilePlayerStack";
 
 const Tab = createBottomTabNavigator();
@@ -87,6 +88,7 @@ export default function PlayerTabs() {
           if (route.name === "Dashboard") iconName = "home";
           if (route.name === "StruttureTab") iconName = "business";
           if (route.name === "Prenotazioni") iconName = "calendar";
+          if (route.name === "Social") iconName = "people";
           if (route.name === "Profilo") iconName = "person";
 
           return (
@@ -137,6 +139,20 @@ export default function PlayerTabs() {
         name="Prenotazioni" 
         component={BookingsStack}
         options={{
+          tabBarLabel: ({ color, focused }: { color: string; focused: boolean }) => (
+            <Text style={{ fontSize: 12, textAlign: 'center', color, fontWeight: focused ? '700' : undefined }} numberOfLines={2}>
+              Prenotazioni
+            </Text>
+          ),
+          tabBarItemStyle: { flex: 1.2, alignItems: 'center' },
+          tabBarLabelStyle: { fontSize: 12 },
+        }}
+      />
+      <Tab.Screen
+        name="Social"
+        component={CommunityStack}
+        options={{
+          tabBarLabel: "Social",
           tabBarLabelStyle: { fontSize: 12 },
         }}
       />

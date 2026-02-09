@@ -1877,7 +1877,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
             {/* Search Bar */}
             <View style={styles.newSearchRow}>
               <View style={styles.newSearchBox}>
-                <Ionicons name="search-outline" size={20} color="#999" />
+                <Ionicons name="search-outline" size={20} color="#2979ff" />
                 <TextInput
                   style={styles.newSearchInput}
                   placeholder="Cerca una struttura.."
@@ -1890,7 +1890,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                 style={styles.filterIconButton}
                 onPress={() => setShowFilters(true)}
               >
-                <Ionicons name="options-outline" size={22} color="#666" />
+                <Ionicons name="options-outline" size={22} color="#2979ff" />
                 {activeFiltersCount > 0 && (
                   <View style={styles.filterBadge} />
                 )}
@@ -2319,7 +2319,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                 cityValidation.isValid === true && styles.manualInputValid,
               ]}>
                 <View style={styles.manualInputIconContainer}>
-                  <Ionicons name="search-outline" size={20} color="#999" />
+                  <Ionicons name="search-outline" size={20} color="#2979ff" />
                 </View>
                 <TextInput
                   style={styles.manualCityInput}
