@@ -1,4 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCityGeocode } from "../../../hooks/useCityGeocode";
+
 // Calcola la distanza tra due coordinate geografiche (Haversine formula)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Raggio della Terra in km
@@ -10,14 +12,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
-}
-// Debounce utility
-function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
-  let timeout: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
 }
 import {
   View,
@@ -31,18 +25,15 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
-import { RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar, LocaleConfig } from "react-native-calendars";
-import * as Location from "expo-location";
 import SportIcon from '../../../components/SportIcon';
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
-import Avatar from "../../../components/Avatar/Avatar";
 import OpenMatchCard from "./components/OpenMatchCard";
 import { useGeographicMatchFiltering } from './hooks/useGeographicMatchFiltering';
 
@@ -178,9 +169,17 @@ export default function CercaPartitaScreen() {
   const [tempCity, setTempCity] = useState("");
   const [isCityEditing, setIsCityEditing] = useState(false);
   const [manualCityCoords, setManualCityCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
-  const [isLoadingCitySuggestions, setIsLoadingCitySuggestions] = useState(false);
-  const [showMapModal, setShowMapModal] = useState(false);
+  
+  // Hook per geocoding
+  const {
+    citySuggestions: geocodeSuggestions,
+    showSuggestions,
+    searchCitySuggestions,
+    selectCity,
+    resetValidation,
+    validateCity,
+    cityValidation
+  } = useCityGeocode();
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [timeFilter, setTimeFilter] = useState<string | null>(null);
   const [sportFilter, setSportFilter] = useState<string | null>(null);
@@ -207,6 +206,7 @@ export default function CercaPartitaScreen() {
     userPreferences,
     visitedStruttureIds,
     gpsCoords,
+    gpsTimestamp,
     isLoadingPreferences,
     isLoadingGPS,
     loadUserPreferences,
@@ -461,7 +461,11 @@ export default function CercaPartitaScreen() {
     }
     if (gpsCoords) {
       console.log('[DEBUG] currentFilter using GPS address:', gpsAddress);
-      return { mode: 'gps' as const, displayCity: 'Posizione GPS', canClear: false };
+      // Determina se la posizione è recente (< 2 min) o cached (>= 2 min)
+      const cacheAge = gpsTimestamp ? Date.now() - gpsTimestamp : 0;
+      const isCached = cacheAge >= 2 * 60 * 1000; // 2 minuti
+      const displayLabel = isCached ? 'Posizione recente' : 'Posizione GPS';
+      return { mode: 'gps' as const, displayCity: displayLabel, canClear: false };
     }
     if (userPreferences?.preferredLocation?.city) {
       return { mode: 'preferred' as const, displayCity: userPreferences.preferredLocation.city, canClear: false };
@@ -470,7 +474,7 @@ export default function CercaPartitaScreen() {
       return { mode: 'visited' as const, displayCity: 'Strutture visitate', canClear: false };
     }
     return { mode: 'none' as const, displayCity: '', canClear: false };
-  }, [cityFilter, manualCityCoords, gpsCoords, gpsAddress, userPreferences, visitedStruttureIds]);
+  }, [cityFilter, manualCityCoords, gpsCoords, gpsTimestamp, gpsAddress, userPreferences, visitedStruttureIds]);
 
   const filteredMatches = useMemo(() => {
     console.log("🔍 [CercaPartita] === INIZIO FILTRAGGIO ===");
@@ -504,7 +508,7 @@ export default function CercaPartitaScreen() {
       referenceLat = userPreferences!.preferredLocation!.lat;
       referenceLng = userPreferences!.preferredLocation!.lng;
       searchRadius = userPreferences!.preferredLocation!.radius || 30;
-      activeFilterInfo = `${userPreferences!.preferredLocation!.city} (${searchRadius} km - città preferita)`;
+      activeFilterInfo = `${userPreferences!.preferredLocation!.city} (${searchRadius} km - Città Preferita)`;
       console.log("📍 [CercaPartita] PRIORITÀ 3 - Città preferita:", userPreferences.preferredLocation.city, "Raggio:", searchRadius, "km");
     } else if (filterMode === 'visited') {
       activeFilterInfo = `Strutture dove hai già giocato (${visitedStruttureIds.length})`;
@@ -532,7 +536,7 @@ export default function CercaPartitaScreen() {
       if (referenceLat !== null && referenceLng !== null) {
         if (structureLat && structureLng) {
           const distance = calculateDistance(referenceLat, referenceLng, structureLat, structureLng);
-          console.log(`📏 [CercaPartita] ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
+          //console.log(`📏 [CercaPartita] ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
           if (distance > searchRadius) {
             return false;
           }
@@ -620,7 +624,7 @@ export default function CercaPartitaScreen() {
         // Filtro raggio con 50km
         if (structureLat && structureLng) {
           const distance = calculateDistance(referenceLat!, referenceLng!, structureLat, structureLng);
-          console.log(`📏 [CercaPartita] 50km - ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
+          //console.log(`📏 [CercaPartita] 50km - ${structureName} (${structureCity}): ${distance.toFixed(2)}km`);
           if (distance > searchRadius) {
             return false;
           }
@@ -729,90 +733,79 @@ export default function CercaPartitaScreen() {
     return visited;
   }, [matches, visitedStruttureIds]);
 
-  // Debounced city suggestion fetch
-  const fetchCitySuggestions = useCallback(async (text: string) => {
-    if (!text.trim()) {
-      setManualCityCoords(null);
-      setCitySuggestions([]);
-      return;
-    }
-    if (text.trim().length >= 3) {
-      setIsLoadingCitySuggestions(true);
-      try {
-        const searchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&addressdetails=1`;
-        const res = await fetch(searchUrl, {
-          headers: { 'User-Agent': 'SportBookingApp/1.0' },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const suggestions = data.map((item: any) => ({
-            name: item.display_name,
-            lat: parseFloat(item.lat),
-            lng: parseFloat(item.lon),
-          }));
-          setCitySuggestions(suggestions);
-        }
-      } catch (error) {
-        console.error("❌ [CercaPartita] Errore ricerca città:", error);
-      } finally {
-        setIsLoadingCitySuggestions(false);
-      }
-    } else {
-      setCitySuggestions([]);
-    }
-  }, []);
-
-  // Debounced version
-  const debouncedFetchCitySuggestions = useMemo(() => debounce(fetchCitySuggestions, 500), [fetchCitySuggestions]);
-
+  // Gestione cambio testo città
   const handleCityTextChange = useCallback((text: string) => {
     console.log("🔤 [CercaPartita] Cambio testo città:", text);
     setTempCity(text);
-    debouncedFetchCitySuggestions(text);
-  }, [debouncedFetchCitySuggestions]);
+    if (!text.trim()) {
+      setManualCityCoords(null);
+      resetValidation();
+    } else {
+      searchCitySuggestions(text);
+    }
+  }, [searchCitySuggestions, resetValidation]);
 
-  const handleSelectCitySuggestion = useCallback((suggestion: { name: string; lat: number; lng: number }) => {
+  // Selezione città dai suggerimenti
+  const handleSelectCitySuggestion = useCallback((suggestion: any) => {
     console.log("✅ [CercaPartita] Città selezionata:", suggestion);
-    // Estrai solo il nome della città (prima parte prima della virgola)
-    const cityName = suggestion.name.split(',')[0].trim();
+    const cityName = suggestion.name;
     setTempCity(cityName);
     setCityFilter(cityName);
     setManualCityCoords({ lat: suggestion.lat, lng: suggestion.lng });
-    setCitySuggestions([]);
+    selectCity(suggestion);
     setIsCityEditing(false);
-  }, []);
+  }, [selectCity]);
 
-  const geocodeCity = async (cityName: string) => {
+  // Geocoding città con hook globale
+  const geocodeCity = useCallback(async (cityName: string) => {
     try {
       console.log("🌍 [CercaPartita] Geocoding città:", cityName);
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`;
-      
-      const geoRes = await fetch(geocodeUrl, {
-        headers: { 'User-Agent': 'SportBookingApp/1.0' },
-      });
-      
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        if (geoData && geoData.length > 0) {
-          const coords = {
-            lat: parseFloat(geoData[0].lat),
-            lng: parseFloat(geoData[0].lon),
-          };
-          console.log("✅ [CercaPartita] Coordinate città:", coords);
-          return coords;
-        }
+      const coords = await validateCity(cityName);
+      if (coords) {
+        console.log("✅ [CercaPartita] Coordinate città:", coords);
       }
+      return coords;
     } catch (error) {
       console.error("❌ [CercaPartita] Errore geocoding:", error);
+      return null;
     }
-    return null;
-  };
+  }, [validateCity]);
 
   const handleUseGPS = async () => {
-    console.log("📍 [CercaPartita] Richiesta posizione GPS dall'input...");
-    await requestGPSLocation();
-    setManualCityCoords(null); // Reset manual city when using GPS
-    setIsCityEditing(false);
+    console.log("\n\n🎯🎯🎯 [CercaPartita] === CLICK BOTTONE GPS ===");
+    console.log("📍 [CercaPartita] Richiesta posizione GPS dall'input (click utente esplicito)...");
+    console.log("🔄 [CercaPartita] Chiamo requestGPSLocation(true)...");
+    
+    const result = await requestGPSLocation(true); // forceRequest = true per bypassare throttling
+    
+    console.log("📦 [CercaPartita] Risultato requestGPSLocation:", result);
+    
+    if (result.success) {
+      //console.log("✅ [CercaPartita] SUCCESS - reset manual city e chiudo editing");
+      setManualCityCoords(null); // Reset manual city when using GPS
+      setIsCityEditing(false);
+    } else {
+      console.log("❌ [CercaPartita] ERRORE - tipo:", result.errorType);
+      // Gestisci gli errori
+      if (result.errorType === 'service_disabled') {
+        console.log("🚨 [CercaPartita] Mostro Alert service_disabled");
+        Alert.alert(
+          "Servizi di localizzazione disabilitati",
+          "Attiva la localizzazione del dispositivo nelle impostazioni per utilizzare il GPS.",
+          [{ text: "OK" }]
+        );
+      } else if (result.errorType === 'permission_denied') {
+        console.log("🚨 [CercaPartita] Mostro Alert permission_denied");
+        Alert.alert(
+          "Permessi di localizzazione negati",
+          "Autorizza l'accesso alla posizione nelle impostazioni dell'app per utilizzare questa funzione.",
+          [{ text: "OK" }]
+        );
+      } else {
+        console.log("🚨 [CercaPartita] Errore sconosciuto - nessun alert");
+      }
+    }
+    console.log("🎯🎯🎯 [CercaPartita] === FINE CLICK BOTTONE GPS ===\n\n");
   };
 
   const renderFilters = () => (
@@ -1064,7 +1057,7 @@ export default function CercaPartitaScreen() {
                     setCityFilter("");
                     setManualCityCoords(null);
                   }
-                  setCitySuggestions([]);
+                  resetValidation();
                   setIsCityEditing(false);
                 }}
               />
@@ -1072,18 +1065,14 @@ export default function CercaPartitaScreen() {
                 style={styles.cityEditGPS}
                 onPress={handleUseGPS}
                 disabled={isLoadingGPS}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Usa posizione GPS"
               >
                 {isLoadingGPS ? (
                   <ActivityIndicator size="small" color="#2196F3" />
                 ) : (
-                  <Ionicons name="locate" size={16} color="#2196F3" />
+                  <Ionicons name="locate" size={18} color="#2196F3" />
                 )}
-              </Pressable>
-              <Pressable
-                style={styles.cityEditGPS}
-                onPress={() => setShowMapModal(true)}
-              >
-                <Ionicons name="map" size={16} color="#2196F3" />
               </Pressable>
               <Pressable
                 style={styles.cityEditApply}
@@ -1099,34 +1088,38 @@ export default function CercaPartitaScreen() {
                     setCityFilter("");
                     setManualCityCoords(null);
                   }
-                  setCitySuggestions([]);
+                  resetValidation();
                   setIsCityEditing(false);
                 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Applica città"
               >
                 <Ionicons name="checkmark" size={18} color="white" />
-              </Pressable>
+              </Pressable> 
               <Pressable
                 style={styles.cityEditCancel}
                 onPress={() => {
                   setTempCity(cityFilter);
-                  setCitySuggestions([]);
+                  resetValidation();
                   setIsCityEditing(false);
                 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Annulla ricerca città"
               >
                 <Ionicons name="close" size={18} color="#666" />
-              </Pressable>
+              </Pressable> 
             </View>
 
             {/* Suggerimenti città */}
-            {citySuggestions.length > 0 && (
+            {showSuggestions && geocodeSuggestions.length > 0 && (
               <View style={styles.citySuggestionsContainer}>
-                {isLoadingCitySuggestions && (
+                {cityValidation.isValidating && (
                   <View style={styles.citySuggestionItem}>
                     <ActivityIndicator size="small" color="#2196F3" />
                     <Text style={styles.citySuggestionText}>Ricerca in corso...</Text>
                   </View>
                 )}
-                {!isLoadingCitySuggestions && citySuggestions.map((suggestion, index) => (
+                {!cityValidation.isValidating && geocodeSuggestions.map((suggestion, index) => (
                   <Pressable
                     key={index}
                     style={styles.citySuggestionItem}
@@ -1134,7 +1127,7 @@ export default function CercaPartitaScreen() {
                   >
                     <Ionicons name="location" size={16} color="#2196F3" />
                     <Text style={styles.citySuggestionText} numberOfLines={1}>
-                      {suggestion.name}
+                      {suggestion.displayName}
                     </Text>
                   </Pressable>
                 ))}
@@ -1222,7 +1215,6 @@ export default function CercaPartitaScreen() {
               <Calendar
                 current={formatDate(dateFilter) || formatDate(new Date())}
                 minDate={formatDate(new Date())}
-                locale={'it'}
                 onDayPress={(day) => {
                   setDateFilter(new Date(day.dateString));
                   setShowCalendar(false);
@@ -1437,31 +1429,7 @@ export default function CercaPartitaScreen() {
         </View>
       </Modal>
 
-      <Modal
-        visible={showMapModal}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowMapModal(false)}
-      >
-        <SafeAreaView style={styles.safe}>
-          <View style={styles.header}>
-            <Pressable onPress={() => setShowMapModal(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={22} color="#333" />
-            </Pressable>
-            <Text style={styles.headerTitle}>Seleziona posizione</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={64} color="#ccc" />
-            <Text style={styles.mapPlaceholderText}>
-              Per usare la mappa, installa react-native-maps
-            </Text>
-            <Text style={styles.mapPlaceholderSubtext}>
-              npx expo install react-native-maps
-            </Text>
-          </View>
-        </SafeAreaView>
-      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1600,30 +1568,35 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: "#333",
+    minWidth: 100,
+    paddingRight: 6,
   },
   cityEditGPS: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#E3F2FD",
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 6,
   },
   cityEditApply: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#2196F3",
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 6,
   },
   cityEditCancel: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#f5f5f5",
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 6,
   },
   citySuggestionsContainer: {
     backgroundColor: "white",
@@ -1649,25 +1622,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
   },
-  mapPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-  },
-  mapPlaceholderText: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 16,
-  },
-  mapPlaceholderSubtext: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "center",
-    marginTop: 8,
-    fontFamily: "monospace",
-  },
+
   card: {
     backgroundColor: "white",
     borderRadius: 16,

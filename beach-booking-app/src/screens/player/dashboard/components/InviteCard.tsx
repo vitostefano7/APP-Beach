@@ -236,14 +236,14 @@ const InviteCard: React.FC<InviteCardProps> = ({
           style={[styles.inviteActionButton, styles.inviteDecline]}
           onPress={handleDecline}
         >
-          <Ionicons name="close" size={16} color="#F44336" />
+          <Ionicons name="close" size={14} color="#F44336" />
           <Text style={styles.inviteDeclineText}>Rifiuta</Text>
         </Pressable>
         <Pressable
           style={[styles.inviteActionButton, styles.inviteAccept]}
           onPress={handleAccept}
         >
-          <Ionicons name="checkmark" size={16} color="white" />
+          <Ionicons name="checkmark" size={14} color="white" />
           <Text style={styles.inviteAcceptText}>Accetta</Text>
         </Pressable>
       </View>

@@ -44,7 +44,7 @@ export default function TuttiInvitiScreen() {
             justifyContent: "center",
           }}
         >
-          <Ionicons name="chevron-back" size={20} color="#333" />
+          <Ionicons name="chevron-back" size={20} color="#2196F3" />
         </Pressable>
       ),
     });
@@ -360,9 +360,9 @@ const loadAllMatches = async () => {
               />
             ) : (
               <View style={styles.creatorAvatarPlaceholder}>
-                <Ionicons name="person" size={20} color="#999" />
+                <Ionicons name="person" size={20} color="#2196F3" />
               </View>
-            )}
+            )} 
             <View style={styles.creatorInfo}>
               <Text style={[
                 styles.creatorName,
@@ -388,7 +388,7 @@ const loadAllMatches = async () => {
             <Ionicons 
               name={statusIcon as any} 
               size={12} 
-              color={statusColor} 
+              color="#2196F3" 
               style={{ marginRight: 4 }}
             />
             <Text style={[
@@ -415,7 +415,7 @@ const loadAllMatches = async () => {
           </View>
 
           <View style={styles.matchInfoRow}>
-            <Ionicons name="calendar" size={16} color={isExpired ? "#999" : "#666"} />
+            <Ionicons name="calendar" size={16} color={isExpired ? "#999" : "#2196F3"} />
             <Text style={[
               styles.matchInfoText,
               isExpired && styles.expiredText
@@ -425,7 +425,7 @@ const loadAllMatches = async () => {
           </View>
 
           <View style={styles.matchInfoRow}>
-            <Ionicons name="time" size={16} color={isExpired ? "#999" : "#666"} />
+            <Ionicons name="time" size={16} color={isExpired ? "#999" : "#2196F3"} />
             <Text style={[
               styles.matchInfoText,
               isExpired && styles.expiredText
@@ -435,7 +435,7 @@ const loadAllMatches = async () => {
           </View>
 
           <View style={styles.matchInfoRow}>
-            <SportIcon sport={booking.campo?.sport?.code} size={16} color={isExpired ? "#999" : "#666"} />
+            <SportIcon sport={booking.campo?.sport?.code} size={16} color={isExpired ? "#999" : "#2196F3"} />
             <Text style={[
               styles.matchInfoText,
               isExpired && styles.expiredText
@@ -446,11 +446,11 @@ const loadAllMatches = async () => {
 
           {pricePerPerson && (
             <View style={styles.matchInfoRow}>
-              <Ionicons name="wallet-outline" size={16} color={isExpired ? "#999" : "#4CAF50"} />
+              <Ionicons name="wallet-outline" size={16} color={isExpired ? "#999" : "#2196F3"} />
               <Text style={[
                 styles.matchInfoText,
                 isExpired && styles.expiredText,
-                !isExpired && { color: "#4CAF50", fontWeight: "600" }
+                !isExpired && { color: "#000", fontWeight: "600" }
               ]}>
                 € {pricePerPerson}
               </Text>
@@ -481,7 +481,7 @@ const loadAllMatches = async () => {
                     styles.playerAvatarSmallPlaceholder,
                     isExpired && styles.expiredPlayerAvatar
                   ]}>
-                    <Ionicons name="person" size={12} color="#999" />
+                    <Ionicons name="person" size={12} color="#2196F3" />
                   </View>
                 )}
               </View>
@@ -517,7 +517,7 @@ const loadAllMatches = async () => {
                 });
               }}
             >
-              <Ionicons name="close" size={16} color="#F44336" />
+              <Ionicons name="close" size={16} color="#2196F3" />
               <Text style={styles.quickActionText}>Rifiuta</Text>
             </Pressable>
             <Pressable
@@ -554,7 +554,7 @@ const loadAllMatches = async () => {
             <Ionicons 
               name={statusIcon} 
               size={16} 
-              color={statusColor} 
+              color="#2196F3" 
             />
             <Text style={[
               styles.respondedMessageText,
@@ -571,11 +571,7 @@ const loadAllMatches = async () => {
           <Ionicons 
             name="chevron-forward" 
             size={20} 
-            color={
-              isExpired ? "#ddd" : 
-              myStatus === "declined" ? "#FFCDD2" : 
-              "#ccc"
-            } 
+            color={isExpired ? "#ddd" : "#2196F3"} 
           />
         </View>
       </Pressable>

@@ -88,6 +88,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [nextBooking, setNextBooking] = useState<any>(null);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
+  const [showAllInvites, setShowAllInvites] = useState(false);
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [openMatches, setOpenMatches] = useState<any[]>([]);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
@@ -137,7 +138,6 @@ export default function HomeScreen() {
         console.log(`⏱️  Dati principali: ${dashTimings.mainData?.toFixed(0) || 'N/A'}ms`);
         console.log(`⏱️  Match aperti: ${dashTimings.openMatches?.toFixed(0) || 'N/A'}ms`);
         console.log(`⏱️  Suggerimenti: ${allTimings.suggestions?.toFixed(0) || 'N/A'}ms`);
-        console.log(`⏱️  GPS: ${allTimings.gps?.toFixed(0) || 'N/A'}ms`);
         console.log("-".repeat(50));
         console.log(`🎯 TEMPO TOTALE: ${totalFocusTime.toFixed(0)}ms (${(totalFocusTime / 1000).toFixed(2)}s)`);
         console.log("=".repeat(50) + "\n");
@@ -151,22 +151,10 @@ export default function HomeScreen() {
         // Carica dashboard (include preferenze e dati principali)
         await loadDashboardData();
         
-        // Carica suggerimenti in parallelo con GPS
+        // Carica suggerimenti
         const suggestionsStart = performance.now();
-        const suggestionsPromise = refreshSuggestions().then(() => {
-          allTimings.suggestions = performance.now() - suggestionsStart;
-        });
-        
-        // Aspetta un attimo prima di richiedere GPS (come prima)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const gpsStart = performance.now();
-        const gpsPromise = requestGPSLocation().then(() => {
-          allTimings.gps = performance.now() - gpsStart;
-        });
-        
-        // Aspetta che tutto sia completato
-        await Promise.all([suggestionsPromise, gpsPromise]);
+        await refreshSuggestions();
+        allTimings.suggestions = performance.now() - suggestionsStart;
         
         // Aspetta ancora un attimo per loadOpenMatches (chiamato da useEffect)
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -176,6 +164,16 @@ export default function HomeScreen() {
       })();
     }, [])
   );
+
+  // Richiedi GPS solo UNA VOLTA al mount del componente
+  React.useEffect(() => {
+    // Richiedi GPS in background dopo un piccolo delay per non bloccare il caricamento iniziale
+    const gpsTimer = setTimeout(() => {
+      requestGPSLocation();
+    }, 1000);
+
+    return () => clearTimeout(gpsTimer);
+  }, []); // Dipendenze vuote = solo al mount
 
   // Carica i match aperti quando cambiano le preferenze geografiche
   React.useEffect(() => {
@@ -956,7 +954,7 @@ export default function HomeScreen() {
               />
             </View>
             
-            {validPendingInvites.slice(0, 3).map((invite) => (
+            {(showAllInvites ? validPendingInvites : validPendingInvites.slice(0, 3)).map((invite) => (
               <InviteCard
                 key={invite._id || invite.match?._id}
                 invite={invite}
@@ -969,12 +967,12 @@ export default function HomeScreen() {
             {validPendingInvites.length > 3 && (
               <Pressable 
                 style={styles.showMoreButton}
-                onPress={handleViewAllInvites}
+                onPress={() => setShowAllInvites(s => !s)}
               >
                 <Text style={styles.showMoreText}>
-                  Mostra altri {validPendingInvites.length - 3} inviti
+                  {showAllInvites ? `Mostra meno` : `Mostra altri ${validPendingInvites.length - 3} inviti`}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                <Ionicons name="chevron-forward" size={16} color="#2196F3" style={ showAllInvites ? { transform: [{ rotate: '180deg' }] } : undefined } />
               </Pressable>
             )}
           </View>

@@ -881,9 +881,9 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   inviteDecline: {
     backgroundColor: "#FFEBEE",
@@ -891,8 +891,8 @@ export const styles = StyleSheet.create({
     borderColor: "#FFEBEE",
   },
   inviteDeclineText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: "#black",
   },
   inviteAccept: {
@@ -904,8 +904,8 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
   inviteAcceptText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: "white",
   },
   timeRemainingBadge: {
