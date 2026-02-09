@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 
@@ -14,6 +15,7 @@ const Tab = createBottomTabNavigator();
 
 export default function PlayerTabs() {
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
+  const insets = useSafeAreaInsets();
   const previousUnreadCount = useRef(unreadCount);
 
   // 🔥 FORZA REFRESH IMMEDIATO AL MOUNT
@@ -58,8 +60,8 @@ export default function PlayerTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => {
         const baseStyle = {
-          height: 65,
-          paddingBottom: 10,
+          height: 65 + insets.bottom,
+          paddingBottom: Math.max(10, insets.bottom),
           paddingTop: 6,
           backgroundColor: "white",
           position: 'absolute' as const,
@@ -76,7 +78,7 @@ export default function PlayerTabs() {
           tabBarInactiveTintColor: "#999",
           tabBarStyle: customStyle?.display === "none" ? customStyle : baseStyle,
           tabBarItemStyle: {
-            height: 65,
+            height: 65 + insets.bottom,
           },
         animation: 'none', // Disabilita animazioni
         tabBarIcon: ({ color, size, focused }) => {
