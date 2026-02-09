@@ -7,6 +7,20 @@ import { formatSportName } from './sportUtils';
 
 export type SportType = "Volley" | "Beach Volley" | "Beach Tennis" | "Tennis" | "Padel" | "Calcio" | "Calcetto" | "Calciotto" | "Calcio a 7" | "Basket";
 
+// Lista esportata di tutti gli sport supportati (usabile a runtime come fallback)
+export const ALL_SPORTS: SportType[] = [
+  "Volley",
+  "Beach Volley",
+  "Beach Tennis",
+  "Tennis",
+  "Padel",
+  "Calcio",
+  "Calcetto",
+  "Calciotto",
+  "Calcio a 7",
+  "Basket",
+];
+
 export interface MaxPlayersRules {
   min: number;
   max: number;

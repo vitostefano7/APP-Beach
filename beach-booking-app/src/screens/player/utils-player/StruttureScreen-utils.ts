@@ -21,7 +21,9 @@ export type Struttura = {
   images: string[];
   sports?: string[];
   isFavorite?: boolean;
-  distance?: number;
+  distance?: number; // english alias
+  distanza?: number;  // italian alias for distance
+  prezzoPerHour?: number; // italian alias for pricePerHour
   isCostSplittingEnabled?: boolean;
   hasOpenGames?: boolean;
   openGamesCount?: number;
@@ -90,6 +92,11 @@ export function calculateDistance(
 
 function toRad(deg: number): number {
   return deg * (Math.PI / 180);
+}
+
+// Backwards compatibility wrapper (italian name used in parts of the codebase)
+export function calculatedistanza(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  return calculateDistance(lat1, lon1, lat2, lon2);
 }
 
 /* =========================

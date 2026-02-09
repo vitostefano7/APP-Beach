@@ -17,9 +17,10 @@ import {
   PanResponder,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import SportIcon from "../../../components/SportIcon";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
@@ -27,6 +28,7 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
 import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useCityGeocode } from "../../../hooks/useCityGeocode";
 import { resolveImageUrl } from "../../../utils/imageUtils";
 
 // ✅ Import stili
@@ -39,7 +41,9 @@ import {
   calculateDistance,
   filterStrutture,
   countActiveFilters,
-} from "../utils-player/StruttureScreen-utils";
+} from "../utils-player/StruttureScreen-utils"; 
+
+
 
 // Tipo per i marker sulla mappa
 type MapMarker = {
@@ -75,6 +79,8 @@ type AdvancedFiltersModalProps = {
   onApply: (filters: FilterState) => void;
   query: string;
   setQuery: (query: string) => void;
+  sports: string[];
+  loadingSports?: boolean;
 };
 
 function AdvancedFiltersModal({
@@ -84,11 +90,14 @@ function AdvancedFiltersModal({
   onApply,
   query,
   setQuery,
+  sports,
 }: AdvancedFiltersModalProps) {
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
 
-  const sports = ["Volley", "Beach Volley", "Beach Tennis", "Tennis", "Padel", "Calcio", "Calcetto", "Calciotto", "Calcio a 7", "Basket"];
+  // Use the sports passed from parent (derived from server/model). If none available, show empty state.
+  const sportsList = sports && sports.length > 0 ? sports : [];
 
   useEffect(() => {
     setTempFilters(filters);
@@ -126,37 +135,93 @@ function AdvancedFiltersModal({
 
           <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingHorizontal: 24 }}>
             <Text style={styles.sectionTitle}>Città</Text>
-            <TextInput
-              style={styles.cityInput}
-              placeholder="Inserisci città"
-              value={tempFilters.city || ""}
-              onChangeText={(text) => setTempFilters((prev) => ({ ...prev, city: text || null }))}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                style={[styles.cityInput, { flex: 1 }]}
+                placeholder="Inserisci città"
+                value={tempFilters.city || ""}
+                onChangeText={(text) => setTempFilters((prev) => ({ ...prev, city: text || null }))}
+              />
+
+              <Pressable
+                style={{ marginLeft: 10, padding: 8 }}
+                onPress={async () => {
+                  try {
+                    setGpsLoading(true);
+                    const { status } = await Location.requestForegroundPermissionsAsync();
+                    if (status !== 'granted') {
+                      Alert.alert('Permessi GPS necessari', 'Abilita i permessi di localizzazione nelle impostazioni.');
+                      setGpsLoading(false);
+                      return;
+                    }
+
+                    const loc = await Location.getCurrentPositionAsync({});
+
+                    const reverseGeocodeUrl = 
+                      `https://nominatim.openstreetmap.org/reverse?` +
+                      `lat=${loc.coords.latitude}&lon=${loc.coords.longitude}&` +
+                      `format=json&addressdetails=1`;
+
+                    const reverseRes = await fetch(reverseGeocodeUrl, {
+                      headers: { 'User-Agent': 'SportBookingApp/1.0' },
+                    });
+
+                    const reverseData = await reverseRes.json();
+                    const city = reverseData.address?.city || reverseData.address?.town || reverseData.address?.village || reverseData.address?.municipality;
+
+                    if (city) {
+                      setTempFilters((prev) => ({ ...prev, city }));
+                    } else {
+                      Alert.alert('Città non trovata', 'Impossibile determinare la città dalla posizione.');
+                    }
+                  } catch (err) {
+                    console.error('Errore GPS (modal filtri):', err);
+                    Alert.alert('Errore GPS', 'Impossibile rilevare la posizione.');
+                  } finally {
+                    setGpsLoading(false);
+                  }
+                }}
+              >
+                {gpsLoading ? (
+                  <ActivityIndicator size="small" color="#2979ff" />
+                ) : (
+                  <Ionicons name="navigate" size={20} color="#2979ff" />
+                )}
+              </Pressable>
+            </View>
 
             <Text style={styles.sectionTitle}>Sport</Text>
             <View style={styles.optionsGrid}>
-              {sports.map((sport) => (
-                <Pressable
-                  key={sport}
-                  style={[
-                    styles.option,
-                    tempFilters.sport === sport && styles.optionActive,
-                  ]}
-                  onPress={() => setTempFilters((prev) => ({
-                    ...prev,
-                    sport: prev.sport === sport ? null : sport,
-                  }))}
-                >
-                  <Text
+              {sportsList.length > 0 ? (
+                sportsList.map((sport) => (
+                  <Pressable
+                    key={sport}
                     style={[
-                      styles.optionText,
-                      tempFilters.sport === sport && styles.optionTextActive,
+                      styles.option,
+                      tempFilters.sport === sport && styles.optionActive,
                     ]}
+                    onPress={() => setTempFilters((prev) => ({
+                      ...prev,
+                      sport: prev.sport === sport ? null : sport,
+                    }))}
                   >
-                    {sport}
-                  </Text>
-                </Pressable>
-              ))}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <SportIcon sport={sport} size={16} color={tempFilters.sport === sport ? 'white' : '#2979ff'} />
+                      <Text
+                        style={[
+                          styles.optionText,
+                          { marginLeft: 8 },
+                          tempFilters.sport === sport && styles.optionTextActive,
+                        ]}
+                      >
+                        {sport}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))
+              ) : (
+                <Text style={styles.emptySubtext}>Nessuno sport disponibile</Text>
+              )}
             </View>
 
             <Text style={styles.sectionTitle}>Tipo Campo</Text>
@@ -177,15 +242,23 @@ function AdvancedFiltersModal({
                     indoor: tipo === "Indoor" ? (prev.indoor === true ? null : true) : (prev.indoor === false ? null : false),
                   }))}
                 >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      ((tempFilters.indoor === true && tipo === "Indoor") ||
-                      (tempFilters.indoor === false && tipo === "Outdoor")) ? styles.optionTextActive : null,
-                    ]}
-                  >
-                    {label}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons
+                      name={tipo === "Indoor" ? "business-outline" : "sunny-outline"}
+                      size={16}
+                      color={((tempFilters.indoor === true && tipo === "Indoor") || (tempFilters.indoor === false && tipo === "Outdoor")) ? 'white' : '#2979ff'}
+                    />
+                    <Text
+                      style={[
+                        styles.optionText,
+                        { marginLeft: 8 },
+                        ((tempFilters.indoor === true && tipo === "Indoor") ||
+                        (tempFilters.indoor === false && tipo === "Outdoor")) ? styles.optionTextActive : null,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -195,7 +268,7 @@ function AdvancedFiltersModal({
               style={styles.dateButton}
               onPress={() => setShowCalendar(true)}
             >
-              <Ionicons name="calendar-outline" size={20} color="#666" />
+              <Ionicons name="calendar-outline" size={20} color="#2979ff" />
               <Text style={styles.dateText}>
                 {formatDisplayDate(tempFilters.date)}
               </Text>
@@ -222,7 +295,7 @@ function AdvancedFiltersModal({
                   <Ionicons
                     name="time-outline"
                     size={20}
-                    color={tempFilters.timeSlot === slot ? "white" : "#666"}
+                    color={tempFilters.timeSlot === slot ? "white" : "#2979ff"}
                   />
                   <Text
                     style={[
@@ -254,7 +327,7 @@ function AdvancedFiltersModal({
                 <Ionicons
                   name="card-outline"
                   size={20}
-                  color={tempFilters.splitPayment === true ? "white" : "#666"}
+                  color={tempFilters.splitPayment === true ? "white" : "#2979ff"}
                 />
                 <Text
                   style={[
@@ -285,7 +358,7 @@ function AdvancedFiltersModal({
                 <Ionicons
                   name="football-outline"
                   size={20}
-                  color={tempFilters.openGames === true ? "white" : "#666"}
+                  color={tempFilters.openGames === true ? "white" : "#2979ff"}
                 />
                 <Text
                   style={[
@@ -409,6 +482,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const preferencesRef = useRef<UserPreferences | null>(null);
   const isLoadingStruttureRef = useRef(false);
   const lastRegionRef = useRef<Region | null>(null);
+  const insets = useSafeAreaInsets();
   
   // Costante per l'altezza del tab bar
   const TAB_BAR_HEIGHT = 65;
@@ -430,7 +504,9 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const [activeRadius, setActiveRadius] = useState<number | null>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [availableSports, setAvailableSports] = useState<string[]>([]);
-  const [sortType, setSortType] = useState<'recommended' | 'distance' | 'price'>('recommended');
+  const [sportsList, setSportsList] = useState<string[]>([]);
+  const [loadingSports, setLoadingSports] = useState<boolean>(false);
+  const [sortType, setSortType] = useState<'Consigliati' | 'distanza' | 'prezzo'>('Consigliati');
   const [showSortMenu, setShowSortMenu] = useState(false);
   
   const [region, setRegion] = useState<Region>({
@@ -473,6 +549,16 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
   // ✅ State per carousel immagini
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({});
+
+  // ✅ Hook per geocoding e suggerimenti città
+  const {
+    cityValidation,
+    citySuggestions,
+    showSuggestions,
+    searchCitySuggestions,
+    selectCity,
+    resetValidation,
+  } = useCityGeocode();
 
   useEffect(() => {
     preferencesRef.current = preferences;
@@ -518,10 +604,10 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     }
   }, [preferences, isFirstLoad, lastPreferredCity, userManuallyChangedCity]);
 
-  // Reset sortType to 'recommended' if 'distance' is selected but no city filter is set
+  // Reset sortType to 'Consigliati' if 'distanza' is selected but no city filter is set
   useEffect(() => {
-    if (sortType === 'distance' && !filters.city) {
-      setSortType('recommended');
+    if (sortType === 'distanza' && !filters.city) {
+      setSortType('Consigliati');
     }
   }, [filters.city, sortType]);
 
@@ -670,6 +756,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       console.log('📡 Risposta HTTP:', res.status, res.statusText);
       
       let data: Struttura[] = await res.json();
+      // Normalizza il campo prezzoPerHour per compatibilità (il backend potrebbe usare pricePerHour o price)
+      data = data.map((s) => ({
+        ...s,
+        prezzoPerHour: s.prezzoPerHour ?? (s as any).pricePerHour ?? (s as any).price ?? 0,
+      }));
       console.log('📦 Dati ricevuti:', data.length, 'strutture');
 
       // 🆕 SISTEMA FALLBACK A 3 LIVELLI
@@ -716,13 +807,13 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           
           data = data.map((s) => ({
             ...s,
-            distance: calculateDistance(centerLat!, centerLng!, s.location.lat, s.location.lng)
+            distanza: calculateDistance(centerLat!, centerLng!, s.location.lat, s.location.lng)
           }));
           
           const beforeFilter = data.length;
-          data = data.filter((s) => (s.distance || 0) <= radius);
+          data = data.filter((s) => (s.distanza || 0) <= radius);
           console.log(`✅ Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
-          data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+          data.sort((a, b) => (a.distanza || 0) - (b.distanza || 0));
           
           setActiveCity(activeCity);
           setActiveRadius(radius);
@@ -750,13 +841,13 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               
               data = data.map((s) => ({
                 ...s,
-                distance: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng)
+                distanza: calculateDistance(filterLat, filterLng, s.location.lat, s.location.lng)
               }));
               
               const beforeFilter = data.length;
-              data = data.filter((s) => (s.distance || 0) <= radius);
+              data = data.filter((s) => (s.distanza || 0) <= radius);
               console.log(`✅ Strutture entro ${radius}km: ${data.length}/${beforeFilter}`);
-              data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+              data.sort((a, b) => (a.distanza || 0) - (b.distanza || 0));
               
               setActiveCity(activeCity);
               setActiveRadius(radius);
@@ -840,6 +931,16 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     return date.toISOString().split('T')[0];
   };
 
+  const formatCurrency = (value: number | string | undefined | null) => {
+    if (value === undefined || value === null || value === '') return '—';
+    const num = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+    try {
+      return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
+    } catch (e) {
+      return `€${Math.round(num)}`;
+    }
+  };
+
   useEffect(() => {
     console.log('🔄 Vista cambiata a:', viewMode);
     if (viewMode === "list") {
@@ -856,12 +957,39 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     }
   }, [filters.city, viewMode, geocodeAndCenterMap]);
 
+  // Carica lista sport dal backend (log dettagliati)
+  const loadSports = useCallback(async () => {
+    setLoadingSports(true);
+    try {
+      const res = await fetch(`${API_URL}/sports`);
+      const text = await res.text();
+      let body: any = null;
+      try {
+        body = JSON.parse(text);
+      } catch (e) {
+        body = text;
+      }
+
+      if (res.ok && body && body.data) {
+        const list = body.data.map((s: any) => s.name).filter(Boolean);
+        setSportsList(list);
+      } else {
+        console.warn('⚠️ Impossibile caricare sport dal server, response:', body);
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento sport:', error);
+    } finally {
+      setLoadingSports(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       console.log('🎯 useFocusEffect triggered, token:', !!token);
       loadPreferences();
+      loadSports();
       return () => {};
-    }, [token, loadPreferences])
+    }, [token, loadPreferences, loadSports])
   );
 
   // Aggiorna città preferita dall'ultimo luogo visitato
@@ -873,10 +1001,30 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     }
   }, [lastVisitedCity, token, preferences?.preferredLocation?.city]);
 
+  // 🆕 Mostra modal selezione città al primo accesso
+  useEffect(() => {
+    if (preferencesLoaded && !preferences?.preferredLocation?.city && !showCitySelectionModal) {
+      console.log('🎯 Primo accesso: mostro modal selezione città obbligatoria');
+      setShowCitySelectionModal(true);
+    }
+  }, [preferencesLoaded, preferences?.preferredLocation?.city, showCitySelectionModal]);
+
   useEffect(() => {
     if (!token || !preferencesLoaded) return;
+    
+    // ❌ NON caricare strutture se non c'è nessuna città selezionata
+    const hasCity = filters.city || 
+                    preferences?.preferredLocation?.city || 
+                    preferences?.preferredLocation?.suggestedCity;
+    
+    if (!hasCity) {
+      console.log('⚠️ Nessuna città disponibile, skip caricamento strutture');
+      setStrutture([]);
+      return;
+    }
+    
     loadStrutture();
-  }, [token, loadStrutture, preferencesLoaded]);
+  }, [token, loadStrutture, preferencesLoaded, filters.city, preferences?.preferredLocation?.city, preferences?.preferredLocation?.suggestedCity]);
 
   const loadFavorites = useCallback(async () => {
     try {
@@ -886,7 +1034,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
       if (res.ok) {
         const data = await res.json();
-        setFavoriteStrutture(data);
+        const normalizedFavorites = data.map((s: any) => ({
+          ...s,
+          prezzoPerHour: s.prezzoPerHour ?? s.pricePerHour ?? s.price ?? 0,
+        }));
+        setFavoriteStrutture(normalizedFavorites);
       }
     } catch (error) {
       console.error("Errore caricamento preferiti:", error);
@@ -1015,7 +1167,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         title: 'GPS non disponibile',
         message: 'La posizione corrente non è disponibile. Assicurati che i servizi di localizzazione siano abilitati nelle impostazioni del dispositivo.',
         buttons: [
-          { text: "Annulla", style: "cancel" },
+          { text: "Annulla", style: "cancel", onPress: () => {} },
           { text: "Apri Impostazioni", onPress: () => Linking.openSettings() }
         ]
       });
@@ -1030,7 +1182,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     const sorted = [...filteredStrutture];
     
     switch (sortType) {
-      case 'recommended':
+      case 'Consigliati':
         // Ordina per rating medio (VIP)
         return sorted.sort((a, b) => {
           const aRating = a.rating?.average || 0;
@@ -1038,18 +1190,18 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           return bRating - aRating;
         });
       
-      case 'distance':
+      case 'distanza':
         // Ordina per distanza (se disponibile)
         return sorted.sort((a, b) => {
-          const aDistance = a.distance ?? Infinity;
-          const bDistance = b.distance ?? Infinity;
-          return aDistance - bDistance;
+          const adistanza = a.distanza ?? Infinity;
+          const bdistanza = b.distanza ?? Infinity;
+          return adistanza - bdistanza;
         });
       
-      case 'price':
+      case 'prezzo':
         // Ordina per prezzo crescente
         return sorted.sort((a, b) => {
-          return (a.pricePerHour || 0) - (b.pricePerHour || 0);
+          return (a.prezzoPerHour || 0) - (b.prezzoPerHour || 0);
         });
       
       default:
@@ -1069,8 +1221,8 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       console.log(`   💳 Split Payment: ${struttura.isCostSplittingEnabled ? '✅' : '❌'}`);
       console.log(`   🎯 Partite Aperte: ${struttura.openGamesCount || 0}`);
       console.log(`   🖼️ Immagini: ${struttura.images?.length || 0}`);
-      if (struttura.distance !== undefined) {
-        console.log(`   📏 Distanza: ${struttura.distance.toFixed(1)} km`);
+      if (struttura.distanza !== undefined) {
+        console.log(`   📏 Distanza: ${struttura.distanza.toFixed(1)} km`);
       }
       console.log('');
     });
@@ -1156,11 +1308,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
   const getSortLabel = () => {
     switch (sortType) {
-      case 'recommended':
+      case 'Consigliati':
         return 'Consigliati';
-      case 'distance':
+      case 'distanza':
         return 'Distanza';
-      case 'price':
+      case 'prezzo':
         return 'Prezzo';
       default:
         return 'Consigliati';
@@ -1290,14 +1442,17 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                 {item.location.address}, {item.location.city}
               </Text>
             </View>
-            {item.distance !== undefined && (
-              <Text style={styles.distance}>📍 {item.distance.toFixed(1)} km</Text>
+            {item.distanza !== undefined && (
+              <Text style={styles.distanza}>📍 {item.distanza.toFixed(1)} km</Text>
             )}
           </View>
 
-          <View>
+          <View style={styles.pricePill}>
             <Text style={styles.priceLabel}>A partire da</Text>
-            <Text style={styles.price}>€{item.pricePerHour}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <Text style={styles.price}>{formatCurrency(item.prezzoPerHour ?? (item as any).pricePerHour ?? (item as any).price)}</Text>
+              <Text style={styles.priceUnit}>/h</Text>
+            </View>
           </View>
         </View>
 
@@ -1481,24 +1636,24 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               <Pressable
                 style={[
                   styles.sortMenuItem,
-                  sortType === 'recommended' && styles.sortMenuItemActive
+                  sortType === 'Consigliati' && styles.sortMenuItemActive
                 ]}
                 onPress={() => {
-                  setSortType('recommended');
+                  setSortType('Consigliati');
                   setShowSortMenu(false);
                 }}
               >
                 <View style={styles.sortMenuItemLeft}>
-                  <Ionicons name="star" size={20} color={sortType === 'recommended' ? '#2979ff' : '#666'} />
+                  <Ionicons name="star" size={20} color={sortType === 'Consigliati' ? '#2979ff' : '#666'} />
                   <View>
                     <Text style={[
                       styles.sortMenuItemText,
-                      sortType === 'recommended' && styles.sortMenuItemTextActive
-                    ]}>Recommended</Text>
-                    <Text style={styles.sortMenuItemSubtext}>Most popular structures</Text>
+                      sortType === 'Consigliati' && styles.sortMenuItemTextActive
+                    ]}>Consigliati</Text>
+                    <Text style={styles.sortMenuItemSubtext}>Strutture più popolari</Text>
                   </View>
                 </View>
-                {sortType === 'recommended' && (
+                {sortType === 'Consigliati' && (
                   <Ionicons name="checkmark" size={24} color="#2979ff" />
                 )}
               </Pressable>
@@ -1507,24 +1662,24 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               <Pressable
                 style={[
                   styles.sortMenuItem,
-                  sortType === 'distance' && styles.sortMenuItemActive
+                  sortType === 'distanza' && styles.sortMenuItemActive
                 ]}
                 onPress={() => {
-                  setSortType('distance');
+                  setSortType('distanza');
                   setShowSortMenu(false);
                 }}
               >
                 <View style={styles.sortMenuItemLeft}>
-                  <Ionicons name="location" size={20} color={sortType === 'distance' ? '#2979ff' : '#666'} />
+                  <Ionicons name="location" size={20} color={sortType === 'distanza' ? '#2979ff' : '#666'} />
                   <View>
                     <Text style={[
                       styles.sortMenuItemText,
-                      sortType === 'distance' && styles.sortMenuItemTextActive
-                    ]}>Distance</Text>
-                    <Text style={styles.sortMenuItemSubtext}>Closest to you</Text>
+                      sortType === 'distanza' && styles.sortMenuItemTextActive
+                    ]}>Distanza</Text>
+                    <Text style={styles.sortMenuItemSubtext}>Più vicine a te</Text>
                   </View>
                 </View>
-                {sortType === 'distance' && (
+                {sortType === 'distanza' && (
                   <Ionicons name="checkmark" size={24} color="#2979ff" />
                 )}
               </Pressable>
@@ -1533,24 +1688,24 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               <Pressable
                 style={[
                   styles.sortMenuItem,
-                  sortType === 'price' && styles.sortMenuItemActive
+                  sortType === 'prezzo' && styles.sortMenuItemActive
                 ]}
                 onPress={() => {
-                  setSortType('price');
+                  setSortType('prezzo');
                   setShowSortMenu(false);
                 }}
               >
                 <View style={styles.sortMenuItemLeft}>
-                  <Ionicons name="cash" size={20} color={sortType === 'price' ? '#2979ff' : '#666'} />
+                  <Ionicons name="cash" size={20} color={sortType === 'prezzo' ? '#2979ff' : '#666'} />
                   <View>
                     <Text style={[
                       styles.sortMenuItemText,
-                      sortType === 'price' && styles.sortMenuItemTextActive
-                    ]}>Price</Text>
-                    <Text style={styles.sortMenuItemSubtext}>Lowest first</Text>
+                      sortType === 'prezzo' && styles.sortMenuItemTextActive
+                    ]}>Prezzo</Text>
+                    <Text style={styles.sortMenuItemSubtext}>Più economiche</Text>
                   </View>
                 </View>
-                {sortType === 'price' && (
+                {sortType === 'prezzo' && (
                   <Ionicons name="checkmark" size={24} color="#2979ff" />
                 )}
               </Pressable>
@@ -1599,12 +1754,14 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
             {/* Location + Show Map */}
             <View style={styles.locationRow}>
-              <Pressable style={styles.locationSelector}>
-                <Ionicons name="location-outline" size={18} color="#666" />
+              <Pressable 
+                style={styles.locationSelector}
+                onPress={() => setShowFilters(true)}
+              >
+                <Ionicons name="location-outline" size={18} color="#2979ff" />
                 <Text style={styles.locationText}>
-                  {filters.city || preferences?.preferredLocation?.city || "Roma, Italy"}
+                  {filters.city || preferences?.preferredLocation?.city || "Seleziona città"}
                 </Text>
-                <Ionicons name="chevron-down" size={16} color="#666" />
               </Pressable>
               <Pressable
                 style={styles.showMapButton}
@@ -1681,6 +1838,21 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                   <ActivityIndicator size="large" color="#2979ff" />
                   <Text style={styles.emptyText}>Caricamento strutture...</Text>
                 </View>
+              ) : !filters.city && !preferences?.preferredLocation?.city ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="location-outline" size={64} color="#CCC" />
+                  <Text style={styles.emptyText}>Seleziona una città</Text>
+                  <Text style={styles.emptySubtext}>
+                    Clicca sul pulsante filtri per scegliere dove cercare strutture
+                  </Text>
+                  <Pressable
+                    style={[styles.bookButton, { marginTop: 16, paddingHorizontal: 24 }]}
+                    onPress={() => setShowCitySelectionModal(true)}
+                  >
+                    <Ionicons name="location" size={16} color="white" style={{ marginRight: 6 }} />
+                    <Text style={styles.bookButtonText}>Seleziona città</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="search-outline" size={64} color="#CCC" />
@@ -1708,6 +1880,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
             region={region}
             onRegionChangeComplete={handleRegionChangeComplete}
             showsUserLocation
+            showsMyLocationButton={false}
           >
             {markers.map((marker) => (
               <Marker
@@ -1745,16 +1918,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
             ))}
           </MapView>
 
-          <Pressable
-            style={styles.mapBackButton}
-            onPress={() => setViewMode("list")}
-          >
-            <Ionicons name="arrow-back" size={24} color="#333" />
-            <Text style={styles.mapBackText}>Torna alla lista</Text>
-          </Pressable>
-
           <Pressable 
-            style={styles.mapFilterButton} 
+            style={[
+              styles.mapFilterButton,
+              { top: insets.top + 16, right: insets.right + 16 }
+            ]} 
             onPress={() => setShowFilters(true)}
           >
             <Ionicons name="options-outline" size={24} color="#333" />
@@ -1765,7 +1933,27 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
             )}
           </Pressable>
 
-          <Pressable style={styles.mapLocationButton} onPress={centerOnUser}>
+          <Pressable
+            style={[
+              styles.mapBackButton,
+              { top: insets.top + 74, right: insets.right + 16 }
+            ]}
+            onPress={() => setViewMode("list")}
+          >
+            <Ionicons name="list" size={24} color="#333" />
+            <Text style={styles.mapBackText}>Lista</Text>
+          </Pressable>
+
+          <Pressable 
+            style={[
+              styles.mapLocationButton,
+              { 
+                bottom: (isTabMode ? TAB_BAR_HEIGHT : 0) + insets.bottom + 16,
+                right: insets.right + 16
+              }
+            ]} 
+            onPress={centerOnUser}
+          >
             <Ionicons name="locate" size={24} color="#2979ff" />
           </Pressable>
 
@@ -1809,9 +1997,52 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                       </View>
                       <View style={styles.mapModalPriceBox}>
                         <Text style={styles.mapModalPriceLabel}>da</Text>
-                        <Text style={styles.mapModalPrice}>€{selectedMarker.pricePerHour}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                          <Text style={styles.mapModalPrice}>{formatCurrency(selectedMarker.prezzoPerHour ?? (selectedMarker as any).pricePerHour ?? (selectedMarker as any).price)}</Text>
+                          <Text style={styles.mapModalPriceUnit}>/h</Text>
+                        </View>
                       </View>
                     </View>
+
+                    {/* Badges (same as list view) */}
+                    {(selectedMarker.indoor !== undefined || selectedMarker.isCostSplittingEnabled || selectedMarker.hasOpenGames) && (
+                      <View style={styles.badgesRow}>
+                        {selectedMarker.indoor !== undefined && (
+                          <View style={[styles.badge, selectedMarker.indoor ? styles.badgeIndoor : styles.badgeOutdoor]}>
+                            <Ionicons name={selectedMarker.indoor ? "business-outline" : "sunny-outline"} size={14} color="white" />
+                            <Text style={styles.badgeText}>{selectedMarker.indoor ? "Indoor" : "Outdoor"}</Text>
+                          </View>
+                        )}
+
+                        {selectedMarker.isCostSplittingEnabled && (
+                          <View style={[styles.badge, styles.badgeSplitPayment]}>
+                            <Ionicons name="card-outline" size={14} color="white" />
+                            <Text style={styles.badgeText}>Split Payment</Text>
+                          </View>
+                        )}
+
+                        {selectedMarker.hasOpenGames && (
+                          <View style={[styles.badge, styles.badgeOpenGames]}>
+                            <Ionicons name="football-outline" size={14} color="white" />
+                            <Text style={styles.badgeText}>Partite Aperte</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Sport tags (same as list view) */}
+                    {selectedMarker.sports && selectedMarker.sports.length > 0 && (
+                      <View style={styles.tagsRow}>
+                        {selectedMarker.sports.slice(0, 2).map((sport, idx) => (
+                          <View key={idx} style={styles.sportTag}>
+                            <Text style={styles.sportTagText}>{sport}</Text>
+                          </View>
+                        ))}
+                        {selectedMarker.sports.length > 2 && (
+                          <Text style={styles.moreText}>+{selectedMarker.sports.length - 2}</Text>
+                        )}
+                      </View>
+                    )}
 
                     <Pressable
                       style={styles.mapModalButton}
@@ -1843,47 +2074,192 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         onApply={onApply}
         query={query}
         setQuery={setQuery}
+        sports={sportsList.length ? sportsList : availableSports}
       />
 
       {/* Modal selezione città iniziale */}
       <Modal
         visible={showCitySelectionModal}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => {}}
       >
-        <View style={styles.permissionModalOverlay}>
-          <View style={styles.permissionModalContent}>
-            <View style={styles.permissionModalIcon}>
-              <Ionicons name="location-outline" size={48} color="#2979ff" />
+        <View style={styles.citySelectionOverlay}>
+          <View style={styles.citySelectionContent}>
+            {/* Header con icona */}
+            <View style={styles.citySelectionHeader}>
+              <View style={styles.citySelectionIconContainer}>
+                <Ionicons name="location" size={32} color="white" />
+              </View>
+              <Text style={styles.citySelectionTitle}>Benvenuto! 🎾</Text>
+              <Text style={styles.citySelectionSubtitle}>
+                Seleziona la tua città per scoprire le strutture sportive disponibili
+              </Text>
             </View>
             
-            <Text style={styles.permissionModalTitle}>Seleziona la tua città</Text>
-            
-            <Text style={styles.permissionModalMessage}>
-              Per mostrarti le strutture più rilevanti, seleziona la città in cui giochi più spesso.
-            </Text>
-            
-            <TextInput
-              style={styles.cityInput}
-              placeholder="Inserisci città"
-              value={filters.city || ""}
-              onChangeText={(text) => setFilters(prev => ({ ...prev, city: text || null }))}
-            />
-            
-            <View style={styles.permissionModalButtons}>
-              <Pressable
-                style={styles.permissionModalSettingsButton}
-                onPress={() => {
-                  if (filters.city) {
-                    updatePreferredLocation(filters.city, 0, 0);
-                    setShowCitySelectionModal(false);
+            {/* Opzione GPS */}
+            <Pressable
+              style={styles.gpsButton}
+              onPress={async () => {
+                try {
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  if (status !== "granted") {
+                    showAlert({
+                      type: 'error',
+                      title: 'Permessi GPS necessari',
+                      message: 'Abilita i permessi di localizzazione nelle impostazioni.',
+                    });
+                    return;
                   }
-                }}
-              >
-                <Text style={styles.permissionModalSettingsText}>Conferma</Text>
-              </Pressable>
+
+                  const loc = await Location.getCurrentPositionAsync({});
+                  
+                  // Reverse geocoding
+                  const reverseGeocodeUrl = 
+                    `https://nominatim.openstreetmap.org/reverse?` +
+                    `lat=${loc.coords.latitude}&lon=${loc.coords.longitude}&` +
+                    `format=json&addressdetails=1`;
+                  
+                  const reverseRes = await fetch(reverseGeocodeUrl, {
+                    headers: { 'User-Agent': 'SportBookingApp/1.0' },
+                  });
+                  
+                  const reverseData = await reverseRes.json();
+                  const city = reverseData.address?.city || reverseData.address?.town || reverseData.address?.village;
+                  
+                  if (city) {
+                    await updatePreferredLocation(city, loc.coords.latitude, loc.coords.longitude);
+                    setFilters(prev => ({ ...prev, city }));
+                    setShowCitySelectionModal(false);
+                    console.log('✅ Città GPS salvata:', city);
+                  } else {
+                    showAlert({
+                      type: 'error',
+                      title: 'Città non trovata',
+                      message: 'Inserisci manualmente la città.',
+                    });
+                  }
+                } catch (error) {
+                  console.error('Errore GPS:', error);
+                  showAlert({
+                    type: 'error',
+                    title: 'Errore GPS',
+                    message: 'Impossibile rilevare la posizione. Inserisci manualmente la città.',
+                  });
+                }
+              }}
+            >
+              <View style={styles.gpsButtonContent}>
+                <View style={styles.gpsIconCircle}>
+                  <Ionicons name="navigate" size={22} color="#2979ff" />
+                </View>
+                <View style={styles.gpsButtonTextContainer}>
+                  <Text style={styles.gpsButtonTitle}>Usa la mia posizione</Text>
+                  <Text style={styles.gpsButtonSubtext}>Rileva automaticamente</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </View>
+            </Pressable>
+            
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>oppure</Text>
+              <View style={styles.dividerLine} />
             </View>
+            
+            <View style={styles.manualInputWrapper}>
+              <View style={[
+                styles.manualInputContainer,
+                cityValidation.isValid === true && styles.manualInputValid,
+              ]}>
+                <View style={styles.manualInputIconContainer}>
+                  <Ionicons name="search-outline" size={20} color="#999" />
+                </View>
+                <TextInput
+                  style={styles.manualCityInput}
+                  placeholder="Cerca la tua città..."
+                  placeholderTextColor="#999"
+                  value={filters.city || ""}
+                  onChangeText={(text) => {
+                    setFilters(prev => ({ ...prev, city: text || null }));
+                    searchCitySuggestions(text);
+                  }}
+                  autoCapitalize="words"
+                />
+                
+                {/* Feedback visivo validazione */}
+                <View style={styles.cityValidationFeedback}>
+                  {cityValidation.isValidating && (
+                    <ActivityIndicator size="small" color="#2979ff" />
+                  )}
+                  {!cityValidation.isValidating && cityValidation.isValid === true && (
+                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  )}
+                </View>
+              </View>
+              
+              {/* Lista suggerimenti città */}
+              {showSuggestions && citySuggestions.length > 0 && (
+                <View style={styles.citySuggestionsContainer}>
+                  {citySuggestions.map((suggestion, index) => (
+                    <Pressable
+                      key={index}
+                      style={styles.citySuggestionItem}
+                      onPress={() => {
+                        const selected = selectCity(suggestion);
+                        setFilters(prev => ({ ...prev, city: selected.city }));
+                      }}
+                    >
+                      <Ionicons name="location" size={20} color="#2979ff" />
+                      <View style={styles.citySuggestionText}>
+                        <Text style={styles.citySuggestionCity}>{suggestion.name}</Text>
+                        {suggestion.region && (
+                          <Text style={styles.citySuggestionRegion}>{suggestion.region}</Text>
+                        )}
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#999" />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              
+            </View>
+            
+            <Pressable
+              style={[
+                styles.confirmCityButton, 
+                (!filters.city || cityValidation.isValid !== true) && styles.confirmCityButtonDisabled
+              ]}
+              disabled={!filters.city || cityValidation.isValid !== true}
+              onPress={async () => {
+                if (filters.city && cityValidation.coordinates) {
+                  try {
+                    await updatePreferredLocation(
+                      filters.city, 
+                      cityValidation.coordinates.lat, 
+                      cityValidation.coordinates.lng
+                    );
+                    setShowCitySelectionModal(false);
+                    resetValidation();
+                    console.log('✅ Città salvata:', filters.city);
+                  } catch (error) {
+                    console.error('Errore salvataggio città:', error);
+                    showAlert({
+                      type: 'error',
+                      title: 'Errore',
+                      message: 'Impossibile salvare la città. Riprova.',
+                    });
+                  }
+                }
+              }}
+            >
+                <Text style={styles.confirmCityButtonText}>
+                  {filters.city ? `Conferma: ${filters.city}` : 'Inserisci una città'}
+                </Text>
+                {filters.city && (
+                  <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginLeft: 8 }} />
+                )}
+              </Pressable>
           </View>
         </View>
       </Modal>

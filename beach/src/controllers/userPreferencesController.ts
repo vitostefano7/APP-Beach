@@ -177,13 +177,17 @@ export const updatePreferredLocation = async (req: AuthRequest, res: Response) =
       preferences = new UserPreferences({ user: req.user!.id });
     }
 
-    preferences.preferredLocation = {
-      city,
-      address,
-      lat,
-      lng,
-      radius: radius || 10,
-    };
+    // ✅ Inizializza preferredLocation se non esiste
+    if (!preferences.preferredLocation) {
+      preferences.preferredLocation = {} as any;
+    }
+
+    // ✅ Aggiorna solo i campi rilevanti (preserva suggestedCity, suggestedLat, suggestedLng, suggestedUpdatedAt)
+    preferences.preferredLocation!.city = city;
+    if (address) preferences.preferredLocation!.address = address;
+    preferences.preferredLocation!.lat = lat;
+    preferences.preferredLocation!.lng = lng;
+    preferences.preferredLocation!.radius = radius !== undefined ? radius : 30; // ✅ Allineato a schema (default 30km)
 
     console.log('💾 [updatePreferredLocation] Salvataggio location');
     await preferences.save();

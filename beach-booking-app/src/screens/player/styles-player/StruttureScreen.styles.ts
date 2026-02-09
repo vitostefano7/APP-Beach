@@ -644,6 +644,13 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  // Italian alias
+  distanza: {
+    color: "#2979ff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
   ratingBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -702,9 +709,37 @@ export const styles = StyleSheet.create({
   },
 
   price: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1A1A1A",
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#2979ff",
+    textAlign: "right",
+  },
+
+  // New: compact container for price + unit
+  pricePill: {
+    alignItems: 'flex-end',
+  },
+
+  priceUnit: {
+    fontSize: 11,
+    color: "#666",
+    marginLeft: 6,
+    marginBottom: 2,
+    fontWeight: '700',
+  },
+
+  // Backwards-compatible Italian aliases
+  prezzoLabel: {
+    fontSize: 9,
+    color: "#999",
+    fontWeight: "500",
+    textAlign: "right",
+  },
+
+  prezzo: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#2979ff",
     textAlign: "right",
   },
 
@@ -892,7 +927,7 @@ export const styles = StyleSheet.create({
   // Map Modal Popup Styles
   mapModalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -981,6 +1016,14 @@ export const styles = StyleSheet.create({
     color: "#2979ff",
   },
 
+  mapModalPriceUnit: {
+    fontSize: 14,
+    color: "#2979ff",
+    marginLeft: 8,
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+
   mapModalButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1004,7 +1047,7 @@ export const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "transparent",
     justifyContent: "flex-end",
   },
 
@@ -1015,6 +1058,12 @@ export const styles = StyleSheet.create({
     height: "90%",
     display: "flex",
     flexDirection: "column",
+    /* Soft shadow to replace hard border */
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
   modalHeader: {
@@ -1026,6 +1075,10 @@ export const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomWidth: 0,
     backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+    /* removed hard border to use soft shadow instead */
   },
 
   modalScrollView: {
@@ -1181,7 +1234,7 @@ export const styles = StyleSheet.create({
   optionText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#495057",
+    color: "#1A1A1A",
   },
 
   optionTextActive: {
@@ -1254,7 +1307,7 @@ export const styles = StyleSheet.create({
   timeSlotText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#495057",
+    color: "#1A1A1A",
   },
 
   timeSlotTextActive: {
@@ -1505,19 +1558,14 @@ export const styles = StyleSheet.create({
   },
 
   clusterMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#2979ff",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: "white",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
 
   clusterText: {
@@ -1529,8 +1577,8 @@ export const styles = StyleSheet.create({
   // Pulsanti Mappa
   mapBackButton: {
     position: "absolute",
-    top: 16,
-    left: 16,
+    top: 74,
+    right: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -1607,6 +1655,258 @@ export const styles = StyleSheet.create({
 
   clearDateButton: {
     padding: 4,
+  },
+
+  // City Selection Modal Styles (Nuovo Design)
+  citySelectionOverlay: {
+    flex: 1,
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  citySelectionContent: {
+    backgroundColor: "white",
+    borderRadius: 24,
+    padding: 0,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 15,
+    overflow: "hidden",
+  },
+
+  citySelectionHeader: {
+    backgroundColor: "#2979ff",
+    paddingTop: 32,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    alignItems: "center",
+  },
+
+  citySelectionIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+
+  citySelectionTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "white",
+    textAlign: "center",
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+
+  citySelectionSubtitle: {
+    fontSize: 15,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 12,
+  },
+
+  gpsButton: {
+    backgroundColor: "white",
+    marginHorizontal: 24,
+    marginTop: 24,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#E3F2FD",
+    shadowColor: "#2979ff",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  gpsButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+
+  gpsIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3F2FD",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  gpsButtonTextContainer: {
+    flex: 1,
+  },
+
+  gpsButtonTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 2,
+  },
+
+  gpsButtonSubtext: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+    paddingHorizontal: 24,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E0E0E0",
+  },
+
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  manualInputWrapper: {
+    marginHorizontal: 24,
+  },
+
+  manualInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    paddingHorizontal: 16,
+    height: 56,
+  },
+
+  manualInputValid: {
+    borderColor: "#4CAF50",
+    backgroundColor: "#F1F8F4",
+  },
+
+  manualInputIconContainer: {
+    marginRight: 12,
+  },
+
+  manualCityInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1A1A1A",
+    fontWeight: "500",
+  },
+
+  cityValidationFeedback: {
+    width: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  citySuggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: "white",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    maxHeight: 250,
+  },
+
+  citySuggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+
+  citySuggestionText: {
+    flex: 1,
+  },
+
+  citySuggestionCity: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+
+  citySuggestionRegion: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
+
+  cityCoordinatesInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+  },
+
+  cityCoordinatesText: {
+    flex: 1,
+    fontSize: 11,
+    color: "#2E7D32",
+    fontWeight: "500",
+  },
+
+  confirmCityButton: {
+    backgroundColor: "#2979ff",
+    marginHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 24,
+    borderRadius: 14,
+    height: 56,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#2979ff",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  confirmCityButtonDisabled: {
+    backgroundColor: "#BDBDBD",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  confirmCityButtonText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "white",
+    letterSpacing: 0.5,
   },
 
   // Permission Modal Styles

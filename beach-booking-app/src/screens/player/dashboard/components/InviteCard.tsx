@@ -125,7 +125,7 @@ const InviteCard: React.FC<InviteCardProps> = ({
     );
   };
 
-  // Funzione per mostrare quanto tempo rimane (opzionale)
+  // Funzione per mostrare quanto tempo rimane (versione abbreviata)
   const getTimeRemaining = () => {
     if (!booking?.date || !booking?.startTime) return "";
     
@@ -139,22 +139,26 @@ const InviteCard: React.FC<InviteCardProps> = ({
     
     if (minutesRemaining <= 0) return "";
     
+    // Formato abbreviato
     if (minutesRemaining < 60) {
-      return `Scade tra ${minutesRemaining} ${minutesRemaining === 1 ? 'minuto' : 'minuti'}`;
+      return `${minutesRemaining}min`;
     } else if (minutesRemaining < 120) {
-      return `Scade tra 1 ora`;
+      return `1h`;
     } else {
       const hoursRemaining = Math.floor(minutesRemaining / 60);
       if (hoursRemaining > 24) {
         const daysRemaining = Math.floor(hoursRemaining / 24);
-        return `Scade tra ${daysRemaining} ${daysRemaining === 1 ? 'giorno' : 'giorni'}`;
+        return `${daysRemaining}g`;
       } else {
-        return `Scade tra ${hoursRemaining} ${hoursRemaining === 1 ? 'ora' : 'ore'}`;
+        return `${hoursRemaining}h`;
       }
     }
   };
 
   const timeRemaining = getTimeRemaining();
+  
+  // Estrai lo sport
+  const sportName = booking?.campo?.sport?.name || "Sport";
 
   return (
     <Pressable 
@@ -171,25 +175,33 @@ const InviteCard: React.FC<InviteCardProps> = ({
             fallbackIcon="person"
           />
           <View style={styles.inviteInfo}>
-            <Text style={styles.inviteTitle}>
-              {createdBy?.name} ti ha invitato
-            </Text>
-            {booking?.campo?.struttura?.name && (
-              <View style={styles.inviteDetails}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 3}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+              <Text style={styles.inviteTitle}>
+                {createdBy?.name} {createdBy?.surname} ti ha invitato
+              </Text>
+              {timeRemaining && (
+                <View style={styles.timeRemainingBadge}>
+                  <Ionicons name="time-outline" size={11} color="#FF9800" />
+                  <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.inviteDetails}>
+              {booking?.campo?.struttura?.name && (
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1}}>
                   <Ionicons name="location-outline" size={12} color="#666" />
-                  <Text style={styles.inviteDetailText}>
+                  <Text style={styles.inviteDetailText} numberOfLines={1}>
                     {booking.campo.struttura.name}
                   </Text>
                 </View>
-                {timeRemaining && (
-                  <View style={styles.timeRemainingBadge}>
-                    <Ionicons name="time-outline" size={12} color="#FF9800" />
-                    <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
-                  </View>
-                )}
+              )}
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8}}>
+                <Ionicons name="football-outline" size={12} color="#2196F3" />
+                <Text style={styles.inviteDetailText}>
+                  {sportName}
+                </Text>
               </View>
-            )}
+            </View>
           </View>
         </View>
       </View>

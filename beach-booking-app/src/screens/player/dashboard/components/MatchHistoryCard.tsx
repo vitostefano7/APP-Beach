@@ -56,6 +56,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
   const myPlayer = match.players.find((p: any) => p.user._id === userId);
   const isWinner = myPlayer && myPlayer.team === match.winner;
   
+  // Get sport config and check for draw
+  const sportConfig = getSportConfig(match.booking?.campo?.sport?.code);
+  let isDraw = false;
+  if (match.score?.sets && match.score.sets.length > 0) {
+    const finalSet = match.score.sets[0];
+    isDraw = finalSet.teamA === finalSet.teamB && !match.winner;
+  }
+  
   // Get players for each team
   const teamAPlayers = match.players.filter((p: any) => p.team === 'A');
   const teamBPlayers = match.players.filter((p: any) => p.team === 'B');
@@ -99,7 +107,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
       onPress={handlePress}
     >
       <LinearGradient
-        colors={isWinner ? ['#4CAF50', '#45A049'] : ['#F44336', '#E53935']}
+        colors={isDraw ? ['#FFC107', '#FF9800'] : isWinner ? ['#4CAF50', '#45A049'] : ['#F44336', '#E53935']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.matchGradientBorder}
@@ -111,21 +119,21 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
               <View
                 style={[
                   styles.matchResultBadge,
-                  isWinner ? styles.matchWin : styles.matchLoss,
+                  isDraw ? styles.matchDraw : isWinner ? styles.matchWin : styles.matchLoss,
                 ]}
               >
                 <Ionicons
-                  name={isWinner ? "trophy" : "close-circle"}
+                  name={isDraw ? "ellipse" : isWinner ? "trophy" : "close-circle"}
                   size={22}
-                  color={isWinner ? "#FFD700" : "#F44336"}
+                  color={isDraw ? "#FFC107" : isWinner ? "#FFD700" : "#F44336"}
                 />
               </View>
               <View>
                 <Text style={[
                   styles.matchResultText,
-                  isWinner ? styles.matchWinText : styles.matchLossText
+                  isDraw ? styles.matchDrawText : isWinner ? styles.matchWinText : styles.matchLossText
                 ]}>
-                  {isWinner ? 'VITTORIA' : 'SCONFITTA'}
+                  {isDraw ? 'PAREGGIO' : isWinner ? 'VITTORIA' : 'SCONFITTA'}
                 </Text>
                 <Text style={styles.matchDateSubtext}>
                   {match.booking?.date
@@ -251,8 +259,6 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
 
           {/* Score Section */}
           {match.score?.sets && match.score.sets.length > 0 && (() => {
-            const sportCode = match.booking?.campo?.sport?.code;
-            const sportConfig = getSportConfig(sportCode);
             const compiledSets = match.score.sets.filter((set: any) => set.teamA > 0 || set.teamB > 0);
             
             if (compiledSets.length === 0) return null;

@@ -144,24 +144,28 @@ export const getStrutture = async (req: Request, res: Response) => {
 
         const indoor = campi.some((c) => c.indoor);
 
-        // Conta le partite aperte per questa struttura
+        // ✅ Conta le partite aperte SOLO se la struttura ha split payment abilitato
         const campoIds = campi.map(c => c._id);
-        const openMatchesCount = await Match.countDocuments({
-          booking: {
-            $in: await Booking.find({
-              campo: { $in: campoIds },
-              status: 'confirmed'
-            }).distinct('_id')
-          },
-          status: 'open'
-        });
+        let openMatchesCount = 0;
+        
+        if (struttura.isCostSplittingEnabled) {
+          openMatchesCount = await Match.countDocuments({
+            booking: {
+              $in: await Booking.find({
+                campo: { $in: campoIds },
+                status: 'confirmed'
+              }).distinct('_id')
+            },
+            status: 'open'
+          });
+        }
 
         return {
           ...struttura,
           sports,
           pricePerHour,
           indoor,
-          hasOpenGames: openMatchesCount > 0,
+          hasOpenGames: openMatchesCount > 0 && struttura.isCostSplittingEnabled,
           openGamesCount: openMatchesCount,
         };
       })

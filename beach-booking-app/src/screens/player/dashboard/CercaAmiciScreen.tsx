@@ -416,7 +416,7 @@ export default function CercaAmiciScreen() {
       await saveRecentStruttura(struttura);
     }
 
-    navigation.navigate('StrutturaDetail', { strutturaId: struttura._id });
+    navigation.navigate('DettaglioStruttura', { strutturaId: struttura._id });
   };
 
   const handleFollowStruttura = async (strutturaId: string) => {
@@ -627,7 +627,7 @@ export default function CercaAmiciScreen() {
   const renderSuggestedStruttura = (item: SuggestedStruttura) => (
     <Pressable
       style={styles.strutturaCard}
-      onPress={() => navigation.navigate('StrutturaDetail', { strutturaId: item._id })}
+      onPress={() => navigation.navigate('DettaglioStruttura', { strutturaId: item._id })}
     >
       <View style={styles.strutturaLeft}>
         {item.images[0] ? (
@@ -760,7 +760,7 @@ export default function CercaAmiciScreen() {
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>
                     {searchType === 'users'
-                      ? (isOwner ? 'Utenti da contattare' : 'Persone che potresti conoscere')
+                      ? (isOwner ? 'Utenti da contattare' : 'Utenti suggeriti')
                       : 'Strutture suggerite'}
                   </Text>
                   {((searchType === 'users' && suggestedFriends) || (searchType === 'strutture' && suggestedStrutture)) &&

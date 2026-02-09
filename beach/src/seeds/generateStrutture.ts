@@ -91,7 +91,8 @@ export async function generateStrutture(owners: any[]) {
       isActive: true,
       isFeatured: Math.random() > 0.8,
       isDeleted: false,
-      isCostSplittingEnabled: Math.random() > 0.5,
+      // ✅ 70% delle strutture supportano split payment per garantire disponibilità di partite aperte
+      isCostSplittingEnabled: Math.random() > 0.3,
     });
     idx++;
   }
