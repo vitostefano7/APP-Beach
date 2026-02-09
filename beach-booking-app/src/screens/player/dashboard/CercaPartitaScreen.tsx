@@ -810,15 +810,9 @@ export default function CercaPartitaScreen() {
 
   const handleUseGPS = async () => {
     console.log("📍 [CercaPartita] Richiesta posizione GPS dall'input...");
-    try {
-      await requestGPSLocation();
-      setManualCityCoords(null); // Reset manual city when using GPS
-      setIsCityEditing(false);
-      // Optionally, set city name if available from GPS (not handled here)
-    } catch (gpsError) {
-      Alert.alert("Errore GPS", "Impossibile ottenere la posizione. Riprova.");
-      console.log("⚠️ [CercaPartita] Errore GPS:", gpsError);
-    }
+    await requestGPSLocation();
+    setManualCityCoords(null); // Reset manual city when using GPS
+    setIsCityEditing(false);
   };
 
   const renderFilters = () => (

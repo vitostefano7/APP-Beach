@@ -983,7 +983,7 @@ export default function HomeScreen() {
         {/* Partite Aperte */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Partite aperte</Text>
+            <Text style={styles.sectionTitle}>Partite Disponibili</Text>
             <Pressable onPress={() => navigation.navigate('CercaPartita')}>
               <Text style={styles.sectionLink}>Vedi tutte</Text>
             </Pressable>

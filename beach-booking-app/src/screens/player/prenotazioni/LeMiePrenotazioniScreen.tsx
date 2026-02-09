@@ -79,9 +79,11 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const initialFilter = route?.params?.initialFilter || "upcoming";
-  const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "invites">(initialFilter);
-  const fromDashboard = route?.params?.fromDashboard || false;
+  // Normalizza initialFilter per evitare valori non supportati (es. "all")
+  const rawInitialFilter = route?.params?.initialFilter;
+  const initialFilter = rawInitialFilter === "past" || rawInitialFilter === "invites" ? rawInitialFilter : "upcoming";
+  const [filter, setFilter] = useState<"upcoming" | "past" | "invites">(initialFilter);
+  const fromDashboard = route?.params?.fromDashboard || false; 
 
   // Nuovi stati per i filtri avanzati
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -279,10 +281,6 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     // Controlla se l'utente ha un invito pendente
     const hasPendingInvite = b.isInvitedPlayer && b.players?.some(p => p.user._id === user._id && p.status === "pending");
     
-    if (filter === "all") {
-      // "Tutte": escludi gli inviti pendenti
-      return !hasPendingInvite;
-    }
     if (filter === "upcoming") {
       // "Future": escludi gli inviti pendenti
       return (isUpcomingBooking(b) || isOngoingBooking(b)) && !hasPendingInvite;
@@ -332,7 +330,6 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   // Calcola i conteggi per i filtri
   const upcomingCount = bookings.filter(b => isUpcomingBooking(b) || isOngoingBooking(b)).length;
   const pastCount = bookings.filter(b => isPastBooking(b)).length;
-  const allCount = bookings.length;
   const invitesCount = bookings.filter(b => b.isInvitedPlayer && b.players?.some(p => p.user._id === user._id && p.status === "pending")).length;
 
   /* =========================
@@ -363,12 +360,12 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     return (
       <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
         {label === "Sport" && value ? (
-          <SportIcon sport={value} size={16} color={value ? "#2196F3" : "#666"} />
+          <SportIcon sport={value} size={16} color={value ? "#2196F3" : "#2196F3"} />
         ) : (
           <Ionicons 
             name={icon as any} 
             size={16} 
-            color={value ? "#2196F3" : "#666"} 
+            color="#2196F3" 
           />
         )}
         <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
@@ -435,23 +432,6 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           </View>
 
           <View style={styles.rightBadges}>
-            {/* Indicatore di tempo */}
-            {!isCancelled && (
-              <View style={[
-                styles.timeBadge,
-                isPast && styles.timeBadgePast,
-                isOngoing && styles.timeBadgeOngoing,
-                isUpcoming && styles.timeBadgeUpcoming,
-              ]}>
-                <Ionicons 
-                  name={isOngoing ? "play-circle" : "time-outline"} 
-                  size={12} 
-                  color={isOngoing ? "#FFF" : isPast ? "#FFF" : "#FFF"} 
-                />
-                <Text style={styles.timeBadgeText}>{timeStatus}</Text>
-              </View>
-            )}
-
             {/* Formato partita */}
             {matchFormat && (
               <View style={styles.formatBadge}>
@@ -473,9 +453,21 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 
         {/* HEADER */}
         <View style={styles.cardHeader}>
-          <Text style={styles.strutturaName}>
-            {item.campo.struttura.name}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.strutturaName} numberOfLines={1}>
+              {item.campo.struttura.name}
+            </Text>
+            <View style={[
+              styles.timeBadge,
+              isPast && styles.timeBadgePast,
+              isOngoing && styles.timeBadgeOngoing,
+              isUpcoming && styles.timeBadgeUpcoming,
+              { paddingHorizontal: 8, paddingVertical: 4, minWidth: 0 }
+            ]}>
+              <Ionicons name={isOngoing ? "play-circle" : "time-outline"} size={12} color="#FFF" />
+              <Text style={styles.timeBadgeText}>{timeStatus}</Text>
+            </View>
+          </View>
           <Text style={styles.campoName}>{item.campo.name}</Text>
         </View>
 
@@ -702,7 +694,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                     <Ionicons 
                       name="mail-outline" 
                       size={16} 
-                      color={filter === "invites" ? "white" : "#666"} 
+                      color={filter === "invites" ? "white" : "#2196F3"} 
                     />
                     {invitesCount > 0 && (
                       <View style={styles.inviteNotificationBadge}>
@@ -732,9 +724,8 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
               {/* FILTERS */}
               <View style={styles.filters}>
                 {[
-                  { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline" },
-                  { key: "past", label: "Concluse", icon: "time-outline" },
-                  { key: "all", label: "Tutte", icon: "list-outline" },
+                  { key: "upcoming", label: "Future", icon: "arrow-forward-circle-outline", count: upcomingCount },
+                  { key: "past", label: "Concluse", icon: "time-outline", count: pastCount },
                 ].map((f) => (
                   <Pressable
                     key={f.key}
@@ -750,7 +741,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                     <Ionicons 
                       name={f.icon as any} 
                       size={16} 
-                      color={filter === f.key ? "white" : "#666"} 
+                      color={filter === f.key ? "white" : "#2196F3"} 
                     />
                     <Text
                       style={[
@@ -766,10 +757,10 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                         filter === f.key && styles.filterNumberActive,
                       ]}
                     >
-                      {f.key === "upcoming" ? upcomingCount : f.key === "past" ? pastCount : f.key === "invites" ? invitesCount : allCount}
+                      {f.count}
                     </Text>
                   </Pressable>
-                ))}
+                ))} 
               </View>
             </View>
             
@@ -843,6 +834,8 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                 ? "Non hai prenotazioni future" 
                 : filter === "past"
                 ? "Non hai prenotazioni passate"
+                : filter === "invites"
+                ? "Non hai inviti pending"
                 : "Non hai ancora effettuato prenotazioni"}
             </Text>
           </View>
@@ -986,7 +979,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 ========================= */
 const InfoRow = ({ icon, text }: { icon: any; text: string }) => (
   <View style={styles.infoRow}>
-    <Ionicons name={icon} size={16} color="#666" />
+    <Ionicons name={icon} size={16} color="#2196F3" />
     <Text style={styles.infoText}>{text}</Text>
   </View>
 );

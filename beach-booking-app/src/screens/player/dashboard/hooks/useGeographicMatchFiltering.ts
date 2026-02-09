@@ -220,29 +220,43 @@ export const useGeographicMatchFiltering = (token: string | null) => {
 
       if (status === "granted") {
         console.log("✅ [GPS] Permessi accettati, ottengo posizione...");
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
 
-        const coords = {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        };
-        const now = Date.now();
+          const coords = {
+            lat: location.coords.latitude,
+            lng: location.coords.longitude,
+          };
+          const now = Date.now();
 
-        setGpsCoords(coords);
-        setGpsTimestamp(now);
-        setGpsPermissionDenied(null);
-        
-        // Salva in AsyncStorage
-        await Promise.all([
-          AsyncStorage.setItem(STORAGE_KEYS.GPS_COORDS, JSON.stringify(coords)),
-          AsyncStorage.setItem(STORAGE_KEYS.GPS_TIMESTAMP, now.toString()),
-          AsyncStorage.removeItem(STORAGE_KEYS.GPS_PERMISSION_DENIED),
-        ]);
-        
-        console.log("✅ [GPS] Posizione ottenuta e salvata:", coords);
-        console.log("💾 [GPS] Dati persistiti in AsyncStorage");
+          setGpsCoords(coords);
+          setGpsTimestamp(now);
+          setGpsPermissionDenied(null);
+          
+          // Salva in AsyncStorage
+          await Promise.all([
+            AsyncStorage.setItem(STORAGE_KEYS.GPS_COORDS, JSON.stringify(coords)),
+            AsyncStorage.setItem(STORAGE_KEYS.GPS_TIMESTAMP, now.toString()),
+            AsyncStorage.removeItem(STORAGE_KEYS.GPS_PERMISSION_DENIED),
+          ]);
+          
+          console.log("✅ [GPS] Posizione ottenuta e salvata:", coords);
+          console.log("💾 [GPS] Dati persistiti in AsyncStorage");
+        } catch (locationError: any) {
+          // Errore "unsatisfied device settings" = servizi GPS disabilitati sul dispositivo
+          const errorMessage = locationError?.message || '';
+          if (errorMessage.includes('unsatisfied device settings') || errorMessage.includes('Location services')) {
+            console.log("⚠️ [GPS] Servizi GPS disabilitati sul dispositivo");
+            const now = Date.now();
+            setGpsPermissionDenied(now);
+            await AsyncStorage.setItem(STORAGE_KEYS.GPS_PERMISSION_DENIED, now.toString());
+            console.log("💾 [GPS] Stato salvato - userò città preferita o strutture visitate");
+          } else {
+            console.error("❌ [GPS] Errore ottenimento posizione:", locationError);
+          }
+        }
       } else {
         // Permessi negati - salva il timestamp
         const now = Date.now();
@@ -255,7 +269,11 @@ export const useGeographicMatchFiltering = (token: string | null) => {
         console.log("💡 [GPS] Userò città preferita o strutture visitate");
       }
     } catch (gpsError) {
-      console.error("❌ [GPS] Errore durante la richiesta:", gpsError);
+      console.error("❌ [GPS] Errore richiesta permessi:", gpsError);
+      // Anche qui salviamo lo stato per non richiedere continuamente
+      const now = Date.now();
+      setGpsPermissionDenied(now);
+      await AsyncStorage.setItem(STORAGE_KEYS.GPS_PERMISSION_DENIED, now.toString());
     } finally {
       setIsLoadingGPS(false);
       console.log("🏁 [GPS] === FINE DEBUG RICHIESTA GPS ===\n");
