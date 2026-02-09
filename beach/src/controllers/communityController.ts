@@ -1163,6 +1163,8 @@ export const getStrutturaPosts = async (req: AuthRequest, res: Response) => {
       isStrutturaPost: true,
     })
       .populate("struttura", "name images location")
+      .populate("comments.user", "name surname username avatarUrl")
+      .populate("comments.struttura", "name images location")
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)

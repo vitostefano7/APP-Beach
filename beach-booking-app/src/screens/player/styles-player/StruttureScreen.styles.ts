@@ -10,8 +10,8 @@ export const styles = StyleSheet.create({
   newHeader: {
     backgroundColor: "white",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: "#E8E8E8",
   },
@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
   newSearchBox: {
@@ -66,7 +66,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 8,
   },
 
@@ -101,12 +101,12 @@ export const styles = StyleSheet.create({
   },
 
   sportChipsContainer: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
 
   sportChipsContent: {
     gap: 10,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
 
   sportChip: {
@@ -209,7 +209,7 @@ export const styles = StyleSheet.create({
   // Sort Menu Styles
   sortMenuOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0)",
     justifyContent: "flex-end",
   },
 
@@ -220,6 +220,36 @@ export const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 30,
     paddingHorizontal: 20,
+  },
+
+  anchoredSortMenu: {
+    position: "absolute",
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
+  },
+
+  sortMenuCaret: {
+    position: "absolute",
+    top: -6,
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 6,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "white",
   },
 
   sortMenuTitle: {
@@ -270,18 +300,26 @@ export const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  sortMenuCloseButton: {
-    marginTop: 16,
-    paddingVertical: 14,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
+  sortMenuHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
 
-  sortMenuCloseText: {
-    fontSize: 16,
-    fontWeight: "600",
+  sortMenuHeaderClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+
+  sortMenuHeaderCloseText: {
+    fontSize: 20,
     color: "#666",
+    fontWeight: "700",
   },
 
   // Vecchi stili (mantenuti per retrocompatibilità)
@@ -1048,10 +1086,22 @@ export const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "transparent",
-    justifyContent: "flex-end",
+  },
+
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
 
   modalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1063,7 +1113,7 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 10,
   },
 
   modalHeader: {

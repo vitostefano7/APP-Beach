@@ -260,14 +260,26 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const renderComment = ({ item }: { item: Comment }) => {
     const isStructureComment = !!item.struttura;
+    
+    // Log per debug
+    if (!isStructureComment) {
+      console.log('👤 [PostCard] Comment user data:', {
+        commentId: item._id,
+        userName: item.user?.name,
+        userSurname: item.user?.surname,
+        userUsername: item.user?.username,
+        fullUser: item.user,
+      });
+    }
+    
     const displayName = isStructureComment 
       ? item.struttura!.name 
-      : item.user.surname 
+      : item.user?.surname 
         ? `${item.user.name} ${item.user.surname}` 
-        : item.user.name;
+        : (item.user?.name || item.user?.username || 'Utente');
     const displayAvatar = isStructureComment 
       ? item.struttura!.images[0] 
-      : item.user.avatarUrl;
+      : item.user?.avatarUrl;
     
     // Check if current user owns this comment
     const isOwnComment = !isStructureComment && item.user._id === currentUserId;

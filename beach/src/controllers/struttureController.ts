@@ -9,23 +9,84 @@ import axios from "axios";
 import cloudinary from "../config/cloudinary";
 
 /**
+ * 🌍 Calcola distanza tra due coordinate geografiche (formula Haversine)
+ * @param lat1 Latitudine punto 1
+ * @param lng1 Longitudine punto 1
+ * @param lat2 Latitudine punto 2
+ * @param lng2 Longitudine punto 2
+ * @returns Distanza in km
+ */
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Raggio della Terra in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * 📌 GET /strutture
  * Tutte le strutture pubbliche (PLAYER) - CON SPORTS AGGREGATI
- * Query params: date (YYYY-MM-DD), timeSlot (Mattina|Pomeriggio|Sera)
+ * Query params: 
+ *   - date (YYYY-MM-DD), timeSlot (Mattina|Pomeriggio|Sera)
+ *   - city (string): filtra per città
+ *   - lat, lng, radius (number): filtra per coordinate geografiche e raggio in km
  */
 export const getStrutture = async (req: Request, res: Response) => {
   try {
-    const { date, timeSlot } = req.query;
+    const { date, timeSlot, city, lat, lng, radius } = req.query;
 
-    console.log('📌 [getStrutture] Inizio:', { date, timeSlot });
+    console.log('📌 [getStrutture] Inizio:', { date, timeSlot, city, lat, lng, radius });
 
-    console.log('🔍 [getStrutture] Ricerca strutture');
-    let strutture = await Struttura.find({
+    // 🔍 Costruisci query di base
+    const query: any = {
       isActive: true,
       isDeleted: false,
-    })
+    };
+
+    // 🌍 Filtro geografico per città
+    if (city && typeof city === 'string') {
+      query['location.city'] = { $regex: new RegExp(`^${city.trim()}$`, 'i') };
+      console.log('📍 [getStrutture] Filtro per città:', city);
+    }
+
+    console.log('🔍 [getStrutture] Ricerca strutture con filtri:', query);
+    let strutture = await Struttura.find(query)
       .sort({ isFeatured: -1, createdAt: -1 })
       .lean();
+
+    // 📏 Filtro geografico per coordinate e raggio
+    if (lat && lng && radius) {
+      const centerLat = parseFloat(lat as string);
+      const centerLng = parseFloat(lng as string);
+      const maxRadius = parseFloat(radius as string);
+
+      if (!isNaN(centerLat) && !isNaN(centerLng) && !isNaN(maxRadius)) {
+        console.log('📍 [getStrutture] Filtro per coordinate:', { centerLat, centerLng, maxRadius });
+        
+        // Calcola distanza per ogni struttura e filtra
+        strutture = strutture.filter((s) => {
+          if (!s.location?.lat || !s.location?.lng) return false;
+          
+          const distance = calculateDistance(
+            centerLat, 
+            centerLng, 
+            s.location.lat, 
+            s.location.lng
+          );
+          
+          return distance <= maxRadius;
+        });
+        
+        console.log(`✅ [getStrutture] Strutture entro ${maxRadius}km: ${strutture.length}`);
+      }
+    }
 
     // Se sono specificati date e timeSlot, filtra per disponibilità
     if (date && timeSlot) {

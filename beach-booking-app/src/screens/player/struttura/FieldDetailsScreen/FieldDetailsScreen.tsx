@@ -24,6 +24,7 @@ import API_URL from "../../../../config/api";
 import { resolveImageUrl } from "../../../../utils/imageUtils";
 import OpenMatchCard from "../../dashboard/components/OpenMatchCard";
 import SportIcon from "../../../../components/SportIcon";
+import { PostCard } from "../../../../components/Community/PostCard/PostCard";
 
 import {
   MONTHS,
@@ -143,7 +144,7 @@ function normalizeOpeningHours(openingHours: any) {
 export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const { showAlert, AlertComponent } = useCustomAlert();
 
   // Support receiving either a full `struttura` object or just a `strutturaId` in params
@@ -518,6 +519,55 @@ export default function FieldDetailsScreen() {
       setPosts([]);
     } finally {
       setLoadingPosts(false);
+    }
+  };
+
+  const handleLikePost = async (postId: string) => {
+    if (!token) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/community/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setPosts(prev => prev.map(p => 
+          p._id === postId 
+            ? { ...p, likes: p.likes?.includes(user?._id || '') 
+                ? p.likes.filter(id => id !== user?._id) 
+                : [...(p.likes || []), user?._id || ''] 
+              } 
+            : p
+        ));
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
+  };
+
+  const handleSharePost = (postId: string) => {
+    showAlert({
+      type: 'info',
+      title: 'Condividi',
+      message: 'Funzionalità di condivisione in arrivo!',
+    });
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!token) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/community/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setPosts(prev => prev.filter(p => p._id !== postId));
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
     }
   };
 
@@ -2028,60 +2078,38 @@ export default function FieldDetailsScreen() {
 
         {/* POSTS SECTION */}
         {activeChip === 'post' && (
-          <View style={strutturaStyles.postsSection}>
-            <View style={strutturaStyles.postsSectionHeader}>
-              <Text style={strutturaStyles.postsSectionTitle}>Post</Text>
-              {loadingPosts && <ActivityIndicator size="small" color="#2196F3" />}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="newspaper" size={20} color="#2196F3" />
+              <Text style={styles.sectionTitle}>Post</Text>
+              {loadingPosts && <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />}
             </View>
 
             {posts.length > 0 ? (
               posts.map((post) => (
-                <View key={post._id} style={strutturaStyles.postCard}>
-                  <View style={strutturaStyles.postHeader}>
-                    <View style={strutturaStyles.postStrutturaAvatar}>
-                      {post.struttura?.images?.[0] ? (
-                        <Image
-                          source={{ uri: post.struttura.images[0] }}
-                          style={strutturaStyles.postStrutturaAvatarImage}
-                        />
-                      ) : (
-                        <Ionicons name="business" size={24} color="#2196F3" />
-                      )}
-                    </View>
-                    <View style={strutturaStyles.postHeaderText}>
-                      <Text style={strutturaStyles.postAuthor}>{post.struttura?.name}</Text>
-                      <Text style={strutturaStyles.postTime}>
-                        {new Date(post.createdAt).toLocaleDateString('it-IT')}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={strutturaStyles.postContent}>{post.content}</Text>
-
-                  {post.image && (
-                    <Image
-                      source={{ uri: post.image }}
-                      style={strutturaStyles.postImage}
-                      resizeMode="cover"
-                    />
-                  )}
-
-                  <View style={strutturaStyles.postStats}>
-                    <View style={strutturaStyles.postStat}>
-                      <Ionicons name="heart-outline" size={18} color="#666" />
-                      <Text style={strutturaStyles.postStatText}>{post.likes?.length || 0}</Text>
-                    </View>
-                    <View style={strutturaStyles.postStat}>
-                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
-                      <Text style={strutturaStyles.postStatText}>{post.comments?.length || 0}</Text>
-                    </View>
-                  </View>
-                </View>
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  currentUserId={user?._id}
+                  token={token}
+                  onLike={handleLikePost}
+                  onShare={handleSharePost}
+                  onDeletePost={handleDeletePost}
+                  isLiked={post.likes?.includes(user?._id || '')}
+                  strutturaId={struttura._id}
+                  onAuthorPress={(authorId, isStructure) => {
+                    if (isStructure) {
+                      // Already on structure detail page
+                    } else {
+                      navigation.navigate('UserProfile', { userId: authorId });
+                    }
+                  }}
+                />
               ))
             ) : !loadingPosts ? (
-              <View style={strutturaStyles.emptyPosts}>
+              <View style={styles.emptyState}>
                 <Ionicons name="newspaper-outline" size={48} color="#ccc" />
-                <Text style={strutturaStyles.emptyPostsText}>Nessun post pubblicato</Text>
+                <Text style={styles.errorText}>Nessun post pubblicato</Text>
               </View>
             ) : null}
           </View>

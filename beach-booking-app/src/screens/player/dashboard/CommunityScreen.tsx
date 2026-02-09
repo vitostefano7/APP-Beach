@@ -126,7 +126,7 @@ export default function CommunityScreen() {
   const handleAuthorPress = (authorId: string, isStructure: boolean) => {
     console.log('👤 [CommunityScreen] Author pressed:', { authorId, isStructure });
     if (isStructure) {
-      navigation.navigate('StrutturaDetail', { strutturaId: authorId });
+      navigation.navigate('DettaglioStruttura', { strutturaId: authorId });
     } else {
       navigation.navigate('ProfiloUtente', { userId: authorId });
     }

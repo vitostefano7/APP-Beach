@@ -16,7 +16,7 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
 
 export interface AlertButton {
   text: string;
-  onPress: () => void;
+  onPress?: () => void;
   style?: 'default' | 'cancel' | 'destructive';
 }
 
@@ -111,7 +111,13 @@ const CustomAlert: React.FC<CustomAlertProps> = ({ visible, config, onClose }) =
   };
 
   const handleButtonPress = (button: AlertButton) => {
-    button.onPress();
+    if (button.onPress) {
+      try {
+        button.onPress();
+      } catch (e) {
+        console.warn('CustomAlert button handler threw:', e);
+      }
+    }
     onClose();
   };
 
@@ -152,7 +158,12 @@ const CustomAlert: React.FC<CustomAlertProps> = ({ visible, config, onClose }) =
                   style={[styles.button, getButtonStyle(button.style)]}
                   onPress={() => handleButtonPress(button)}
                 >
-                  <Text style={[styles.buttonText, getButtonStyle(button.style)]}>
+                  <Text style={[
+                    styles.buttonText,
+                    button.style === 'cancel' ? styles.cancelButtonText :
+                    button.style === 'destructive' ? styles.destructiveButtonText :
+                    styles.defaultButtonText,
+                  ]}>
                     {button.text}
                   </Text>
                 </Pressable>
