@@ -5,7 +5,6 @@ import {
   Text,
   FlatList,
   Pressable,
-  Image,
   ActivityIndicator,
   RefreshControl,
   StyleSheet,
@@ -16,7 +15,8 @@ import { useContext } from "react";
 import API_URL from "../../../../config/api";
 import { AuthContext } from "../../../../context/AuthContext";
 import { useUnreadMessages } from "../../../../context/UnreadMessagesContext";
-import { resolveImageUrl } from "../../../../utils/imageUtils";
+import ConversationItem from "../../../../components/Conversation/ConversationItem";
+import MatchModal from "../../../../components/Conversation/MatchModal";
 
 type Conversation = {
   _id: string;
@@ -92,11 +92,30 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
 
   const isOwner = user?.role === 'owner';
 
   useEffect(() => {
     loadConversations();
+  }, [token]);
+
+  useEffect(() => {
+    // Chiudi il modal quando si naviga via da questo componente
+    const unsubscribe = navigation.addListener('blur', () => {
+      if (onCloseModal) {
+        onCloseModal();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, onCloseModal]);
+
+  useEffect(() => {
+    if (token) {
+      fetchMatches();
+    }
   }, [token]);
 
   const loadConversations = async (isRefresh = false) => {
@@ -151,147 +170,108 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
     });
   };
 
-  const handleOpenChat = (item: Conversation) => {
-    // Chiudi il modal prima di navigare
-    if (onCloseModal) {
-      onCloseModal();
+  const getUnreadCount = (conversation: Conversation) => {
+    if (conversation.type === 'group') {
+      return conversation.unreadCount?.[user?.id || ''] || 0;
     }
-    
-    // Naviga alla chat appropriata
-    if (item.type === 'group') {
-      navigation.navigate("GroupChat", {
-        conversationId: item._id,
-        groupName: item.groupName,
-        matchId: item.match?._id,
-        headerInfo: {
-          strutturaName:
-            item.match?.booking?.campo?.struttura?.name ||
-            item.match?.booking?.struttura?.name ||
-            item.struttura?.name,
-          date: item.match?.booking?.date,
-          startTime: item.match?.booking?.startTime,
-          participantsCount: item.match?.participants?.length || 0,
-          bookingId: item.match?.booking?._id,
+    return isOwner ? conversation.unreadByOwner : conversation.unreadByUser;
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/conversations/${conversationId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
       });
-    } else {
-      const otherPerson = isOwner ? item.user : item.owner;
-      navigation.navigate("Chat", {
-        conversationId: item._id,
-        strutturaName: item.struttura?.name,
-        otherPersonName: otherPerson?.name,
-        struttura: item.struttura,
-      });
+
+      if (response.ok) {
+        onRefresh();
+        refreshUnreadCount();
+      } else {
+        console.error('Errore nell\'eliminazione della conversazione');
+      }
+    } catch (error) {
+      console.error('Errore nell\'eliminazione della conversazione:', error);
     }
-    
-    // Aggiorna badge dopo un secondo
-    setTimeout(() => refreshUnreadCount(), 1000);
   };
 
-  const renderConversation = ({ item }: { item: Conversation }) => {
-    let unreadCount = 0;
-    let displayName = '';
-    let subtitle = '';
-    let imageUri = '';
-    let iconName: any = 'chatbubble-outline';
-    
-    if (item.type === 'group') {
-      // Chat di gruppo
-      unreadCount = item.unreadCount?.[user?.id || ''] || 0;
-      const strutturaName =
-        item.match?.booking?.campo?.struttura?.name ||
-        item.match?.booking?.struttura?.name ||
-        item.struttura?.name ||
-        "Struttura";
-      displayName = `Partita - ${strutturaName}`;
+  const fetchMatches = async () => {
+    setLoadingMatches(true);
+    try {
+      let endpoint = '';
+      if (isOwner) {
+        endpoint = `${API_URL}/matches/future-followed`;
+      } else {
+        endpoint = `${API_URL}/matches/me?status=open`;
+      }
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      let data = await response.json();
 
-      let dayLabel = "";
-      if (item.match?.booking?.date) {
-        const date = new Date(item.match.booking.date);
-        dayLabel = date.toLocaleDateString("it-IT", {
-          day: "2-digit",
-          month: "2-digit",
+      if (!isOwner) {
+        // Filtra partite future per giocatori
+        const now = new Date();
+        data = data.filter((match: any) => {
+          const booking = match.booking;
+          return booking && new Date(booking.date) > now;
         });
       }
-      const timeLabel = item.match?.booking?.startTime || "";
-      const participantsCount = item.match?.players?.length || 0;
-      subtitle = [dayLabel || "Data", timeLabel || "Ora", `${participantsCount} partecipanti`].join(" - ");
-      iconName = 'people';
-    } else {
-      // Chat diretta
-      unreadCount = isOwner ? item.unreadByOwner : item.unreadByUser;
-      displayName = item.struttura?.name || 'Struttura';
-      const otherPerson = isOwner ? item.user : item.owner;
-      subtitle = isOwner ? `👤 ${otherPerson?.name}` : `🏢 Chat con la struttura`;
-      imageUri = item.struttura?.images?.[0]
-        ? resolveImageUrl(item.struttura.images[0])
-        : '';
+
+      setMatches(data);
+    } catch (error) {
+      console.error("Errore nel caricamento delle partite:", error);
+    } finally {
+      setLoadingMatches(false);
     }
-
-    return (
-      <Pressable
-        style={styles.conversationCard}
-        onPress={() => handleOpenChat(item)}
-      >
-        <View style={styles.conversationLeft}>
-          {item.type === 'group' ? (
-            <View style={[styles.conversationImage, styles.groupImagePlaceholder]}>
-              <Ionicons name="people" size={24} color="#2196F3" />
-            </View>
-          ) : imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.conversationImage}
-            />
-          ) : (
-            <View style={[styles.conversationImage, styles.conversationImagePlaceholder]}>
-              <Ionicons name="business-outline" size={24} color="#999" />
-            </View>
-          )}
-
-          <View style={styles.conversationInfo}>
-            <View style={styles.conversationHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                {item.type === 'group' && (
-                  <Ionicons name="chatbubbles" size={14} color="#2196F3" />
-                )}
-                <Text style={styles.conversationTitle} numberOfLines={1}>
-                  {displayName}
-                </Text>
-              </View>
-              <Text style={styles.conversationTime}>
-                {formatTime(item.lastMessageAt)}
-              </Text>
-            </View>
-
-            <Text style={styles.conversationSubtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-
-            {item.lastMessage && (
-              <Text
-                style={[
-                  styles.conversationLastMessage,
-                  unreadCount > 0 && styles.conversationLastMessageUnread,
-                ]}
-                numberOfLines={1}
-              >
-                {item.lastMessage}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {unreadCount > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadBadgeText}>
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Text>
-          </View>
-        )}
-      </Pressable>
-    );
   };
+
+  const openGroupChat = async (match: any) => {
+    try {
+      const response = await fetch(`${API_URL}/api/conversations/match/${match._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Errore API:', errorData);
+        throw new Error(errorData.message || 'Errore nella creazione della conversazione');
+      }
+      
+      const conversation = await response.json();
+      
+      if (!conversation._id) {
+        throw new Error('Conversazione non valida');
+      }
+
+      // Chiudi il modal principale se esiste
+      if (onCloseModal) {
+        onCloseModal();
+      }
+      
+      navigation.navigate("GroupChat", { conversationId: conversation._id, match });
+      setShowMatchModal(false);
+    } catch (error) {
+      console.error("Errore nell'apertura della chat di gruppo:", error);
+    }
+  };
+
+  const renderConversation = ({ item }: { item: Conversation }) => (
+    <ConversationItem
+      conversation={item as any}
+      role={isOwner ? 'owner' : 'player'}
+      formatTime={formatTime}
+      getUnreadCount={getUnreadCount as any}
+      refreshUnreadCount={refreshUnreadCount}
+      onDelete={deleteConversation}
+    />
+  );
 
   if (!token) {
     return (
@@ -328,21 +308,42 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onCloseModal }) =
   }
 
   return (
-    <FlatList
-      data={conversations}
-      renderItem={renderConversation}
-      keyExtractor={(item) => item._id}
-      contentContainerStyle={styles.listContent}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={["#2979ff"]}
-          tintColor="#2979ff"
-        />
-      }
-      style={styles.container}
-    />
+    <View style={styles.container}>
+      <FlatList
+        data={conversations}
+        renderItem={renderConversation}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#2979ff"]}
+            tintColor="#2979ff"
+          />
+        }
+      />
+
+      <Pressable
+        style={styles.fab}
+        onPress={() => setShowMatchModal(true)}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </Pressable>
+
+      <MatchModal
+        visible={showMatchModal}
+        onRequestClose={() => setShowMatchModal(false)}
+        matches={matches}
+        loading={loadingMatches}
+        onSelectMatch={openGroupChat}
+        emptyText={
+          isOwner
+            ? "Non ci sono partite future nelle strutture che gestisci"
+            : "Non ci sono partite future a cui partecipi"
+        }
+      />
+    </View>
   );
 };
 
@@ -356,88 +357,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  conversationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  conversationLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    minWidth: 0,
-  },
-  conversationImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  conversationImagePlaceholder: {
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  groupImagePlaceholder: {
-    backgroundColor: "#E3F2FD",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  conversationInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  conversationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-    minWidth: 0,
-  },
-  conversationTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1a1a1a",
-    flex: 1,
-    flexShrink: 1,
-  },
-  conversationTime: {
-    fontSize: 12,
-    color: "#999",
-    marginLeft: 8,
-  },
-  conversationSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 2,
-  },
-  conversationLastMessage: {
-    fontSize: 14,
-    color: "#999",
-  },
-  conversationLastMessageUnread: {
-    color: "#1a1a1a",
-    fontWeight: "500",
-  },
-  unreadBadge: {
-    backgroundColor: "#2979ff",
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  unreadBadgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "700",
-    paddingHorizontal: 6,
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2979ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   listContent: {
     paddingBottom: 20,

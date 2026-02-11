@@ -597,12 +597,6 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             </Pressable>
           ) : (
             <View style={styles.tapHint}>
-              {isOngoing && (
-                <View style={styles.ongoingIndicator}>
-                  <Ionicons name="play-circle" size={14} color="#4CAF50" />
-                  <Text style={styles.ongoingText}>In corso</Text>
-                </View>
-              )}
               <Text style={styles.tapHintText}>Vedi dettagli</Text>
               <Ionicons name="chevron-forward" size={16} color="#999" />
             </View>
@@ -677,7 +671,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           <View>
             <View style={styles.header}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={styles.headerTitle}>Le mie prenotazioni</Text>
+                <Text style={styles.headerTitle}>Le Mie Prenotazioni</Text>
                 {/* Chip Inviti accanto al titolo */}
                 <Pressable
                   style={[

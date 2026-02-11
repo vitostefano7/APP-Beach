@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
+  Dimensions,
+  Keyboard,
   StyleSheet,
 } from "react-native";
-import { Keyboard, Dimensions } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useCustomAlert } from "../CustomAlert/CustomAlert";
@@ -19,6 +20,7 @@ import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react"
 
 import API_URL from "../../config/api";
 import { AuthContext } from "../../context/AuthContext";
+import { styles as baseStyles } from "../../screens/player/styles-player/ChatScreen.styles";
 import Avatar from "../Avatar/Avatar";
 import { resolveImageUrl } from "../../utils/imageUtils";
 
@@ -330,14 +332,14 @@ export default function ChatScreen({ role }: ChatScreenProps) {
     return (
       <View
         style={[
-          styles.messageContainer,
-          isMine ? styles.messageContainerMine : styles.messageContainerTheirs,
-          isConsecutive && styles.messageContainerConsecutive,
+          baseStyles.messageContainer,
+          isMine ? baseStyles.messageContainerMine : baseStyles.messageContainerTheirs,
+          isConsecutive && baseStyles.messageContainerConsecutive,
         ]}
       >
         <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
           {!isMine && showAvatar && (
-            <View style={styles.avatarContainer}>
+            <View style={baseStyles.avatarContainer}>
               <Avatar
                 name={otherName}
                 avatarUrl={
@@ -354,28 +356,28 @@ export default function ChatScreen({ role }: ChatScreenProps) {
             </View>
           )}
 
-          {!isMine && !showAvatar && <View style={styles.avatarSpacer} />}
+          {!isMine && !showAvatar && <View style={baseStyles.avatarSpacer} />}
 
           <View
             style={[
-              styles.messageBubble,
-              isMine ? styles.messageBubbleMine : styles.messageBubbleTheirs,
+              baseStyles.messageBubble,
+              isMine ? baseStyles.messageBubbleMine : baseStyles.messageBubbleTheirs,
               isConsecutive &&
-                (isMine ? styles.bubbleConsecutiveMine : styles.bubbleConsecutiveTheirs),
+                (isMine ? baseStyles.bubbleConsecutiveMine : baseStyles.bubbleConsecutiveTheirs),
             ]}
           >
             <Text
               style={[
-                styles.messageText,
-                isMine ? styles.messageTextMine : styles.messageTextTheirs,
+                baseStyles.messageText,
+                isMine ? baseStyles.messageTextMine : baseStyles.messageTextTheirs,
               ]}
             >
               {item.content}
             </Text>
             <Text
               style={[
-                styles.messageTime,
-                isMine ? styles.messageTimeMine : styles.messageTimeTheirs,
+                baseStyles.messageTime,
+                isMine ? baseStyles.messageTimeMine : baseStyles.messageTimeTheirs,
               ]}
             >
               {formatTime(item.createdAt)}
@@ -383,7 +385,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           </View>
 
           {isMine && showAvatar && (
-            <View style={styles.avatarContainerMine}>
+            <View style={baseStyles.avatarContainerMine}>
               <Avatar
                 name={myName}
                 avatarUrl={myAvatarUrl}
@@ -394,7 +396,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
             </View>
           )}
 
-          {isMine && !showAvatar && <View style={styles.avatarSpacer} />}
+          {isMine && !showAvatar && <View style={baseStyles.avatarSpacer} />}
         </View>
       </View>
     );
@@ -402,10 +404,10 @@ export default function ChatScreen({ role }: ChatScreenProps) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.loadingContainer}>
+      <SafeAreaView style={baseStyles.safe}>
+        <View style={baseStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Caricamento chat...</Text>
+          <Text style={baseStyles.loadingText}>Caricamento chat...</Text>
         </View>
       </SafeAreaView>
     );
@@ -413,16 +415,16 @@ export default function ChatScreen({ role }: ChatScreenProps) {
 
   return (
     <>
-      <SafeAreaView style={[styles.safe, { flex: 1 }]} edges={["top"]}>
+      <SafeAreaView style={[baseStyles.safe, { flex: 1 }]} edges={["top"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <View style={styles.header}>
+        <View style={baseStyles.header}>
           <Pressable
             onPress={() => navigation.goBack()}
-            style={styles.backButton}
+            style={baseStyles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </Pressable>
@@ -430,7 +432,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           {role === "owner" || !struttura ? (
             /* Chat con utente (sempre per owner, o player senza struttura) */
             <Pressable
-              style={styles.headerCenter}
+              style={baseStyles.headerCenter}
               onPress={() => {
                 const targetUserId = userId || otherUser?._id;
                 if (targetUserId) {
@@ -453,8 +455,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
                 backgroundColor="#E3F2FD"
                 textColor="#2196F3"
               />
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
+              <View style={baseStyles.headerInfo}>
+                <Text style={baseStyles.headerTitle} numberOfLines={1}>
                   {userName || 
                    (userProfile?.surname 
                     ? `${userProfile.name} ${userProfile.surname}`
@@ -467,7 +469,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           ) : (
             /* Chat con struttura (solo per player) */
             <Pressable
-              style={styles.headerCenter}
+              style={baseStyles.headerCenter}
               onPress={() => {
                 navigation.navigate("FieldDetails", { struttura });
               }}
@@ -483,8 +485,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
                 backgroundColor="#E3F2FD"
                 textColor="#2196F3"
               />
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
+              <View style={baseStyles.headerInfo}>
+                <Text style={baseStyles.headerTitle} numberOfLines={1}>
                   {strutturaName || "Struttura"}
                 </Text>
               </View>
@@ -497,7 +499,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={[styles.messagesList, { flexGrow: 1 }]}
+          contentContainerStyle={[baseStyles.messagesList, { flexGrow: 1 }]}
           onContentSizeChange={() => {
             setTimeout(() => {
               flatListRef.current?.scrollToEnd({ animated: false });
@@ -507,12 +509,12 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
+            <View style={baseStyles.emptyState}>
+              <View style={baseStyles.emptyIcon}>
                 <Ionicons name="chatbubbles-outline" size={64} color="#2196F3" />
               </View>
-              <Text style={styles.emptyTitle}>Inizia la conversazione</Text>
-              <Text style={styles.emptyText}>
+              <Text style={baseStyles.emptyTitle}>Inizia la conversazione</Text>
+              <Text style={baseStyles.emptyText}>
                 {role === "owner"
                   ? "Rispondi al cliente per avviare la conversazione"
                   : "Invia un messaggio alla struttura per ricevere assistenza"}
@@ -523,7 +525,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
 
         <View
           style={[
-            styles.inputContainer,
+            baseStyles.inputContainer,
             {
               paddingBottom: Math.max(insets.bottom, 12),
               marginBottom: keyboardHeight > 0 ? keyboardHeight + 10 : 0,
@@ -550,13 +552,13 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           }}
         >
           {role === "player" && (
-            <Pressable style={styles.addButton} onPress={() => {}}>
+            <Pressable style={baseStyles.addButton} onPress={() => {}}>
               <Ionicons name="add" size={22} color="#1a1a1a" />
             </Pressable>
           )}
-          <View style={styles.inputWrapper}>
+          <View style={baseStyles.inputWrapper}>
             <TextInput
-              style={styles.input}
+              style={baseStyles.input}
               placeholder={
                 role === "owner"
                   ? "Rispondi al cliente..."
@@ -572,8 +574,8 @@ export default function ChatScreen({ role }: ChatScreenProps) {
 
           <Pressable
             style={[
-              styles.sendButton,
-              inputText.trim() && !sending && styles.sendButtonActive,
+              baseStyles.sendButton,
+              inputText.trim() && !sending && baseStyles.sendButtonActive,
             ]}
             onPress={sendMessage}
             disabled={!inputText.trim() || sending}
@@ -599,75 +601,75 @@ export default function ChatScreen({ role }: ChatScreenProps) {
           onRequestClose={() => setShowUserProfile(false)}
         >
           <Pressable
-            style={styles.modalOverlay}
+            style={modalStyles.modalOverlay}
             onPress={() => setShowUserProfile(false)}
           >
             <Pressable
-              style={styles.modalContent}
+              style={modalStyles.modalContent}
               onPress={(e) => e.stopPropagation()}
             >
-              <View style={styles.modalHandle} />
+              <View style={modalStyles.modalHandle} />
 
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Profilo utente</Text>
+              <View style={modalStyles.modalHeader}>
+                <Text style={modalStyles.modalTitle}>Profilo utente</Text>
                 <Pressable onPress={() => setShowUserProfile(false)} hitSlop={10}>
-                  <Ionicons name="close" size={28} color="#333" />
+                  <Ionicons name="close" size={28} color="#333" g/>
                 </Pressable>
               </View>
 
               {loadingProfile ? (
-                <View style={styles.modalLoading}>
+                <View style={modalStyles.modalLoading}>
                   <ActivityIndicator size="large" color="#2196F3" />
-                  <Text style={styles.modalLoadingText}>Caricamento...</Text>
+                  <Text style={modalStyles.modalLoadingText}>Caricamento...</Text>
                 </View>
               ) : userProfile ? (
-                <View style={styles.profileContent}>
-                  <View style={styles.profileAvatarContainer}>
-                    <View style={styles.profileAvatar}>
+                <View style={modalStyles.profileContent}>
+                  <View style={modalStyles.profileAvatarContainer}>
+                    <View style={modalStyles.profileAvatar}>
                       <Ionicons name="person" size={48} color="#2196F3" />
                     </View>
                   </View>
 
-                  <View style={styles.profileInfo}>
-                    <View style={styles.profileRow}>
-                      <View style={styles.profileIconContainer}>
+                  <View style={modalStyles.profileInfo}>
+                    <View style={modalStyles.profileRow}>
+                      <View style={modalStyles.profileIconContainer}>
                         <Ionicons name="person-outline" size={20} color="#2196F3" />
                       </View>
-                      <View style={styles.profileRowContent}>
-                        <Text style={styles.profileLabel}>Nome</Text>
-                        <Text style={styles.profileValue}>{userProfile.name}</Text>
+                      <View style={modalStyles.profileRowContent}>
+                        <Text style={modalStyles.profileLabel}>Nome</Text>
+                        <Text style={modalStyles.profileValue}>{userProfile.name}</Text>
                       </View>
                     </View>
 
-                    <View style={styles.profileRow}>
-                      <View style={styles.profileIconContainer}>
+                    <View style={modalStyles.profileRow}>
+                      <View style={modalStyles.profileIconContainer}>
                         <Ionicons name="mail-outline" size={20} color="#FF9800" />
                       </View>
-                      <View style={styles.profileRowContent}>
-                        <Text style={styles.profileLabel}>Email</Text>
-                        <Text style={styles.profileValue}>{userProfile.email}</Text>
+                      <View style={modalStyles.profileRowContent}>
+                        <Text style={modalStyles.profileLabel}>Email</Text>
+                        <Text style={modalStyles.profileValue}>{userProfile.email}</Text>
                       </View>
                     </View>
 
                     {userProfile.phone && (
-                      <View style={styles.profileRow}>
-                        <View style={styles.profileIconContainer}>
+                      <View style={modalStyles.profileRow}>
+                        <View style={modalStyles.profileIconContainer}>
                           <Ionicons name="call-outline" size={20} color="#4CAF50" />
                         </View>
-                        <View style={styles.profileRowContent}>
-                          <Text style={styles.profileLabel}>Telefono</Text>
-                          <Text style={styles.profileValue}>{userProfile.phone}</Text>
+                        <View style={modalStyles.profileRowContent}>
+                          <Text style={modalStyles.profileLabel}>Telefono</Text>
+                          <Text style={modalStyles.profileValue}>{userProfile.phone}</Text>
                         </View>
                       </View>
                     )}
 
-                    <View style={styles.profileRow}>
-                      <View style={styles.profileIconContainer}>
+                    <View style={modalStyles.profileRow}>
+                      <View style={modalStyles.profileIconContainer}>
                         <Ionicons name="calendar-outline" size={20} color="#9C27B0" />
                       </View>
-                      <View style={styles.profileRowContent}>
-                        <Text style={styles.profileLabel}>Cliente dal</Text>
-                        <Text style={styles.profileValue}>
+                      <View style={modalStyles.profileRowContent}>
+                        <Text style={modalStyles.profileLabel}>Cliente dal</Text>
+                        <Text style={modalStyles.profileValue}>
                           {formatDate(userProfile.createdAt)}
                         </Text>
                       </View>
@@ -675,13 +677,13 @@ export default function ChatScreen({ role }: ChatScreenProps) {
                   </View>
                 </View>
               ) : (
-                <View style={styles.modalError}>
+                <View style={modalStyles.modalError}>
                   <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
-                  <Text style={styles.modalErrorText}>
+                  <Text style={modalStyles.modalErrorText}>
                     Impossibile caricare il profilo
                   </Text>
                   {!userId && (
-                    <Text style={styles.modalErrorSubtext}>ID utente mancante</Text>
+                    <Text style={modalStyles.modalErrorSubtext}>ID utente mancante</Text>
                   )}
                 </View>
               )}
@@ -695,212 +697,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1a1a1a",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  profileButton: {
-    padding: 8,
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  messagesList: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  messageContainer: {
-    marginBottom: 16,
-    maxWidth: "80%",
-  },
-  messageContainerMine: {
-    alignSelf: "flex-end",
-    alignItems: "flex-end",
-  },
-  messageContainerTheirs: {
-    alignSelf: "flex-start",
-    alignItems: "flex-start",
-  },
-  messageContainerConsecutive: {
-    marginBottom: 4,
-  },
-  avatarContainer: {
-    marginRight: 8,
-  },
-  avatarContainerMine: {
-    marginLeft: 8,
-  },
-  avatarSpacer: {
-    width: 40,
-    height: 32,
-  },
-  messageBubble: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderBottomRightRadius: 4,
-    maxWidth: "100%",
-  },
-  messageBubbleMine: {
-    backgroundColor: "#007AFF",
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 20,
-  },
-  messageBubbleTheirs: {
-    backgroundColor: "#e9ecef",
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 20,
-  },
-  bubbleConsecutiveMine: {
-    borderBottomLeftRadius: 20,
-  },
-  bubbleConsecutiveTheirs: {
-    borderBottomRightRadius: 20,
-  },
-  messageText: {
-    color: "#fff",
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  messageTextMine: {
-    color: "#fff",
-  },
-  messageTextTheirs: {
-    color: "#1a1a1a",
-  },
-  messageTime: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  messageTimeMine: {
-    color: "rgba(255, 255, 255, 0.7)",
-    textAlign: "right",
-  },
-  messageTimeTheirs: {
-    color: "#666",
-    textAlign: "left",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#e9ecef",
-  },
-  inputWrapper: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minHeight: 44,
-    maxHeight: 100,
-    justifyContent: "center",
-  },
-  input: {
-    fontSize: 16,
-    color: "#1a1a1a",
-    minHeight: 24,
-    maxHeight: 80,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#007AFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonActive: {
-    backgroundColor: "#007AFF",
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#f8f9fa",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1a1a1a",
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  headerInfo: {
-    flex: 1,
-  },
+const modalStyles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",

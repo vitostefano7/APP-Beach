@@ -1440,6 +1440,7 @@ export default function DettaglioPrenotazioneScreen() {
               teamBCount={teamBPlayers}
               showFormation={true}
               onEmptySlotPress={(team, slotNumber) => isCreator ? handleInviteToTeam(team, slotNumber) : handleJoinMatch(team)}
+              onPlayerPress={(p) => openUserProfile(p.user._id)}
               onLeave={handleLeaveMatch}
             />
             <TeamSection
@@ -1459,6 +1460,7 @@ export default function DettaglioPrenotazioneScreen() {
               teamBCount={teamBPlayers}
               showFormation={true}
               onEmptySlotPress={(team, slotNumber) => isCreator ? handleInviteToTeam(team, slotNumber) : handleJoinMatch(team)}
+              onPlayerPress={(p) => openUserProfile(p.user._id)}
               onLeave={handleLeaveMatch}
             />
           </View>
@@ -1480,6 +1482,7 @@ export default function DettaglioPrenotazioneScreen() {
                     player={player}
                     isCreator={isCreator}
                     currentUserId={getUserId(user)}
+                    onPlayerPress={(p) => openUserProfile(p.user._id)}
                     onRemove={() => handleRemovePlayer(player.user._id)}
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     matchStatus={getMatchStatus()}
@@ -1508,6 +1511,7 @@ export default function DettaglioPrenotazioneScreen() {
                     player={player}
                     isCreator={isCreator}
                     currentUserId={getUserId(user)}
+                    onPlayerPress={(p) => openUserProfile(p.user._id)}
                     onRemove={() => handleRemovePlayer(player.user._id)}
                     onChangeTeam={(team) => handleAssignTeam(player.user._id, team)}
                     isPending={true}
@@ -1516,6 +1520,7 @@ export default function DettaglioPrenotazioneScreen() {
                     teamACount={teamAPlayers}
                     teamBCount={teamBPlayers}
                     maxPlayersPerTeam={maxPlayersPerTeam}
+                    variant="player"
                   />
                 </SlideInView>
               ))}

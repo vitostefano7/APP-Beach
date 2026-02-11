@@ -318,34 +318,42 @@ export default function UserProfileScreen() {
 
     try {
       console.log("💬 [UserProfile] Starting chat with:", userId);
+      
+      // Use GET method with userId in path
       const res = await fetch(`${API_URL}/api/conversations/direct/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'GET',
+        headers: { 
+          Authorization: `Bearer ${token}` 
+        },
       });
 
       if (res.ok) {
         const conversation = await res.json();
         console.log("✅ [UserProfile] Conversation obtained:", conversation._id);
         
-        // Usa direttamente i dati del profilo che stiamo visitando
         const displayName = data.user.surname 
           ? `${data.user.name} ${data.user.surname}`
           : data.user.name;
         
         console.log("👤 [UserProfile] Chatting with:", displayName);
         
-        // Navigate to ChatScreen (usato per chat 1-a-1)
-        navigation.navigate("Chat", ({
+        // Navigate to ChatScreen with correct parameters
+        navigation.navigate("Chat", {
           conversationId: conversation._id,
-          strutturaName: displayName,
+          userName: displayName,
+          userId: data.user._id,
+          userAvatar: data.user.avatarUrl,
           isUserChat: true,
           otherUser: {
             _id: data.user._id,
-            name: displayName,
+            name: data.user.name,
+            surname: data.user.surname,
             avatarUrl: data.user.avatarUrl,
           }
-        } as any));
+        } as any);
       } else {
-        console.error("❌ [UserProfile] Failed to get conversation:", res.status);
+        const errorText = await res.text();
+        console.error("❌ [UserProfile] Failed to get conversation:", res.status, errorText);
       }
     } catch (error) {
       console.error("❌ [UserProfile] Exception starting chat:", error);
