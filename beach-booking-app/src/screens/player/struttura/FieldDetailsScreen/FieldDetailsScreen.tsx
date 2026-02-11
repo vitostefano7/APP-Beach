@@ -9,11 +9,13 @@ import {
   Dimensions,
   FlatList,
   Alert,
+  Modal,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import ImageViewer from "react-native-image-zoom-viewer";
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
@@ -217,6 +219,9 @@ export default function FieldDetailsScreen() {
   
   // ✅ Carousel immagini
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Image viewer
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
   
   // ✅ Dropdown orari apertura
   const [openingHoursExpanded, setOpeningHoursExpanded] = useState(true);
@@ -659,12 +664,19 @@ export default function FieldDetailsScreen() {
             }}
           >
             {images.map((img, i) => (
-              <Image
+              <Pressable
                 key={i}
-                source={{ uri: img }}
-                style={styles.galleryImage}
-                resizeMode="cover"
-              />
+                onPress={() => {
+                  setViewerIndex(i);
+                  setIsViewerVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: img }}
+                  style={styles.galleryImage}
+                  resizeMode="cover"
+                />
+              </Pressable>
             ))}
           </ScrollView>
 
@@ -2118,6 +2130,16 @@ export default function FieldDetailsScreen() {
         <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      <Modal visible={isViewerVisible} transparent={true} onRequestClose={() => setIsViewerVisible(false)}>
+        <ImageViewer
+          imageUrls={images.map((uri) => ({ url: uri }))}
+          index={viewerIndex}
+          onCancel={() => setIsViewerVisible(false)}
+          enableSwipeDown={true}
+          onSwipeDown={() => setIsViewerVisible(false)}
+          saveToLocalByLongPress={false}
+        />
+      </Modal>
       <AlertComponent />
     </View>
   );
