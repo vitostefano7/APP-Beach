@@ -1,13 +1,41 @@
 import React from 'react';
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from "../../../../components/Avatar";
 import SportIcon from '../../../../components/SportIcon';
-import { formatMatchDate } from "../utils/dateFormatter";
 import { formatSportName } from '../../../../utils/sportUtils';
 import { styles } from "../styles";
 import { useNavigation } from '@react-navigation/native';
+import { AnimatedCard } from '../../../../components/shared/AnimatedComponents';
+
+// Utility: Configurazione risultato match (colori, icone)
+const getMatchResultConfig = (isDraw: boolean, isWinner: boolean) => {
+  if (isDraw) {
+    return {
+      accentColor: '#FFC107',
+      backgroundColor: '#FFF8E1',
+      textColor: '#F57C00',
+      icon: 'remove-outline' as const,
+      label: 'Pareggio'
+    };
+  }
+  if (isWinner) {
+    return {
+      accentColor: '#4CAF50',
+      backgroundColor: '#E8F5E9',
+      textColor: '#2E7D32',
+      icon: 'trophy-outline' as const,
+      label: 'Vittoria'
+    };
+  }
+  return {
+    accentColor: '#F44336',
+    backgroundColor: '#FFEBEE',
+    textColor: '#C62828',
+    icon: 'close-circle-outline' as const,
+    label: 'Sconfitta'
+  };
+};
 
 // Helper function to determine sport category and scoring rules
 const getSportConfig = (sport?: string): { category: 'set-points' | 'set-games' | 'point-based'; allowsDraw?: boolean } => {
@@ -99,345 +127,231 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     return firstName;
   };
 
-  // Format sport name
+  // Sub-component: Point-Based Score Display
+  const PointBasedScore = ({ finalSet, teamAWon, teamBWon, isDraw }: any) => (
+    <View style={styles.matchScoreSection}>
+      <Text style={styles.matchScoreLabel}>Risultato Finale</Text>
+      <View style={styles.matchScoreDisplay}>
+        <View style={[
+          styles.matchScoreCircle,
+          teamAWon && styles.matchScoreCircleWin
+        ]}>
+          <Text style={[
+            styles.matchScoreNumber,
+            teamAWon && styles.matchScoreNumberWin
+          ]}>{finalSet.teamA}</Text>
+        </View>
+        <Text style={styles.matchScoreDivider}>-</Text>
+        <View style={[
+          styles.matchScoreCircle,
+          teamBWon && styles.matchScoreCircleWin
+        ]}>
+          <Text style={[
+            styles.matchScoreNumber,
+            teamBWon && styles.matchScoreNumberWin
+          ]}>{finalSet.teamB}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Sub-component: Set-Based Score Display
+  const SetBasedScore = ({ compiledSets }: any) => (
+    <View style={styles.matchScoreSection}>
+      <Text style={styles.matchScoreLabel}>Dettaglio Set</Text>
+      <View style={styles.matchSetsRow}>
+        {compiledSets.map((set: any, idx: number) => {
+          const teamAWon = set.teamA > set.teamB;
+          const teamBWon = set.teamB > set.teamA;
+          return (
+            <View key={idx} style={styles.matchSetBox}>
+              <Text style={styles.matchSetLabel}>SET {idx + 1}</Text>
+              <View style={styles.matchSetScores}>
+                <View style={[
+                  styles.matchSetCircle,
+                  teamAWon && styles.matchSetCircleWin
+                ]}>
+                  <Text style={[
+                    styles.matchSetNumber,
+                    teamAWon && styles.matchSetNumberWin
+                  ]}>{set.teamA}</Text>
+                </View>
+                <Text style={styles.matchSetDivider}>-</Text>
+                <View style={[
+                  styles.matchSetCircle,
+                  teamBWon && styles.matchSetCircleWin
+                ]}>
+                  <Text style={[
+                    styles.matchSetNumber,
+                    teamBWon && styles.matchSetNumberWin
+                  ]}>{set.teamB}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  // Calcolare configurazione risultato
+  const resultConfig = getMatchResultConfig(isDraw, isWinner);
 
   return (
-    <Pressable 
-      style={[styles.matchHistoryCard, style]} 
-      onPress={handlePress}
-    >
-      <LinearGradient
-        colors={isDraw ? ['#FFC107', '#FF9800'] : isWinner ? ['#4CAF50', '#45A049'] : ['#F44336', '#E53935']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.matchGradientBorder}
+    <AnimatedCard style={style}>
+      <Pressable 
+        style={[styles.matchHistoryCardNew, { borderLeftColor: resultConfig.accentColor }]} 
+        onPress={handlePress}
       >
-        <View style={styles.matchCardInner}>
-          {/* Header with result badge and sport */}
-          <View style={styles.matchCardHeader}>
-            <View style={styles.matchResultContainer}>
-              <View
-                style={[
-                  styles.matchResultBadge,
-                  isDraw ? styles.matchDraw : isWinner ? styles.matchWin : styles.matchLoss,
-                ]}
-              >
-                <Ionicons
-                  name={isDraw ? "ellipse" : isWinner ? "trophy" : "close-circle"}
-                  size={22}
-                  color={isDraw ? "#FFC107" : isWinner ? "#FFD700" : "#F44336"}
-                />
-              </View>
-              <View>
-                <Text style={[
-                  styles.matchResultText,
-                  isDraw ? styles.matchDrawText : isWinner ? styles.matchWinText : styles.matchLossText
-                ]}>
-                  {isDraw ? 'PAREGGIO' : isWinner ? 'VITTORIA' : 'SCONFITTA'}
-                </Text>
-                <Text style={styles.matchDateSubtext}>
-                  {match.booking?.date
-                    ? (() => {
-                        const date = new Date(match.booking.date);
-                        const day = date.getDate();
-                        const month = date.toLocaleString('it-IT', { month: 'long' });
-                        const year = date.getFullYear();
-                        return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
-                      })()
-                    : ''}
-                </Text>
-              </View>
-            </View>
-
+        {/* Header: Sport + Data + Badge Risultato */}
+        <View style={styles.matchHeaderNew}>
+          <View style={styles.matchHeaderLeft}>
             {match.booking?.campo?.sport?.code && (
-              <View style={styles.matchSportBadge}>
-                <SportIcon sport={match.booking.campo.sport.code} size={16} color="#2196F3" />
-                <Text style={styles.matchSportText}>
-                  {formatSportName(match.booking.campo.sport.code)}
-                </Text>
+              <View style={styles.matchSportIconContainer}>
+                <SportIcon sport={match.booking.campo.sport.code} size={20} color="#2196F3" />
               </View>
             )}
-          </View>
-
-          {/* Teams */}
-          <View style={styles.matchTeamsContainer}>
-            {/* Team A */}
-            <View style={styles.matchTeamSection}>
-              <View style={[styles.openMatchTeamHeader, styles.teamAHeaderSmall]}>
-                <Ionicons name="shield-outline" size={12} color="white" />
-                <Text style={styles.openMatchTeamTitle}>Team A</Text>
-              </View>
-              <View style={styles.openMatchTeamSlots}>
-                {Array(maxPerTeam).fill(null).map((_, index) => {
-                  const player = teamAPlayers[index];
-                  const hasPlayer = index < teamAPlayers.length;
-                  return (
-                    <View 
-                      key={`teamA-${index}`} 
-                      style={[
-                        styles.openMatchTeamSlot,
-                        hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
-                      ]}
-                    >
-                      {hasPlayer && player?.user ? (
-                        <Pressable onPress={() => openUserProfile(player.user?._id)}>
-                          <View style={{
-                            borderRadius: 20,
-                            borderWidth: player.user?._id === userId ? 2 : 0,
-                            borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
-                            padding: player.user?._id === userId ? 2 : 0,
-                          }}>
-                            <Avatar
-                              name={player.user?.name}
-                              surname={player.user?.surname}
-                              avatarUrl={player.user?.avatarUrl}
-                              size={24}
-                              backgroundColor="#E3F2FD"
-                              textColor="#333"
-                            />
-                          </View>
-                        </Pressable>
-                      ) : (
-                        <Ionicons name="person-outline" size={12} color="#ccc" />
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Divisore VS */}
-            <View style={styles.openMatchDivider}>
-              <Text style={styles.openMatchVs}>VS</Text>
-            </View>
-
-            {/* Team B */}
-            <View style={styles.matchTeamSection}>
-              <View style={[styles.openMatchTeamHeader, styles.teamBHeaderSmall]}>
-                <Ionicons name="shield-outline" size={12} color="white" />
-                <Text style={styles.openMatchTeamTitle}>Team B</Text>
-              </View>
-              <View style={styles.openMatchTeamSlots}>
-                {Array(maxPerTeam).fill(null).map((_, index) => {
-                  const player = teamBPlayers[index];
-                  const hasPlayer = index < teamBPlayers.length;
-                  return (
-                    <View 
-                      key={`teamB-${index}`} 
-                      style={[
-                        styles.openMatchTeamSlot,
-                        hasPlayer ? styles.openMatchSlotFilled : styles.openMatchSlotEmpty,
-                      ]}
-                    >
-                      {hasPlayer && player?.user ? (
-                        <Pressable onPress={() => openUserProfile(player.user?._id)}>
-                          <View style={{
-                            borderRadius: 20,
-                            borderWidth: player.user?._id === userId ? 2 : 0,
-                            borderColor: player.user?._id === userId ? '#4CAF50' : 'transparent',
-                            padding: player.user?._id === userId ? 2 : 0,
-                          }}>
-                            <Avatar
-                              name={player.user?.name}
-                              surname={player.user?.surname}
-                              avatarUrl={player.user?.avatarUrl}
-                              size={24}
-                              backgroundColor="#FFEBEE"
-                              textColor="#333"
-                            />
-                          </View>
-                        </Pressable>
-                      ) : (
-                        <Ionicons name="person-outline" size={12} color="#ccc" />
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
+            <View style={styles.matchHeaderInfo}>
+              <Text style={styles.matchSportName}>
+                {match.booking?.campo?.sport?.code 
+                  ? formatSportName(match.booking.campo.sport.code)
+                  : 'Partita'}
+              </Text>
+              <Text style={styles.matchDate}>
+                {match.booking?.date
+                  ? (() => {
+                      const date = new Date(match.booking.date);
+                      const day = date.getDate();
+                      const month = date.toLocaleString('it-IT', { month: 'short' });
+                      return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
+                    })()
+                  : ''}
+              </Text>
             </View>
           </View>
-
-          {/* Score Section */}
-          {match.score?.sets && match.score.sets.length > 0 && (() => {
-            const compiledSets = match.score.sets.filter((set: any) => set.teamA > 0 || set.teamB > 0);
-            
-            if (compiledSets.length === 0) return null;
-            
-            // POINT-BASED: Mostra solo punteggio finale
-            if (sportConfig.category === 'point-based') {
-              const finalSet = compiledSets[0];
-              const isDraw = finalSet.teamA === finalSet.teamB;
-              const teamAWon = finalSet.teamA > finalSet.teamB;
-              const teamBWon = finalSet.teamB > finalSet.teamA;
-              
-              return (
-                <View style={{ 
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderTopWidth: 1,
-                  borderTopColor: '#f0f0f0',
-                  alignItems: 'center'
-                }}>
-                  <Text style={{ 
-                    fontSize: 10, 
-                    fontWeight: '700', 
-                    color: '#999',
-                    letterSpacing: 0.5,
-                    textTransform: 'uppercase',
-                    marginBottom: 8
-                  }}>
-                    {isDraw ? 'Pareggio' : 'Risultato Finale'}
-                  </Text>
-                  <View style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    gap: 12,
-                  }}>
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: teamAWon ? '#2196F3' : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: teamAWon ? 0 : 2,
-                      borderColor: '#2196F3',
-                    }}>
-                      <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '800', 
-                        color: teamAWon ? '#FFFFFF' : '#2196F3'
-                      }}>
-                        {finalSet.teamA}
-                      </Text>
-                    </View>
-                    <Text style={{ 
-                      fontSize: 16, 
-                      fontWeight: '600', 
-                      color: '#ccc' 
-                    }}>
-                      -
-                    </Text>
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: teamBWon ? '#F44336' : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: teamBWon ? 0 : 2,
-                      borderColor: '#F44336',
-                    }}>
-                      <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '800', 
-                        color: teamBWon ? '#FFFFFF' : '#F44336'
-                      }}>
-                        {finalSet.teamB}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            }
-            
-            // SET-BASED: Mostra Set 1, Set 2, Set 3
-            return (
-              <View style={{ 
-                paddingVertical: 12,
-                paddingHorizontal: 8,
-                borderTopWidth: 1,
-                borderTopColor: '#f0f0f0',
-              }}>
-                <Text style={{ 
-                  fontSize: 10, 
-                  fontWeight: '700', 
-                  color: '#999',
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase',
-                  textAlign: 'center',
-                  marginBottom: 8
-                }}>
-                  Dettaglio Set
-                </Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
-                  {compiledSets.map((set: any, idx: number) => {
-                    const teamAWon = set.teamA > set.teamB;
-                    const teamBWon = set.teamB > set.teamA;
-                    return (
-                      <View key={idx} style={{ 
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        backgroundColor: '#F5F5F5',
-                        borderRadius: 10,
-                        paddingHorizontal: 8,
-                        paddingVertical: 6,
-                        flex: 1,
-                        maxWidth: 100,
-                      }}>
-                        <Text style={{ 
-                          fontSize: 8, 
-                          fontWeight: '700', 
-                          color: '#999',
-                          marginBottom: 4
-                        }}>
-                          SET {idx + 1}
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <View style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 12,
-                            backgroundColor: teamAWon ? '#2196F3' : 'transparent',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderWidth: teamAWon ? 0 : 1.5,
-                            borderColor: '#2196F3',
-                          }}>
-                            <Text style={{ 
-                              fontSize: 12, 
-                              fontWeight: '800', 
-                              color: teamAWon ? '#FFFFFF' : '#2196F3'
-                            }}>
-                              {set.teamA}
-                            </Text>
-                          </View>
-                          <Text style={{ 
-                            fontSize: 10, 
-                            fontWeight: '600', 
-                            color: '#ccc' 
-                          }}>
-                            -
-                          </Text>
-                          <View style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 12,
-                            backgroundColor: teamBWon ? '#F44336' : 'transparent',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderWidth: teamBWon ? 0 : 1.5,
-                            borderColor: '#F44336',
-                          }}>
-                            <Text style={{ 
-                              fontSize: 12, 
-                              fontWeight: '800', 
-                              color: teamBWon ? '#FFFFFF' : '#F44336'
-                            }}>
-                              {set.teamB}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })()}
+          <View style={[
+            styles.matchResultBadgeNew,
+            { backgroundColor: resultConfig.backgroundColor }
+          ]}>
+            <Ionicons
+              name={resultConfig.icon}
+              size={14}
+              color={resultConfig.textColor}
+            />
+            <Text style={[
+              styles.matchResultTextNew,
+              { color: resultConfig.textColor }
+            ]}>
+              {resultConfig.label}
+            </Text>
+          </View>
         </View>
-      </LinearGradient>
-    </Pressable>
+
+        {/* Teams Section */}
+        <View style={styles.matchTeamsNew}>
+          {/* Team A */}
+          <View style={styles.matchTeamNew}>
+            <View style={styles.matchTeamHeaderNew}>
+              <Ionicons name="shield" size={10} color="#2196F3" />
+              <Text style={styles.matchTeamTitleNew}>Team A</Text>
+            </View>
+            <View style={styles.matchTeamPlayersNew}>
+              {Array(maxPerTeam).fill(null).map((_, index) => {
+                const player = teamAPlayers[index];
+                const hasPlayer = index < teamAPlayers.length;
+                const isCurrentUser = player?.user?._id === userId;
+                return (
+                  <View key={`teamA-${index}`} style={styles.matchPlayerSlot}>
+                    {hasPlayer && player?.user ? (
+                      <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                        <View style={[
+                          styles.matchPlayerAvatarWrapper,
+                          isCurrentUser && styles.matchPlayerAvatarCurrent
+                        ]}>
+                          <Avatar
+                            name={player.user?.name}
+                            surname={player.user?.surname}
+                            avatarUrl={player.user?.avatarUrl}
+                            size={28}
+                            backgroundColor="#E3F2FD"
+                            textColor="#1976D2"
+                          />
+                        </View>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.matchPlayerEmpty}>
+                        <Ionicons name="person-outline" size={14} color="#ccc" />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* VS Divider */}
+          <View style={styles.matchVsDivider}>
+            <Text style={styles.matchVsText}>vs</Text>
+          </View>
+
+          {/* Team B */}
+          <View style={styles.matchTeamNew}>
+            <View style={styles.matchTeamHeaderNew}>
+              <Ionicons name="shield" size={10} color="#F44336" />
+              <Text style={styles.matchTeamTitleNew}>Team B</Text>
+            </View>
+            <View style={styles.matchTeamPlayersNew}>
+              {Array(maxPerTeam).fill(null).map((_, index) => {
+                const player = teamBPlayers[index];
+                const hasPlayer = index < teamBPlayers.length;
+                const isCurrentUser = player?.user?._id === userId;
+                return (
+                  <View key={`teamB-${index}`} style={styles.matchPlayerSlot}>
+                    {hasPlayer && player?.user ? (
+                      <Pressable onPress={() => openUserProfile(player.user?._id)}>
+                        <View style={[
+                          styles.matchPlayerAvatarWrapper,
+                          isCurrentUser && styles.matchPlayerAvatarCurrent
+                        ]}>
+                          <Avatar
+                            name={player.user?.name}
+                            surname={player.user?.surname}
+                            avatarUrl={player.user?.avatarUrl}
+                            size={28}
+                            backgroundColor="#FFEBEE"
+                            textColor="#C62828"
+                          />
+                        </View>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.matchPlayerEmpty}>
+                        <Ionicons name="person-outline" size={14} color="#ccc" />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        {/* Score Section */}
+        {match.score?.sets && match.score.sets.length > 0 && (() => {
+          const compiledSets = match.score.sets.filter((set: any) => set.teamA > 0 || set.teamB > 0);
+          
+          if (compiledSets.length === 0) return null;
+          
+          if (sportConfig.category === 'point-based') {
+            const finalSet = compiledSets[0];
+            const teamAWon = finalSet.teamA > finalSet.teamB;
+            const teamBWon = finalSet.teamB > finalSet.teamA;
+            return <PointBasedScore finalSet={finalSet} teamAWon={teamAWon} teamBWon={teamBWon} isDraw={isDraw} />;
+          }
+          
+          return <SetBasedScore compiledSets={compiledSets} />;
+        })()}
+      </Pressable>
+    </AnimatedCard>
   );
 };
 

@@ -360,6 +360,41 @@ export default function UserProfileScreen() {
     }
   };
 
+  // Safely navigate to FriendsList regardless of which navigator this screen is mounted in
+  const safeNavigateToFriendsList = (opts?: { userId?: string; filter?: "followers" | "following" | "all" }) => {
+    const params = { userId: opts?.userId || userId, filter: opts?.filter || 'all' };
+    const navAny = navigation as any;
+
+    try {
+      // 1) If the current navigator exposes FriendsList, use it
+      const state = navAny.getState?.();
+      if (state?.routeNames?.includes('FriendsList')) {
+        navAny.navigate('FriendsList', params);
+        return;
+      }
+
+      // 2) Walk up the parent chain looking for FriendsList or a ProfiloRoot that contains it
+      let parent = navAny.getParent?.();
+      while (parent) {
+        const pState = parent.getState?.();
+        if (pState?.routeNames?.includes('FriendsList')) {
+          parent.navigate('FriendsList', params);
+          return;
+        }
+        if (pState?.routeNames?.includes('ProfiloRoot')) {
+          parent.navigate('ProfiloRoot', { screen: 'FriendsList', params });
+          return;
+        }
+        parent = parent.getParent?.();
+      }
+
+      // 3) Last resort: try ProfiloRoot on the current navigator
+      navAny.navigate('ProfiloRoot', { screen: 'FriendsList', params });
+    } catch (err) {
+      console.warn('[UserProfile] safeNavigateToFriendsList failed', err);
+    }
+  };
+
 
   const handleLike = async (postId: string) => {
     if (!token) return;
@@ -648,7 +683,8 @@ export default function UserProfileScreen() {
               <Pressable
                 style={styles.statsCard}
                 onPress={() => {
-                  navigation.navigate("FriendsList", { userId, filter: "all" } as never);
+                  // Safe navigation to FriendsList (handles nested navigator cases)
+                  safeNavigateToFriendsList({ userId, filter: 'all' });
                 }}
               >
                 <View style={styles.statsCardHeader}>

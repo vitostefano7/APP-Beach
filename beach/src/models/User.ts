@@ -51,7 +51,7 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
-      minlength: 3,
+      minlength: 10,
       maxlength: 20,
       match: /^[a-z0-9_]+$/,
       index: true,

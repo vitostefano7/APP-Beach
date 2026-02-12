@@ -892,7 +892,7 @@ export default function HomeScreen() {
           
           <Pressable 
             style={styles.quickActionButton}
-            onPress={() => navigation.navigate("Community")}
+            onPress={() => navigation.getParent()?.navigate('Social')}
           >
             <Ionicons name="people-outline" size={20} color="#2196F3" />
             <Text style={styles.quickActionText}>Community</Text>

@@ -931,6 +931,236 @@ export const styles = StyleSheet.create({
   },
 
   // ==================== MATCH HISTORY ====================
+  // NEW DESIGN - Card principale
+  matchHistoryCardNew: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    padding: 14,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  // Header
+  matchHeaderNew: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  matchHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  matchSportIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchHeaderInfo: {
+    flex: 1,
+  },
+  matchSportName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  matchDate: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: '500',
+    marginTop: 1,
+    textTransform: 'capitalize',
+  },
+  matchResultBadgeNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  matchResultTextNew: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Teams
+  matchTeamsNew: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  matchTeamNew: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 10,
+  },
+  matchTeamHeaderNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  matchTeamTitleNew: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  matchTeamPlayersNew: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  matchPlayerSlot: {
+    // Container per avatar
+  },
+  matchPlayerAvatarWrapper: {
+    borderRadius: 16,
+    padding: 1,
+  },
+  matchPlayerAvatarCurrent: {
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  matchPlayerEmpty: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchVsDivider: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  matchVsText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ccc',
+    textTransform: 'lowercase',
+  },
+
+  // Score Section
+  matchScoreSection: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  matchScoreLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  matchScoreDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  matchScoreCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2.5,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+  },
+  matchScoreCircleWin: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  matchScoreNumber: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#666',
+  },
+  matchScoreNumberWin: {
+    color: '#FFFFFF',
+  },
+  matchScoreDivider: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ccc',
+  },
+
+  // Set-based scores
+  matchSetsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  matchSetBox: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  matchSetLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#999',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  matchSetScores: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  matchSetCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+  },
+  matchSetCircleWin: {
+    backgroundColor: '#2196F3',
+  },
+  matchSetNumber: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2196F3',
+  },
+  matchSetNumberWin: {
+    color: '#FFFFFF',
+  },
+  matchSetDivider: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#ccc',
+  },
+
+  // OLD STYLES (mantieni per compatibilità)
   matchHistoryCard: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -988,6 +1218,9 @@ export const styles = StyleSheet.create({
   matchLoss: {
     backgroundColor: "#FFEBEE",
   },
+  matchDraw: {
+    backgroundColor: "#FFF8E1",
+  },
   matchResultText: {
     fontSize: 13,
     fontWeight: '800',
@@ -998,6 +1231,9 @@ export const styles = StyleSheet.create({
   },
   matchLossText: {
     color: '#F44336',
+  },
+  matchDrawText: {
+    color: '#F57C00',
   },
   matchSportBadge: {
     flexDirection: 'row',

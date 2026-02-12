@@ -21,6 +21,7 @@ export default function RegisterScreen({ navigation }: any) {
   const { showAlert, AlertComponent } = useCustomAlert();
 
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,10 +29,138 @@ export default function RegisterScreen({ navigation }: any) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Stati per validazione real-time
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "unavailable" | "invalid">("idle");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+  
+  // Timeout separati per debounce
+  const usernameDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const emailDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Refs per gestire il focus
+  const usernameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
+
+  // ✅ Funzione per controllare disponibilità username
+  const checkUsernameAvailability = async (value: string) => {
+    console.log("🔍 [Username Check] Inizio controllo:", value);
+    
+    if (!value) {
+      console.log("⚪ [Username Check] Campo vuoto, stato: idle");
+      setUsernameStatus("idle");
+      return;
+    }
+
+    // Validazione formato locale
+    if (value.length < 10 || value.length > 20) {
+      console.log("⚠️ [Username Check] Lunghezza non valida:", value.length);
+      setUsernameStatus("invalid");
+      return;
+    }
+
+    if (!/^[a-z0-9_]+$/i.test(value)) {
+      console.log("⚠️ [Username Check] Formato non valido:", value);
+      setUsernameStatus("invalid");
+      return;
+    }
+
+    // Check remoto
+    console.log("🔄 [Username Check] Chiamata API in corso...");
+    setUsernameStatus("checking");
+    try {
+      const res = await fetch(
+        `${API_URL}/auth/check-availability?username=${encodeURIComponent(value)}`
+      );
+      const data = await res.json();
+      console.log("📥 [Username Check] Risposta API:", data);
+      const newStatus = data.usernameAvailable ? "available" : "unavailable";
+      console.log(`${data.usernameAvailable ? '✅' : '❌'} [Username Check] Stato finale:`, newStatus);
+      setUsernameStatus(newStatus);
+    } catch (error) {
+      console.error("❌ [Username Check] Errore:", error);
+      setUsernameStatus("idle");
+    }
+  };
+
+  // ✅ Funzione per controllare disponibilità email
+  const checkEmailAvailability = async (value: string) => {
+    console.log("📧 [Email Check] Inizio controllo:", value);
+    
+    if (!value) {
+      console.log("⚪ [Email Check] Campo vuoto, stato: idle");
+      setEmailStatus("idle");
+      return;
+    }
+
+    // Validazione formato email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      console.log("⚠️ [Email Check] Formato email non valido:", value);
+      setEmailStatus("idle");
+      return;
+    }
+
+    // Check remoto
+    console.log("🔄 [Email Check] Chiamata API in corso...");
+    setEmailStatus("checking");
+    try {
+      const res = await fetch(
+        `${API_URL}/auth/check-availability?email=${encodeURIComponent(value)}`
+      );
+      const data = await res.json();
+      console.log("📥 [Email Check] Risposta API:", data);
+      const newStatus = data.emailAvailable ? "available" : "unavailable";
+      console.log(`${data.emailAvailable ? '✅' : '❌'} [Email Check] Stato finale:`, newStatus);
+      setEmailStatus(newStatus);
+    } catch (error) {
+      console.error("❌ [Email Check] Errore:", error);
+      setEmailStatus("idle");
+    }
+  };
+
+  // ✅ Debounced check username
+  React.useEffect(() => {
+    console.log("⏱️ [Username Debounce] Trigger - valore:", username);
+    
+    if (usernameDebounceTimeout.current) {
+      clearTimeout(usernameDebounceTimeout.current);
+      console.log("🔄 [Username Debounce] Timeout precedente cancellato");
+    }
+
+    usernameDebounceTimeout.current = setTimeout(() => {
+      console.log("✅ [Username Debounce] 800ms passati, avvio check");
+      checkUsernameAvailability(username);
+    }, 800);
+
+    return () => {
+      if (usernameDebounceTimeout.current) {
+        clearTimeout(usernameDebounceTimeout.current);
+      }
+    };
+  }, [username]);
+
+  // ✅ Debounced check email
+  React.useEffect(() => {
+    console.log("⏱️ [Email Debounce] Trigger - valore:", email);
+    
+    if (emailDebounceTimeout.current) {
+      clearTimeout(emailDebounceTimeout.current);
+      console.log("🔄 [Email Debounce] Timeout precedente cancellato");
+    }
+
+    emailDebounceTimeout.current = setTimeout(() => {
+      console.log("✅ [Email Debounce] 800ms passati, avvio check");
+      checkEmailAvailability(email);
+    }, 800);
+
+    return () => {
+      if (emailDebounceTimeout.current) {
+        clearTimeout(emailDebounceTimeout.current);
+      }
+    };
+  }, [email]);
 
   // ✅ Funzione per selezionare immagine
   const pickImage = async () => {
@@ -128,8 +257,23 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!name || !username || !email || !password) {
       showAlert({ type: 'error', title: 'Errore', message: 'Compila tutti i campi obbligatori' });
+      return;
+    }
+
+    if (usernameStatus === "invalid") {
+      showAlert({ type: 'error', title: 'Errore', message: 'Lo username deve essere tra 10 e 20 caratteri e contenere solo lettere, numeri e underscore' });
+      return;
+    }
+
+    if (usernameStatus === "unavailable") {
+      showAlert({ type: 'error', title: 'Errore', message: 'Username già in uso' });
+      return;
+    }
+
+    if (emailStatus === "unavailable") {
+      showAlert({ type: 'error', title: 'Errore', message: 'Email già registrata' });
       return;
     }
 
@@ -149,6 +293,7 @@ export default function RegisterScreen({ navigation }: any) {
       // ✅ Usa FormData per inviare anche l'immagine
       const formData = new FormData();
       formData.append("name", name);
+      formData.append("username", username.toLowerCase().trim());
       formData.append("email", email.toLowerCase().trim());
       formData.append("password", password);
       formData.append("role", role);
@@ -288,23 +433,77 @@ export default function RegisterScreen({ navigation }: any) {
             autoCapitalize="words"
             returnKeyType="next"
             blurOnSubmit={false}
-            onSubmitEditing={() => emailRef.current?.focus()}
+            onSubmitEditing={() => usernameRef.current?.focus()}
           />
 
+          <Text style={styles.label}>Username *</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              ref={usernameRef}
+              style={[styles.input, styles.inputWithIcon]}
+              placeholder="mario_rossi"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => emailRef.current?.focus()}
+            />
+            {usernameStatus === "checking" && (
+              <ActivityIndicator size="small" color="#999" style={styles.inputIcon} />
+            )}
+            {usernameStatus === "available" && (
+              <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={styles.inputIcon} />
+            )}
+            {usernameStatus === "unavailable" && (
+              <Ionicons name="close-circle" size={24} color="#F44336" style={styles.inputIcon} />
+            )}
+            {usernameStatus === "invalid" && (
+              <Ionicons name="alert-circle" size={24} color="#FF9800" style={styles.inputIcon} />
+            )}
+          </View>
+          {usernameStatus === "unavailable" && (
+            <Text style={styles.errorText}>Username già in uso</Text>
+          )}
+          {usernameStatus === "invalid" && (
+            <Text style={styles.errorText}>Formato non valido (10-20 caratteri: lettere, numeri, _)</Text>
+          )}
+          {usernameStatus === "available" && (
+            <Text style={styles.successText}>Username disponibile ✓</Text>
+          )}
+
           <Text style={styles.label}>Email *</Text>
-          <TextInput
-            ref={emailRef}
-            style={styles.input}
-            placeholder="email@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-            blurOnSubmit={false}
-            onSubmitEditing={() => passwordRef.current?.focus()}
-          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              ref={emailRef}
+              style={[styles.input, styles.inputWithIcon]}
+              placeholder="email@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+            {emailStatus === "checking" && (
+              <ActivityIndicator size="small" color="#999" style={styles.inputIcon} />
+            )}
+            {emailStatus === "available" && (
+              <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={styles.inputIcon} />
+            )}
+            {emailStatus === "unavailable" && (
+              <Ionicons name="close-circle" size={24} color="#F44336" style={styles.inputIcon} />
+            )}
+          </View>
+          {emailStatus === "unavailable" && (
+            <Text style={styles.errorText}>Email già registrata</Text>
+          )}
+          {emailStatus === "available" && (
+            <Text style={styles.successText}>Email disponibile ✓</Text>
+          )}
 
           <Text style={styles.label}>Password *</Text>
           <TextInput
@@ -457,14 +656,42 @@ const styles = {
     color: "#333",
     marginBottom: 8,
   },
+  inputContainer: {
+    position: "relative" as const,
+    marginBottom: 8,
+  },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    marginBottom: 16,
     backgroundColor: "#fafafa",
+  },
+  inputWithIcon: {
+    paddingRight: 50,
+  },
+  inputIcon: {
+    position: "absolute" as const,
+    right: 14,
+    top: 14,
+  },
+  helperText: {
+    fontSize: 12,
+    color: "#999",
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 12,
+    color: "#F44336",
+    marginBottom: 16,
+    marginTop: -4,
+  },
+  successText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    marginBottom: 16,
+    marginTop: -4,
   },
   registerButton: {
     backgroundColor: "#ef8f00",

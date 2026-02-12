@@ -3,6 +3,7 @@ import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Avatar } from "../../../../components/Avatar";
+import SportIcon from "../../../../components/SportIcon";
 import { formatDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
 
@@ -189,14 +190,14 @@ const InviteCard: React.FC<InviteCardProps> = ({
             <View style={styles.inviteDetails}>
               {booking?.campo?.struttura?.name && (
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1}}>
-                  <Ionicons name="location-outline" size={12} color="#666" />
+                  <Ionicons name="location-outline" size={12} color="#2196F3" />
                   <Text style={styles.inviteDetailText} numberOfLines={1}>
                     {booking.campo.struttura.name}
                   </Text>
                 </View>
               )}
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8}}>
-                <Ionicons name="football-outline" size={12} color="#2196F3" />
+                <SportIcon sport={sportName} size={12} color="#2196F3" />
                 <Text style={styles.inviteDetailText}>
                   {sportName}
                 </Text>

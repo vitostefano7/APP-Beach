@@ -10,8 +10,8 @@ const JWT_SECRET = "SUPER_MEGA_SECRET"; // poi env
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role } = req.body;
-    console.log("🔐 Tentativo registrazione:", { name, email, role });
+    const { name, username, email, password, role } = req.body;
+    console.log("🔐 Tentativo registrazione:", { name, username, email, role });
     console.log("📸 req.file presente?", (req as any).file ? "SÌ" : "NO");
     if ((req as any).file) {
       console.log("📸 File info:", {
@@ -21,11 +21,24 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    if (!name || !email || !password) {
+    if (!name || !username || !email || !password) {
       console.log("❌ Registrazione fallita: campi mancanti");
       return res
         .status(400)
-        .json({ message: "Name, email e password sono obbligatori" });
+        .json({ message: "Name, username, email e password sono obbligatori" });
+    }
+
+    // Valida username
+    if (username.length < 10 || username.length > 20) {
+      return res
+        .status(400)
+        .json({ message: "Username deve essere tra 10 e 20 caratteri" });
+    }
+
+    if (!/^[a-z0-9_]+$/.test(username)) {
+      return res
+        .status(400)
+        .json({ message: "Username può contenere solo lettere minuscole, numeri e underscore" });
     }
 
     const existing = await User.findOne({ email });
@@ -34,25 +47,15 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Email già registrata" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-
-    // Genera username univoco basato sul nome
-    const baseUsername = name
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "")
-      .substring(0, 15);
-    
-    let username = baseUsername;
-    let counter = 1;
-    
-    // Controlla se l'username esiste già e aggiunge un numero se necessario
-    while (await User.findOne({ username })) {
-      username = `${baseUsername}${counter}`;
-      counter++;
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      console.log("❌ Registrazione fallita: username già esistente:", username);
+      return res.status(400).json({ message: "Username già in uso" });
     }
+
+    const hashed = await bcrypt.hash(password, 10);
     
-    console.log("✅ Username generato:", username);
+    console.log("✅ Username validato:", username);
 
     // Gestione avatar durante registrazione
     const user = await User.create({
@@ -184,6 +187,32 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("❌ Login error:", err);
+    return res.status(500).json({ message: "Errore server" });
+  }
+};
+
+export const checkAvailability = async (req: Request, res: Response) => {
+  try {
+    const { username, email } = req.query;
+    const result: { usernameAvailable?: boolean; emailAvailable?: boolean } = {};
+
+    if (username && typeof username === "string") {
+      const existingUsername = await User.findOne({ 
+        username: username.toLowerCase().trim() 
+      });
+      result.usernameAvailable = !existingUsername;
+    }
+
+    if (email && typeof email === "string") {
+      const existingEmail = await User.findOne({ 
+        email: email.toLowerCase().trim() 
+      });
+      result.emailAvailable = !existingEmail;
+    }
+
+    return res.json(result);
+  } catch (err) {
+    console.error("❌ Check availability error:", err);
     return res.status(500).json({ message: "Errore server" });
   }
 };

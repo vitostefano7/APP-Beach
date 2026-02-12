@@ -23,6 +23,7 @@ import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { Avatar } from "../../../components/Avatar/Avatar";
 import { AvatarPicker } from "../../../components/AvatarPicker";
+import { PostCard } from "../../../components/Community/PostCard/PostCard";
 import { StatsCarousel } from "./components/StatsCarousel";
 
 type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
@@ -67,6 +68,7 @@ export default function ProfileScreen() {
   // Stati per i post
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [showAllPosts, setShowAllPosts] = useState(false);
 
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
@@ -810,73 +812,55 @@ const loadPosts = async () => {
             </View>
           ) : (
             <View style={{ gap: 12 }}>
-              {posts.slice(0, 3).map((post: any) => (
-                <View
+              {(showAllPosts ? posts : posts.slice(0, 3)).map((post: any) => (
+                <PostCard
                   key={post._id}
-                  style={{
-                    backgroundColor: '#F5F9FF',
-                    borderRadius: 16,
-                    padding: 14,
-                    shadowColor: '#2196F3',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    elevation: 4,
-                    borderWidth: 1,
-                    borderColor: 'rgba(33, 150, 243, 0.15)',
+                  post={post}
+                  currentUserId={user.id}
+                  token={token}
+                  onLike={async (postId: string) => {
+                    try {
+                      // ottimistic update
+                      setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: p.likes?.includes(user.id) ? p.likes.filter((id: string) => id !== user.id) : [...(p.likes || []), user.id] } : p));
+                      await fetch(`${API_URL}/community/posts/${postId}/like`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                    } catch (e) {
+                      console.error('Errore like post:', e);
+                    }
                   }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1a1a' }}>
-                        {post.struttura?.name || 'Post'}
-                      </Text>
-                      <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-                        {new Date(post.createdAt).toLocaleDateString('it-IT', { 
-                          day: 'numeric', 
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {post.content && (
-                    <Text style={{ fontSize: 14, color: '#424242', lineHeight: 20, marginBottom: 10 }} numberOfLines={3}>
-                      {post.content}
-                    </Text>
-                  )}
-                  
-                  {post.image && (
-                    <Image
-                      source={{ uri: post.image }}
-                      style={{
-                        width: '100%',
-                        height: 180,
-                        borderRadius: 12,
-                        marginBottom: 10,
-                      }}
-                      resizeMode="cover"
-                    />
-                  )}
-                  
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="heart-outline" size={16} color="#666" />
-                      <Text style={{ fontSize: 13, color: '#666', fontWeight: '500' }}>
-                        {post.likes?.length || 0}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="chatbubble-outline" size={16} color="#666" />
-                      <Text style={{ fontSize: 13, color: '#666', fontWeight: '500' }}>
-                        {post.comments?.length || 0}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+
+                  /* NON passiamo onComment: PostCard userà la sua logica interna per espandere i commenti inline */
+                  onShare={async (postId: string) => {
+                    // apri PostDetail nella tab Social
+                    navigation.getParent()?.navigate('Social', { screen: 'PostDetail', params: { postId } });
+                  }}
+                  onAuthorPress={(authorId: string, isStructure: boolean) => {
+                    if (isStructure) {
+                      navigation.navigate('Struttura', { id: authorId });
+                    } else {
+                      navigation.navigate('PublicProfile', { userId: authorId });
+                    }
+                  }}
+                  onDeletePost={async (postId: string) => {
+                    try {
+                      const res = await fetch(`${API_URL}/community/posts/${postId}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (res.ok) {
+                        setPosts(prev => prev.filter(p => p._id !== postId));
+                      }
+                    } catch (e) {
+                      console.error('Errore eliminazione post:', e);
+                    }
+                  }}
+                  isLiked={post.likes?.includes(user.id)}
+                  strutturaId={post.struttura?._id}
+                />
               ))}
-              
+
               {posts.length > 3 && (
                 <Pressable
                   style={({ pressed }) => [
@@ -889,10 +873,10 @@ const loadPosts = async () => {
                       borderColor: 'rgba(33, 150, 243, 0.2)',
                     }
                   ]}
-                  onPress={() => navigation.navigate("Community")}
+                  onPress={() => setShowAllPosts(prev => !prev)}
                 >
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#2196F3' }}>
-                    Vedi tutti i {posts.length} post →
+                    {showAllPosts ? 'Mostra meno' : `Vedi tutti i ${posts.length} post →`}
                   </Text>
                 </Pressable>
               )}

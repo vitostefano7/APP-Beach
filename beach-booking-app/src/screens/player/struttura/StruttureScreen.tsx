@@ -1008,29 +1008,43 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
 
   const geocodeAndCenterMap = useCallback(async (city: string) => {
     try {
-      const geocodeUrl = 
+      const geocodeUrl =
         `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(city)},Italia&` +
         `format=json&limit=1`;
-      
+
       const geocodeRes = await fetch(geocodeUrl, {
         headers: { 'User-Agent': 'SportBookingApp/1.0' },
       });
-      
-      const geocodeData = await geocodeRes.json();
+
+      if (!geocodeRes.ok) {
+        const text = await geocodeRes.text();
+        console.error(`❌ Errore geocoding per mappa: HTTP ${geocodeRes.status} - ${geocodeRes.statusText}\nRisposta:`, text);
+        return;
+      }
+
+      let geocodeData;
+      try {
+        geocodeData = await geocodeRes.json();
+      } catch (jsonError) {
+        const text = await geocodeRes.text();
+        console.error("❌ Errore geocoding per mappa: risposta non JSON:", text);
+        return;
+      }
+
       console.log("🗺️ Geocode per centrare mappa:", geocodeData);
-      
+
       if (geocodeData && geocodeData.length > 0) {
         const lat = parseFloat(geocodeData[0].lat);
         const lng = parseFloat(geocodeData[0].lon);
-        
+
         const newRegion: Region = {
           latitude: lat,
           longitude: lng,
           latitudeDelta: 0.5,
           longitudeDelta: 0.5,
         };
-        
+
         lastRegionRef.current = newRegion;
         setRegion(newRegion);
         mapRef.current?.animateToRegion(newRegion, 1000);
