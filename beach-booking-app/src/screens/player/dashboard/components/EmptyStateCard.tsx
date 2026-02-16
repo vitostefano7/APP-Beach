@@ -8,8 +8,10 @@ interface EmptyStateCardProps {
   title: string;
   subtitle?: string;
   buttonText?: string;
+  buttonIcon?: string;
   onPress?: () => void;
   secondaryButtonText?: string;
+  secondaryButtonIcon?: string;
   onSecondaryPress?: () => void;
   type?: 'booking' | 'invite' | 'match';
 }
@@ -19,8 +21,10 @@ const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
   title,
   subtitle,
   buttonText,
+  buttonIcon,
   onPress,
   secondaryButtonText,
+  secondaryButtonIcon,
   onSecondaryPress,
   type = 'booking',
 }) => {
@@ -46,12 +50,14 @@ const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
         )}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
           {buttonText && onPress && (
-            <Pressable style={[styles.bookButton, { flex: secondaryButtonText ? 1 : undefined }]} onPress={onPress}>
+            <Pressable style={[styles.bookButton, { flex: secondaryButtonText ? 1 : undefined, flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={onPress}>
+              {buttonIcon && <Ionicons name={buttonIcon as any} size={16} color="#fff" />}
               <Text style={styles.bookButtonText}>{buttonText}</Text>
             </Pressable>
           )}
           {secondaryButtonText && onSecondaryPress && (
-            <Pressable style={[styles.bookButton, { flex: 1, backgroundColor: '#666' }]} onPress={onSecondaryPress}>
+            <Pressable style={[styles.bookButton, { flex: 1, backgroundColor: '#666', flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={onSecondaryPress}>
+              {secondaryButtonIcon && <Ionicons name={secondaryButtonIcon as any} size={16} color="#fff" />}
               <Text style={styles.bookButtonText}>{secondaryButtonText}</Text>
             </Pressable>
           )}

@@ -1,7 +1,7 @@
 import { useState, useContext, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { AuthContext } from '../../../../context/AuthContext';
-import API_URL from '../../../../config/api';
+import { AuthContext } from '../../context/AuthContext';
+import API_URL from '../../config/api';
 
 interface SuggestedStruttura {
   _id: string;

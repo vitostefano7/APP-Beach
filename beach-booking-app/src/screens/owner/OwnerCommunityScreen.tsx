@@ -239,7 +239,7 @@ export default function OwnerCommunityScreen() {
         <View style={styles.content}>
         {/* Header with structure selector */}
         <CommunityHeader
-          title="Community"
+          title="Social"
           selectedStructure={selectedStructure}
           onStructurePress={() => setStructureModalVisible(true)}
           onSearchPress={() => navigation.navigate('OwnerCercaAmiciScreen')}

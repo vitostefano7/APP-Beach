@@ -102,8 +102,6 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
             surname={user?.surname}
             avatarUrl={user?.avatarUrl}
             size="medium"
-            showStatusDot
-            statusDotColor="#4CAF50"
           />
 
           <View>

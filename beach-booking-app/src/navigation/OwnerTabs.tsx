@@ -36,7 +36,7 @@ export default function OwnerTabs() {
             Home: "grid",
             Strutture: "business",
             Partite: "calendar",
-            Community: "people",
+            Social: "people",
             Messaggi: "chatbubble-ellipses-outline",
             Profilo: "person",
           };
@@ -76,7 +76,7 @@ export default function OwnerTabs() {
     >
       <Tab.Screen name="Home" component={OwnerDashboardScreen} />
       <Tab.Screen name="Partite" component={OwnerBookingsScreen} />
-      <Tab.Screen name="Community" component={OwnerCommunityScreen} />
+      <Tab.Screen name="Social" component={OwnerCommunityScreen} />
       <Tab.Screen 
         name="Messaggi" 
         component={ConversationScreen}

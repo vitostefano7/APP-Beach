@@ -1,8 +1,7 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   FlatList,
   Pressable,
   ActivityIndicator,
@@ -12,41 +11,34 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../../../context/AuthContext';
 import API_URL from '../../../config/api';
 import { useSuggestedFriends, type SuggestedFriend } from './hooks/useSuggestedFriends';
-import { useOwnerSuggestedUsers, type OwnerSuggestedUser } from './hooks/useOwnerSuggestedUsers';
-import { useSuggestedStrutture } from './hooks/useSuggestedStrutture';
-import { SuggestedFriendCard } from './components/SuggestedFriendCard';
-import { StyleSheet } from 'react-native';
+import { useOwnerSuggestedUsers, type OwnerSuggestedUser } from '../../../hooks/CercaAmici/useOwnerSuggestedUsers';
+import { useSuggestedStrutture } from '../../../hooks/CercaAmici/useSuggestedStrutture';
+import { SuggestedFriendCard } from '../../../components/CercaAmici/SuggestedFriendCard';
 import Avatar from '../../../components/Avatar/Avatar';
+import SearchBar from '../../../components/CercaAmici/SearchBar';
+import StrutturaCard from '../../../components/StrutturaCard/StrutturaCard';
+import { RecentUserCard, RecentStrutturaCard } from '../../../components/CercaAmici/RecentSearchCard';
+import { useSearchLogic } from '../../../hooks/useSearchLogic';
+import {
+  loadRecentUserSearches,
+  loadRecentStruttureSearches,
+  saveRecentUserSearch,
+  saveRecentStrutturaSearch,
+  clearRecentUserSearches,
+  clearRecentStruttureSearches,
+  refreshRecentUserSearches,
+  refreshRecentStruttureSearches,
+  getFollowStrutturaEndpoint,
+  SearchResult,
+  Struttura,
+} from '../../../utils/searchHelpers';
+import { searchScreenStyles } from '../../../styles/searchScreenStyles';
+import { StyleSheet } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
-
-interface SearchResult {
-  _id: string;
-  name: string;
-  surname?: string;
-  username: string;
-  avatarUrl?: string;
-  preferredSports?: string[];
-  friendshipStatus?: 'none' | 'pending' | 'accepted';
-  commonMatchesCount?: number;
-  mutualFriendsCount?: number;
-}
-
-interface Struttura {
-  _id: string;
-  name: string;
-  description?: string;
-  images: string[];
-  location: {
-    address: string;
-    city: string;
-  };
-  isFollowing?: boolean;
-}
 
 interface SuggestedStruttura {
   _id: string;
@@ -71,17 +63,25 @@ export default function CercaAmiciScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<SearchResult[]>([]);
   const [searchType, setSearchType] = useState<'users' | 'strutture'>('users');
-  const [struttureResults, setStruttureResults] = useState<Struttura[]>([]);
-  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
+  const [recentSearches, setRecentSearches] = useState<SearchResult[]>([]);
   const [recentStruttureSearches, setRecentStruttureSearches] = useState<Struttura[]>([]);
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  // Use the new search logic hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    struttureResults,
+    searchLoading,
+    hasSearched,
+    clearSearch,
+  } = useSearchLogic({
+    token: token || '',
+    role: 'player',
+    currentUserId: user?.id,
+  });
 
   // Hook per amici suggeriti (diverso per owner e player)
   const isOwner = user?.role === 'owner';
@@ -101,329 +101,45 @@ export default function CercaAmiciScreen() {
     unfollowStruttura,
   } = useSuggestedStrutture({ limit: 10 });
 
-  // Debug suggerimenti strutture
-  useEffect(() => {
-    console.log('=== SUGGERIMENTI STRUTTURE ===');
-    console.log('Loading:', struttureLoading);
-    console.log('Suggerimenti:', suggestedStrutture?.length);
-    if (suggestedStrutture) {
-      suggestedStrutture.forEach((struttura, index) => {
-        console.log(`${index + 1}. ${struttura.name}: ${struttura.reason?.type} (score: ${struttura.score})`);
-      });
-    }
-  }, [suggestedStrutture, struttureLoading]);
-
   // Load recent searches on mount
   useEffect(() => {
-    loadRecentSearches();
-    loadRecentStruttureSearches();
+    loadRecentUserSearches().then(setRecentSearches);
+    loadRecentStruttureSearches().then(setRecentStruttureSearches);
   }, []);
 
-  // Debug per verificare il caricamento
+  // Refresh recent searches data when token changes
   useEffect(() => {
-    console.log('=== CERCA AMICI SCREEN - SUGGERIMENTI ===');
-    console.log('Loading:', suggestionsLoading);
-    console.log('Suggerimenti:', suggestedFriends?.length);
-    console.log('Dati suggerimenti:', suggestedFriends);
-  }, [suggestionsLoading, suggestedFriends]);
-
-  const loadRecentSearches = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('@recent_searches');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setRecentSearches(parsed);
-        // Ricarica i dati aggiornati con commonMatchesCount
-        refreshRecentSearchesData(parsed);
-      }
-    } catch (error) {
-      console.error('Errore caricamento ricerche recenti:', error);
+    if (token) {
+      refreshRecentUserSearches(token).then(setRecentSearches);
+      refreshRecentStruttureSearches(token, 'player').then(setRecentStruttureSearches);
     }
+  }, [token]);
+
+  const handleAddFriend = async (friendId: string) => {
+    await sendFriendRequest(friendId);
   };
 
-  const refreshRecentSearchesData = async (users: SearchResult[]) => {
-    if (!token || users.length === 0) return;
-
-    try {
-      // Fetch updated data for each user
-      const updatedUsers = await Promise.all(
-        users.map(async (user) => {
-          try {
-            const res = await fetch(
-              `${API_URL}/users/${user._id}/public-profile`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-
-            if (res.ok) {
-              const data = await res.json();
-              return {
-                ...user,
-                commonMatchesCount: data.stats?.commonMatchesCount,
-                mutualFriendsCount: data.stats?.mutualFriendsCount,
-                friendshipStatus: data.friendshipStatus,
-              };
-            }
-            return user;
-          } catch (err) {
-            console.error('Error fetching user data:', err);
-            return user;
-          }
-        })
-      );
-
-      setRecentSearches(updatedUsers);
-      // Aggiorna anche AsyncStorage con i nuovi dati
-      await AsyncStorage.setItem('@recent_searches', JSON.stringify(updatedUsers));
-    } catch (error) {
-      console.error('Errore aggiornamento dati recenti:', error);
-    }
-  };
-
-  const saveRecentUser = async (user: SearchResult) => {
-    try {
-      // Remove duplicates based on user ID
-      const updated = [user, ...recentSearches.filter(u => u._id !== user._id)].slice(0, 5);
-      setRecentSearches(updated);
-      await AsyncStorage.setItem('@recent_searches', JSON.stringify(updated));
-    } catch (error) {
-      console.error('Errore salvataggio utente recente:', error);
-    }
-  };
-
-  const clearRecentSearches = async () => {
-    try {
-      setRecentSearches([]);
-      await AsyncStorage.removeItem('@recent_searches');
-    } catch (error) {
-      console.error('Errore cancellazione ricerche:', error);
-    }
-  };
-
-  const loadRecentStruttureSearches = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('@recent_strutture_searches');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setRecentStruttureSearches(parsed);
-        // Aggiorna i dati aggiornati con isFollowing
-        refreshRecentStruttureData(parsed);
-      }
-    } catch (error) {
-      console.error('Errore caricamento strutture recenti:', error);
-    }
-  };
-
-  const refreshRecentStruttureData = async (strutture: Struttura[]) => {
-    if (!token || strutture.length === 0) return;
-
-    try {
-      // Fetch updated follow status for each struttura
-      const updatedStrutture = await Promise.all(
-        strutture.map(async (struttura) => {
-          try {
-            const statusResponse = await fetch(
-              `${API_URL}/community/strutture/${struttura._id}/follow-status`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              return { ...struttura, isFollowing: statusData.isFollowing };
-            }
-            return struttura;
-          } catch (err) {
-            console.error('Error fetching struttura follow status:', err);
-            return struttura;
-          }
-        })
-      );
-
-      setRecentStruttureSearches(updatedStrutture);
-      // Aggiorna anche AsyncStorage con i nuovi dati
-      await AsyncStorage.setItem('@recent_strutture_searches', JSON.stringify(updatedStrutture));
-    } catch (error) {
-      console.error('Errore aggiornamento dati strutture recenti:', error);
-    }
-  };
-
-  const saveRecentStruttura = async (struttura: Struttura) => {
-    try {
-      // Remove duplicates based on struttura ID
-      const updated = [struttura, ...recentStruttureSearches.filter(s => s._id !== struttura._id)].slice(0, 5);
-      setRecentStruttureSearches(updated);
-      await AsyncStorage.setItem('@recent_strutture_searches', JSON.stringify(updated));
-    } catch (error) {
-      console.error('Errore salvataggio struttura recente:', error);
-    }
-  };
-
-  const clearRecentStruttureSearches = async () => {
-    try {
-      setRecentStruttureSearches([]);
-      await AsyncStorage.removeItem('@recent_strutture_searches');
-    } catch (error) {
-      console.error('Errore cancellazione strutture recenti:', error);
-    }
-  };
-
-  // Debounced search
-  useEffect(() => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    if (searchQuery.trim().length === 0) {
-      setSearchResults([]);
-      setHasSearched(false);
-      return;
-    }
-
-    // Solo se ci sono almeno 2 caratteri
-    if (searchQuery.trim().length < 2) {
-      return;
-    }
-
-    debounceTimer.current = setTimeout(() => {
-      performSearch(searchQuery.trim());
-    }, 300);
-
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, [searchQuery]);
-
-  const performSearch = async (query: string) => {
-    if (!token || query.length < 2) return;
-
-    try {
-      setSearchLoading(true);
-      setHasSearched(true);
-
-      if (searchType === 'users') {
-        console.log('🔍 Searching for users:', query);
-        const response = await fetch(
-          `${API_URL}/users/search?q=${encodeURIComponent(query)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log('Response status:', response.status);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Search results:', data);
-          // Filtra per escludere l'utente corrente dai risultati
-          const filteredResults = (data.users || data || []).filter((item: SearchResult) => item._id !== user?.id);
-          setSearchResults(filteredResults);
-        } else {
-          const errorText = await response.text();
-          console.error('Errore ricerca:', response.status, errorText);
-          setSearchResults([]);
-        }
-      } else {
-        console.log('🔍 Searching for strutture:', query);
-        const response = await fetch(
-          `${API_URL}/community/strutture/search?q=${encodeURIComponent(query)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          // Per ogni struttura, verifica se è già seguita
-          const struttureWithFollowStatus = await Promise.all(
-            data.strutture.map(async (struttura: Struttura) => {
-              try {
-                const statusResponse = await fetch(
-                  `${API_URL}/community/strutture/${struttura._id}/follow-status`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  }
-                );
-                if (statusResponse.ok) {
-                  const statusData = await statusResponse.json();
-                  return { ...struttura, isFollowing: statusData.isFollowing };
-                }
-              } catch (error) {
-                console.error('Errore verifica follow status:', error);
-              }
-              return { ...struttura, isFollowing: false };
-            })
-          );
-          setStruttureResults(struttureWithFollowStatus);
-        } else {
-          const errorText = await response.text();
-          console.error('Errore ricerca strutture:', response.status, errorText);
-          setStruttureResults([]);
-        }
-      }
-    } catch (error) {
-      console.error('Errore ricerca:', error);
-      setSearchResults([]);
-      setStruttureResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const handleAddFriend = async (friendId: string, friendName: string) => {
-    try {
-      // sendFriendRequest ora aggiorna automaticamente lo stato in base a isPending
-      const success = await sendFriendRequest(friendId);
-      
-      if (success) {
-        // Ricarica i risultati di ricerca per ottenere lo stato aggiornato
-        if (searchQuery.trim()) {
-          performSearch(searchQuery);
-        }
-      }
-    } catch (error) {
-      console.error('Errore follow utente:', error);
-    }
-  };
-
-  const handlePressFriend = async (friend: any, fromSearchResults: boolean = false) => {
+  const handlePressFriend = async (friend: any) => {
     const friendId = friend.user?._id || friend._id;
+    const userToSave = friend.user || friend;
     
-    // If clicked from search results, save to recent searches
-    if (fromSearchResults && friend._id) {
-      await saveRecentUser(friend);
-    }
-    
-    navigation.navigate('ProfiloUtente', {
-      userId: friendId,
-    });
+    await saveRecentUserSearch(userToSave);
+    navigation.navigate('ProfiloUtente', { userId: friendId });
   };
 
-  const handlePressStruttura = async (struttura: Struttura, fromSearchResults: boolean = false) => {
-    // If clicked from search results, save to recent searches
-    if (fromSearchResults) {
-      await saveRecentStruttura(struttura);
-    }
-
+  const handlePressStruttura = async (struttura: Struttura) => {
+    await saveRecentStrutturaSearch(struttura);
     navigation.navigate('DettaglioStruttura', { strutturaId: struttura._id });
   };
 
   const handleFollowStruttura = async (strutturaId: string) => {
-    try {
-      setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
+    if (followingInProgress.has(strutturaId) || !token) return;
 
-      const response = await fetch(`${API_URL}/community/strutture/${strutturaId}/follow`, {
+    setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
+
+    try {
+      const endpoint = getFollowStrutturaEndpoint('player', strutturaId);
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -431,61 +147,15 @@ export default function CercaAmiciScreen() {
       });
 
       if (response.ok) {
-        setStruttureResults((prev) =>
-          prev.map((s) =>
-            s._id === strutturaId ? { ...s, isFollowing: true } : s
-          )
-        );
-        // Aggiorna anche le strutture recenti
+        // Update recentStruttureSearches
         setRecentStruttureSearches((prev) =>
           prev.map((s) =>
             s._id === strutturaId ? { ...s, isFollowing: true } : s
           )
         );
-      } else {
-        const error = await response.json();
-        console.error('Errore follow struttura:', error);
       }
     } catch (error) {
       console.error('Errore follow struttura:', error);
-    } finally {
-      setFollowingInProgress((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(strutturaId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleUnfollowStruttura = async (strutturaId: string) => {
-    try {
-      setFollowingInProgress((prev) => new Set(prev).add(strutturaId));
-
-      const response = await fetch(`${API_URL}/community/strutture/${strutturaId}/follow`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setStruttureResults((prev) =>
-          prev.map((s) =>
-            s._id === strutturaId ? { ...s, isFollowing: false } : s
-          )
-        );
-        // Aggiorna anche le strutture recenti
-        setRecentStruttureSearches((prev) =>
-          prev.map((s) =>
-            s._id === strutturaId ? { ...s, isFollowing: false } : s
-          )
-        );
-      } else {
-        const error = await response.json();
-        console.error('Errore unfollow struttura:', error);
-      }
-    } catch (error) {
-      console.error('Errore unfollow struttura:', error);
     } finally {
       setFollowingInProgress((prev) => {
         const newSet = new Set(prev);
@@ -508,7 +178,7 @@ export default function CercaAmiciScreen() {
     return (
       <Pressable
         style={styles.searchResultCard}
-        onPress={() => handlePressFriend(item, true)}
+        onPress={() => handlePressFriend(item)}
       >
         <View style={styles.searchResultLeft}>
           <Avatar
@@ -547,7 +217,7 @@ export default function CercaAmiciScreen() {
           ) : canSendRequest ? (
             <Pressable
               style={styles.addButton}
-              onPress={() => handleAddFriend(item._id, displayName)}
+              onPress={() => handleAddFriend(item._id)}
             >
               <Ionicons name="person-add" size={20} color="white" />
             </Pressable>
@@ -557,168 +227,63 @@ export default function CercaAmiciScreen() {
     );
   };
 
-  const renderStrutturaResult = ({ item }: { item: Struttura }) => {
-    const isProcessing = followingInProgress.has(item._id);
-
-    return (
-      <Pressable
-        style={styles.strutturaCard}
-        onPress={() => handlePressStruttura(item, true)}
-      >
-        <View style={styles.strutturaLeft}>
-          {item.images[0] ? (
-            <Image
-              source={{ uri: item.images[0] }}
-              style={styles.strutturaImage}
-            />
-          ) : (
-            <View style={styles.strutturaImagePlaceholder}>
-              <Ionicons name="business" size={30} color="#2196F3" />
-            </View>
-          )}
-
-          <View style={styles.strutturaInfo}>
-            <Text style={styles.strutturaName} numberOfLines={1}>{item.name}</Text>
-            <View style={styles.strutturaLocation}>
-              <Ionicons name="location" size={12} color="#666" />
-              <Text style={styles.strutturaLocationText} numberOfLines={1}>
-                {item.location.city}
-              </Text>
-            </View>
-            {item.description && (
-              <Text style={styles.strutturaDescription} numberOfLines={1}>
-                {item.description}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.strutturaRight}>
-          {item.isFollowing ? (
-            <Pressable
-              style={styles.followingButton}
-              onPress={() => handleUnfollowStruttura(item._id)}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size="small" color="#4CAF50" />
-              ) : (
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-              )}
-            </Pressable>
-          ) : (
-            <Pressable
-              style={styles.followStrutturaButton}
-              onPress={() => handleFollowStruttura(item._id)}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="add-circle" size={20} color="#fff" />
-              )}
-            </Pressable>
-          )}
-        </View>
-      </Pressable>
-    );
-  };
+  const renderStrutturaResult = (struttura: Struttura) => (
+    <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+      <StrutturaCard
+        struttura={struttura}
+        onPress={() => handlePressStruttura(struttura)}
+        onFollow={() => handleFollowStruttura(struttura._id)}
+        isFollowing={struttura.isFollowing || false}
+        isLoading={followingInProgress.has(struttura._id)}
+        showDescription={true}
+      />
+    </View>
+  );
 
   const renderSuggestedStruttura = (item: SuggestedStruttura) => (
-    <Pressable
-      style={styles.strutturaCard}
-      onPress={() => navigation.navigate('DettaglioStruttura', { strutturaId: item._id })}
-    >
-      <View style={styles.strutturaLeft}>
-        {item.images[0] ? (
-          <Image
-            source={{ uri: item.images[0] }}
-            style={styles.strutturaImage}
-          />
-        ) : (
-          <View style={styles.strutturaImagePlaceholder}>
-            <Ionicons name="business" size={30} color="#2196F3" />
-          </View>
-        )}
-
-        <View style={styles.strutturaInfo}>
-          <Text style={styles.strutturaName} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.strutturaLocation}>
-            <Ionicons name="location" size={12} color="#666" />
-            <Text style={styles.strutturaLocationText} numberOfLines={1}>
-              {item.location.city}
-            </Text>
-          </View>
-          {item.description && (
-            <Text style={styles.strutturaDescription} numberOfLines={1}>
-              {item.description}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.strutturaRight}>
-        {item.isFollowing ? (
-          <Pressable
-            style={styles.followingButton}
-            onPress={() => unfollowStruttura(item._id)}
-          >
-            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-          </Pressable>
-        ) : (
-          <Pressable
-            style={styles.followStrutturaButton}
-            onPress={() => followStruttura(item._id)}
-          >
-            <Ionicons name="add-circle" size={20} color="#fff" />
-          </Pressable>
-        )}
-      </View>
-    </Pressable>
+    <View style={{ width: screenWidth * 0.75, marginRight: 16 }}>
+      <StrutturaCard
+        struttura={item}
+        onPress={() => handlePressStruttura(item)}
+        onFollow={async () => {
+          item.isFollowing ? await unfollowStruttura(item._id) : await followStruttura(item._id);
+        }}
+        isFollowing={item.isFollowing || false}
+        isLoading={false}
+        showDescription={true}
+      />
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={searchScreenStyles.safe} edges={['top']}>
       {/* Header with integrated search */}
-      <View style={styles.header}>
+      <View style={searchScreenStyles.header}>
         <Pressable
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
+          style={searchScreenStyles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </Pressable>
         
-        <View style={styles.headerSearchBar}>
-          <Ionicons name="search" size={20} color="#999" />
-          <TextInput
-            style={styles.headerSearchInput}
+        <View style={searchScreenStyles.headerSearchBar}>
+          <SearchBar
             placeholder={searchType === 'users' ? 'Cerca giocatori...' : 'Cerca strutture...'}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
+            onClear={clearSearch}
+            showClearButton={searchQuery.length > 0}
           />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => {
-              setSearchQuery('');
-              setSearchResults([]);
-              setStruttureResults([]);
-              setHasSearched(false);
-            }}>
-              <Ionicons name="close-circle" size={20} color="#999" />
-            </Pressable>
-          )}
         </View>
       </View>
 
       {/* Tab Switcher */}
-      <View style={styles.tabSwitcher}>
+      <View style={searchScreenStyles.tabSwitcher}>
         <Pressable
-          style={[styles.tabButton, searchType === 'users' && styles.tabButtonActive]}
+          style={[searchScreenStyles.tabButton, searchType === 'users' && searchScreenStyles.tabButtonActive]}
           onPress={() => {
             setSearchType('users');
-            setSearchQuery('');
-            setHasSearched(false);
+            clearSearch();
           }}
         >
           <Ionicons
@@ -732,11 +297,10 @@ export default function CercaAmiciScreen() {
         </Pressable>
 
         <Pressable
-          style={[styles.tabButton, searchType === 'strutture' && styles.tabButtonActive]}
+          style={[searchScreenStyles.tabButton, searchType === 'strutture' && searchScreenStyles.tabButtonActive]}
           onPress={() => {
             setSearchType('strutture');
-            setSearchQuery('');
-            setHasSearched(false);
+            clearSearch();
           }}
         >
           <Ionicons
@@ -787,12 +351,7 @@ export default function CercaAmiciScreen() {
                           <SuggestedFriendCard
                             friend={item}
                             onPress={() => handlePressFriend(item)}
-                            onInvite={() =>
-                              handleAddFriend(
-                                item.user._id,
-                                item.user.name
-                              )
-                            }
+                            onInvite={() => handleAddFriend(item.user._id)}
                           />
                         </View>
                       )}
@@ -844,7 +403,7 @@ export default function CercaAmiciScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Visti di recente</Text>
-                  <Pressable onPress={clearRecentSearches}>
+                  <Pressable onPress={() => clearRecentUserSearches().then(() => setRecentSearches([]))}>
                     <Text style={styles.clearText}>Cancella</Text>
                   </Pressable>
                 </View>
@@ -859,7 +418,7 @@ export default function CercaAmiciScreen() {
                       <Pressable
                         key={user._id || `recent-${index}`}
                         style={styles.recentUserCard}
-                        onPress={() => handlePressFriend(user, false)}
+                        onPress={() => handlePressFriend(user)}
                       >
                         <Avatar
                           name={user.name}
@@ -894,7 +453,7 @@ export default function CercaAmiciScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Viste di recente</Text>
-                  <Pressable onPress={clearRecentStruttureSearches}>
+                  <Pressable onPress={() => clearRecentStruttureSearches().then(() => setRecentStruttureSearches([]))}>
                     <Text style={styles.clearText}>Cancella</Text>
                   </Pressable>
                 </View>
@@ -904,7 +463,7 @@ export default function CercaAmiciScreen() {
                     <Pressable
                       key={struttura._id || `recent-struttura-${index}`}
                       style={styles.recentStrutturaCard}
-                      onPress={() => handlePressStruttura(struttura, false)}
+                      onPress={() => handlePressStruttura(struttura)}
                     >
                       {struttura.images[0] ? (
                         <Image
@@ -984,10 +543,9 @@ export default function CercaAmiciScreen() {
                   ) : (
                     <FlatList
                       data={struttureResults}
-                      renderItem={renderStrutturaResult}
+                      renderItem={({ item }) => renderStrutturaResult(item)}
                       keyExtractor={(item) => item._id}
                       scrollEnabled={false}
-                      contentContainerStyle={{ paddingHorizontal: 16 }}
                     />
                   )
                 )}

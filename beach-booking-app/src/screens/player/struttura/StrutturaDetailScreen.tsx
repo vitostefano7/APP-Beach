@@ -232,8 +232,6 @@ export default function StrutturaDetailScreen() {
         
         navigation.navigate("Chat", {
           conversationId: conversation._id,
-          strutturaName: struttura.name,
-          isUserChat: false,
         });
       } else {
         console.error("❌ [StrutturaDetail] Failed to get conversation:", res.status);
@@ -272,6 +270,39 @@ export default function StrutturaDetailScreen() {
       const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
       Linking.openURL(url);
     }
+  };
+
+  const getAmenityIcon = (amenity: string) => {
+    const amenityConfig = AVAILABLE_AMENITIES.find(a => a.key === amenity);
+    return amenityConfig?.icon || 'checkmark-circle';
+  };
+
+  const getAmenityLabel = (amenity: string) => {
+    const amenityConfig = AVAILABLE_AMENITIES.find(a => a.key === amenity);
+    return amenityConfig?.label || amenity;
+  };
+
+  const getDayLabel = (day: string) => {
+    const labels: Record<string, string> = {
+      monday: 'Lunedì',
+      tuesday: 'Martedì',
+      wednesday: 'Mercoledì',
+      thursday: 'Giovedì',
+      friday: 'Venerdì',
+      saturday: 'Sabato',
+      sunday: 'Domenica',
+    };
+    return labels[day] || day;
+  };
+
+  const formatDayHours = (dayData: string | { closed?: boolean; slots?: string[] } | undefined) => {
+    if (!dayData) return 'Non disponibile';
+    if (typeof dayData === 'string') return dayData;
+    if (dayData.closed) return 'Chiuso';
+    if (dayData.slots && dayData.slots.length > 0) {
+      return dayData.slots.join(', ');
+    }
+    return 'Non disponibile';
   };
 
   if (loading) {
@@ -365,16 +396,24 @@ export default function StrutturaDetailScreen() {
             <Text style={styles.name}>{struttura.name}</Text>
           </View>
 
-          {/* View Fields Button */}
-          <Pressable 
-            style={styles.viewFieldsButton}
-            onPress={() => navigation.navigate("DettaglioStruttura", { struttura })}
-          >
-            <Ionicons name="grid" size={18} color="#2196F3" />
-            <Text style={styles.viewFieldsButtonText}>Vedi Info e Prenota</Text>
-            <Ionicons name="arrow-forward" size={16} color="#2196F3" />
-          </Pressable>
+          {/* Description */}
+          {struttura.description && (
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.description}>{struttura.description}</Text>
+            </View>
+          )}
 
+          {/* Location */}
+          {struttura.location && (
+            <Pressable style={styles.locationContainer} onPress={handleOpenMaps}>
+              <Ionicons name="location" size={20} color="#2196F3" />
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationText}>{struttura.location.address}</Text>
+                <Text style={styles.cityText}>{struttura.location.city}</Text>
+              </View>
+              <Ionicons name="navigate" size={18} color="#2196F3" />
+            </Pressable>
+          )}
 
           {/* Stats */}
           <View style={styles.statsContainer}>
@@ -441,6 +480,103 @@ export default function StrutturaDetailScreen() {
               <Text style={styles.chatButtonText}>Chat</Text>
             </Pressable>
           </View>
+
+          {/* Contact Info */}
+          {(struttura.phoneNumber || struttura.email || struttura.website) && (
+            <View style={styles.contactSection}>
+              <Text style={styles.sectionTitle}>Contatti</Text>
+              
+              {struttura.phoneNumber && (
+                <Pressable style={styles.contactItem} onPress={handleCall}>
+                  <Ionicons name="call" size={18} color="#2196F3" />
+                  <Text style={styles.contactText}>{struttura.phoneNumber}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                </Pressable>
+              )}
+
+              {struttura.email && (
+                <Pressable style={styles.contactItem} onPress={handleEmail}>
+                  <Ionicons name="mail" size={18} color="#2196F3" />
+                  <Text style={styles.contactText}>{struttura.email}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                </Pressable>
+              )}
+
+              {struttura.website && (
+                <Pressable style={styles.contactItem} onPress={handleWebsite}>
+                  <Ionicons name="globe" size={18} color="#2196F3" />
+                  <Text style={styles.contactText}>{struttura.website}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Amenities */}
+          {struttura.amenities && struttura.amenities.length > 0 && (
+            <View style={styles.amenitiesSection}>
+              <Pressable 
+                style={styles.accordionHeader}
+                onPress={() => setShowAmenities(!showAmenities)}
+              >
+                <View style={styles.accordionHeaderLeft}>
+                  <Ionicons name="star" size={18} color="#2196F3" />
+                  <Text style={styles.sectionTitle}>Servizi</Text>
+                </View>
+                <Ionicons 
+                  name={showAmenities ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color="#2196F3" 
+                />
+              </Pressable>
+              
+              {showAmenities && (
+                <View style={styles.amenitiesContainer}>
+                  {struttura.amenities.map((amenity, index) => (
+                    <View key={index} style={styles.amenityChip}>
+                      <Ionicons 
+                        name={getAmenityIcon(amenity) as any} 
+                        size={14} 
+                        color="#4CAF50" 
+                      />
+                      <Text style={styles.amenityText}>{getAmenityLabel(amenity)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Opening Hours */}
+          {struttura.openingHours && typeof struttura.openingHours === 'object' && (
+            <View style={styles.hoursSection}>
+              <Pressable 
+                style={styles.accordionHeader}
+                onPress={() => setShowHours(!showHours)}
+              >
+                <View style={styles.accordionHeaderLeft}>
+                  <Ionicons name="time" size={18} color="#2196F3" />
+                  <Text style={styles.sectionTitle}>Orari di apertura</Text>
+                </View>
+                <Ionicons 
+                  name={showHours ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color="#2196F3" 
+                />
+              </Pressable>
+              
+              {showHours && (
+                <View style={styles.hoursContainer}>
+                  {Object.entries(struttura.openingHours).map(([day, hours]) => (
+                    <View key={day} style={styles.hourRow}>
+                      <Text style={styles.dayLabel}>{getDayLabel(day)}</Text>
+                      <Text style={styles.hourText}>{formatDayHours(hours)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Posts Section */}

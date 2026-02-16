@@ -349,6 +349,19 @@ export default function RegisterScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+        </Pressable>
+
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Crea il tuo account</Text>
+          <Text style={styles.headerSubtitle}>Inizia a prenotare i tuoi campi preferiti</Text>
+        </View>
+
+        <View style={{ width: 40 }} />
+      </View>
+
       <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -360,11 +373,7 @@ export default function RegisterScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         enableResetScrollToCoords={false}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Crea il tuo account</Text>
-          <Text style={styles.subtitle}>
-            Inizia a prenotare i tuoi campi preferiti
-          </Text>
+        <View style={[styles.content, { paddingTop: 20 }]}>
 
           {/* ✅ AVATAR PICKER */}
           <View style={styles.avatarSection}>
@@ -571,7 +580,30 @@ const styles = {
   },
   content: {
     padding: 20,
-    paddingTop: 60, // Spazio extra in alto
+    paddingTop: 20, // Ridotto: header è ora fisso
+  },
+  header: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: "center" as const,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: "#1a1a1a",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
   },
   title: {
     fontSize: 28,
@@ -639,8 +671,8 @@ const styles = {
     backgroundColor: "#fff",
   },
   roleActive: {
-    backgroundColor: "#ef8f00",
-    borderColor: "#ef8f00",
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
   },
   roleText: {
     fontSize: 15,
@@ -694,7 +726,7 @@ const styles = {
     marginTop: -4,
   },
   registerButton: {
-    backgroundColor: "#ef8f00",
+    backgroundColor: "#2196F3",
     padding: 16,
     borderRadius: 12,
     alignItems: "center" as const,
@@ -714,7 +746,7 @@ const styles = {
     color: "#666",
   },
   loginLinkBold: {
-    color: "#ef8f00",
+    color: "#2196F3",
     fontWeight: "700" as const,
   },
 };

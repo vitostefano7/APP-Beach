@@ -436,7 +436,7 @@ export default function PreferencesScreen({ navigation }: any) {
               </View>
             )}
             
-            {selectedCoordinates && (
+            {selectedCoordinates && typeof selectedCoordinates.lat === 'number' && typeof selectedCoordinates.lng === 'number' && (
               <View style={styles.coordinatesInfo}>
                 <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                 <Text style={styles.coordinatesText}>

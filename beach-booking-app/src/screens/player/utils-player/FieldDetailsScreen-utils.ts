@@ -8,10 +8,13 @@ export { SPORT_LABELS };
 
 export const SURFACE_LABELS: Record<string, string> = {
   sand: "Sabbia",
-  hardcourt: "Cemento",
-  grass: "Erba",
-  pvc: "PVC",
   cement: "Cemento",
+  pvc: "PVC",
+  grass: "Erba naturale",
+  synthetic: "Sintetico",
+  parquet: "Parquet",
+  clay: "Terra",
+  tartan: "Tartan",
 };
 
 // ✅ Lista amenities predefinite (uguale a ModificaStruttura)

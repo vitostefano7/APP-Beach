@@ -200,6 +200,10 @@ export default function CercaPartitaScreen() {
   const [showPlayersPicker, setShowPlayersPicker] = useState(false);
   const [activeFilterMode, setActiveFilterMode] = useState<'manual' | 'gps' | 'preferred' | 'visited' | 'none'>('none');
   const [activeFilterInfo, setActiveFilterInfo] = useState<string>('');
+  
+  // 🆕 Stati per modal selezione città al primo accesso
+  const [showCitySelectionModal, setShowCitySelectionModal] = useState(false);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   // Hook per il filtraggio geografico
   const {
@@ -254,6 +258,20 @@ export default function CercaPartitaScreen() {
   }, [gpsCoords, reverseGeocode]);
 
   const loadMatches = useCallback(async () => {
+    // 🚫 Blocca il caricamento se non ci sono criteri geografici
+    const hasGeographicCriteria = 
+      gpsCoords || 
+      manualCityCoords || 
+      userPreferences?.preferredLocation?.city || 
+      visitedStruttureIds.length > 0;
+
+    if (!hasGeographicCriteria) {
+      console.log("⚠️ [CercaPartita] Nessun criterio geografico - skip caricamento partite");
+      setMatches([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setError(null);
       setLoading(true);
@@ -333,7 +351,7 @@ export default function CercaPartitaScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, user?.id]);
+  }, [token, user?.id, gpsCoords, manualCityCoords, userPreferences, visitedStruttureIds]);
 
   const loadSports = useCallback(async () => {
     try {
@@ -365,25 +383,54 @@ export default function CercaPartitaScreen() {
   }, [token]);
 
   useEffect(() => {
-    loadUserPreferences();
-    loadVisitedStrutture();
-    loadSports();
+    const loadData = async () => {
+      await loadUserPreferences();
+      await loadVisitedStrutture();
+      await loadSports();
+      setPreferencesLoaded(true);
+    };
+    loadData();
   }, [loadUserPreferences, loadVisitedStrutture, loadSports]);
 
+  // 🆕 Mostra modal selezione città al primo accesso se non ci sono dati geografici
   useEffect(() => {
-    // Chiedi GPS dopo che lo screen è caricato (delay di 500ms)
-    const timer = setTimeout(() => {
-      requestGPSLocation();
-    }, 500);
+    if (preferencesLoaded && 
+        !gpsCoords && 
+        !manualCityCoords && 
+        !userPreferences?.preferredLocation?.city && 
+        visitedStruttureIds.length === 0) {
+      console.log('🎯 [CercaPartita] Primo accesso: mostro modal selezione città obbligatoria');
+      setShowCitySelectionModal(true);
+    }
+  }, [preferencesLoaded, gpsCoords, manualCityCoords, userPreferences, visitedStruttureIds]);
 
-    return () => clearTimeout(timer);
-  }, [requestGPSLocation]);
+  useEffect(() => {
+    // Chiedi GPS dopo che lo screen è caricato (delay di 500ms) - SOLO se non serve il modal
+    if (preferencesLoaded && 
+        (gpsCoords || manualCityCoords || userPreferences?.preferredLocation?.city || visitedStruttureIds.length > 0)) {
+      const timer = setTimeout(() => {
+        requestGPSLocation();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [requestGPSLocation, preferencesLoaded, gpsCoords, manualCityCoords, userPreferences, visitedStruttureIds]);
 
   useFocusEffect(
     useCallback(() => {
-      loadMatches();
-    }, [loadMatches])
+      // Carica le partite solo se le preferenze sono state caricate
+      if (preferencesLoaded) {
+        loadMatches();
+      }
+    }, [loadMatches, preferencesLoaded])
   );
+
+  // 🔄 Ricarica partite quando cambiano i criteri geografici (dopo selezione dal modal)
+  useEffect(() => {
+    if (preferencesLoaded && (gpsCoords || manualCityCoords)) {
+      console.log("🔄 [CercaPartita] Criteri geografici aggiornati, ricarico partite");
+      loadMatches();
+    }
+  }, [gpsCoords, manualCityCoords, preferencesLoaded, loadMatches]);
 
 
 
@@ -514,9 +561,12 @@ export default function CercaPartitaScreen() {
       activeFilterInfo = `Strutture dove hai già giocato (${visitedStruttureIds.length})`;
       console.log("📍 [CercaPartita] FALLBACK - Strutture visitate:", visitedStruttureIds.length, "strutture");
     } else {
-      console.log("⚠️ [CercaPartita] Nessun filtro geografico disponibile - nessun risultato");
-      // Se non c'è nessun criterio geografico, non mostrare nulla
-      return [];
+      // FALLBACK FINALE: Se non c'è nessun criterio geografico, non mostrare partite
+      activeFilterInfo = 'Seleziona una città per vedere partite vicine';
+      console.log("⚠️ [CercaPartita] NESSUN criterio geografico - mostro empty state con CTA");
+      setActiveFilterMode(filterMode);
+      setActiveFilterInfo(activeFilterInfo);
+      return []; // 🚫 Nessuna partita senza criterio geografico
     }
     
     setActiveFilterMode(filterMode);
@@ -614,6 +664,16 @@ export default function CercaPartitaScreen() {
     if (filtered.length === 0 && (filterMode === 'manual' || filterMode === 'gps' || filterMode === 'preferred') && referenceLat !== null && referenceLng !== null && searchRadius < 50) {
       console.log("⚠️ [CercaPartita] Nessun risultato, amplio il raggio a 50km");
       searchRadius = 50;
+      
+      // 🔧 FIX: Aggiorna l'header con il nuovo raggio ampliato
+      if (filterMode === 'manual') {
+        activeFilterInfo = `${cityFilter} (50 km)`;
+      } else if (filterMode === 'gps') {
+        activeFilterInfo = gpsAddress ? `${gpsAddress} (50 km)` : 'Posizione GPS (50 km)';
+      } else if (filterMode === 'preferred') {
+        activeFilterInfo = `${userPreferences!.preferredLocation!.city} (50 km - Città Preferita)`;
+      }
+      setActiveFilterInfo(activeFilterInfo);
       
       filtered = matches.filter((match) => {
         const structureName = match.booking?.campo?.struttura?.name || "N/A";
@@ -1011,6 +1071,11 @@ export default function CercaPartitaScreen() {
   };
 
   if (loading && !refreshing) {
+    // 🚫 Se è il primo caricamento e non ci sono criteri geografici, mostra il modal invece del loading
+    if (!preferencesLoaded || showCitySelectionModal) {
+      return null; // Il modal verrà mostrato sotto
+    }
+    
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loadingContainer}>
@@ -1187,13 +1252,45 @@ export default function CercaPartitaScreen() {
             onRefresh={onRefresh}
             refreshing={!!refreshing}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={56} color="#ccc" />
-                <Text style={styles.emptyTitle}>Nessuna partita disponibile</Text>
-                <Text style={styles.emptySubtitle}>
-                  Al momento non ci sono partite con posti liberi.
-                </Text>
-              </View>
+              activeFilterMode === 'none' ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="location-outline" size={64} color="#CCC" />
+                  <Text style={styles.emptyTitle}>Dove vuoi cercare partite?</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Attiva il GPS o seleziona una città per scoprire le partite disponibili
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                    <Pressable
+                      style={[styles.retryButton, { flex: 1, backgroundColor: '#2196F3' }]}
+                      onPress={async () => {
+                        const result = await requestGPSLocation(true);
+                        if (!result.success) {
+                          // Se fallisce, apri il modal città
+                          setShowCitySelectionModal(true);
+                        }
+                      }}
+                    >
+                      <Ionicons name="locate" size={16} color="white" style={{ marginRight: 6 }} />
+                      <Text style={styles.retryButtonText}>Usa GPS</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.retryButton, { flex: 1, backgroundColor: '#666' }]}
+                      onPress={() => setShowCitySelectionModal(true)}
+                    >
+                      <Ionicons name="location" size={16} color="white" style={{ marginRight: 6 }} />
+                      <Text style={styles.retryButtonText}>Cerca città</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search-outline" size={56} color="#ccc" />
+                  <Text style={styles.emptyTitle}>Nessuna partita disponibile</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Al momento non ci sono partite con posti liberi. Prova a modificare i filtri.
+                  </Text>
+                </View>
+              )
             }
           />
         </>
@@ -1429,6 +1526,131 @@ export default function CercaPartitaScreen() {
         </View>
       </Modal>
 
+      {/* 🆕 Overlay selezione città iniziale - Non blocca i tab */}
+      {showCitySelectionModal && (
+        <View style={styles.citySelectionFixedOverlay}>
+          <View style={styles.citySelectionContent}>
+            {/* Header con icona */}
+            <View style={styles.citySelectionHeader}>
+              <View style={styles.citySelectionIconContainer}>
+                <Ionicons name="football" size={32} color="white" />
+              </View>
+              <Text style={styles.citySelectionTitle}>Benvenuto! 🎾</Text>
+              <Text style={styles.citySelectionSubtitle}>
+                Seleziona la tua posizione per scoprire le partite disponibili nella tua zona
+              </Text>
+            </View>
+            
+            {/* Opzione GPS */}
+            <Pressable
+              style={styles.gpsButton}
+              onPress={async () => {
+                try {
+                  const result = await requestGPSLocation(true);
+                  if (result.success) {
+                    console.log('✅ GPS attivato correttamente');
+                    setShowCitySelectionModal(false);
+                  } else {
+                    Alert.alert(
+                      "GPS non disponibile",
+                      "Non è stato possibile accedere alla posizione. Inserisci manualmente una città.",
+                      [{ text: "OK" }]
+                    );
+                  }
+                } catch (error) {
+                  console.error('Errore GPS:', error);
+                  Alert.alert(
+                    "Errore GPS",
+                    "Si è verificato un errore nell'accesso alla posizione.",
+                    [{ text: "OK" }]
+                  );
+                }
+              }}
+            >
+              <View style={styles.gpsButtonContent}>
+                <View style={styles.gpsButtonIcon}>
+                  <Ionicons name="locate" size={24} color="#2196F3" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gpsButtonTitle}>Usa la mia posizione</Text>
+                  <Text style={styles.gpsButtonSubtitle}>Rileva automaticamente dove ti trovi</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </View>
+            </Pressable>
+            
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>oppure</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            
+            <View style={styles.manualInputWrapper}>
+              <Text style={styles.manualInputLabel}>Inserisci una città</Text>
+              <View style={styles.manualInputField}>
+                <Ionicons name="search" size={20} color="#999" />
+                <TextInput
+                  style={styles.manualInput}
+                  placeholder="Es: Milano, Roma, Napoli..."
+                  placeholderTextColor="#999"
+                  value={tempCity}
+                  onChangeText={handleCityTextChange}
+                  autoCapitalize="words"
+                />
+              </View>
+              
+              {showSuggestions && geocodeSuggestions.length > 0 && (
+                <View style={styles.citySuggestionsContainer}>
+                  {cityValidation.isValidating && (
+                    <View style={styles.citySuggestionItem}>
+                      <ActivityIndicator size="small" color="#2196F3" />
+                      <Text style={styles.citySuggestionText}>Ricerca in corso...</Text>
+                    </View>
+                  )}
+                  {!cityValidation.isValidating && geocodeSuggestions.map((suggestion, index) => (
+                    <Pressable
+                      key={index}
+                      style={styles.citySuggestionItem}
+                      onPress={() => {
+                        handleSelectCitySuggestion(suggestion);
+                        // NON chiudere il modal - l'utente deve cliccare "Conferma"
+                      }}
+                    >
+                      <Ionicons name="location" size={16} color="#2196F3" />
+                      <Text style={styles.citySuggestionText} numberOfLines={1}>
+                        {suggestion.displayName}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+            
+            <Pressable
+              style={[
+                styles.confirmCityButton, 
+                (!tempCity.trim() || cityValidation.isValid !== true) && styles.confirmCityButtonDisabled
+              ]}
+              disabled={!tempCity.trim() || cityValidation.isValid !== true}
+              onPress={async () => {
+                const cityName = tempCity.trim();
+                if (cityName && manualCityCoords) {
+                  setCityFilter(cityName);
+                  setShowCitySelectionModal(false);
+                  console.log('✅ Città manuale impostata:', cityName);
+                }
+              }}
+            >
+              <Text style={[
+                styles.confirmCityButtonText,
+                (!tempCity.trim() || cityValidation.isValid !== true) && styles.confirmCityButtonTextDisabled
+              ]}>
+                Conferma e cerca partite
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
     </SafeAreaView>
   );
@@ -1958,5 +2180,142 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 12,
     paddingHorizontal: 16,
+  },
+  // 🆕 Stili per il modal selezione città
+  citySelectionFixedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 1000,
+  },
+  citySelectionContent: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    width: '100%',
+    maxWidth: 400,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  citySelectionHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  citySelectionIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  citySelectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
+  },
+  citySelectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  gpsButton: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+  },
+  gpsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  gpsButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gpsButtonTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  gpsButtonSubtitle: {
+    fontSize: 13,
+    color: '#666',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e0e0e0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 14,
+    color: '#999',
+  },
+  manualInputWrapper: {
+    marginBottom: 20,
+  },
+  manualInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  manualInputField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  manualInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  confirmCityButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCityButtonDisabled: {
+    backgroundColor: '#e0e0e0',
+  },
+  confirmCityButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+  },
+  confirmCityButtonTextDisabled: {
+    color: '#999',
   },
 });

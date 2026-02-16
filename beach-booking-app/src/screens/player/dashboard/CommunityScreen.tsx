@@ -201,10 +201,11 @@ export default function CommunityScreen() {
         <View style={styles.content}>
         {/* Header */}
         <CommunityHeader
-          title="Community"
+          title="Social"
           onSearchPress={() => navigation.navigate('CercaAmici')}
           showNotification={false}
           showSearch={true}
+          showBackButton={false}
         />
 
         {/* Tab bar */}

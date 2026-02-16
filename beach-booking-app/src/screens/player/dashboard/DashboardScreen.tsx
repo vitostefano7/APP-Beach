@@ -24,7 +24,7 @@ import NextMatchCard from "./components/NextMatchCard";
 import InviteCard from "./components/InviteCard";
 import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
 import EmptyStateCard from "./components/EmptyStateCard";
-import { SuggestedFriendCard } from './components/SuggestedFriendCard';
+import { SuggestedFriendCard } from '../../../components/CercaAmici/SuggestedFriendCard';
 import OpenMatchCard from './components/OpenMatchCard';
 import { SuggestedItemsCarousel } from './components/SuggestedItemsCarousel';
 import { styles } from "./styles";
@@ -123,6 +123,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
+      console.log("\n🔵 [FOCUS] useFocusEffect CHIAMATO");
       const focusStartTime = performance.now();
       const allTimings: any = {};
       
@@ -134,12 +135,12 @@ export default function HomeScreen() {
         console.log("\n" + "=".repeat(50));
         console.log("📊 RESOCONTO PERFORMANCE DASHBOARD");
         console.log("=".repeat(50));
-        console.log(`⏱️  Preferenze geografiche: ${dashTimings.preferences?.toFixed(0) || 'N/A'}ms`);
-        console.log(`⏱️  Dati principali: ${dashTimings.mainData?.toFixed(0) || 'N/A'}ms`);
-        console.log(`⏱️  Match aperti: ${dashTimings.openMatches?.toFixed(0) || 'N/A'}ms`);
-        console.log(`⏱️  Suggerimenti: ${allTimings.suggestions?.toFixed(0) || 'N/A'}ms`);
+        console.log(`⏱️  Preferenze geografiche: ${typeof dashTimings.preferences === 'number' ? dashTimings.preferences.toFixed(0) + 'ms' : 'N/A'}`);
+        console.log(`⏱️  Dati principali: ${typeof dashTimings.mainData === 'number' ? dashTimings.mainData.toFixed(0) + 'ms' : 'N/A'}`);
+        console.log(`⏱️  Match aperti: ${typeof dashTimings.openMatches === 'number' ? dashTimings.openMatches.toFixed(0) + 'ms' : 'N/A'}`);
+        console.log(`⏱️  Suggerimenti: ${typeof allTimings.suggestions === 'number' ? allTimings.suggestions.toFixed(0) + 'ms' : 'N/A'}`);
         console.log("-".repeat(50));
-        console.log(`🎯 TEMPO TOTALE: ${totalFocusTime.toFixed(0)}ms (${(totalFocusTime / 1000).toFixed(2)}s)`);
+        console.log(`🎯 TEMPO TOTALE: ${typeof totalFocusTime === 'number' ? totalFocusTime.toFixed(0) : 0}ms (${typeof totalFocusTime === 'number' ? (totalFocusTime / 1000).toFixed(2) : 0}s)`);
         console.log("=".repeat(50) + "\n");
         
         // Pulisci i dati temporanei
@@ -165,45 +166,78 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // Richiedi GPS solo UNA VOLTA al mount del componente
+  // Richiedi GPS IMMEDIATAMENTE al mount del componente
   React.useEffect(() => {
-    // Richiedi GPS in background dopo un piccolo delay per non bloccare il caricamento iniziale
-    const gpsTimer = setTimeout(() => {
-      requestGPSLocation();
-    }, 1000);
-
-    return () => clearTimeout(gpsTimer);
+    console.log("🛰️ [GPS] useEffect GPS mount - richiesta GPS IMMEDIATA");
+    // Per nuovi utenti senza preferenze, il GPS è l'unico modo per mostrare match
+    // Quindi lo richiediamo subito invece di aspettare 1 secondo
+    requestGPSLocation();
   }, []); // Dipendenze vuote = solo al mount
 
   // Carica i match aperti quando cambiano le preferenze geografiche
+  const prevDepsRef = React.useRef<any>({});
   React.useEffect(() => {
+    const prev = prevDepsRef.current;
+    const current = {
+      gpsCoords: gpsCoords ? `${gpsCoords.lat},${gpsCoords.lng}` : null,
+      hasPreferences: !!userPreferences,
+      preferredCity: userPreferences?.preferredLocation?.city,
+      visitedCount: visitedStruttureIds?.length || 0,
+      preferencesLoaded
+    };
+    
+    console.log("🔄 [EFFECT-MATCH] useEffect match aperti chiamato");
+    console.log("   Valori PRECEDENTI:", prev);
+    console.log("   Valori CORRENTI:", current);
+    
+    // Identifica cosa è cambiato
+    const changes: string[] = [];
+    if (prev.gpsCoords !== current.gpsCoords) changes.push('gpsCoords');
+    if (prev.hasPreferences !== current.hasPreferences) changes.push('hasPreferences');
+    if (prev.preferredCity !== current.preferredCity) changes.push('preferredCity');
+    if (prev.visitedCount !== current.visitedCount) changes.push('visitedCount');
+    if (prev.preferencesLoaded !== current.preferencesLoaded) changes.push('preferencesLoaded');
+    
+    if (changes.length > 0) {
+      console.log("   🔀 CAMBIAMENTI:", changes.join(', '));
+    } else {
+      console.log("   ⚠️ NESSUN CAMBIAMENTO RILEVATO (possibile re-render non necessario)");
+    }
+    
+    prevDepsRef.current = current;
+    
     if (preferencesLoaded) {
-      // console.log("🔄 [Dashboard] Preferenze geografiche cambiate, ricarico match aperti...");
-      // console.log("🔄 [Dashboard] GPS:", gpsCoords ? "presente" : "assente");
-      // console.log("🔄 [Dashboard] Preferenze:", userPreferences?.preferredLocation?.city || "nessuna");
-      // console.log("🔄 [Dashboard] Strutture visitate:", visitedStruttureIds?.length || 0);
+      console.log("✅ [EFFECT-MATCH] Preferenze caricate, chiamo loadOpenMatches()");
       loadOpenMatches();
+    } else {
+      console.log("⏸️ [EFFECT-MATCH] Preferenze non ancora caricate, skip loadOpenMatches");
     }
   }, [gpsCoords, userPreferences, visitedStruttureIds, preferencesLoaded]);
 
   const loadDashboardData = async () => {
+    console.log("\n📊 [LOAD-DASH] ========== INIZIO loadDashboardData ==========");
     const startTime = performance.now();
     const timings: Record<string, number> = {};
     
     try {
+      console.log("📊 [LOAD-DASH] setLoading(true)");
       setLoading(true);
 
       // Carica prima le preferenze e le strutture visitate
+      console.log("📊 [LOAD-DASH] Caricamento preferenze e strutture visitate...");
       const prefsStart = performance.now();
       await Promise.all([
         loadUserPreferences(),
         loadVisitedStrutture(),
       ]);
       timings.preferences = performance.now() - prefsStart;
+      console.log(`📊 [LOAD-DASH] Preferenze caricate in ${typeof timings.preferences === 'number' ? timings.preferences.toFixed(0) : 0}ms`);
       
+      console.log("📊 [LOAD-DASH] setPreferencesLoaded(true)");
       setPreferencesLoaded(true);
 
       // Carica tutto il resto TRANNE i match aperti (li carica il useEffect)
+      console.log("📊 [LOAD-DASH] Caricamento dati principali (booking, inviti, match recenti)...");
       const dataStart = performance.now();
       await Promise.all([
         loadNextBooking(),
@@ -211,15 +245,18 @@ export default function HomeScreen() {
         loadRecentMatchesAndStats(),
       ]);
       timings.mainData = performance.now() - dataStart;
+      console.log(`📊 [LOAD-DASH] Dati principali caricati in ${typeof timings.mainData === 'number' ? timings.mainData.toFixed(0) : 0}ms`);
 
     } catch (error) {
-      console.error("Errore caricamento dashboard:", error);
+      console.error("❌ [LOAD-DASH] Errore caricamento dashboard:", error);
     } finally {
       timings.total = performance.now() - startTime;
       
       // Salva i tempi per il resoconto finale
       (window as any).__dashboardTimings = timings;
       
+      console.log(`📊 [LOAD-DASH] setLoading(false) - Tempo totale: ${typeof timings.total === 'number' ? timings.total.toFixed(0) : 0}ms`);
+      console.log("📊 [LOAD-DASH] ========== FINE loadDashboardData ==========\n");
       setLoading(false);
       setRefreshing(false);
     }
@@ -428,61 +465,81 @@ export default function HomeScreen() {
   };
 
   const loadOpenMatches = async () => {
+    console.log("\n🎯 [LOAD-MATCH] ========== INIZIO loadOpenMatches ==========");
     const startTime = performance.now();
     
     try {
+      // *** PRE-CHECK CRITERI GEOGRAFICI ***
+      // ⚡ OTTIMIZZAZIONE: Controlla PRIMA di fare la chiamata API
+      // Se non ci sono criteri geografici, evitiamo di sprecare 1.7s chiamando il server
+      console.log("🌍 [LOAD-MATCH] Pre-check criteri geografici...");
+      console.log("🌍 [LOAD-MATCH] GPS coords:", gpsCoords ? `${gpsCoords.lat}, ${gpsCoords.lng}` : "NESSUNO");
+      console.log("🌍 [LOAD-MATCH] Preferred location:", userPreferences?.preferredLocation?.city || "NESSUNA");
+      console.log("🌍 [LOAD-MATCH] Visited structures:", visitedStruttureIds?.length || 0);
+      
+      const hasGPS = !!gpsCoords;
+      const hasPreferredCity = !!(userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng);
+      const hasVisitedStructures = visitedStruttureIds && visitedStruttureIds.length > 0;
+      
+      // 🚀 Se non ci sono criteri, esci SUBITO senza chiamare l'API
+      if (!hasGPS && !hasPreferredCity && !hasVisitedStructures) {
+        console.log("⚡ [LOAD-MATCH] NESSUN CRITERIO GEOGRAFICO - skip chiamata API (risparmio ~1.7s)");
+        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (no criteri, 0ms) ==========\n");
+        setOpenMatches([]);
+        return;
+      }
+      
+      // Solo SE ci sono criteri geografici, procedi con la chiamata API
+      console.log("🎯 [LOAD-MATCH] Criteri geografici OK, fetch match aperti...");
       const res = await fetch(`${API_URL}/matches?status=open`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log(`🎯 [LOAD-MATCH] Risposta ricevuta: ${res.status}`);
 
       if (!res.ok) {
-        console.error(`❌ [Dashboard] Errore risposta server: ${res.status}`);
+        console.error(`❌ [LOAD-MATCH] Errore risposta server: ${res.status}`);
+        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (errore) ==========\n");
         setOpenMatches([]);
         return;
       }
 
+      console.log("🎯 [LOAD-MATCH] Parsing dati...");
       const data = await res.json();
       const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
       
-      // console.log(`✅ [Dashboard] ${rawMatches.length} match grezzi trovati`);
+      console.log(`🎯 [LOAD-MATCH] ${rawMatches.length} match grezzi ricevuti`);
 
       if (rawMatches.length === 0) {
-        // console.log("ℹ️ [Dashboard] Nessun match aperto dal server");
+        console.log("ℹ️ [LOAD-MATCH] Nessun match aperto dal server");
+        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (vuoto) ==========\n");
         setOpenMatches([]);
         return;
       }
 
-      // *** FILTRO GEOGRAFICO OBBLIGATORIO ***
-      // console.log("🌍 [Dashboard] Applicazione filtro geografico obbligatorio...");
-      // console.log("🌍 [Dashboard] GPS coords:", gpsCoords);
-      // console.log("🌍 [Dashboard] User preferences:", userPreferences?.preferredLocation);
-      // console.log("🌍 [Dashboard] Visited structures:", visitedStruttureIds?.length || 0);
+      // *** APPLICA FILTRO GEOGRAFICO ***
+      console.log("🌍 [LOAD-MATCH] Applicazione filtro geografico...");
       
       // Determina modalità di filtro geografico
       let referenceLat: number | null = null;
       let referenceLng: number | null = null;
       let searchRadius = 30;
-      let filterMode: 'gps' | 'preferred' | 'visited' | 'none' = 'none';
+      let filterMode: 'gps' | 'preferred' | 'visited' = 'visited'; // default
       
       if (gpsCoords) {
         referenceLat = gpsCoords.lat;
         referenceLng = gpsCoords.lng;
         searchRadius = 30;
         filterMode = 'gps';
-        // console.log("📍 [Dashboard] Filtro GPS attivo - raggio 30km");
+        console.log("✅ [LOAD-MATCH] Modalità filtro: GPS - raggio 30km");
       } else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
         referenceLat = userPreferences.preferredLocation.lat;
         referenceLng = userPreferences.preferredLocation.lng;
         searchRadius = userPreferences.preferredLocation.radius || 30;
         filterMode = 'preferred';
-        // console.log("📍 [Dashboard] Filtro città preferita attivo -", userPreferences.preferredLocation.city, "raggio", searchRadius, "km");
+        console.log(`✅ [LOAD-MATCH] Modalità filtro: CITTÀ PREFERITA - ${userPreferences.preferredLocation.city}, raggio ${searchRadius}km`);
       } else if (visitedStruttureIds && visitedStruttureIds.length > 0) {
         filterMode = 'visited';
-        // console.log("📍 [Dashboard] Filtro strutture visitate attivo -", visitedStruttureIds.length, "strutture");
-      } else {
-        // console.log("⚠️ [Dashboard] Nessun criterio geografico disponibile - nessun risultato");
-        setOpenMatches([]);
-        return;
+        console.log(`✅ [LOAD-MATCH] Modalità filtro: STRUTTURE VISITATE - ${visitedStruttureIds.length} strutture`);
       }
       
       // Applica il filtro geografico
@@ -560,6 +617,7 @@ export default function HomeScreen() {
       // console.log(`   - Mostrati: primi 10 match`);
 
       const finalMatches = sorted.slice(0, 10);
+      console.log(`🎯 [LOAD-MATCH] Impostati ${finalMatches.length} match aperti`);
       setOpenMatches(finalMatches);
       
       // Log dettagliato per ogni card mostrata
@@ -577,11 +635,13 @@ export default function HomeScreen() {
       // 
       // console.log(`✅ [Dashboard] ${finalMatches.length} partite caricate e visualizzate`);
     } catch (error) {
-      console.error('❌ [Dashboard] Errore caricamento partite aperte:', error);
+      console.error('❌ [LOAD-MATCH] Errore caricamento partite aperte:', error);
       // In caso di errore, assicurati che la lista sia vuota
       setOpenMatches([]);
     } finally {
       const totalTime = performance.now() - startTime;
+      console.log(`🎯 [LOAD-MATCH] Tempo totale: ${typeof totalTime === 'number' ? totalTime.toFixed(0) : 0}ms`);
+      console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches ==========\n");
       // Salva timing per resoconto finale
       if ((window as any).__dashboardTimings) {
         (window as any).__dashboardTimings.openMatches = totalTime;
@@ -1022,8 +1082,10 @@ export default function HomeScreen() {
                   : "Cerca tra tutte le partite o imposta una città preferita"
               }
               buttonText="Cerca partite"
+              buttonIcon="search-outline"
               onPress={() => navigation.navigate('CercaPartita')}
               secondaryButtonText={!userPreferences?.preferredLocation?.city ? "Preferenze" : undefined}
+              secondaryButtonIcon={!userPreferences?.preferredLocation?.city ? "settings-outline" : undefined}
               onSecondaryPress={!userPreferences?.preferredLocation?.city ? () => navigation.navigate('Preferenze') : undefined}
               type="match"
             />

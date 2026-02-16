@@ -8,7 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SuggestedFriendCard } from "./SuggestedFriendCard";
+import { SuggestedFriendCard } from "../../../../components/CercaAmici/SuggestedFriendCard";
 import { SuggestedStrutturaCard } from "./SuggestedStrutturaCard";
 import { styles } from "../styles";
 

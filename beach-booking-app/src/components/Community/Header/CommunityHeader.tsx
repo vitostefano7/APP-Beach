@@ -17,6 +17,7 @@ interface CommunityHeaderProps {
   // Player-specific props
   showNotification?: boolean;
   showSearch?: boolean;
+  showBackButton?: boolean;
 }
 
 export const CommunityHeader: React.FC<CommunityHeaderProps> = ({
@@ -30,13 +31,14 @@ export const CommunityHeader: React.FC<CommunityHeaderProps> = ({
   onStructurePress,
   showNotification = true,
   showSearch = false,
+  showBackButton = false,
 }) => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-      {/* Left side - Back button for non-owners */}
+      {/* Left side - Back button */}
       <View style={styles.leftActions}>
-        {!isOwner && (
+        {showBackButton && (
           <Pressable 
             style={styles.iconButton}
             onPress={onBackPress}

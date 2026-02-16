@@ -1,13 +1,11 @@
-// SuggestedFriendCard.tsx
 import React from 'react';
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Avatar } from "../../../../components/Avatar";
-import { styles } from "../styles";
+import Avatar from "../Avatar/Avatar";
 import { useNavigation } from '@react-navigation/native';
 
 interface SuggestedFriendCardProps {
-  friend: any; // Accetta qualsiasi struttura
+  friend: any;
   onPress: (friend: any) => void;
   onInvite: (friendId: string) => void;
 }
@@ -19,30 +17,15 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
 }) => {
   const navigation = useNavigation<any>();
 
-  // DEBUG COMPLETO
-  //console.log("🚨 SUGGESTED FRIEND CARD DEBUG:");
-  //console.log("Friend object:", JSON.stringify(friend, null, 2));
-
   // Estrai i dati in base alla struttura
-  const friendData = friend.user || friend; // Supporta entrambe le strutture
+  const friendData = friend.user || friend;
   
-  // Se friendData è undefined o null, mostra un fallback
   if (!friendData) {
-    console.log("❌ friendData è undefined/null!");
     return (
-      <View style={{
-        backgroundColor: "white",
-        borderRadius: 16,
-        padding: 16,
-        marginHorizontal: 20,
-        marginBottom: 10,
-        borderWidth: 2,
-        borderColor: "red",
-      }}>
+      <View style={[styles.suggestedFriendCard, { borderColor: "red", borderWidth: 2 }]}>
         <Text style={{ color: "red", fontWeight: "bold" }}>
           ERRORE: Dati amico non disponibili
         </Text>
-        <Text>{JSON.stringify(friend, null, 2)}</Text>
       </View>
     );
   }
@@ -52,91 +35,20 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   const friendSurname = friendData.surname || "";
   const avatarUrl = friendData.avatarUrl;
   
-  // Estrai metriche dalla struttura corretta del backend
+  // Estrai metriche
   const matchCount = friend.reason?.details?.matchCount || 0;
   const commonFriends = friend.reason?.details?.mutualFriendsCount || friend.commonFriends || 0;
   const sameVenues = friend.sameVenues || 0;
   const gamesCount = friend.reason?.details?.gamesCount || 0;
   const strutturaName = friend.reason?.details?.strutturaName;
   const vipLevel = friend.reason?.details?.vipLevel;
-  const score = friend.score || 0;
-  
-  console.log(`📊 Stats for ${friendName}:`, { matchCount, commonFriends, sameVenues, score, reason: friend.reason });
   
   const username = friendData.username;
-  const preferredSports = friendData.preferredSports || [];
   
   // Verifica lo stato dell'amicizia
   const friendshipStatus = friend.friendshipStatus;
   const isAlreadyFriend = friendshipStatus === 'accepted';
   const isPendingRequest = friendshipStatus === 'pending';
-  
-  // Badge per motivo suggerimento
-  const getPriorityBadge = () => {
-    const reason = friend.reason;
-    if (!reason) return null;
-    
-    let color, icon, text;
-    
-    // Gestisci la struttura oggetto del backend
-    if (typeof reason === 'object' && reason.type) {
-      const reasonType = reason.type;
-      const details = reason.details || {};
-      
-      if (reasonType === 'match_together') {
-        // Se ha molte partite (>=3) è un utente VIP
-        if (details.matchCount >= 3) {
-          color = '#FFD700'; // Oro
-          icon = 'star';
-          text = 'Giocatore VIP';
-        } else {
-          color = '#2196F3';
-          icon = 'trophy';
-          text = 'Compagno';
-        }
-      } else if (reasonType === 'mutual_friends') {
-        color = '#FF9800';
-        icon = 'people';
-        text = 'Amici comuni';
-      } else if (reasonType === 'same_venue') {
-        color = '#9C27B0';
-        icon = 'location';
-        text = 'Stesso centro';
-      } else if (reasonType === 'most_games') {
-        color = '#4CAF50';
-        icon = 'game-controller';
-        text = 'Giocatore frequente';
-      } else if (reasonType === 'follows_structure') {
-        color = '#FF5722';
-        icon = 'heart';
-        text = 'Segue struttura';
-      } else if (reasonType === 'vip_user') {
-        color = '#FFD700';
-        icon = 'star';
-        text = 'Utente VIP';
-      }
-    } 
-    // Gestisci la struttura stringa legacy
-    else if (typeof reason === 'string') {
-      if (reason.includes('matches')) {
-        color = '#2196F3';
-        icon = 'trophy';
-        text = 'Compagno';
-      } else if (reason.includes('friends')) {
-        color = '#FF9800';
-        icon = 'people';
-        text = 'Amici comuni';
-      } else if (reason.includes('venue')) {
-        color = '#9C27B0';
-        icon = 'location';
-        text = 'Stesso centro';
-      }
-    }
-    
-    return color ? { color, icon, text } : null;
-  };
-  
-  const badge = getPriorityBadge();
 
   const openUserProfile = (userId?: string) => {
     if (!userId) return;
@@ -148,7 +60,6 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
       style={styles.suggestedFriendCard}
       onPress={() => onPress(friend)}
     >
-      {/* AVATAR */}
       <Pressable onPress={() => openUserProfile(friendId)}>
         <Avatar
           name={friendName}
@@ -158,14 +69,12 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         />
       </Pressable>
       
-      {/* INFO */}
       <View style={styles.friendCardInfo}>
         <View style={styles.friendCardHeader}>
           <Text style={styles.friendCardName} numberOfLines={1}>
             {friendName}
             {friendSurname ? ` ${friendSurname}` : ""}
           </Text>
-          
         </View>
         
         {username && (
@@ -174,11 +83,10 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
           </Text>
         )}
         
-        {/* Stats dettagliate */}
         <View style={styles.friendCardStats}>
           {matchCount > 0 && (
             <View style={styles.friendStatItem}>
-              <Ionicons name="trophy-outline" size={12} color={matchCount >= 3 ? "#2196F3" : "#2196F3"} />
+              <Ionicons name="trophy-outline" size={12} color="#2196F3" />
               <Text style={styles.friendStatText}>
                 {matchCount} {matchCount === 1 ? 'partita' : 'partite'}
                 {matchCount >= 3 && ' 🌟'}
@@ -224,7 +132,6 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
         </View>
       </View>
       
-      {/* AZIONE */}
       <Pressable
         style={[
           styles.friendCardButton,
@@ -247,3 +154,66 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
     </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  suggestedFriendCard: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  friendCardInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  friendCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  friendCardName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+    flex: 1,
+  },
+  friendCardUsername: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
+  friendCardStats: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+  },
+  friendStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  friendStatText: {
+    fontSize: 11,
+    color: '#666',
+  },
+  friendCardButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  friendCardButtonDisabled: {
+    backgroundColor: '#e0e0e0',
+  },
+});

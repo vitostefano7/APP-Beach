@@ -1,7 +1,6 @@
-// src/screens/player/dashboard/hooks/useOwnerSuggestedUsers.ts
 import { useState, useContext, useCallback, useEffect } from 'react';
-import { AuthContext } from '../../../../context/AuthContext';
-import API_URL from '../../../../config/api';
+import { AuthContext } from '../../context/AuthContext';
+import API_URL from '../../config/api';
 
 interface OwnerSuggestedUser {
   user: {

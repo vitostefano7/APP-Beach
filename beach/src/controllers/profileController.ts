@@ -496,10 +496,7 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
-    console.log('📌 [searchUsers] Inizio:', { q, filter, followedBy, currentUserId, currentUserRole });
-
     if (!q || typeof q !== "string" || q.length < 2) {
-      console.log('⚠️ [searchUsers] Query troppo corta');
       return res.status(400).json({ message: "Query minimo 2 caratteri" });
     }
 
@@ -513,13 +510,13 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Ricerca più flessibile: username, name, surname, o email
+    // Ricerca solo in campi pubblici: username, name, surname
+    // NON cercare nell'email per privacy e per evitare match indesiderati
     let query: any = {
       $or: [
         { username: { $regex: q.toLowerCase(), $options: "i" } },
         { name: { $regex: q, $options: "i" } },
         { surname: { $regex: q, $options: "i" } },
-        { email: { $regex: q.toLowerCase(), $options: "i" } },
       ],
       isActive: true,
       role: { $ne: 'owner' }, // Escludi owner dalla ricerca
@@ -548,8 +545,9 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       // Gli owner possono vedere tutti i giocatori per aggiungerli ai match
       // Non aggiungiamo restrizioni sul profilePrivacy
     } else {
-      // Default: profili pubblici se nessun filtro specificato
-      query.profilePrivacy = 'public';
+      // Default: escludi solo profili esplicitamente privati
+      // Includi: public, friends, o chi non ha settato profilePrivacy
+      query.profilePrivacy = { $ne: 'private' };
     }
 
     const users = await User.find(query)

@@ -825,9 +825,9 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             <Text style={styles.emptyTitle}>Nessuna prenotazione</Text>
             <Text style={styles.emptySubtitle}>
               {filter === "upcoming" 
-                ? "Non hai prenotazioni future" 
+                ? "Non sono previste partite" 
                 : filter === "past"
-                ? "Non hai prenotazioni passate"
+                ? "Non hai prenotazioni concluse"
                 : filter === "invites"
                 ? "Non hai inviti pending"
                 : "Non hai ancora effettuato prenotazioni"}

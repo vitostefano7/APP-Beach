@@ -9,6 +9,7 @@ import Campo from "../models/Campo";
 import StrutturaFollower from "../models/StrutturaFollower";
 import UserFollower from "../models/UserFollower";
 import Friendship from "../models/Friendship";
+import User from "../models/User";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 import mongoose from "mongoose";
@@ -1234,7 +1235,9 @@ export const searchStrutture = async (req: AuthRequest, res: Response) => {
 
 /**
  * GET /community/strutture/suggestions
- * Suggerisce strutture all'utente basate su strutture seguite da amici o strutture popolari
+ * Suggerisce strutture all'utente basate sul ruolo:
+ * - OWNER: strutture vicine (stessa città) + strutture VIP (più prenotazioni)
+ * - PLAYER: strutture seguite da amici o strutture popolari
  */
 export const getStrutturaSuggestions = async (req: AuthRequest, res: Response) => {
   try {
@@ -1243,6 +1246,141 @@ export const getStrutturaSuggestions = async (req: AuthRequest, res: Response) =
 
     console.log("🔍 Suggerimenti strutture per utente:", userId);
     console.log("🔍 Limit:", limit);
+
+    // Recupera l'utente per verificare il ruolo
+    const user = await User.findById(userId).select('role');
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    console.log("🔍 Ruolo utente:", user.role);
+
+    // Trova strutture già seguite dall'utente (comune a entrambi i ruoli)
+    console.log("🔍 Recupero strutture seguite dall'utente...");
+    const userFollowedStrutture = await StrutturaFollower.find({
+      follower: userId
+    }).select('struttura');
+
+    const userFollowedIds = userFollowedStrutture.map(f => f.struttura.toString());
+    console.log("🔍 ID strutture utente seguite:", userFollowedIds.length);
+
+    // ==================== LOGICA OWNER ====================
+    if (user.role === 'owner') {
+      console.log("🏢 Applicazione logica suggerimenti per OWNER");
+
+      // Trova le strutture dell'owner
+      const ownerStrutture = await Struttura.find({
+        owner: userId,
+        isDeleted: false
+      }).select('_id location.city');
+
+      console.log("🏢 Strutture dell'owner:", ownerStrutture.length);
+
+      if (ownerStrutture.length === 0) {
+        console.log("🏢 Owner senza strutture, nessun suggerimento basato su posizione");
+        return res.json({ suggestions: [] });
+      }
+
+      const ownerStruttureIds = ownerStrutture.map(s => s._id.toString());
+      const ownerCities = [...new Set(ownerStrutture.map(s => s.location?.city).filter(Boolean))];
+
+      console.log("🏢 Città delle strutture dell'owner:", ownerCities);
+
+      // 1. Trova strutture nella stessa città (SCORE: 3)
+      console.log("🏢 Recupero strutture nella stessa città...");
+      const nearbyStrutture = await Struttura.find({
+        'location.city': { $in: ownerCities },
+        _id: { $nin: [...ownerStruttureIds.map(id => new mongoose.Types.ObjectId(id)), ...userFollowedIds.map(id => new mongoose.Types.ObjectId(id))] },
+        isDeleted: false
+      })
+        .select('_id name description images location')
+        .limit(20)
+        .lean();
+
+      console.log("🏢 Strutture vicine trovate:", nearbyStrutture.length);
+
+      // 2. Trova strutture VIP (con più prenotazioni) - SCORE: 2
+      console.log("🏢 Recupero strutture VIP (più prenotazioni)...");
+      const vipStrutture = await Booking.aggregate([
+        {
+          $match: {
+            status: { $in: ['confirmed', 'completed'] }
+          }
+        },
+        {
+          $group: {
+            _id: '$struttura',
+            bookingCount: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { bookingCount: -1 }
+        },
+        {
+          $limit: 20
+        }
+      ]);
+
+      console.log("🏢 Strutture VIP trovate:", vipStrutture.length);
+
+      const vipStrutturaIds = vipStrutture
+        .map(v => v._id.toString())
+        .filter(id => !ownerStruttureIds.includes(id) && !userFollowedIds.includes(id));
+
+      const vipStruttureDetails = await Struttura.find({
+        _id: { $in: vipStrutturaIds.map(id => new mongoose.Types.ObjectId(id)) },
+        isDeleted: false
+      })
+        .select('_id name description images location')
+        .lean();
+
+      console.log("🏢 Dettagli strutture VIP recuperati:", vipStruttureDetails.length);
+
+      // Combina risultati con scoring
+      const nearbyWithScore = nearbyStrutture.map(s => ({
+        ...s,
+        score: 3,
+        reason: { type: 'nearby', details: { city: s.location?.city } },
+        isFollowing: false
+      }));
+
+      const vipWithScore = vipStruttureDetails.map(s => {
+        const vipData = vipStrutture.find(v => v._id.toString() === s._id.toString());
+        return {
+          ...s,
+          score: 2,
+          reason: { type: 'vip', details: { bookingCount: vipData?.bookingCount || 0 } },
+          isFollowing: false
+        };
+      });
+
+      // Combina, rimuovi duplicati e ordina per score
+      const allSuggestions = [...nearbyWithScore, ...vipWithScore];
+      const uniqueSuggestions = allSuggestions.reduce((acc, current) => {
+        const exists = acc.find(item => item._id.toString() === current._id.toString());
+        if (!exists) {
+          acc.push(current);
+        } else if (current.score > exists.score) {
+          // Sostituisci con quello con score più alto
+          const index = acc.indexOf(exists);
+          acc[index] = current;
+        }
+        return acc;
+      }, [] as any[]);
+
+      const sortedSuggestions = uniqueSuggestions
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
+      console.log("✅ Suggerimenti owner completati:", sortedSuggestions.length);
+
+      return res.json({
+        suggestions: sortedSuggestions
+      });
+    }
+
+    // ==================== LOGICA PLAYER ====================
+    console.log("🎮 Applicazione logica suggerimenti per PLAYER");
 
     // Trova strutture dove l'utente ha giocato (prenotato)
     console.log("🔍 Recupero strutture dove l'utente ha giocato...");
@@ -1299,16 +1437,6 @@ export const getStrutturaSuggestions = async (req: AuthRequest, res: Response) =
     console.log("🔍 Strutture popolari trovate:", popularStrutture.length);
     const popularStrutturaIds = popularStrutture.map(p => p._id.toString());
     console.log("🔍 ID strutture popolari (string):", popularStrutturaIds);
-
-    // Trova strutture già seguite dall'utente
-    console.log("🔍 Recupero strutture seguite dall'utente...");
-    const userFollowedStrutture = await StrutturaFollower.find({
-      follower: userId
-    }).select('struttura');
-
-    console.log("🔍 Strutture seguite dall'utente:", userFollowedStrutture.length);
-    const userFollowedIds = userFollowedStrutture.map(f => f.struttura.toString());
-    console.log("🔍 ID strutture utente seguite:", userFollowedIds);
 
     // Combina e rimuovi duplicati, escludendo strutture già seguite dall'utente
     const combinedIds = [...playedStrutturaIds, ...friendStrutturaIds, ...popularStrutturaIds];
@@ -1402,7 +1530,7 @@ export const getStrutturaSuggestions = async (req: AuthRequest, res: Response) =
       .sort((a, b) => (b.score || 0) - (a.score || 0))
       .slice(0, limit);
 
-    console.log("✅ Suggerimenti strutture completati:", sortedSuggestions.length);
+    console.log("✅ Suggerimenti player completati:", sortedSuggestions.length);
 
     res.json({
       suggestions: sortedSuggestions

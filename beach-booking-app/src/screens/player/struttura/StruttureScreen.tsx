@@ -883,7 +883,11 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   }, [token, loadPreferences]);
 
   const loadStrutture = useCallback(async () => {
-    if (isLoadingStruttureRef.current) return;
+    // 🔧 FIX: Cancella eventuali richieste precedenti 
+    if (isLoadingStruttureRef.current) {
+      console.log('⚠️ Caricamento già in corso, verrà cancellato...');
+    }
+    
     isLoadingStruttureRef.current = true;
     setIsLoadingStrutture(true);
     console.log('🏗️ Iniziando caricamento strutture...');
@@ -1000,9 +1004,13 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
       setAvailableSports(sports);
     } catch (error) {
       console.error("Errore caricamento strutture:", error);
+      // 🔧 FIX: Reset strutture anche in caso di errore
+      setStrutture([]);
     } finally {
+      // ✅ CRITICO: Resetta SEMPRE il ref, anche in caso di errore
       isLoadingStruttureRef.current = false;
       setIsLoadingStrutture(false);
+      console.log('✅ Caricamento completato, ref resettato');
     }
   }, [filters, userClearedCity, isUsingGPS, gpsLat, gpsLng]);
 
@@ -1218,6 +1226,16 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
     
     if (newFilters.city !== filters.city) {
       setUserManuallyChangedCity(true);
+      
+      // 🔧 FIX: Reset stato GPS quando l'utente cambia città manualmente
+      if (newFilters.city !== gpsCity) {
+        console.log('🔄 Città cambiata manualmente, reset stato GPS');
+        setIsUsingGPS(false);
+        setGpsCity(null);
+        setGpsLat(null);
+        setGpsLng(null);
+      }
+      
       if (!newFilters.city) {
         console.log('🔄 Utente ha rimosso filtro città, setUserClearedCity(true)');
         setUserClearedCity(true);
@@ -2237,14 +2255,9 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         showAlert={showAlert}
       />
 
-      {/* Modal selezione città iniziale */}
-      <Modal
-        visible={showCitySelectionModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => {}}
-      >
-        <View style={styles.citySelectionOverlay}>
+      {/* Overlay selezione città iniziale - Non blocca i tab */}
+      {showCitySelectionModal && (
+        <View style={styles.citySelectionFixedOverlay}>
           <View style={styles.citySelectionContent}>
             {/* Header con icona */}
             <View style={styles.citySelectionHeader}>
@@ -2422,7 +2435,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               </Pressable>
           </View>
         </View>
-      </Modal>
+      )}
 
       {/* Modal permessi GPS */}
       <Modal
