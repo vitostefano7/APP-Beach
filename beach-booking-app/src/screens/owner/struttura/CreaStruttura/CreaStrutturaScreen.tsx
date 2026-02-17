@@ -14,9 +14,9 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
 import { styles } from "./styles/CreaStruttura.styles";
@@ -34,9 +34,11 @@ import {
 import {
   createStruttura,
   createCampi,
+  fetchSports,
 } from "./api/CreaStruttura.api";
 
 import { Campo } from "./types/CreaStruttura.types";
+import { sportIcons } from "../../../../utils/sportIcons";
 
 /* =======================
    CONSTANTS
@@ -71,6 +73,44 @@ export default function CreaStrutturaScreen() {
   const navigation = useNavigation<any>();
   const { token } = useContext(AuthContext);
   const s = useCreaStruttura();
+
+  /* =======================
+     CARICAMENTO SPORT
+  ======================= */
+  useEffect(() => {
+    const loadSports = async () => {
+      try {
+        const sportsData = await fetchSports();
+        s.setSports(sportsData);
+      } catch (error) {
+        console.error('Errore caricamento sport:', error);
+        Alert.alert('Errore', 'Impossibile caricare gli sport disponibili');
+      } finally {
+        s.setLoadingSports(false);
+      }
+    };
+
+    loadSports();
+  }, []);
+
+  /* =======================
+     SPORT ICON HELPER
+  ======================= */
+  const renderSportIcon = (sportCode: string, isActive: boolean) => {
+    const iconConfig = sportIcons[sportCode];
+    if (!iconConfig) {
+      return <Ionicons name="fitness" size={20} color="#2196F3" />;
+    }
+
+    const iconColor = "#2196F3";
+    const IconComponent = iconConfig.library === "FontAwesome5" 
+      ? FontAwesome5 
+      : iconConfig.library === "FontAwesome6" 
+      ? FontAwesome6 
+      : Ionicons;
+
+    return <IconComponent name={iconConfig.name as any} size={20} color={iconColor} />;
+  };
 
   /* =======================
      ADDRESS AUTOCOMPLETE
@@ -997,109 +1037,146 @@ export default function CreaStrutturaScreen() {
           {/* Sport */}
           <View style={styles.section}>
             <Text style={styles.label}>Sport</Text>
-            <View style={styles.sportRow}>
-              <Pressable
-                style={[
-                  styles.sportButton,
-                  campo.sport === "beach_volley" && styles.sportButtonActive,
-                ]}
-                onPress={() => s.updateCampo(campo.id, "sport", "beach_volley")}
-              >
-                <FontAwesome5
-                  name="volleyball-ball"
-                  size={20}
-                  color={campo.sport === "beach_volley" ? "#2196F3" : "#666"}
-                />
-                <Text
-                  style={[
-                    styles.sportButtonText,
-                    campo.sport === "beach_volley" && styles.sportButtonTextActive,
-                  ]}
-                >
-                  Beach Volley
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.sportButton,
-                  campo.sport === "volley" && styles.sportButtonActive,
-                ]}
-                onPress={() => s.updateCampo(campo.id, "sport", "volley")}
-              >
-                <FontAwesome5
-                  name="volleyball-ball"
-                  size={20}
-                  color={campo.sport === "volley" ? "#2196F3" : "#666"}
-                />
-                <Text
-                  style={[
-                    styles.sportButtonText,
-                    campo.sport === "volley" && styles.sportButtonTextActive,
-                  ]}
-                >
-                  Volley
-                </Text>
-              </Pressable>
-            </View>
+            {s.loadingSports ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#2196F3" />
+                <Text style={{ marginTop: 8, color: '#666' }}>Caricamento sport...</Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {s.sports.map((sport) => (
+                  <Pressable
+                    key={sport.code}
+                    style={[
+                      styles.sportButton,
+                      campo.sport === sport.code && styles.sportButtonActive,
+                      { flex: 0, minWidth: '48%' }
+                    ]}
+                    onPress={() => s.updateCampo(campo.id, "sport", sport.code)}
+                  >
+                    {renderSportIcon(sport.code, campo.sport === sport.code)}
+                    <Text
+                      style={[
+                        styles.sportButtonText,
+                        campo.sport === sport.code && styles.sportButtonTextActive,
+                      ]}
+                    >
+                      {sport.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
 
-          {/* Indoor/Outdoor (solo per volley) */}
-          {campo.sport === "volley" && (
-            <View style={styles.section}>
-              <View style={styles.switchRow}>
-                <Text style={styles.label}>Campo coperto</Text>
-                <Switch
-                  value={campo.indoor}
-                  onValueChange={(v) => s.updateCampo(campo.id, "indoor", v)}
-                />
+          {/* Indoor/Outdoor */}
+          {campo.sport && (() => {
+            const sportData = s.sports.find(sp => sp.code === campo.sport);
+            const showIndoorToggle = sportData && sportData.allowsIndoor && sportData.allowsOutdoor;
+            return showIndoorToggle ? (
+              <View style={styles.section}>
+                <View style={styles.switchRow}>
+                  <Text style={styles.label}>Campo coperto</Text>
+                  <Switch
+                    value={campo.indoor}
+                    onValueChange={(v) => s.updateCampo(campo.id, "indoor", v)}
+                  />
+                </View>
               </View>
+            ) : null;
+          })()}
+
+          {/* Superficie */}
+          {campo.sport && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Superficie</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={(() => {
+                  const surfaceLabels: Record<string, string> = {
+                    sand: "Sabbia",
+                    cement: "Cemento",
+                    pvc: "PVC",
+                    grass: "Erba",
+                    synthetic: "Sintetico",
+                    parquet: "Parquet",
+                    clay: "Terra battuta",
+                    tartan: "Tartan",
+                  };
+                  return surfaceLabels[campo.surface] || campo.surface;
+                })()}
+                editable={false}
+              />
             </View>
           )}
 
-          {/* Superficie */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Superficie</Text>
-            <TextInput
-              style={[styles.input, styles.inputDisabled]}
-              value={
-                campo.surface === "sand"
-                  ? "Sabbia"
-                  : campo.surface === "cement"
-                  ? "Cemento"
-                  : campo.surface === "pvc"
-                  ? "PVC"
-                  : ""
-              }
-              editable={false}
-            />
-          </View>
-
           {/* Max giocatori */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Numero massimo giocatori</Text>
-            <View style={styles.playersRow}>
-              {[2, 4, 6, 8, 10, 12].map((num) => (
-                <Pressable
-                  key={num}
-                  style={[
-                    styles.playerButton,
-                    campo.maxPlayers === num && styles.playerButtonActive,
-                  ]}
-                  onPress={() => s.updateCampo(campo.id, "maxPlayers", num)}
-                >
-                  <Text
-                    style={[
-                      styles.playerButtonText,
-                      campo.maxPlayers === num && styles.playerButtonTextActive,
-                    ]}
-                  >
-                    {num}
+          {campo.sport && (() => {
+            const sportData = s.sports.find(sp => sp.code === campo.sport);
+            if (!sportData) return null;
+            
+            // Genera array di opzioni da minPlayers a maxPlayers
+            const playerOptions: number[] = [];
+            for (let i = sportData.minPlayers; i <= sportData.maxPlayers; i += 2) {
+              playerOptions.push(i);
+            }
+            // Se non ci sono opzioni o il range è troppo grande, mostra input manuale
+            if (playerOptions.length === 0 || playerOptions.length > 10) {
+              return (
+                <View style={styles.section}>
+                  <Text style={styles.label}>Numero massimo giocatori</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      value={campo.maxPlayers.toString()}
+                      onChangeText={(v) => {
+                        const num = parseInt(v) || sportData.minPlayers;
+                        if (num >= sportData.minPlayers && num <= sportData.maxPlayers) {
+                          s.updateCampo(campo.id, "maxPlayers", num);
+                        }
+                      }}
+                      keyboardType="number-pad"
+                      placeholder={`Min: ${sportData.minPlayers}, Max: ${sportData.maxPlayers}`}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                    Range: {sportData.minPlayers} - {sportData.maxPlayers} giocatori
                   </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+                </View>
+              );
+            }
+            
+            return (
+              <View style={styles.section}>
+                <Text style={styles.label}>Numero massimo giocatori</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.playersRow}
+                >
+                  {playerOptions.map((num) => (
+                    <Pressable
+                      key={num}
+                      style={[
+                        styles.playerButton,
+                        campo.maxPlayers === num && styles.playerButtonActive,
+                      ]}
+                      onPress={() => s.updateCampo(campo.id, "maxPlayers", num)}
+                    >
+                      <Text
+                        style={[
+                          styles.playerButtonText,
+                          campo.maxPlayers === num && styles.playerButtonTextActive,
+                        ]}
+                      >
+                        {num}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            );
+          })()}
 
           {/* Pulsante prezzi */}
           <Pressable

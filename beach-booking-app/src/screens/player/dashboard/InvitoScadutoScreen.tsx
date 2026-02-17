@@ -13,7 +13,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useContext } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import styles from "./InvitoScaduto.styles"; // Crea questo file di stili
@@ -22,7 +22,7 @@ export default function InvitoScadutoScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { token, user } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   
   const { inviteId, inviteData, timeSinceExpiration } = route.params;
   const [loading, setLoading] = useState(!inviteData);
@@ -305,7 +305,6 @@ export default function InvitoScadutoScreen() {
         </View>
       </View>
       </SafeAreaView>
-      <AlertComponent />
     </>
   );
 }

@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,7 +22,7 @@ import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../util
 
 export default function ConfermaPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   
@@ -478,7 +478,6 @@ export default function ConfermaPrenotazioneScreen() {
         bookingId={createdBookingId}
         navigation={navigation}
       />
-      <AlertComponent />
     </SafeAreaView>
   );
 }

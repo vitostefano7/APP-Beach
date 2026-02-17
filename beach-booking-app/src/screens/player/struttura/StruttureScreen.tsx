@@ -29,7 +29,7 @@ import * as Location from "expo-location";
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import API_URL from "../../../config/api";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import { useCityGeocode } from "../../../hooks/useCityGeocode";
 import { resolveImageUrl } from "../../../utils/imageUtils";
 
@@ -608,7 +608,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const mapRef = useRef<MapView | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const { token } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   const preferencesRef = useRef<UserPreferences | null>(null);
   const isLoadingStruttureRef = useRef(false);
   const lastRegionRef = useRef<Region | null>(null);
@@ -2481,7 +2481,6 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           </View>
         </View>
       </Modal>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

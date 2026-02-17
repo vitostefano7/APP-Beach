@@ -1,31 +1,14 @@
-import { useState, useCallback } from 'react';
-import CustomAlert from '../components/CustomAlert';
-import type { AlertConfig } from '../components/CustomAlert';
+import { useCallback } from 'react';
+import { useAlert } from '../context/AlertContext';
 
+/**
+ * DEPRECATED: use `useAlert()` from `src/context/AlertContext` instead.
+ * Backwards-compatible adapter that forwards to the global alert provider.
+ */
 export const useCustomAlert = () => {
-  const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
-  const [visible, setVisible] = useState(false);
+  const { showAlert, hideAlert } = useAlert();
 
-  const showAlert = useCallback((config: AlertConfig) => {
-    setAlertConfig(config);
-    setVisible(true);
-  }, []);
+  const AlertComponent = useCallback(() => null, []);
 
-  const hideAlert = useCallback(() => {
-    setVisible(false);
-    setAlertConfig(null);
-  }, []);
-
-  const AlertComponent = useCallback(() => (
-    <CustomAlert
-      visible={visible}
-      config={alertConfig}
-      onClose={hideAlert}
-    />
-  ), [visible, alertConfig, hideAlert]);
-
-  return {
-    showAlert,
-    AlertComponent,
-  };
+  return { showAlert, hideAlert, AlertComponent } as const;
 };

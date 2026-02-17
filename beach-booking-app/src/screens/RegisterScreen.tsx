@@ -14,11 +14,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { AuthContext } from "../context/AuthContext";
 import API_URL from "../config/api";
-import { useCustomAlert } from "../hooks/useCustomAlert";
+import { useAlert } from "../context/AlertContext";
 
 export default function RegisterScreen({ navigation }: any) {
   const { login } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -561,7 +561,6 @@ export default function RegisterScreen({ navigation }: any) {
           </Pressable>
         </View>
       </KeyboardAwareScrollView>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

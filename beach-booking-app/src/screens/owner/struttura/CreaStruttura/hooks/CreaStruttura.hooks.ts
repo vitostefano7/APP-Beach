@@ -4,6 +4,7 @@ import {
   Campo,
   OpeningHours,
   PricingRules,
+  SportData,
 } from "../types/CreaStruttura.types";
 
 /* =========================
@@ -65,6 +66,8 @@ export function useCreaStruttura() {
      STEP 5 – CAMPI
   ===================== */
   const [campi, setCampi] = useState<Campo[]>([]);
+  const [sports, setSports] = useState<SportData[]>([]);
+  const [loadingSports, setLoadingSports] = useState(true);
 
   /* =====================
      PRICING MODAL
@@ -162,13 +165,43 @@ export function useCreaStruttura() {
 
         const updated = { ...c, [field]: value };
 
-        if (field === "sport") {
-          if (value === "beach_volley") updated.surface = "sand";
-          if (value === "volley") updated.surface = updated.indoor ? "pvc" : "cement";
+        // Gestione dinamica basata sui dati dello sport
+        if (field === "sport" && value) {
+          const sportData = sports.find(s => s.code === value);
+          if (sportData) {
+            // Determina la superficie in base all'ambiente
+            let newSurface = "";
+            
+            if (sportData.recommendedSurfaces?.any && sportData.recommendedSurfaces.any.length > 0) {
+              // Se ha superfici "any", usa la prima (es. sabbia per beach volley)
+              newSurface = sportData.recommendedSurfaces.any[0];
+            } else if (c.indoor && sportData.recommendedSurfaces?.indoor) {
+              newSurface = sportData.recommendedSurfaces.indoor[0] || "";
+            } else if (!c.indoor && sportData.recommendedSurfaces?.outdoor) {
+              newSurface = sportData.recommendedSurfaces.outdoor[0] || "";
+            }
+            
+            updated.surface = newSurface;
+            updated.maxPlayers = sportData.maxPlayers;
+          }
         }
 
-        if (field === "indoor" && c.sport === "volley") {
-          updated.surface = value ? "pvc" : "cement";
+        // Aggiorna la superficie quando cambia indoor/outdoor
+        if (field === "indoor" && c.sport) {
+          const sportData = sports.find(s => s.code === c.sport);
+          if (sportData) {
+            let newSurface = "";
+            
+            if (sportData.recommendedSurfaces?.any && sportData.recommendedSurfaces.any.length > 0) {
+              newSurface = sportData.recommendedSurfaces.any[0];
+            } else if (value && sportData.recommendedSurfaces?.indoor) {
+              newSurface = sportData.recommendedSurfaces.indoor[0] || "";
+            } else if (!value && sportData.recommendedSurfaces?.outdoor) {
+              newSurface = sportData.recommendedSurfaces.outdoor[0] || "";
+            }
+            
+            updated.surface = newSurface;
+          }
         }
 
         return updated;
@@ -255,6 +288,8 @@ export function useCreaStruttura() {
     showCustomModal,
     customAmenityInput,
     campi,
+    sports,
+    loadingSports,
     showPricingModal,
     tempPricing,
     editingCampoId,
@@ -287,6 +322,8 @@ export function useCreaStruttura() {
     setShowCustomModal,
     setCustomAmenityInput,
     setCampi,
+    setSports,
+    setLoadingSports,
     setShowPricingModal,
     setTempPricing,
     setShowDaysModal,

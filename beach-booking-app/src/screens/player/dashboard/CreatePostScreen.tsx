@@ -18,7 +18,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/CreatePostScreen.styles';
 import API_URL from '../../../config/api';
-import { useCustomAlert } from '../../../hooks/useCustomAlert';
+import { useAlert } from '../../../context/AlertContext';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation<any>();
@@ -28,7 +28,7 @@ export default function CreatePostScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const handlePickImage = async () => {
     try {
@@ -387,7 +387,6 @@ export default function CreatePostScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-    <AlertComponent />
     </>
   );
 }

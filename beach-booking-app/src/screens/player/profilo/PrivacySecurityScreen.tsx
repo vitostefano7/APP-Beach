@@ -16,14 +16,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState, useContext } from "react";
 import { useTheme } from "./ThemeContext";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import API_URL from "../../../config/api";
 
 export default function PrivacySecurityScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const { token } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -391,7 +391,6 @@ export default function PrivacySecurityScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

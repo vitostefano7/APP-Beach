@@ -14,7 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNotifications, Notification } from './hooks/useNotifications';
 import { AuthContext } from '../../../context/AuthContext';
-import { useCustomAlert } from '../../../hooks/useCustomAlert';
+import { useAlert } from '../../../context/AlertContext';
 import API_URL from '../../../config/api';
 import { styles } from '../styles-player/NotificheScreen.styles';
 
@@ -23,7 +23,7 @@ type FilterType = 'all' | 'unread';
 const NotificheScreen = () => {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   const {
     notifications,
     unreadCount,
@@ -497,7 +497,6 @@ const NotificheScreen = () => {
           />
         )}
       </SafeAreaView>
-      <AlertComponent />
     </GestureHandlerRootView>
   );
 };

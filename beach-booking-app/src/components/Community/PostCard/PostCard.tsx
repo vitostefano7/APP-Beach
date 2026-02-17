@@ -5,7 +5,7 @@ import { CommunityTheme } from '../communityTheme';
 import Avatar from '../../Avatar/Avatar';
 import { Post, Comment } from '../../../types/community.types';
 import { useComments } from '../hooks';
-import { useCustomAlert } from '../../CustomAlert/CustomAlert';
+import { useAlert } from '../../../context/AlertContext';
 
 interface PostCardProps {
   post: Post;
@@ -41,7 +41,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const inputRef = useRef<TextInput>(null);
   const cardRef = useRef<View>(null);
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     console.log('🎹 [PostCard] Setting up keyboard listeners for post:', post._id);
@@ -489,7 +489,6 @@ export const PostCard: React.FC<PostCardProps> = ({
         </View>
       )}
     </View>
-    <AlertComponent />
     </>
   );
 };

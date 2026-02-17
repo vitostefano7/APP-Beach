@@ -25,7 +25,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import { styles } from './styles/PostDetailScreen.styles';
 import API_URL from '../../../config/api';
-import { useCustomAlert } from '../../../hooks/useCustomAlert';
+import { useAlert } from '../../../context/AlertContext';
 
 type Comment = {
   _id: string;
@@ -84,7 +84,7 @@ export default function PostDetailScreen() {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   // UI state for input focus and send button animation
@@ -478,7 +478,6 @@ export default function PostDetailScreen() {
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
-    <AlertComponent />
     </>
   );
 }

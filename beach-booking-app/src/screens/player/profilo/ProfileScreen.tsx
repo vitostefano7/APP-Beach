@@ -15,7 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import { useUnreadMessages } from "../../../context/UnreadMessagesContext";
 import { ProfileStackParamList } from "../../../navigation/ProfilePlayerStack";
 import { styles } from "../styles-player/ProfileScreen.styles";
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
   const { token, logout, user, updateUser } = useContext(AuthContext);
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
   const navigation = useNavigation<ProfileNavigationProp>();
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [data, setData] = useState<ProfileResponse | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null);
@@ -481,7 +481,6 @@ const loadPosts = async () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AlertComponent />
 
       {/* Header con gradiente */}
       <LinearGradient
@@ -907,7 +906,6 @@ const loadPosts = async () => {
         </View>
         <View style={{ height: 40 }} />
       </ScrollView>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

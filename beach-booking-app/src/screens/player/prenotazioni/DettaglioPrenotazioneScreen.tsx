@@ -32,7 +32,7 @@ import PlayerCardWithTeam from "../../../components/booking/components/PlayerCar
 import TeamSelectionModal from "./DettaglioPrenotazione/components/TeamSelectionModal";
 import ScoreModal from "./DettaglioPrenotazione/components/ScoreModal";
 import styles from "./DettaglioPrenotazione/styles/DettaglioPrenotazione.styles";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 
 // Componenti condivisi globali
 import {
@@ -63,7 +63,7 @@ export default function DettaglioPrenotazioneScreen() {
 
   console.log('📖 [DettaglioPrenotazione] Apertura prenotazione con ID:', bookingId);
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   // Funzione helper per ottenere ID utente sicuro
   const getUserId = (user: any) => {
@@ -1955,7 +1955,6 @@ export default function DettaglioPrenotazioneScreen() {
           </ScaleInView>
         </View>
       </Modal>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

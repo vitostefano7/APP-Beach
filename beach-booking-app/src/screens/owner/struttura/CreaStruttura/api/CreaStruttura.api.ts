@@ -1,4 +1,5 @@
 import API_URL from "../../../../../config/api";
+import { SportData } from "../types/CreaStruttura.types";
 
 export async function searchAddress(query: string) {
   const res = await fetch(
@@ -6,6 +7,13 @@ export async function searchAddress(query: string) {
   );
   if (!res.ok) throw new Error("Errore autocomplete");
   return res.json();
+}
+
+export async function fetchSports(): Promise<SportData[]> {
+  const res = await fetch(`${API_URL}/sports`);
+  if (!res.ok) throw new Error("Errore caricamento sport");
+  const data = await res.json();
+  return data.success ? data.data : [];
 }
 
 export async function createStruttura(data: any, token: string) {

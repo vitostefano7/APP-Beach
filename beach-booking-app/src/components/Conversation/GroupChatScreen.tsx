@@ -17,7 +17,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
 import API_URL from "../../config/api";
-import { useCustomAlert } from "../CustomAlert/CustomAlert";
+import { useAlert } from "../../context/AlertContext";
 import { AuthContext } from "../../context/AuthContext";
 import { styles as baseStyles } from "../../screens/player/styles-player/ChatScreen.styles";
 import Avatar from "../Avatar/Avatar";
@@ -47,7 +47,7 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const { conversationId, groupName, matchId, headerInfo, bookingId: paramBookingId, struttura, match } = route.params;
 
@@ -819,7 +819,6 @@ export default function GroupChatScreen({ role }: GroupChatScreenProps) {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <AlertComponent />
     </>
   );
 }

@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useContext, useState, useCallback, useLayoutEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
@@ -23,7 +23,7 @@ import styles from "./TuttiInviti.styles";
 
 export default function TuttiInvitiScreen() {
   const { token, user } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   const navigation = useNavigation<any>();
 
   useLayoutEffect(() => {
@@ -736,7 +736,6 @@ const loadAllMatches = async () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
-      <AlertComponent />
     </SafeAreaView>
   );
 }

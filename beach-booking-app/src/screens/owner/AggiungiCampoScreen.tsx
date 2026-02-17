@@ -17,7 +17,7 @@ import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
 import { sportIcons } from "../../utils/sportIcons";
 
 import API_URL from "../../config/api";
-import { useCustomAlert } from "../../hooks/useCustomAlert";
+import { useAlert } from "../../context/AlertContext";
 
 /* =======================
    INTERFACES
@@ -70,7 +70,7 @@ export default function AggiungiCampoScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { strutturaId } = route.params;
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(false);
   const [loadingSports, setLoadingSports] = useState(true);
@@ -605,7 +605,7 @@ export default function AggiungiCampoScreen() {
 
         {/* NOME */}
         <View style={styles.section}>
-          <Text style={styles.label}>Nome campo *</Text>
+          <Text style={styles.label}>Nome del Campo *</Text>
           <TextInput
             style={styles.input}
             value={name}
@@ -728,7 +728,6 @@ export default function AggiungiCampoScreen() {
 
       {/* PRICING MODAL */}
       {renderPricingModal()}
-      <AlertComponent />
     </SafeAreaView>
   );
 }

@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useCustomAlert } from "../CustomAlert/CustomAlert";
+import { useAlert } from "../../context/AlertContext";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useContext, useState, useEffect, useRef, useLayoutEffect } from "react";
 
@@ -58,7 +58,7 @@ export default function ChatScreen({ role }: ChatScreenProps) {
   const { token, user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const {
     conversationId,
@@ -692,7 +692,6 @@ export default function ChatScreen({ role }: ChatScreenProps) {
         </Modal>
       )}
     </SafeAreaView>
-    <AlertComponent />
     </>
   );
 }

@@ -20,7 +20,7 @@ import { Avatar } from "../../../components/Avatar";
 import SportIcon from '../../../components/SportIcon';
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 
 // Componenti condivisi
 import {
@@ -51,7 +51,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { bookingId } = route.params;
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
@@ -1523,7 +1523,6 @@ export default function OwnerDettaglioPrenotazioneScreen() {
         />
       )}
 
-      <AlertComponent />
     </SafeAreaView>
   );
 }

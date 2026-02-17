@@ -16,13 +16,13 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import { AuthContext } from "../../../context/AuthContext";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 
 const DettaglioInvito = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { token, user } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
   
   const { inviteId, inviteData } = route.params as any;
   const [loading, setLoading] = useState(!inviteData);
@@ -555,7 +555,6 @@ const DettaglioInvito = () => {
 
         <View style={styles.footerSpacer} />
       </ScrollView>
-      <AlertComponent />
     </SafeAreaView>
   );
 };

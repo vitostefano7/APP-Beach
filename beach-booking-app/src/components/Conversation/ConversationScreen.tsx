@@ -19,7 +19,7 @@ import { useUnreadMessages } from "../../context/UnreadMessagesContext";
 import { useConversations } from "./useConversations";
 import ConversationItem from "./ConversationItem";
 import { styles } from "../../styles/ConversationScreen.styles"; // Shared styles
-import { useCustomAlert } from "../CustomAlert/CustomAlert";
+import { useAlert } from "../../context/AlertContext";
 import MatchModal from "./MatchModal";
 
 
@@ -33,7 +33,7 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
   const navigation = useNavigation<any>();
   const enableFilters = role === 'owner';
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const {
     conversations,
@@ -211,7 +211,6 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
             </Text>
           </View>
         </SafeAreaView>
-        <AlertComponent />
       </>
     );
   }
@@ -225,7 +224,6 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
             {isOwner && <Text style={styles.loadingText}>Caricamento chat...</Text>}
           </View>
         </SafeAreaView>
-        <AlertComponent />
       </>
     );
   }
@@ -521,7 +519,6 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
       />
 
     </SafeAreaView>
-    <AlertComponent />
     </>
   );
 };

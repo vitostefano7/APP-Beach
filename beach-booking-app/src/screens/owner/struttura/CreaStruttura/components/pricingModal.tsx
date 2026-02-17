@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { PricingRules, TimeSlot, DateOverride, PeriodOverride } from "../types/CreaStruttura.types";
+import { PricingRules, PricingTimeSlot, DateOverride, PeriodOverride } from "../types/CreaStruttura.types";
 import { styles } from "../styles/CreaStruttura.styles";
 
 const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];

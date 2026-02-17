@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
 import { styles } from "./styles/OwnerDashboardScreen.styles";
-import { useCustomAlert } from "../../../hooks/useCustomAlert";
+import { useAlert } from "../../../context/AlertContext";
 import OwnerHeader from "./components/OwnerHeader";
 import QuickStatsRow from "./components/QuickStatsRow";
 import BookingTodayCard from "./components/BookingTodayCard";
@@ -94,7 +94,7 @@ type Match = {
 export default function OwnerDashboardScreen() {
   const { token, user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -434,21 +434,21 @@ export default function OwnerDashboardScreen() {
         )}
 
         {/* Partite in Corso / Prossime */}
-        <View style={[styles.section, { marginBottom: 1 }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Partite in Programma</Text>
-            <View style={styles.sectionTitle}>
-                <Pressable
-                onPress={() => navigation.navigate("OwnerBookings")}
-                style={styles.sectionLink}
-              >
-                <Text style={styles.sectionLinkText}>Prenotazioni</Text>
-                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
-              </Pressable>
+        {upcomingMatches.length > 0 && (
+          <View style={[styles.section, { marginBottom: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Partite in Programma</Text>
+              <View style={styles.sectionTitle}>
+                  <Pressable
+                  onPress={() => navigation.navigate("OwnerBookings")}
+                  style={styles.sectionLink}
+                >
+                  <Text style={styles.sectionLinkText}>Prenotazioni</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+                </Pressable>
+              </View>
             </View>
-          </View>
 
-          {upcomingMatches.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -466,15 +466,8 @@ export default function OwnerDashboardScreen() {
                 />
               ))}
             </ScrollView>
-          ) : (
-            <View style={styles.emptyStateSmall}>
-              <Ionicons name="tennisball-outline" size={28} color="#ccc" />
-              <Text style={styles.emptyStateSmallText}>
-                Nessuna partita programmata
-              </Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/*   rutture */}
         {strutture.length > 0 && (
@@ -564,7 +557,6 @@ export default function OwnerDashboardScreen() {
         )}
       </ScrollView>
 
-      <AlertComponent />
     </SafeAreaView>
   );
 }

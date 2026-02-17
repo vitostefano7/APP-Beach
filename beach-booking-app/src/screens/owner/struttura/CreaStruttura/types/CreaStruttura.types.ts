@@ -13,6 +13,24 @@ export interface PlaceSuggestion {
   };
 }
 
+export interface SportData {
+  _id: string;
+  name: string;
+  code: string;
+  icon: string;
+  color: string;
+  minPlayers: number;
+  maxPlayers: number;
+  allowsIndoor: boolean;
+  allowsOutdoor: boolean;
+  recommendedSurfaces?: {
+    indoor?: string[];
+    outdoor?: string[];
+    any?: string[];
+  };
+  isActive: boolean;
+}
+
 export interface TimeSlot {
   open: string;
   close: string;
@@ -30,7 +48,7 @@ export interface DurationPrice {
   oneHourHalf: number;
 }
 
-export interface TimeSlot {
+export interface PricingTimeSlot {
   start: string;
   end: string;
   label: string;
@@ -57,7 +75,7 @@ export interface PricingRules {
   basePrices: DurationPrice;
   timeSlotPricing: {
     enabled: boolean;
-    slots: TimeSlot[];
+    slots: PricingTimeSlot[];
   };
   dateOverrides?: {
     enabled: boolean;
@@ -72,8 +90,8 @@ export interface PricingRules {
 export interface Campo {
   id: string;
   name: string;
-  sport: "beach_volley" | "volley" | "";
-  surface: "sand" | "cement" | "pvc" | "";
+  sport: string; // Sport code (es. "beach_volley", "volley", "tennis", etc.)
+  surface: string; // Surface type (es. "sand", "cement", "pvc", etc.)
   maxPlayers: number;
   indoor: boolean;
   pricingRules: PricingRules;

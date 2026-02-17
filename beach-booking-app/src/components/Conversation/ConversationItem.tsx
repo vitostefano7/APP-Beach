@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import Avatar from "../Avatar/Avatar";
 import { styles } from "../../styles/ConversationScreen.styles";
-import { useCustomAlert } from "../CustomAlert/CustomAlert";
+import { useAlert } from "../../context/AlertContext";
 
 type Conversation = {
   _id: string;
@@ -80,7 +80,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   const unreadCount = getUnreadCount(conversation);
   const isOwner = role === 'owner';
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const handleDelete = () => {
     showAlert({
@@ -321,7 +321,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   return (
     <>
       {renderConversation()}
-      <AlertComponent />
     </>
   );
 };

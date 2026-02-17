@@ -19,7 +19,7 @@ import ImageViewer from "react-native-image-zoom-viewer";
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
 import { AuthContext } from "../../../../context/AuthContext";
-import { useCustomAlert } from "../../../../hooks/useCustomAlert";
+import { useAlert } from "../../../../context/AlertContext";
 import { styles } from "../../styles-player/FieldDetailsScreen.styles";
 import { styles as strutturaStyles } from "../../styles-player/StrutturaDetailScreen.styles";
 import API_URL from "../../../../config/api";
@@ -147,7 +147,7 @@ export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   // Support receiving either a full `struttura` object or just a `strutturaId` in params
   const { struttura: initialStruttura, strutturaId } = route.params ?? {};
@@ -2140,7 +2140,6 @@ export default function FieldDetailsScreen() {
           saveToLocalByLongPress={false}
         />
       </Modal>
-      <AlertComponent />
     </View>
   );
 }

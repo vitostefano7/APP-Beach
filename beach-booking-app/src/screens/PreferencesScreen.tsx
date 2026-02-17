@@ -25,7 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import API_URL from "../config/api";
 import { AuthContext } from "../context/AuthContext";
-import { useCustomAlert } from "../hooks/useCustomAlert";
+import { useAlert } from "../context/AlertContext";
 
 type UserPreferences = {
   pushNotifications: boolean;
@@ -42,7 +42,7 @@ type UserPreferences = {
 
 export default function PreferencesScreen({ navigation }: any) {
   const { token, user, updateUser } = useContext(AuthContext);
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -652,7 +652,6 @@ export default function PreferencesScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-      <AlertComponent />
     </SafeAreaView>
   );
 }

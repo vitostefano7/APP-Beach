@@ -22,7 +22,7 @@ import {
 } from '../../../components/Community';
 import { usePosts, usePostInteractions } from '../../../components/Community/hooks';
 import { Post, CommunityTab } from '../../../types/community.types';
-import { useCustomAlert } from '../../../hooks/useCustomAlert';
+import { useAlert } from '../../../context/AlertContext';
 
 export default function CommunityScreen() {
   console.log('🚀 COMMUNITY SCREEN (PLAYER) MOUNTED');
@@ -35,7 +35,7 @@ export default function CommunityScreen() {
   const flatListRef = useRef<FlatList>(null);
   const currentScrollOffset = useRef<number>(0);
 
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   // Custom hooks
   const {
@@ -260,7 +260,6 @@ export default function CommunityScreen() {
       </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
-    <AlertComponent />
     </>
   );
 }

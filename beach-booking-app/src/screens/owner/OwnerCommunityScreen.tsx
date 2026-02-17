@@ -41,6 +41,10 @@ export default function OwnerCommunityScreen() {
   const currentScrollOffset = useRef<number>(0);
 
   // Custom hooks
+  // Owner feed: always use the structure-following view. When a structure is selected
+  // we pass `strutturaId` so the backend returns posts from entities followed by that struttura.
+  const feedFilter: 'following' | 'all' = 'following';
+
   const {
     posts,
     loading,
@@ -52,7 +56,7 @@ export default function OwnerCommunityScreen() {
     token: token || '',
     userId: user?.id,
     strutturaId: selectedStructure?._id,
-    filter: 'all',
+    filter: feedFilter,
   });
 
   const { likePost } = usePostInteractions({
@@ -67,12 +71,17 @@ export default function OwnerCommunityScreen() {
     },
   });
 
-  // Load structures on mount
+  // Load structures on focus. Do NOT fetch global posts for owner —
+  // posts are loaded only for the selected structure (see useEffect below).
   useFocusEffect(
     useCallback(() => {
       loadUserStructures();
-      loadPosts();
-    }, [])
+
+      // If a structure is already selected (screen was re-focused), refresh posts
+      if (selectedStructure) {
+        loadPosts();
+      }
+    }, [selectedStructure])
   );
 
   // Reload posts when structure changes
@@ -216,14 +225,28 @@ export default function OwnerCommunityScreen() {
     <View style={styles.emptyContainer}>
       <Ionicons name="newspaper-outline" size={64} color={CommunityTheme.colors.textTertiary} />
       <Text style={styles.emptyText}>Nessun post</Text>
+
+      {/* Seleziona struttura o crea struttura — l'owner vede SOLO i post delle entità seguite
+          dalla struttura selezionata */}
       <Text style={styles.emptySubtext}>
-        {selectedStructure 
+        {selectedStructure
           ? `Sii il primo a postare per ${selectedStructure.name}!`
-          : 'Seleziona una struttura per vedere i post'}
+          : userStructures.length === 0
+            ? 'Non hai ancora strutture. Crea la tua prima struttura per iniziare a seguire utenti e strutture.'
+            : 'Seleziona una struttura per vedere i post che essa segue.'}
       </Text>
-      {selectedStructure && (
+
+      {selectedStructure ? (
         <Pressable style={styles.emptyButton} onPress={handleCreatePost}>
           <Text style={styles.emptyButtonText}>Crea un post</Text>
+        </Pressable>
+      ) : userStructures.length === 0 ? (
+        <Pressable style={styles.emptyButton} onPress={() => navigation.navigate('CreaStruttura')}>
+          <Text style={styles.emptyButtonText}>Crea struttura</Text>
+        </Pressable>
+      ) : (
+        <Pressable style={styles.emptyButton} onPress={() => setStructureModalVisible(true)}>
+          <Text style={styles.emptyButtonText}>Seleziona struttura</Text>
         </Pressable>
       )}
     </View>
@@ -257,8 +280,11 @@ export default function OwnerCommunityScreen() {
           ]}
         />
 
-        {/* Content */}
-        {loading && posts.length === 0 ? (
+        {/* Content: se non c'è struttura selezionata mostriamo l'empty-state dell'owner (nessuna struttura => invito a crearne una).
+            Altrimenti carichiamo i post della struttura selezionata (backend usa `strutturaId` per restituire i post seguiti dalla struttura). */}
+        {!selectedStructure ? (
+          renderEmptyState()
+        ) : loading && posts.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={CommunityTheme.colors.primary} />
           </View>

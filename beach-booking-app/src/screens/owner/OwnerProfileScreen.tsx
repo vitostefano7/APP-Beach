@@ -22,7 +22,7 @@ import * as Network from 'expo-network';
 
 import API_URL from "../../config/api";
 import { Avatar } from "../../components/Avatar";
-import { useCustomAlert } from "../../hooks/useCustomAlert";
+import { useAlert } from "../../context/AlertContext";
 import { AvatarPicker } from "../../components/AvatarPicker";
 import { resolveAvatarUrl } from "../../utils/avatar";
 
@@ -527,7 +527,7 @@ const SkeletonLoader = () => (
 export default function OwnerProfileScreen() {
   const { token, logout, user, updateUser } = useContext(AuthContext);
   const navigation = useNavigation<any>();
-  const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert } = useAlert();
 
   const { stats, earnings, strutture, loading, error, fetchProfile, setError } = useOwnerProfile(token);
   const {
@@ -716,7 +716,6 @@ export default function OwnerProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AlertComponent />
       <AvatarPicker
         visible={showAvatarPicker}
         onClose={() => setShowAvatarPicker(false)}
