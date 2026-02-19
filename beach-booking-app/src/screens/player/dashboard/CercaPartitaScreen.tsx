@@ -1345,45 +1345,49 @@ export default function CercaPartitaScreen() {
         title="Scegli sport"
         onClose={() => setShowSportPicker(false)}
         contentScrollable
+        searchable
+        searchPlaceholder="Cerca sport..."
       >
-        {loadingSports ? (
-          <View style={styles.citySuggestionItem}>
-            <ActivityIndicator size="small" color="#2196F3" />
-            <Text style={styles.citySuggestionText}>Caricamento sport...</Text>
-          </View>
-        ) : (
-          <>
-            <Pressable
-              style={({ pressed }) => [
-                styles.filterModalOption,
-                styles.filterModalOptionWithBorder,
-                pressed && { backgroundColor: "#E3F2FD" }
-              ]}
-              onPress={() => {
-                setSportFilter(null);
-                setShowSportPicker(false);
-              }}
-            >
-              <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
-            </Pressable>
-            {sports.map((sport, index) => (
+        {(search) => (
+          loadingSports ? (
+            <View style={styles.citySuggestionItem}>
+              <ActivityIndicator size="small" color="#2196F3" />
+              <Text style={styles.citySuggestionText}>Caricamento sport...</Text>
+            </View>
+          ) : (
+            <>
               <Pressable
-                key={sport._id}
                 style={({ pressed }) => [
                   styles.filterModalOption,
-                  index < sports.length - 1 && styles.filterModalOptionWithBorder,
+                  styles.filterModalOptionWithBorder,
                   pressed && { backgroundColor: "#E3F2FD" }
                 ]}
                 onPress={() => {
-                  setSportFilter(sport.code);
+                  setSportFilter(null);
                   setShowSportPicker(false);
                 }}
               >
-                <SportIcon sport={sport.code} size={16} color="#2196F3" />
-                <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{sport.name}</Text>
+                <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
               </Pressable>
-            ))}
-          </>
+              {sports.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map((sport, index) => (
+                <Pressable
+                  key={sport._id}
+                  style={({ pressed }) => [
+                    styles.filterModalOption,
+                    index < sports.length - 1 && styles.filterModalOptionWithBorder,
+                    pressed && { backgroundColor: "#E3F2FD" }
+                  ]}
+                  onPress={() => {
+                    setSportFilter(sport.code);
+                    setShowSportPicker(false);
+                  }}
+                >
+                  <SportIcon sport={sport.code} size={16} color="#2196F3" />
+                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{sport.name}</Text>
+                </Pressable>
+              ))}
+            </>
+          )
         )}
       </FilterModal>
 
@@ -1393,37 +1397,43 @@ export default function CercaPartitaScreen() {
         subtitle={sportFilter ? 'Solo i formati disponibili per questo sport' : undefined}
         onClose={() => setShowPlayersPicker(false)}
         contentScrollable
+        searchable
+        searchPlaceholder="Cerca formato..."
       >
-        <Pressable
-          style={({ pressed }) => [
-            styles.filterModalOption,
-            styles.filterModalOptionWithBorder,
-            pressed && { backgroundColor: "#E3F2FD" }
-          ]}
-          onPress={() => {
-            setPlayersFilter(null);
-            setShowPlayersPicker(false);
-          }}
-        >
-          <Text style={styles.filterModalOptionText}>✨ Tutti i formati</Text>
-        </Pressable>
-        {playersOptions.map((option, index) => (
-          <Pressable
-            key={option}
-            style={({ pressed }) => [
-              styles.filterModalOption,
-              index < playersOptions.length - 1 && styles.filterModalOptionWithBorder,
-              pressed && { backgroundColor: "#E3F2FD" }
-            ]}
-            onPress={() => {
-              setPlayersFilter(option);
-              setShowPlayersPicker(false);
-            }}
-          >
-            <Ionicons name="people" size={16} color="#2196F3" />
-            <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{option}</Text>
-          </Pressable>
-        ))}
+        {(search) => (
+          <>
+            <Pressable
+              style={({ pressed }) => [
+                styles.filterModalOption,
+                styles.filterModalOptionWithBorder,
+                pressed && { backgroundColor: "#E3F2FD" }
+              ]}
+              onPress={() => {
+                setPlayersFilter(null);
+                setShowPlayersPicker(false);
+              }}
+            >
+              <Text style={styles.filterModalOptionText}>✨ Tutti i formati</Text>
+            </Pressable>
+            {playersOptions.filter(o => o.toLowerCase().includes(search.toLowerCase())).map((option, index) => (
+              <Pressable
+                key={option}
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  index < playersOptions.length - 1 && styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
+                onPress={() => {
+                  setPlayersFilter(option);
+                  setShowPlayersPicker(false);
+                }}
+              >
+                <Ionicons name="people" size={16} color="#2196F3" />
+                <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{option}</Text>
+              </Pressable>
+            ))}
+          </>
+        )}
       </FilterModal>
 
       <FilterModal
@@ -1431,24 +1441,30 @@ export default function CercaPartitaScreen() {
         title="Seleziona un orario"
         onClose={() => setShowTimePicker(false)}
         contentScrollable
+        searchable
+        searchPlaceholder="Cerca orario..."
       >
-        {timeSlots.map((slot, index) => (
-          <Pressable
-            key={slot}
-            style={({ pressed }) => [
-              styles.filterModalOption,
-              index < timeSlots.length - 1 && styles.filterModalOptionWithBorder,
-              pressed && { backgroundColor: "#E3F2FD" }
-            ]}
-            onPress={() => {
-              setTimeFilter(slot);
-              setShowTimePicker(false);
-            }}
-          >
-            <Ionicons name="time" size={16} color="#2196F3" />
-            <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{slot}</Text>
-          </Pressable>
-        ))}
+        {(search) => (
+          <>
+            {timeSlots.filter(s => s.toLowerCase().includes(search.toLowerCase())).map((slot, index) => (
+              <Pressable
+                key={slot}
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  index < timeSlots.length - 1 && styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" }
+                ]}
+                onPress={() => {
+                  setTimeFilter(slot);
+                  setShowTimePicker(false);
+                }}
+              >
+                <Ionicons name="time" size={16} color="#2196F3" />
+                <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{slot}</Text>
+              </Pressable>
+            ))}
+          </>
+        )}
       </FilterModal>
 
       {/* 🆕 Overlay selezione città iniziale - Non blocca i tab */}
@@ -1962,97 +1978,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1a1a1a",
-  },
-  timeList: {
-    paddingBottom: 8,
-  },
-  timeSlot: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 8,
-  },
-  timeSlotActive: {
-    borderColor: "#2196F3",
-    backgroundColor: "#E3F2FD",
-  },
-  timeSlotText: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "600",
-  },
-  timeSlotTextActive: {
-    color: "#2196F3",
-  },
-  // Nuovi stili per i modal filtri
-  centeredModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  filterModal: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    marginHorizontal: 40,
-    width: "85%",
-    maxHeight: "75%",
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
-    overflow: "hidden",
-  },
-  filterModalHeader: {
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-    backgroundColor: "#2196F3",
-    minHeight: 70,
-  },
-  filterModalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
-    textAlign: "center",
-  },
-  filterModalSubtitle: {
-    fontSize: 12,
-    color: '#E3F2FD',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  filterModalContent: {
-    maxHeight: 350,
-    paddingTop: 8,
-  },
+  // Stili opzioni contenuto dei FilterModal
   filterModalOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2070,26 +1996,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "600",
-  },
-  filterModalFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: "#f8f9fa",
-  },
-  filterModalCancel: {
-    width: "100%",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: "white",
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
-    alignItems: "center",
-  },
-  filterModalCancelText: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "700",
   },
   calendarContainer: {
     padding: 16,

@@ -46,6 +46,63 @@ type MatchCardProps = {
 export default function MatchCard({ match, onPress }: MatchCardProps) {
   const { booking, players, maxPlayers, status, isPublic, createdBy } = match;
 
+  const renderTeamAvatars = (
+    teamPlayers: Array<{
+      user: {
+        _id: string;
+        name: string;
+        avatarUrl?: string;
+      };
+      team: "A" | "B";
+      status: string;
+    }>,
+    borderColor: string
+  ) => {
+    if (teamPlayers.length <= 3) {
+      return teamPlayers.slice(0, 3).map((player) => (
+        <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor }]}> 
+          {player.user.avatarUrl ? (
+            <Image
+              source={{ uri: player.user.avatarUrl }}
+              style={styles.matchPlayerAvatarImage}
+            />
+          ) : (
+            <View style={styles.matchPlayerAvatarPlaceholder}>
+              <Ionicons name="person" size={12} color={borderColor} />
+            </View>
+          )}
+        </View>
+      ));
+    }
+
+    return [
+      ...teamPlayers.slice(0, 2).map((player) => (
+        <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor }]}> 
+          {player.user.avatarUrl ? (
+            <Image
+              source={{ uri: player.user.avatarUrl }}
+              style={styles.matchPlayerAvatarImage}
+            />
+          ) : (
+            <View style={styles.matchPlayerAvatarPlaceholder}>
+              <Ionicons name="person" size={12} color={borderColor} />
+            </View>
+          )}
+        </View>
+      )),
+      <View
+        key={`more-${borderColor}`}
+        style={[
+          styles.matchPlayerAvatar,
+          styles.matchPlayerAvatarMore,
+          { borderColor },
+        ]}
+      >
+        <Text style={[styles.matchPlayerAvatarMoreText, { color: borderColor }]}>+{teamPlayers.length - 2}</Text>
+      </View>,
+    ];
+  };
+
   // Verifica che booking sia valido
   if (!booking || !booking.campo || !booking.campo.struttura) {
     console.log("⚠️ [MatchCard] Dati booking incompleti:", {
@@ -208,20 +265,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
               <Text style={[styles.matchTeamLabel, { color: "#F44336" }]}>Team A</Text>
             </View>
             <View style={styles.matchPlayersRow}>
-              {teamA.slice(0, 3).map((player) => (
-                <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor: "#F44336" }]}>
-                  {player.user.avatarUrl ? (
-                    <Image
-                      source={{ uri: player.user.avatarUrl }}
-                      style={styles.matchPlayerAvatarImage}
-                    />
-                  ) : (
-                    <View style={styles.matchPlayerAvatarPlaceholder}>
-                      <Ionicons name="person" size={12} color="#F44336" />
-                    </View>
-                  )}
-                </View>
-              ))}
+              {renderTeamAvatars(teamA, "#F44336")}
               <Text style={styles.matchPlayersCount}>
                 {teamA.length}/{playersPerTeam}
               </Text>
@@ -237,20 +281,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
               <Text style={[styles.matchTeamLabel, { color: "#2196F3" }]}>Team B</Text>
             </View>
             <View style={styles.matchPlayersRow}>
-              {teamB.slice(0, 3).map((player) => (
-                <View key={player.user._id} style={[styles.matchPlayerAvatar, { borderColor: "#2196F3" }]}>
-                  {player.user.avatarUrl ? (
-                    <Image
-                      source={{ uri: player.user.avatarUrl }}
-                      style={styles.matchPlayerAvatarImage}
-                    />
-                  ) : (
-                    <View style={styles.matchPlayerAvatarPlaceholder}>
-                      <Ionicons name="person" size={12} color="#2196F3" />
-                    </View>
-                  )}
-                </View>
-              ))}
+              {renderTeamAvatars(teamB, "#2196F3")}
               <Text style={styles.matchPlayersCount}>
                 {teamB.length}/{playersPerTeam}
               </Text>

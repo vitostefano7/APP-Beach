@@ -329,7 +329,20 @@ export default function RegisterScreen({ navigation }: any) {
         return;
       }
 
-      // ✅ Naviga alla schermata di setup preferenze
+      // ✅ Owner: login diretto senza setup preferenze
+      if (data.role === "owner") {
+        await login(data.token, {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          avatarUrl: data.avatarUrl,
+          createdAt: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // ✅ Player: naviga alla schermata di setup preferenze
       navigation.navigate("SetupPreferences", {
         userId: data.id,
         token: data.token,

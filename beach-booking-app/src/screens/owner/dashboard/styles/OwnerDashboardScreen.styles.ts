@@ -238,22 +238,23 @@ export const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 8,
     borderRadius: 18,
-    padding: 10,
+    overflow: "hidden",
+    paddingBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
 
   bookingHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f8f8f8",
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
   },
 
   bookingTimeWrapper: {
@@ -262,10 +263,19 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
 
+  timeLabel: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+
   bookingTime: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#1a1a1a",
+    fontWeight: "700",
+    color: "#ffffff",
   },
 
   statusBadge: {
@@ -283,23 +293,24 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 12,
   },
 
   bookingInfo: {
     flex: 1,
-    gap: 3,
+    gap: 5,
   },
 
   bookingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 6,
   },
 
   bookingText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "400",
+    fontSize: 13,
+    color: "#1a1a1a",
+    fontWeight: "500",
   },
 
   bookingActions: {
@@ -779,6 +790,15 @@ export const styles = StyleSheet.create({
     backgroundColor: "#EEF6FF",
     justifyContent: "center",
     alignItems: "center",
+  },
+  matchPlayerAvatarMore: {
+    backgroundColor: "#EEF6FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  matchPlayerAvatarMoreText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
   matchPlayersCount: {
     fontSize: 11,

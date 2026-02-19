@@ -90,7 +90,7 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
     
     // 1. Crea almeno 2 booking passati per ogni sport
     for (const sportCode of sportCodes) {
-      for (let j = 0; j < 2; j++) { // Loop 2 volte per ogni sport
+      for (let j = 0; j < 15; j++) { // Loop 15 volte per ogni sport
         const campiForSport = campiPerSport.get(sportCode)!;
         if (campiForSport.length === 0) continue;
         
@@ -101,7 +101,7 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
         if (!struttura) continue;
         
         const pastDate = new Date(today);
-        pastDate.setDate(pastDate.getDate() - randomInt(2, 30));
+        pastDate.setDate(pastDate.getDate() - randomInt(1, 90));
         
         // Numero giocatori basato sullo sport
         const sport = campo.sport;
@@ -120,8 +120,8 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       }
     }
     
-    // 2. Aggiungi altre prenotazioni passate casuali per varietà (2 booking)
-    for (let i = 0; i < 2; i++) {
+    // 2. Aggiungi altre prenotazioni passate casuali per varietà (30 booking)
+    for (let i = 0; i < 30; i++) {
       const sportCode = randomElement(sportCodes);
       const campiForSport = campiPerSport.get(sportCode)!;
       if (campiForSport.length === 0) continue;
@@ -133,7 +133,7 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       if (!struttura) continue;
       
       const pastDate = new Date(today);
-      pastDate.setDate(pastDate.getDate() - randomInt(2, 30));
+      pastDate.setDate(pastDate.getDate() - randomInt(1, 90));
       
       const sport = campo.sport;
       let numPeople = undefined;
@@ -150,8 +150,8 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
     }
 
-    // 3. Aggiungi 2 prenotazioni per oggi (sport casuali)
-    for (let i = 0; i < 2; i++) {
+    // 3. Aggiungi 6 prenotazioni per oggi (sport casuali)
+    for (let i = 0; i < 6; i++) {
       const sportCode = randomElement(sportCodes);
       const campiForSport = campiPerSport.get(sportCode)!;
       if (campiForSport.length === 0) continue;
@@ -177,8 +177,8 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       sportBookingsCount.set(sportCode, sportBookingsCount.get(sportCode)! + 1);
     }
 
-    // 4. Aggiungi 4 prenotazioni future (sport casuali)
-    for (let i = 0; i < 4; i++) {
+    // 4. Aggiungi 15 prenotazioni future (sport casuali)
+    for (let i = 0; i < 15; i++) {
       const sportCode = randomElement(sportCodes);
       const campiForSport = campiPerSport.get(sportCode)!;
       if (campiForSport.length === 0) continue;
@@ -190,7 +190,7 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       if (!struttura) continue;
       
       const futureDate = new Date(today);
-      futureDate.setDate(futureDate.getDate() + randomInt(1, 10));
+      futureDate.setDate(futureDate.getDate() + randomInt(1, 60));
       
       const sport = campo.sport;
       let numPeople = undefined;

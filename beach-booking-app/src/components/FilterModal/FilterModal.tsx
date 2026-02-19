@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState, useRef, useEffect } from "react";
 import {
   Modal,
   View,
@@ -8,14 +8,19 @@ import {
   StyleSheet,
   StyleProp,
   ViewStyle,
+  TextInput,
+  Keyboard,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+type ChildrenProp = ((searchText: string) => ReactNode) | ReactNode;
 
 interface FilterModalProps {
   visible: boolean;
   title: string;
   subtitle?: string;
   onClose: () => void;
-  children: ReactNode;
+  children: ChildrenProp;
   cancelText?: string;
   showCancelButton?: boolean;
   contentScrollable?: boolean;
@@ -23,6 +28,8 @@ interface FilterModalProps {
   modalStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   footer?: ReactNode;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
 
 export default function FilterModal({
@@ -38,16 +45,44 @@ export default function FilterModal({
   modalStyle,
   contentContainerStyle,
   footer,
+  searchable = false,
+  searchPlaceholder = "Cerca...",
 }: FilterModalProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const inputRef = useRef<TextInput>(null);
+
+  // Reset ricerca quando il modal viene chiuso
+  useEffect(() => {
+    if (!visible) {
+      setSearchOpen(false);
+      setSearchText("");
+    }
+  }, [visible]);
+
+  const handleToggleSearch = () => {
+    if (searchOpen) {
+      setSearchOpen(false);
+      setSearchText("");
+      Keyboard.dismiss();
+    } else {
+      setSearchOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
+
+  const resolvedChildren =
+    typeof children === "function" ? children(searchText) : children;
+
   const content = contentScrollable ? (
     <ScrollView
       style={[styles.filterModalContent, contentContainerStyle]}
       showsVerticalScrollIndicator={false}
     >
-      {children}
+      {resolvedChildren}
     </ScrollView>
   ) : (
-    <View style={[styles.filterModalContent, contentContainerStyle]}>{children}</View>
+    <View style={[styles.filterModalContent, contentContainerStyle]}>{resolvedChildren}</View>
   );
 
   return (
@@ -63,9 +98,45 @@ export default function FilterModal({
       >
         <Pressable style={[styles.filterModal, modalStyle]} onPress={(event) => event.stopPropagation()}>
           <View style={styles.filterModalHeader}>
-            <Text style={styles.filterModalTitle}>{title}</Text>
-            {subtitle ? <Text style={styles.filterModalSubtitle}>{subtitle}</Text> : null}
+            {/* Spacer sinistro per centrare il titolo */}
+            <View style={styles.filterModalHeaderSide} />
+            <View style={styles.filterModalHeaderCenter}>
+              <Text style={styles.filterModalTitle}>{title}</Text>
+              {subtitle ? <Text style={styles.filterModalSubtitle}>{subtitle}</Text> : null}
+            </View>
+            <View style={styles.filterModalHeaderSide}>
+              {searchable && (
+                <Pressable onPress={handleToggleSearch} style={styles.searchIconButton}>
+                  <Ionicons
+                    name={searchOpen ? "close" : "search"}
+                    size={22}
+                    color="white"
+                  />
+                </Pressable>
+              )}
+            </View>
           </View>
+
+          {searchable && searchOpen && (
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={16} color="#999" style={styles.searchBarIcon} />
+              <TextInput
+                ref={inputRef}
+                style={styles.searchBarInput}
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder={searchPlaceholder}
+                placeholderTextColor="#bbb"
+                returnKeyType="search"
+                onSubmitEditing={Keyboard.dismiss}
+              />
+              {searchText.length > 0 && (
+                <Pressable onPress={() => setSearchText("")}>
+                  <Ionicons name="close-circle" size={18} color="#bbb" />
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {content}
 
@@ -105,14 +176,46 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   filterModalHeader: {
-    flexDirection: "column",
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 20,
     backgroundColor: "#2196F3",
     minHeight: 70,
+  },
+  filterModalHeaderSide: {
+    width: 40,
+    alignItems: "flex-end",
+  },
+  filterModalHeaderCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  searchIconButton: {
+    padding: 6,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f4ff",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#dce8ff",
+  },
+  searchBarIcon: {
+    marginRight: 6,
+  },
+  searchBarInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    paddingVertical: 0,
   },
   filterModalTitle: {
     fontSize: 18,

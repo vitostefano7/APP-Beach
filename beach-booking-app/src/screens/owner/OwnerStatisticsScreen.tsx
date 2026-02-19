@@ -12,30 +12,33 @@ import { useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { BarChart, LineChart } from "react-native-gifted-charts";
-import { Picker } from '@react-native-picker/picker';
-import { Platform } from 'react-native';
+import { BarChart } from "react-native-gifted-charts";
 import API_URL from "../../config/api";
-import { useOwnerStats } from "../../hooks/useOwnerStats";
+import { useOwnerDashboardStats } from "../../hooks/useOwnerDashboardStats";
+import FilterModal from "../../components/FilterModal";
+import SportIcon from "../../components/SportIcon";
+import { Avatar } from "../../components/Avatar";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface Booking {
-  _id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: string;
+  _id?: string;
+  id?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  status?: string;
   duration?: number;
-  user: {
+  price?: number;
+  user?: {
     _id: string;
     name: string;
     surname?: string;
   };
-  campo: {
-    struttura: {
-      _id: string;
-      name: string;
+  campo?: {
+    struttura?: {
+      _id?: string;
+      name?: string;
     };
   };
 }
@@ -49,6 +52,8 @@ interface Campo {
   _id: string;
   name: string;
   struttura: string;
+  sport?: string | { _id: string; name: string; [key: string]: any };
+  type?: string | { _id: string; name: string; [key: string]: any };
   weeklySchedule?: any;
 }
 
@@ -58,9 +63,12 @@ interface User {
   surname?: string;
 }
 
+type DurationFilter = "all" | 1 | 1.5;
+
 export default function OwnerStatisticsScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const periodOptions = [7, 14, 30, 60, 90] as const;
 
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -70,6 +78,12 @@ export default function OwnerStatisticsScreen() {
   
   const [selectedStruttura, setSelectedStruttura] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<string>("all");
+  const [selectedPeriodDays, setSelectedPeriodDays] = useState<(typeof periodOptions)[number]>(30);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [activeFilterType, setActiveFilterType] = useState<"struttura" | "cliente" | "periodo" | "sport" | null>(null);
+  const [durationFilter, setDurationFilter] = useState<DurationFilter>("all");
+  const [selectedSport, setSelectedSport] = useState<string>("all");
+  const [expandedSlots, setExpandedSlots] = useState<Record<string, boolean>>({});
 
   // Carica dati
   const loadData = useCallback(async () => {
@@ -137,157 +151,216 @@ export default function OwnerStatisticsScreen() {
   }, [loadData]);
 
   // Filtra strutture e campi in base ai filtri selezionati
-  const filteredStrutture = selectedStruttura === "all" 
-    ? strutture 
-    : strutture.filter(s => s._id === selectedStruttura);
-
-  const filteredCampi = selectedStruttura === "all"
-    ? campi
-    : campi.filter(c => c.struttura === selectedStruttura);
-
-  // Filtra prenotazioni
-  const filteredBookings = bookings.filter((b) => {
-    if (selectedStruttura !== "all" && b.campo?.struttura?._id !== selectedStruttura) {
-      return false;
-    }
-    if (selectedUser !== "all" && b.user?._id !== selectedUser) {
-      return false;
-    }
-    return true;
+  const {
+    filteredStrutture,
+    filteredCampi,
+    periodFilteredBookings,
+    hourlyStats,
+    weeklyStats,
+    topHours,
+    topUsersBySlot,
+    struttureStats,
+    ownerStats: stats,
+  } = useOwnerDashboardStats({
+    bookings,
+    strutture,
+    campi,
+    selectedStruttura,
+    selectedUser,
+    selectedPeriodDays,
+    durationFilter,
+    selectedSport,
   });
 
-  // Calcola statistiche con tasso occupazione (usa dati filtrati)
-  const stats = useOwnerStats(filteredBookings, filteredStrutture, filteredCampi);
 
-  // Calcola tasso occupazione per ogni struttura usando useMemo
-  const struttureStats = useMemo(() => {
-    return strutture.map(struttura => {
-      const strutturaCampi = campi.filter(c => c.struttura === struttura._id);
-      const strutturaBookings = bookings.filter(b => b.campo?.struttura?._id === struttura._id);
-      const strutturaObj = [struttura];
-      
-      // Calcola inline le statistiche
-      const confirmedBookings = strutturaBookings.filter(b => b.status === "confirmed");
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const monthAgo = new Date(today);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      
-      const bookingsLastMonth = confirmedBookings.filter((b) => {
-        const bookingDate = new Date(b.date || b.startTime);
-        return bookingDate >= monthAgo && bookingDate < today;
-      });
-      
-      const orePrenotateMese = bookingsLastMonth.reduce((sum, b) => {
-        // Usa duration se presente, altrimenti calcola da startTime/endTime
-        let duration = b.duration || 1;
-        if (!b.duration && b.startTime && b.endTime) {
-          try {
-            const [startH, startM] = b.startTime.split(':').map(Number);
-            const [endH, endM] = b.endTime.split(':').map(Number);
-            const calc = (endH + endM / 60) - (startH + startM / 60);
-            if (calc > 0) duration = calc;
-          } catch (e) {
-            duration = 1;
-          }
-        }
-        console.log(`      📝 [LOG] Booking ${b._id}: startTime=${b.startTime} endTime=${b.endTime} duration=${b.duration} → usato=${duration}h`);
-        return sum + duration;
-      }, 0);
-      
-      // Calcola ore disponibili
-      const oreSettimanali = strutturaCampi.reduce((total, campo) => {
-        if (!campo.weeklySchedule) return total;
-        let weeklyHours = 0;
-        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        for (const day of days) {
-          const schedule = campo.weeklySchedule[day];
-          if (schedule && schedule.enabled !== false && schedule.closed !== true && schedule.open && schedule.close) {
-            const [openH, openM] = schedule.open.split(':').map(Number);
-            const [closeH, closeM] = schedule.close.split(':').map(Number);
-            const hours = (closeH + closeM / 60) - (openH + openM / 60);
-            weeklyHours += hours > 0 ? hours : 0;
-          }
-        }
-        return total + weeklyHours;
-      }, 0);
-      
-      const oreMensili = oreSettimanali * 4.33;
-      const tassoOccupazione = oreMensili > 0 ? Math.min(100, Math.round((orePrenotateMese / oreMensili) * 100)) : 0;
-      
-      return {
-        struttura,
-        campiCount: strutturaCampi.length,
-        bookingsTotal: strutturaBookings.length,
-        bookingsConfirmed: confirmedBookings.length,
-        tassoOccupazione
-      };
+  const selectedUserLabel = useMemo(() => {
+    if (selectedUser === "all") return "Tutti";
+    const user = users.find((u) => u._id === selectedUser);
+    if (!user) return "Tutti";
+
+    const fullName = `${user.name}${user.surname ? " " + user.surname : ""}`;
+    return fullName.length > 28 ? `${fullName.slice(0, 25)}...` : fullName;
+  }, [selectedUser, users]);
+
+  const selectedStrutturaLabel = useMemo(() => {
+    if (selectedStruttura === "all") return "Tutte";
+    return strutture.find((s) => s._id === selectedStruttura)?.name || "Tutte";
+  }, [selectedStruttura, strutture]);
+
+  const selectedPeriodLabel = useMemo(() => {
+    return `Ultimi ${selectedPeriodDays} giorni`;
+  }, [selectedPeriodDays]);
+
+  const getSportName = (sport: any): string | undefined => {
+    if (!sport) return undefined;
+    if (typeof sport === "string") return sport;
+    if (typeof sport === "object") return sport.name || sport._id;
+    return undefined;
+  };
+
+  const availableSports = useMemo(() => {
+    const sportsSet = new Set<string>();
+    campi.forEach((c) => {
+      const s = getSportName(c.sport) ?? getSportName(c.type);
+      if (s) sportsSet.add(s);
     });
-  }, [bookings, strutture, campi]);
+    return Array.from(sportsSet).sort();
+  }, [campi]);
 
-  // Log dettagliato tasso occupazione per ogni struttura
+  const selectedSportLabel = useMemo(() => {
+    if (selectedSport === "all") return "Tutti";
+    return selectedSport.length > 20 ? `${selectedSport.slice(0, 17)}...` : selectedSport;
+  }, [selectedSport]);
+
+  const selectedDurationHours = durationFilter === 1.5 ? 1.5 : 1;
+
+  const sportBookingsStats = useMemo(() => {
+    const sportCountMap = new Map<string, number>();
+
+    periodFilteredBookings.forEach((booking) => {
+      const bookingCampo: any = booking.campo;
+      const bookingCampoId =
+        typeof bookingCampo === "string"
+          ? bookingCampo
+          : bookingCampo?._id || bookingCampo?.id;
+
+      const campoFromList = campi.find((c) => c._id === bookingCampoId);
+      const sportName =
+        getSportName(campoFromList?.sport) ||
+        getSportName(campoFromList?.type) ||
+        getSportName((bookingCampo as any)?.sport) ||
+        getSportName((bookingCampo as any)?.type);
+
+      const normalizedSport = sportName || "Non specificato";
+      sportCountMap.set(normalizedSport, (sportCountMap.get(normalizedSport) || 0) + 1);
+    });
+
+    return Array.from(sportCountMap.entries())
+      .map(([sport, count]) => ({ sport, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [periodFilteredBookings, campi]);
+
+  const maxSportBookings = useMemo(
+    () => sportBookingsStats.reduce((max, item) => Math.max(max, item.count), 0),
+    [sportBookingsStats]
+  );
+
+  const topUsers = useMemo(() => {
+    const usersMap = new Map<string, { id: string; fullName: string; count: number }>();
+
+    periodFilteredBookings.forEach((booking) => {
+      const user = booking.user;
+      if (!user?._id) return;
+
+      const fullName = `${user.name}${user.surname ? ` ${user.surname}` : ""}`.trim() || "Utente";
+      const existing = usersMap.get(user._id);
+
+      if (existing) {
+        existing.count += 1;
+      } else {
+        usersMap.set(user._id, {
+          id: user._id,
+          fullName,
+          count: 1,
+        });
+      }
+    });
+
+    return Array.from(usersMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [periodFilteredBookings]);
+
+
+
+  // Debug logs disabled to reduce console noise (previously printed detailed occupazione per struttura)
   useEffect(() => {
-    if (struttureStats.length > 0) {
-      console.log('\n📊 ========== TASSO OCCUPAZIONE PER STRUTTURA ==========');
-      
-      struttureStats.forEach(stat => {
-        console.log(`\n🏢 ${stat.struttura.name} (${stat.struttura._id})`);
-        console.log(`   • Campi: ${stat.campiCount}`);
-        console.log(`   • Prenotazioni totali: ${stat.bookingsTotal}`);
-        console.log(`   • Prenotazioni confermate: ${stat.bookingsConfirmed}`);
-        console.log(`   • 📈 TASSO OCCUPAZIONE: ${stat.tassoOccupazione}%`);
-      });
-      
-      console.log('\n🔍 Tasso occupazione attuale visualizzato nel tile: ' + stats.tassoOccupazione + '%');
-      console.log('   (Filtro: ' + (selectedStruttura === 'all' ? 'TUTTE LE STRUTTURE' : strutture.find(s => s._id === selectedStruttura)?.name || selectedStruttura) + ')');
-      console.log('====================================================\n');
-    }
+    // intentionally left empty
   }, [struttureStats, stats.tassoOccupazione, selectedStruttura, strutture]);
 
-  // Calcola statistiche orarie per settimana
-  const getHourlyStats = () => {
-    const hourlyData = new Array(24).fill(0);
+  const WEEKLY_BAR_WIDTH = 32;
+  const WEEKLY_SPACING = 18;
+  const WEEKLY_NO_OF_SECTIONS = 5;
+  const WEEKLY_CHART_HEIGHT = 200;
 
-    filteredBookings.forEach((booking) => {
-      try {
-        const hour = parseInt(booking.startTime.split(":")[0]);
-        if (hour >= 0 && hour < 24) {
-          hourlyData[hour]++;
-        }
-      } catch (e) {
-        console.log("Errore parsing ora:", e);
-      }
-    });
+  const weeklyMaxValue = useMemo(
+    () => weeklyStats.data.reduce((max, value) => Math.max(max, value), 0),
+    [weeklyStats.data]
+  );
 
-    return hourlyData;
+  const weeklyAxisMax = useMemo(() => {
+    if (weeklyMaxValue <= 0) return WEEKLY_NO_OF_SECTIONS;
+    return Math.ceil(weeklyMaxValue / WEEKLY_NO_OF_SECTIONS) * WEEKLY_NO_OF_SECTIONS;
+  }, [weeklyMaxValue]);
+
+  const weeklyYAxisLabels = useMemo(() => {
+    const step = weeklyAxisMax / WEEKLY_NO_OF_SECTIONS;
+    return Array.from({ length: WEEKLY_NO_OF_SECTIONS + 1 }, (_, index) =>
+      Math.round(weeklyAxisMax - step * index)
+    );
+  }, [weeklyAxisMax]);
+
+  const weeklyViewportWidth = SCREEN_WIDTH - 120;
+  const weeklyContentWidth =
+    weeklyStats.data.length * (WEEKLY_BAR_WIDTH + WEEKLY_SPACING) + 24;
+  const weeklyChartWidth = Math.max(
+    weeklyViewportWidth + 24,
+    weeklyContentWidth
+  );
+
+  const hourlyChartData = useMemo(
+    () =>
+      hourlyStats
+        .map((value, hour) => ({ hour, value }))
+        .filter((item) => item.value > 0),
+    [hourlyStats]
+  );
+
+  const HOURLY_NO_OF_SECTIONS = 5;
+  const HOURLY_CHART_HEIGHT = 200;
+  const HOURLY_BAR_WIDTH = 14;
+  const HOURLY_SPACING = 12;
+
+  const hourlyMaxValue = useMemo(
+    () => hourlyChartData.reduce((max, item) => Math.max(max, item.value), 0),
+    [hourlyChartData]
+  );
+
+  const hourlyAxisMax = useMemo(() => {
+    if (hourlyMaxValue <= 0) return HOURLY_NO_OF_SECTIONS;
+    return Math.ceil(hourlyMaxValue / HOURLY_NO_OF_SECTIONS) * HOURLY_NO_OF_SECTIONS;
+  }, [hourlyMaxValue]);
+
+  const hourlyYAxisLabels = useMemo(() => {
+    const step = hourlyAxisMax / HOURLY_NO_OF_SECTIONS;
+    return Array.from({ length: HOURLY_NO_OF_SECTIONS + 1 }, (_, index) =>
+      Math.round(hourlyAxisMax - step * index)
+    );
+  }, [hourlyAxisMax]);
+
+  const hourlyViewportWidth = SCREEN_WIDTH - 120;
+  const hourlyContentWidth =
+    hourlyChartData.length * (HOURLY_BAR_WIDTH + HOURLY_SPACING) + 24;
+  const hourlyChartWidth = Math.max(
+    hourlyViewportWidth + 24,
+    hourlyContentWidth
+  );
+
+  const formatSlotTime = (decimalHour: number) => {
+    const h = Math.floor(decimalHour);
+    const m = Math.round((decimalHour - h) * 60);
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   };
 
-  // Calcola statistiche giornaliere per settimana
-  const getWeeklyStats = () => {
-    const weekDays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-    const weeklyData = new Array(7).fill(0);
+  const weeklyChartKey = useMemo(
+    () => `weekly-${selectedStruttura}-${selectedUser}-${selectedPeriodDays}-${weeklyStats.data.join("-")}`,
+    [selectedStruttura, selectedUser, selectedPeriodDays, weeklyStats.data]
+  );
 
-    filteredBookings.forEach((booking) => {
-      try {
-        const date = new Date(booking.date + "T12:00:00");
-        const dayOfWeek = (date.getDay() + 6) % 7; // Lunedì = 0
-        weeklyData[dayOfWeek]++;
-      } catch (e) {
-        console.log("Errore parsing data:", e);
-      }
-    });
-
-    return { labels: weekDays, data: weeklyData };
-  };
-
-  const hourlyStats = getHourlyStats();
-  const weeklyStats = getWeeklyStats();
-
-  // Top 5 ore più prenotate
-  const topHours = hourlyStats
-    .map((count, hour) => ({ hour, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+  const hourlyChartKey = useMemo(
+    () => `hourly-${selectedStruttura}-${selectedUser}-${selectedPeriodDays}-${durationFilter}-${hourlyStats.join("-")}`,
+    [selectedStruttura, selectedUser, selectedPeriodDays, durationFilter, hourlyStats]
+  );
 
   if (loading) {
     return (
@@ -302,7 +375,10 @@ export default function OwnerStatisticsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+      >
         {/* HEADER */}
         <View style={styles.header}>
           <Pressable
@@ -315,81 +391,83 @@ export default function OwnerStatisticsScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* FILTRO STRUTTURE */}
+        {/* FILTRI */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Filtra per Struttura</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
+          <Text style={styles.filterLabel}>Filtri</Text>
+          <View style={styles.singleFiltersRow}>
             <Pressable
-              style={[
-                styles.filterChip,
-                selectedStruttura === "all" && styles.filterChipActive,
+              style={({ pressed }) => [
+                styles.singleFilterChip,
+                selectedStruttura !== "all" && styles.filterChipActive,
+                pressed && { opacity: 0.85 },
               ]}
-              onPress={() => setSelectedStruttura("all")}
+              onPress={() => {
+                setActiveFilterType("struttura");
+                setFilterModalVisible(true);
+              }}
             >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  selectedStruttura === "all" && styles.filterChipTextActive,
-                ]}
-              >
-                Tutte
-              </Text>
+              <View style={styles.singleFilterChipLeft}>
+                <Ionicons name="business-outline" size={16} color={selectedStruttura !== "all" ? "white" : "#2196F3"} />
+                <Text style={[styles.singleFilterChipText, selectedStruttura !== "all" && styles.filterChipTextActive]}>Struttura: {selectedStrutturaLabel}</Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={selectedStruttura !== "all" ? "white" : "#2196F3"} />
             </Pressable>
 
-            {strutture.map((struttura) => (
-              <Pressable
-                key={struttura._id}
-                style={[
-                  styles.filterChip,
-                  selectedStruttura === struttura._id && styles.filterChipActive,
-                ]}
-                onPress={() => setSelectedStruttura(struttura._id)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedStruttura === struttura._id &&
-                      styles.filterChipTextActive,
-                  ]}
-                >
-                  {struttura.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* FILTRO UTENTI (DROPDOWN) */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Filtra per Cliente</Text>
-          <View style={styles.pickerModernWrapper}>
-            <Picker
-              selectedValue={selectedUser}
-              onValueChange={(itemValue) => setSelectedUser(itemValue)}
-              style={styles.pickerModern}
-              dropdownIconColor="#2196F3"
-              mode="dropdown"
-              itemStyle={{ fontWeight: '600' }}
+            <Pressable
+              style={({ pressed }) => [
+                styles.singleFilterChip,
+                selectedUser !== "all" && styles.filterChipActive,
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={() => {
+                setActiveFilterType("cliente");
+                setFilterModalVisible(true);
+              }}
             >
-              <Picker.Item label="Tutti" value="all" color="#2196F3" style={{fontWeight:'700'}} />
-                {users.map((user) => {
-                  let label = `${user.name}${user.surname ? ' ' + user.surname : ''}`;
-                  if (label.length > 28) label = label.slice(0, 25) + '...';
-                  return (
-                    <Picker.Item
-                      key={user._id}
-                      label={label}
-                      value={user._id}
-                      color="#1a1a1a"
-                    />
-                  );
-                })}
-            </Picker>
-            <Ionicons name="chevron-down" size={20} color="#2196F3" style={styles.pickerIcon} pointerEvents="none" />
+              <View style={styles.singleFilterChipLeft}>
+                <Ionicons name="person-outline" size={16} color={selectedUser !== "all" ? "white" : "#2196F3"} />
+                <Text style={[styles.singleFilterChipText, selectedUser !== "all" && styles.filterChipTextActive]}>Cliente: {selectedUserLabel}</Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={selectedUser !== "all" ? "white" : "#2196F3"} />
+            </Pressable>
+
+            {availableSports.length > 0 && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.singleFilterChip,
+                  selectedSport !== "all" && styles.filterChipActive,
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={() => {
+                  setActiveFilterType("sport");
+                  setFilterModalVisible(true);
+                }}
+              >
+                <View style={styles.singleFilterChipLeft}>
+                  <SportIcon sport={selectedSport === "all" ? undefined : selectedSport} size={16} color={selectedSport !== "all" ? "white" : "#2196F3"} />
+                  <Text style={[styles.singleFilterChipText, selectedSport !== "all" && styles.filterChipTextActive]}>Sport: {selectedSportLabel}</Text>
+                </View>
+                <Ionicons name="chevron-down" size={18} color={selectedSport !== "all" ? "white" : "#2196F3"} />
+              </Pressable>
+            )}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.singleFilterChip,
+                selectedPeriodDays !== 30 && styles.filterChipActive,
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={() => {
+                setActiveFilterType("periodo");
+                setFilterModalVisible(true);
+              }}
+            >
+              <View style={styles.singleFilterChipLeft}>
+                <Ionicons name="calendar-outline" size={16} color={selectedPeriodDays !== 30 ? "white" : "#2196F3"} />
+                <Text style={[styles.singleFilterChipText, selectedPeriodDays !== 30 && styles.filterChipTextActive]}>Periodo: {selectedPeriodLabel}</Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={selectedPeriodDays !== 30 ? "white" : "#2196F3"} />
+            </Pressable>
           </View>
         </View>
 
@@ -399,22 +477,16 @@ export default function OwnerStatisticsScreen() {
             <Ionicons name="calendar" size={28} color="#2196F3" />
             <Text style={styles.statValue}>
               <Text style={{ fontSize: 22 }}>
-                {filteredBookings.filter(b => {
+                {periodFilteredBookings.filter(b => {
                   const d = new Date(b.date + "T" + b.endTime);
                   return d < new Date();
                 }).length}
               </Text>
               <Text style={{ fontSize: 14, color: "#999", fontWeight: "700" }}>
-                /{filteredBookings.length}
+                /{periodFilteredBookings.length}
               </Text>
             </Text>
             <Text style={styles.statLabel}>Concluse / Totali</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="pie-chart" size={28} color="#FF9800" />
-            <Text style={styles.statValue}>{stats.tassoOccupazione}%</Text>
-            <Text style={styles.statLabel}>Occupazione</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -423,48 +495,84 @@ export default function OwnerStatisticsScreen() {
               <Text style={{ fontSize: 22 }}>{topHours[0]?.count || 0}</Text>
               <Text style={{ fontSize: 13, color: "#999", fontWeight: "700" }}>
                 {topHours[0]?.count > 0
-                  ? ` / ${topHours[0].hour.toString().padStart(2, "0")}:00`
+                  ? ` / ${formatSlotTime(topHours[0].hour)}`
                   : ""}
               </Text>
             </Text>
             <Text style={styles.statLabel}>Max Prenotazioni / Orario</Text>
           </View>
+
+          {selectedUser === "all" && (
+            <View style={styles.statCard}>
+              <Ionicons name="pie-chart" size={28} color="#FF9800" />
+              <Text style={styles.statValue}>{stats.tassoOccupazione}%</Text>
+              <Text style={styles.statLabel}>Occupazione</Text>
+            </View>
+          )}
         </View>
+
+
 
         {/* GRAFICO SETTIMANALE */}
         <View style={styles.chartSection}>
           <Text style={styles.chartTitle}>Prenotazioni per Giorno</Text>
-          <Text style={styles.chartSubtitle}>Distribuzione settimanale</Text>
+          <Text style={styles.chartSubtitle}>Distribuzione settimanale • {selectedPeriodLabel}</Text>
 
           {weeklyStats.data.some((v) => v > 0) ? (
             <View style={styles.giftedChartContainer}>
-              <BarChart
-                data={weeklyStats.data.map((value, index) => ({
-                  value,
-                  label: weeklyStats.labels[index],
-                  frontColor: "#2196F3",
-                  topLabelComponent: () => (
-                    <Text style={{ fontSize: 11, color: "#2196F3", fontWeight: "700" }}>
-                      {value}
-                    </Text>
-                  ),
-                }))}
-                width={SCREEN_WIDTH - 80}
-                height={200}
-                barWidth={32}
-                spacing={18}
-                noOfSections={5}
-                yAxisThickness={0}
-                xAxisThickness={1}
-                xAxisColor="#E0E0E0"
-                yAxisTextStyle={{ color: "#666", fontSize: 11 }}
-                xAxisLabelTextStyle={{ color: "#666", fontSize: 11, fontWeight: "600" }}
-                isAnimated
-                animationDuration={300}
-                showGradient={false}
-                roundedTop
-                hideRules
-              />
+              <View style={styles.hourlyChartRow}>
+                <View style={styles.hourlyYAxisColumn}>
+                  <View style={[styles.hourlyYAxisLabelsContainer, { height: WEEKLY_CHART_HEIGHT }]}>
+                    {weeklyYAxisLabels.map((tick, index) => (
+                      <Text key={`weekly-tick-${index}`} style={styles.hourlyYAxisLabel}>
+                        {tick}
+                      </Text>
+                    ))}
+                  </View>
+                  <View style={styles.hourlyXAxisSpacer} />
+                </View>
+
+                <View style={styles.hourlyScrollableArea}>
+                  <ScrollView
+                    horizontal
+                    nestedScrollEnabled
+                    directionalLockEnabled
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.weeklyChartScrollContent}
+                  >
+                    <BarChart
+                      key={weeklyChartKey}
+                      data={weeklyStats.data.map((value, index) => ({
+                        value,
+                        label: weeklyStats.labels[index],
+                        frontColor: "#2196F3",
+                        topLabelComponent: () => (
+                          <Text style={{ fontSize: 11, color: "#2196F3", fontWeight: "700" }}>
+                            {value}
+                          </Text>
+                        ),
+                      }))}
+                      width={weeklyChartWidth}
+                      height={WEEKLY_CHART_HEIGHT}
+                      barWidth={WEEKLY_BAR_WIDTH}
+                      spacing={WEEKLY_SPACING}
+                      maxValue={weeklyAxisMax}
+                      noOfSections={WEEKLY_NO_OF_SECTIONS}
+                      yAxisThickness={0}
+                      yAxisLabelWidth={0}
+                      xAxisThickness={1}
+                      xAxisColor="#E0E0E0"
+                      xAxisLabelTextStyle={{ color: "#666", fontSize: 11, fontWeight: "600" }}
+                      isAnimated
+                      animationDuration={300}
+                      showGradient={false}
+                      roundedTop
+                      hideRules
+                      disableScroll
+                    />
+                  </ScrollView>
+                </View>
+              </View>
             </View>
           ) : (
             <View style={styles.emptyChart}>
@@ -476,39 +584,85 @@ export default function OwnerStatisticsScreen() {
 
         {/* GRAFICO ORARIO */}
         <View style={styles.chartSection}>
-          <Text style={styles.chartTitle}>Prenotazioni per Ora</Text>
-          <Text style={styles.chartSubtitle}>Distribuzione nelle 24 ore</Text>
+          <View style={styles.topTitleRow}>
+            <Text style={styles.chartTitle}>Prenotazioni per Ora</Text>
+            <View style={styles.slotToggle}>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === "all" && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter("all")}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === "all" && styles.slotToggleBtnTextActive]}>Tutte</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === 1 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1)}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === 1.5 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1.5)}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
+              </Pressable>
+            </View>
+          </View>
+          <Text style={styles.chartSubtitle}>Distribuzione nelle 24 ore • {selectedPeriodLabel}</Text>
 
           {hourlyStats.some((v) => v > 0) ? (
             <View style={styles.giftedChartContainer}>
-              <LineChart
-                data={hourlyStats.map((value, hour) => ({
-                  value,
-                  label: hour % 4 === 0 ? hour.toString() : "",
-                }))}
-                width={SCREEN_WIDTH - 80}
-                height={200}
-                spacing={14}
-                color="#4CAF50"
-                thickness={3}
-                noOfSections={5}
-                yAxisThickness={0}
-                xAxisThickness={1}
-                xAxisColor="#E0E0E0"
-                yAxisTextStyle={{ color: "#666", fontSize: 11 }}
-                xAxisLabelTextStyle={{ color: "#666", fontSize: 11 }}
-                isAnimated
-                animationDuration={500}
-                curved
-                hideRules
-                dataPointsColor="#4CAF50"
-                dataPointsRadius={4}
-                startFillColor="rgba(76, 175, 80, 0.2)"
-                endFillColor="rgba(76, 175, 80, 0.05)"
-                startOpacity={0.9}
-                endOpacity={0.2}
-                areaChart
-              />
+              <View style={styles.hourlyChartRow}>
+                <View style={styles.hourlyYAxisColumn}>
+                  <View style={[styles.hourlyYAxisLabelsContainer, { height: HOURLY_CHART_HEIGHT }]}>
+                    {hourlyYAxisLabels.map((tick, index) => (
+                      <Text key={`hourly-tick-${index}`} style={styles.hourlyYAxisLabel}>
+                        {tick}
+                      </Text>
+                    ))}
+                  </View>
+                  <View style={styles.hourlyXAxisSpacer} />
+                </View>
+
+                <View style={styles.hourlyScrollableArea}>
+                  <ScrollView
+                    horizontal
+                    nestedScrollEnabled
+                    directionalLockEnabled
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.hourlyChartScrollContent}
+                  >
+                    <BarChart
+                      key={hourlyChartKey}
+                      data={hourlyChartData.map(({ value, hour }) => ({
+                        value,
+                        label: hour.toString().padStart(2, "0"),
+                        frontColor: "#2196F3",
+                        topLabelComponent: () => (
+                          <Text style={{ fontSize: 10, color: "#2196F3", fontWeight: "700" }}>
+                            {value}
+                          </Text>
+                        ),
+                      }))}
+                      width={hourlyChartWidth}
+                      height={HOURLY_CHART_HEIGHT}
+                      barWidth={HOURLY_BAR_WIDTH}
+                      spacing={HOURLY_SPACING}
+                      maxValue={hourlyAxisMax}
+                      noOfSections={HOURLY_NO_OF_SECTIONS}
+                      yAxisThickness={0}
+                      yAxisLabelWidth={0}
+                      xAxisThickness={1}
+                      xAxisColor="#E0E0E0"
+                      xAxisLabelTextStyle={{ color: "#666", fontSize: 10 }}
+                      isAnimated
+                      animationDuration={400}
+                      hideRules
+                      roundedTop
+                      disableScroll
+                    />
+                  </ScrollView>
+                </View>
+              </View>
             </View>
           ) : (
             <View style={styles.emptyChart}>
@@ -518,24 +672,274 @@ export default function OwnerStatisticsScreen() {
           )}
         </View>
 
+        {selectedSport === "all" && (
+          <View style={styles.chartSection}>
+            <Text style={styles.chartTitle}>Prenotazioni per Sport</Text>
+            <Text style={styles.chartSubtitle}>Distribuzione per sport • {selectedPeriodLabel}</Text>
+
+            {sportBookingsStats.length > 0 ? (
+              <View style={styles.giftedChartContainer}>
+                {sportBookingsStats.map((item) => {
+                  const ratio = maxSportBookings > 0 ? item.count / maxSportBookings : 0;
+                  const barWidth = `${Math.max(8, Math.round(ratio * 100))}%`;
+
+                  return (
+                    <View key={item.sport} style={styles.sportRow}>
+                      <View style={styles.sportRowHeader}>
+                        <Text style={styles.sportRowLabel} numberOfLines={1}>
+                          {item.sport}
+                        </Text>
+                        <Text style={styles.sportRowValue}>{item.count}</Text>
+                      </View>
+                      <View style={styles.sportRowTrack}>
+                        <View style={[styles.sportRowBar, { width: barWidth }]} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.emptyChart}>
+                <Ionicons name="bar-chart-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyChartText}>Nessun dato disponibile</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* TOP 5 ORE */}
         <View style={styles.topSection}>
-          <Text style={styles.topTitle}>Top 5 Fasce Orarie</Text>
-          {topHours.map((item, index) => (
-            <View key={index} style={styles.topItem}>
-              <View style={styles.topRank}>
-                <Text style={styles.topRankText}>{index + 1}</Text>
-              </View>
-              <Text style={styles.topHour}>
-                {item.hour.toString().padStart(2, "0")}:00 - {(item.hour + 1).toString().padStart(2, "0")}:00
-              </Text>
-              <Text style={styles.topCount}>{item.count} prenotazioni</Text>
+          <View style={styles.topTitleRow}>
+            <Text style={styles.topTitle}>Top 5 Fasce Orarie</Text>
+            <View style={styles.slotToggle}>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === "all" && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter("all")}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === "all" && styles.slotToggleBtnTextActive]}>Tutte</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === 1 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1)}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === 1.5 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1.5)}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
+              </Pressable>
             </View>
-          ))}
+          </View>
+          {topHours.map((item, index) => {
+            const key = item.hour.toString();
+            const isOpen = !!expandedSlots[key];
+            const usersForSlot = (topUsersBySlot && topUsersBySlot[item.hour]) || [];
+            return (
+              <View key={key}>
+                <Pressable
+                  onPress={() => setExpandedSlots((s) => ({ ...s, [key]: !s[key] }))}
+                  style={({ pressed }) => [styles.topItem, isOpen && styles.topItemOpen, pressed && { opacity: 0.9 }]}
+                >
+                  <View style={styles.topRank}>
+                    <Text style={styles.topRankText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.topHour}>
+                    {formatSlotTime(item.hour)} - {formatSlotTime(item.hour + selectedDurationHours)}
+                  </Text>
+                  <Text style={styles.topCount}>{item.count} prenotazioni</Text>
+                </Pressable>
+
+                {isOpen && (
+                  <View style={styles.expandedPanel}>
+                    {usersForSlot.length > 0 ? (
+                      usersForSlot.map((u) => {
+                        const userObj = users.find((x) => x._id === u.userId);
+                        const avatarUrl = userObj?.avatarUrl || undefined;
+                        const displayName = userObj ? `${userObj.name}${userObj.surname ? ' ' + userObj.surname : ''}` : u.name;
+
+                        return (
+                          <Pressable
+                            key={u.userId}
+                            style={styles.expandedUserRow}
+                            onPress={() => {
+                              if (u.userId && u.userId !== 'unknown') navigation.navigate('ProfiloUtente', { userId: u.userId });
+                            }}
+                          >
+                            <Avatar
+                              name={userObj?.name || displayName}
+                              surname={userObj?.surname}
+                              avatarUrl={avatarUrl}
+                              size={36}
+                            />
+
+                            <Text style={styles.expandedUserName} numberOfLines={1}>{displayName}</Text>
+                            <Text style={styles.expandedUserCount}>{u.count} pren.</Text>
+                          </Pressable>
+                        );
+                      })
+                    ) : (
+                      <Text style={styles.expandedEmpty}>Nessun utente</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.topSection}>
+          <Text style={styles.topTitle}>Top 5 Utenti</Text>
+          <View style={{ height: 12 }} />
+          {topUsers.length > 0 ? (
+            topUsers.map((item, index) => (
+              <View key={item.id} style={styles.topItem}>
+                <View style={styles.topRank}>
+                  <Text style={styles.topRankText}>{index + 1}</Text>
+                </View>
+                <Text style={styles.topUserName} numberOfLines={1}>
+                  {item.fullName}
+                </Text>
+                <Text style={styles.topCount}>{item.count} prenotazioni</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyChart}>
+              <Ionicons name="people-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyChartText}>Nessun dato disponibile</Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <FilterModal
+        visible={filterModalVisible}
+        title={
+          activeFilterType === "struttura"
+            ? "Seleziona Struttura"
+            : activeFilterType === "cliente"
+              ? "Seleziona Cliente"
+              : activeFilterType === "sport"
+                ? "Seleziona Sport"
+                : "Seleziona Periodo"
+        }
+        onClose={() => setFilterModalVisible(false)}
+        contentScrollable
+        searchable={activeFilterType !== "periodo"}
+        searchPlaceholder={
+          activeFilterType === "struttura" ? "Cerca struttura..." :
+          activeFilterType === "cliente" ? "Cerca cliente..." :
+          activeFilterType === "sport" ? "Cerca sport..." : ""
+        }
+      >
+        {(search) => (
+          <>
+            {activeFilterType !== "periodo" && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterModalOption,
+                  styles.filterModalOptionWithBorder,
+                  pressed && { backgroundColor: "#E3F2FD" },
+                ]}
+                onPress={() => {
+                  if (activeFilterType === "struttura") setSelectedStruttura("all");
+                  else if (activeFilterType === "cliente") setSelectedUser("all");
+                  else if (activeFilterType === "sport") setSelectedSport("all");
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
+              </Pressable>
+            )}
+
+            {activeFilterType === "struttura"
+              ? strutture.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map((struttura, index) => (
+                  <Pressable
+                    key={struttura._id}
+                    style={({ pressed }) => [
+                      styles.filterModalOption,
+                      index < strutture.length - 1 && styles.filterModalOptionWithBorder,
+                      pressed && { backgroundColor: "#E3F2FD" },
+                    ]}
+                    onPress={() => {
+                      setSelectedStruttura(struttura._id);
+                      setFilterModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.filterModalRow}>
+                      <Ionicons name="business-outline" size={16} color="#2196F3" />
+                      <Text style={styles.filterModalOptionText}>{struttura.name}</Text>
+                    </View>
+                  </Pressable>
+                ))
+              : activeFilterType === "cliente"
+                ? users.filter(u => `${u.name}${u.surname ? " " + u.surname : ""}`.toLowerCase().includes(search.toLowerCase())).map((user, index) => {
+                    const fullName = `${user.name}${user.surname ? " " + user.surname : ""}`;
+                    return (
+                      <Pressable
+                        key={user._id}
+                        style={({ pressed }) => [
+                          styles.filterModalOption,
+                          index < users.length - 1 && styles.filterModalOptionWithBorder,
+                          pressed && { backgroundColor: "#E3F2FD" },
+                        ]}
+                        onPress={() => {
+                          setSelectedUser(user._id);
+                          setFilterModalVisible(false);
+                        }}
+                      >
+                        <View style={styles.filterModalRow}>
+                          <Ionicons name="person-outline" size={16} color="#2196F3" />
+                          <Text style={styles.filterModalOptionText}>{fullName}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+                : activeFilterType === "sport"
+                  ? availableSports.filter(s => s.toLowerCase().includes(search.toLowerCase())).map((sport, index) => (
+                      <Pressable
+                        key={sport}
+                        style={({ pressed }) => [
+                          styles.filterModalOption,
+                          index < availableSports.length - 1 && styles.filterModalOptionWithBorder,
+                          pressed && { backgroundColor: "#E3F2FD" },
+                        ]}
+                        onPress={() => {
+                          setSelectedSport(sport);
+                          setFilterModalVisible(false);
+                        }}
+                      >
+                        <View style={styles.filterModalRow}>
+                          <SportIcon sport={sport} size={16} color="#2196F3" />
+                          <Text style={styles.filterModalOptionText}>{sport}</Text>
+                        </View>
+                      </Pressable>
+                    ))
+                  : periodOptions.map((days, index) => (
+                      <Pressable
+                        key={days}
+                        style={({ pressed }) => [
+                          styles.filterModalOption,
+                          index < periodOptions.length - 1 && styles.filterModalOptionWithBorder,
+                          pressed && { backgroundColor: "#E3F2FD" },
+                        ]}
+                        onPress={() => {
+                          setSelectedPeriodDays(days);
+                          setFilterModalVisible(false);
+                        }}
+                      >
+                        <View style={styles.filterModalRow}>
+                          <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                          <Text style={styles.filterModalOptionText}>Ultimi {days} giorni</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+          </>
+        )}
+      </FilterModal>
     </SafeAreaView>
   );
 }
@@ -600,6 +1004,37 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  singleFiltersRow: {
+    gap: 10,
+  },
+
+  singleFilterChip: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#E0E0E0",
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  singleFilterChipLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    marginRight: 10,
+  },
+
+  singleFilterChipText: {
+    color: "#1a1a1a",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
   filterScroll: {
     flexDirection: "row",
   },
@@ -634,6 +1069,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 20,
     gap: 12,
+  },
+
+  dashboardPeriodSection: {
+    paddingHorizontal: 16,
+    marginTop: 14,
   },
 
   statCard: {
@@ -698,6 +1138,51 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    overflow: "hidden",
+  },
+
+  chartScrollContent: {
+    paddingRight: 8,
+  },
+
+  weeklyChartScrollContent: {
+    paddingRight: 0,
+  },
+
+  hourlyChartScrollContent: {
+    paddingRight: 0,
+  },
+
+  hourlyChartRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+
+  hourlyYAxisColumn: {
+    width: 36,
+    marginRight: 8,
+  },
+
+  hourlyYAxisLabelsContainer: {
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingRight: 4,
+    borderRightWidth: 1,
+    borderRightColor: "#E0E0E0",
+  },
+
+  hourlyYAxisLabel: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "500",
+  },
+
+  hourlyXAxisSpacer: {
+    height: 22,
+  },
+
+  hourlyScrollableArea: {
+    flex: 1,
   },
 
   victoryChartContainer: {
@@ -711,46 +1196,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  pickerModernWrapper: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#B3D7F6',
-    marginTop: 4,
-    marginBottom: 8,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    shadowColor: '#2196F3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: Platform.OS === 'android' ? 2 : 0,
-    minWidth: 220,
-    width: '100%',
-    maxWidth: 500,
+  filterModalOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "white",
   },
-  pickerModern: {
-    flex: 1,
-    height: 48,
-    color: '#1a1a1a',
-    fontWeight: '600',
-    backgroundColor: 'transparent',
-    fontSize: 17,
-    paddingLeft: 8,
-    marginLeft: 0,
-    minWidth: 180,
-    maxWidth: 400,
+  filterModalOptionWithBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  pickerIcon: {
-    marginLeft: -24,
-    marginRight: 4,
-    position: 'absolute',
-    right: 8,
-    top: 12,
-    zIndex: 1,
-    pointerEvents: 'none',
+  filterModalOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+  },
+  filterModalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   emptyChart: {
     backgroundColor: "white",
@@ -772,11 +1235,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
+  topTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+
+  slotToggle: {
+    flexDirection: "row",
+    backgroundColor: "#F0F0F0",
+    borderRadius: 20,
+    padding: 2,
+  },
+
+  slotToggleBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
+  },
+
+  slotToggleBtnActive: {
+    backgroundColor: "#2196F3",
+  },
+
+  slotToggleBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#888",
+  },
+
+  slotToggleBtnTextActive: {
+    color: "white",
+  },
+
   topTitle: {
     fontSize: 18,
     fontWeight: "800",
     color: "#1a1a1a",
-    marginBottom: 12,
   },
 
   topItem: {
@@ -791,6 +1287,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+
+  topItemOpen: {
+    marginBottom: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
 
   topRank: {
@@ -816,9 +1318,98 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
   },
 
+  topUserName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+
   topCount: {
     fontSize: 13,
     fontWeight: "600",
     color: "#666",
+  },
+
+  expandedPanel: {
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    marginTop: 0,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+
+  expandedUserRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+
+  expandedUserName: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1a1a1a",
+    fontWeight: "700",
+  },
+
+  expandedUserCount: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "700",
+  },
+
+  expandedEmpty: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+    paddingVertical: 8,
+  },
+
+  sportRow: {
+    marginBottom: 14,
+  },
+
+  sportRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+    gap: 12,
+  },
+
+  sportRowLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1a1a1a",
+    fontWeight: "700",
+  },
+
+  sportRowValue: {
+    fontSize: 14,
+    color: "#2196F3",
+    fontWeight: "800",
+  },
+
+  sportRowTrack: {
+    width: "100%",
+    height: 10,
+    backgroundColor: "#EAF3FF",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+
+  sportRowBar: {
+    height: "100%",
+    backgroundColor: "#2196F3",
+    borderRadius: 999,
   },
 });

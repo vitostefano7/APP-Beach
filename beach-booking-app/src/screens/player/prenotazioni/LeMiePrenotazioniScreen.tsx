@@ -18,6 +18,7 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
 import SportIcon from "../../../components/SportIcon";
+import FilterModal from "../../../components/FilterModal";
 
 /* =========================
    TYPES
@@ -890,80 +891,65 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       </Modal>
 
       {/* Filter Modal */}
-      <Modal
+      <FilterModal
         visible={filterModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setFilterModalVisible(false)}
+        title={`Seleziona ${filterModalLabel}`}
+        onClose={() => setFilterModalVisible(false)}
+        contentScrollable
+        searchable
+        searchPlaceholder={`Cerca ${filterModalLabel.toLowerCase()}...`}
       >
-        <View style={styles.centeredModalOverlay}>
-          <ScaleInView style={styles.filterModal}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Seleziona {filterModalLabel}</Text>
+        {(search) => (
+          <>
+            <Pressable
+              style={({ pressed }) => [
+                styles.filterModalOption,
+                styles.filterModalOptionWithBorder,
+                pressed && { backgroundColor: "#E3F2FD" }
+              ]}
+              onPress={() => {
+                filterModalOnSelect?.(null);
+                setFilterModalVisible(false);
+              }}
+            >
+              <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
+            </Pressable>
+            {filterModalOptions.filter(o => o.toLowerCase().includes(search.toLowerCase())).map((option, index) => (
+          <Pressable
+            key={index}
+            style={({ pressed }) => [
+              styles.filterModalOption,
+              index < filterModalOptions.length - 1 && styles.filterModalOptionWithBorder,
+              pressed && { backgroundColor: "#E3F2FD" }
+            ]}
+            onPress={() => {
+              filterModalOnSelect?.(option);
+              setFilterModalVisible(false);
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {filterModalLabel === "Sport" ? (
+                <SportIcon sport={option} size={16} color="#2196F3" />
+              ) : (
+                <Ionicons
+                  name={
+                    filterModalLabel === "Città" ? "location-outline" :
+                    filterModalLabel === "Struttura" ? "business-outline" :
+                    filterModalLabel === "Giorno" ? "calendar-outline" :
+                    filterModalLabel === "Orario" ? "time-outline" :
+                    "help-circle-outline"
+                  }
+                  size={16}
+                  color="#2196F3"
+                />
+              )}
+              <Text style={styles.filterModalOptionText}>{option}</Text>
             </View>
-            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.filterModalOption,
-                  styles.filterModalOptionWithBorder,
-                  pressed && { backgroundColor: "#E3F2FD" }
-                ]} 
-                onPress={() => {
-                  filterModalOnSelect?.(null);
-                  setFilterModalVisible(false);
-                }}
-              >
-                <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
-              </Pressable>
-              {filterModalOptions.map((option, index) => (
-                <Pressable 
-                  key={index} 
-                  style={({ pressed }) => [
-                    styles.filterModalOption,
-                    index < filterModalOptions.length - 1 && styles.filterModalOptionWithBorder,
-                    pressed && { backgroundColor: "#E3F2FD" }
-                  ]} 
-                  onPress={() => {
-                    filterModalOnSelect?.(option);
-                    setFilterModalVisible(false);
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    {option !== "✨ Tutti" && (
-                      <>
-                        {filterModalLabel === "Sport" ? (
-                          <SportIcon sport={option} size={16} color="#2196F3" />
-                        ) : (
-                          <Ionicons 
-                            name={
-                              filterModalLabel === "Città" ? "location-outline" :
-                              filterModalLabel === "Struttura" ? "business-outline" :
-                              filterModalLabel === "Giorno" ? "calendar-outline" :
-                              filterModalLabel === "Orario" ? "time-outline" :
-                              "help-circle-outline"
-                            } 
-                            size={16} 
-                            color="#2196F3" 
-                          />
-                        )}
-                      </>
-                    )}
-                    <Text style={styles.filterModalOptionText}>{option}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={styles.filterModalFooter}>
-              <Pressable 
-                style={styles.filterModalCancel} 
-                onPress={() => setFilterModalVisible(false)}
-              >
-                <Text style={styles.filterModalCancelText}>Annulla</Text>
-              </Pressable>
-            </View>
-          </ScaleInView>
-        </View>
-      </Modal>
+            </Pressable>
+            ))}
+          </>
+        )}
+      </FilterModal>
     </View>
   );
 }
@@ -1762,40 +1748,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Filter Modal
-  filterModal: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    marginHorizontal: 40,
-    width: "85%",
-    maxHeight: "75%",
-    shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
-    overflow: "hidden",
-  },
-  filterModalHeader: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-    backgroundColor: "#2196F3",
-    minHeight: 70,
-  },
-  filterModalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
-    textAlign: "center",
-  },
-  filterModalContent: {
-    maxHeight: 350,
-    paddingTop: 8,
-  },
+  // Filter Modal content
   filterModalOption: {
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1811,25 +1764,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "600",
-  },
-  filterModalFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: "#f8f9fa",
-  },
-  filterModalCancel: {
-    width: "100%",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: "white",
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
-    alignItems: "center",
-  },
-  filterModalCancelText: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "700",
   },
 });

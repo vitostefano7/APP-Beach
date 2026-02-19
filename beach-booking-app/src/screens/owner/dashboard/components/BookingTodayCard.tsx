@@ -67,9 +67,11 @@ export default function BookingTodayCard({
     <Pressable style={styles.bookingCard} onPress={onPress}>
       <View style={styles.bookingHeader}>
         <View style={styles.bookingTimeWrapper}>
-          <Text style={styles.bookingTime}>
-            {booking.startTime} - {booking.endTime}
-          </Text>
+          <View style={styles.timeLabel}>
+            <Text style={styles.bookingTime}>
+              {booking.startTime} - {booking.endTime}
+            </Text>
+          </View>
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
             <Text style={[styles.statusBadgeText, { color: status.color }]}>
               {status.text}
@@ -81,18 +83,18 @@ export default function BookingTodayCard({
       <View style={styles.bookingContent}>
         <View style={styles.bookingInfo}>
           <View style={styles.bookingRow}>
-            <Ionicons name="person-outline" size={16} color="#666" />
+            <Ionicons name="person-outline" size={16} color="#2196F3" />
             <Text style={styles.bookingText}>{fullName}</Text>
           </View>
           
           <View style={styles.bookingRow}>
-            <Ionicons name="business-outline" size={16} color="#666" />
+            <Ionicons name="business-outline" size={16} color="#2196F3" />
             <Text style={styles.bookingText}>{booking.struttura.name}</Text>
           </View>
 
           <View style={styles.bookingRow}>
             {booking.campo.sport?.code && (
-              <SportIcon sport={booking.campo.sport.code} size={16} color="#666" />
+              <SportIcon sport={booking.campo.sport.code} size={16} color="#2196F3" />
             )}
             <Text style={styles.bookingText}>{booking.campo.name}</Text>
           </View>

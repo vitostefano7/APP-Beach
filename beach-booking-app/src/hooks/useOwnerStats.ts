@@ -222,7 +222,25 @@ export const useOwnerStats = (
     console.log(`📅 Prenotazioni confermate CONCLUSE ultimo mese (${monthAgo.toLocaleDateString()} - ${new Date(today.getTime() - 1).toLocaleDateString()}): ${bookingsLastMonth.length}`);
     
     const orePrenotateMese = bookingsLastMonth.reduce((sum, b) => {
-      const duration = b.duration || 1;
+      let duration = Number(b.duration);
+
+      if (!Number.isFinite(duration) || duration <= 0) {
+        try {
+          const start = b.startTime || b.slotStart;
+          const end = b.endTime || b.slotEnd;
+          if (start && end) {
+            const [startH, startM] = start.split(":").map(Number);
+            const [endH, endM] = end.split(":").map(Number);
+            const calc = (endH + endM / 60) - (startH + startM / 60);
+            duration = calc > 0 ? calc : 1;
+          } else {
+            duration = 1;
+          }
+        } catch {
+          duration = 1;
+        }
+      }
+
       console.log(`  📝 Prenotazione durata: ${duration} ore (data: ${b.date || b.startDate || b.bookingDate || b.createdAt})`);
       return sum + duration;
     }, 0);
