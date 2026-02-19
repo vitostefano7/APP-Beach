@@ -73,10 +73,13 @@ export default function EarningsStatsScreen() {
   const [showTransactions, setShowTransactions] = useState(true);
 
   useEffect(() => {
+    if (!token) return;
     loadEarnings();
-  }, []);
+  }, [token]);
 
   const loadEarnings = async () => {
+    if (!token) return;
+
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/users/me/earnings`, {
@@ -86,6 +89,9 @@ export default function EarningsStatsScreen() {
       if (res.ok) {
         const data = await res.json();
         setEarningsData(data);
+      } else {
+        const errorText = await res.text();
+        console.error("Error loading earnings:", res.status, errorText);
       }
     } catch (error) {
       console.error("Error loading earnings:", error);

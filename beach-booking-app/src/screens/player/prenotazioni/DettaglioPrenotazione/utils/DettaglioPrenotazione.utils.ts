@@ -1,5 +1,5 @@
 import API_URL from "../../../../../config/api";
-import { BookingDetails, Player } from "./DettaglioPrenotazione.types";
+import { BookingDetails, Player } from "../types/DettaglioPrenotazione.types";
 
 export const assignPlayerToTeam = async (
   matchId: string,

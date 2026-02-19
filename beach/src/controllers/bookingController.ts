@@ -4,6 +4,7 @@ import Booking from "../models/Booking";
 import Campo from "../models/Campo";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
+import Struttura from "../models/Strutture";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
@@ -880,14 +881,35 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
 
     const ownerId = req.user!.id;
 
-    console.log("🔍 Cercando prenotazioni per strutture dell'owner...");
-    const bookings = await Booking.find()
+    console.log("🔍 Caricamento strutture owner...");
+    const ownerStrutture = await Struttura.find({ owner: ownerId }).select("_id").lean();
+
+    if (!ownerStrutture.length) {
+      console.log("ℹ️ Nessuna struttura per questo owner");
+      return res.json([]);
+    }
+
+    const strutturaIds = ownerStrutture.map((s: any) => s._id);
+
+    console.log("🔍 Caricamento campi owner...");
+    const ownerCampi = await Campo.find({ struttura: { $in: strutturaIds } })
+      .select("_id")
+      .lean();
+
+    if (!ownerCampi.length) {
+      console.log("ℹ️ Nessun campo trovato per questo owner");
+      return res.json([]);
+    }
+
+    const campoIds = ownerCampi.map((c: any) => c._id);
+
+    console.log("🔍 Caricamento prenotazioni owner (query mirata)...");
+    const bookings = await Booking.find({ campo: { $in: campoIds } })
       .populate({
         path: "campo",
         populate: [
           {
             path: "struttura",
-            match: { owner: ownerId },
             select: "name location",
           },
           {
@@ -899,26 +921,29 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
       .sort({ date: 1, startTime: 1 })
       .lean();
 
-    // Rimuove booking non dell'owner
-    const filtered = bookings.filter((b: any) => b.campo?.struttura);
-
-    // Populate match separatamente per evitare errori
-    const bookingsWithMatch = await Promise.all(
-      filtered.map(async (booking: any) => {
-        try {
-          if (booking.match) {
-            const match = await Match.findById(booking.match)
-              .populate("players.user", "name surname username avatarUrl email")
-              .populate("createdBy", "name surname username avatarUrl email")
-              .lean();
-            return { ...booking, match };
-          }
-        } catch (matchErr) {
-          console.warn(`⚠️ Errore populate match per booking ${booking._id}:`, matchErr);
-        }
-        return booking;
-      })
+    const matchIds = Array.from(
+      new Set(
+        bookings
+          .map((b: any) => b.match)
+          .filter((id: any) => id)
+          .map((id: any) => String(id))
+      )
     );
+
+    let matchMap = new Map<string, any>();
+    if (matchIds.length > 0) {
+      const matches = await Match.find({ _id: { $in: matchIds } })
+        .populate("players.user", "name surname username avatarUrl email")
+        .populate("createdBy", "name surname username avatarUrl email")
+        .lean();
+      matchMap = new Map(matches.map((m: any) => [String(m._id), m]));
+    }
+
+    const bookingsWithMatch = bookings.map((booking: any) => {
+      if (!booking.match) return booking;
+      const populatedMatch = matchMap.get(String(booking.match));
+      return populatedMatch ? { ...booking, match: populatedMatch } : booking;
+    });
 
     console.log(`✅ ${bookingsWithMatch.length} prenotazioni trovate`);
     console.log("📤 Invio prenotazioni owner");

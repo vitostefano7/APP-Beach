@@ -9,15 +9,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback, useEffect, useMemo } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { BarChart } from "react-native-gifted-charts";
-import API_URL from "../../config/api";
-import { useOwnerDashboardStats } from "../../hooks/useOwnerDashboardStats";
-import FilterModal from "../../components/FilterModal";
-import SportIcon from "../../components/SportIcon";
-import { Avatar } from "../../components/Avatar";
+import API_URL from "../../../config/api";
+import { useOwnerDashboardStats } from "../../../hooks/useOwnerDashboardStats";
+import FilterModal from "../../../components/FilterModal";
+import SportIcon from "../../../components/SportIcon";
+import { Avatar } from "../../../components/Avatar";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -108,24 +108,26 @@ export default function OwnerStatisticsScreen() {
         setBookings(bookingsData);
         setStrutture(struttureData);
 
-        // Carica campi per ogni struttura (necessari per calcolo tasso occupazione)
-        const allCampi: Campo[] = [];
-        for (const struttura of struttureData) {
-          try {
-            const campiRes = await fetch(
-              `${API_URL}/campi/owner/struttura/${struttura._id}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            
-            if (campiRes.ok) {
+        // Carica campi per ogni struttura in parallelo (necessari per calcolo tasso occupazione)
+        const campiChunks = await Promise.all(
+          struttureData.map(async (struttura: Struttura) => {
+            try {
+              const campiRes = await fetch(
+                `${API_URL}/campi/owner/struttura/${struttura._id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+
+              if (!campiRes.ok) return [] as Campo[];
               const campiData = await campiRes.json();
-              allCampi.push(...campiData);
+              return Array.isArray(campiData) ? (campiData as Campo[]) : [];
+            } catch (err) {
+              console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
+              return [] as Campo[];
             }
-          } catch (err) {
-            console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
-          }
-        }
-        
+          })
+        );
+
+        const allCampi = campiChunks.flat();
         setCampi(allCampi);
 
         // Estrai utenti unici dalle prenotazioni

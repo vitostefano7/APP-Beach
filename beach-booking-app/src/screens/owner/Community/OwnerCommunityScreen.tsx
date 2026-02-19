@@ -15,17 +15,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { AuthContext } from '../../context/AuthContext';
-import API_URL from '../../config/api';
+import { AuthContext } from '../../../context/AuthContext';
+import API_URL from '../../../config/api';
 import {
   CommunityHeader,
   CommunityTabBar,
   QuickInputBar,
   PostCard,
   CommunityTheme,
-} from '../../components/Community';
-import { usePosts, usePostInteractions } from '../../components/Community/hooks';
-import { Post, Struttura, CommunityTab } from '../../types/community.types';
+} from '../../../components/Community';
+import { usePosts, usePostInteractions } from '../../../components/Community/hooks';
+import { Post, Struttura, CommunityTab } from '../../../types/community.types';
 
 export default function OwnerCommunityScreen() {
   const navigation = useNavigation<any>();

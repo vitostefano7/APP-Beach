@@ -1,4 +1,4 @@
-import { PricingRules, DurationPrice } from "../models/Campo";
+import { PricingRules, DurationPrice } from "../struttura/CreaStruttura/types/CreaStruttura.types";
 
 /**
  * 🎯 CALCOLO DETERMINISTICO DEL PREZZO

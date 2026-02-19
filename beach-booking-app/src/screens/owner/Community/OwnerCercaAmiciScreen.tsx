@@ -10,16 +10,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { AuthContext } from '../../context/AuthContext';
-import API_URL from '../../config/api';
-import { useOwnerSuggestedUsers } from '../../hooks/CercaAmici/useOwnerSuggestedUsers';
-import { useSuggestedStrutture } from '../../hooks/CercaAmici/useSuggestedStrutture';
-import { SuggestedFriendCard } from '../../components/CercaAmici/SuggestedFriendCard';
-import Avatar from "../../components/Avatar/Avatar";
-import SearchBar from '../../components/CercaAmici/SearchBar';
-import StrutturaCard from '../../components/StrutturaCard/StrutturaCard';
-import { RecentUserCard, RecentStrutturaCard } from '../../components/CercaAmici/RecentSearchCard';
-import { useSearchLogic } from '../../hooks/useSearchLogic';
+import { AuthContext } from '../../../context/AuthContext';
+import API_URL from '../../../config/api';
+import { useOwnerSuggestedUsers } from '../../../hooks/CercaAmici/useOwnerSuggestedUsers';
+import { useSuggestedStrutture } from '../../../hooks/CercaAmici/useSuggestedStrutture';
+import { SuggestedFriendCard } from '../../../components/CercaAmici/SuggestedFriendCard';
+import Avatar from "../../../components/Avatar/Avatar";
+import SearchBar from '../../../components/CercaAmici/SearchBar';
+import StrutturaCard from '../../../components/StrutturaCard/StrutturaCard';
+import { RecentUserCard, RecentStrutturaCard } from '../../../components/CercaAmici/RecentSearchCard';
+import { useSearchLogic } from '../../../hooks/useSearchLogic';
 import {
   loadRecentUserSearches,
   loadRecentStruttureSearches,
@@ -32,8 +32,8 @@ import {
   getFollowStrutturaEndpoint,
   SearchResult,
   Struttura,
-} from '../../utils/searchHelpers';
-import { searchScreenStyles } from '../../styles/searchScreenStyles';
+} from '../../../utils/searchHelpers';
+import { searchScreenStyles } from '../../../styles/searchScreenStyles';
 import { StyleSheet } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');

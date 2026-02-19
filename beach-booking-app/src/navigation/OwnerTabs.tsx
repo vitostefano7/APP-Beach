@@ -6,11 +6,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
 
 import OwnerDashboardScreen from "../screens/owner/dashboard/OwnerDashboardScreen";
-import OwnerStruttureScreen from "../screens/owner/OwnerStruttureScreen";
+import OwnerStruttureScreen from "../screens/owner/struttura/OwnerStruttureScreen";
 import OwnerBookingsScreen from "../screens/owner/prenotazioni/OwnerBookingsScreen";
-import OwnerProfileScreen from "../screens/owner/OwnerProfileScreen";
+import OwnerProfileScreen from "../screens/owner/profilo/OwnerProfileScreen";
 import ConversationScreen from "../screens/owner/Comunicazioni/ConversationScreen";
-import OwnerCommunityScreen from "../screens/owner/OwnerCommunityScreen";
+import OwnerCommunityScreen from "../screens/owner/Community/OwnerCommunityScreen";
 
 const Tab = createBottomTabNavigator();
 

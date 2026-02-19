@@ -1528,11 +1528,21 @@ export const getMyEarnings = async (
       })
     );
 
-    console.log(`💰 Guadagni owner ${userId}: €${(ownerUser as any).totalEarnings || 0}`);
+    // Calcola totalEarnings dinamicamente dall'array earnings (più affidabile del campo stored)
+    const computedTotal = earningsWithDetails.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    // Se il valore stored è diverso da quello calcolato, aggiorna il DB
+    const storedTotal = (ownerUser as any).totalEarnings || 0;
+    if (storedTotal !== computedTotal) {
+      await User.findByIdAndUpdate(userId, { totalEarnings: computedTotal });
+      console.log(`🔧 [getMyEarnings] Corretto totalEarnings: stored ${storedTotal} → calcolato ${computedTotal}`);
+    }
+
+    console.log(`💰 Guadagni owner ${userId}: €${computedTotal}`);
 
     console.log('✅ [getMyEarnings] Guadagni recuperati');
     res.json({
-      totalEarnings: (ownerUser as any).totalEarnings || 0,
+      totalEarnings: computedTotal,
       earnings: earningsWithDetails.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ),

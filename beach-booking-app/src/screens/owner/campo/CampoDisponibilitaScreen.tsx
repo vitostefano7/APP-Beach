@@ -8,10 +8,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
-import API_URL from "../../config/api";
+import API_URL from "../../../config/api";
 
 interface DaySchedule {
   enabled: boolean;

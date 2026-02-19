@@ -14,18 +14,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState, useCallback, memo } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Network from 'expo-network';
 
-import API_URL from "../../config/api";
-import { Avatar } from "../../components/Avatar";
-import { useAlert } from "../../context/AlertContext";
-import { AvatarPicker } from "../../components/AvatarPicker";
-import { resolveAvatarUrl } from "../../utils/avatar";
-import { useOwnerStats } from "../../hooks/useOwnerStats";
+import API_URL from "../../../config/api";
+import { Avatar } from "../../../components/Avatar";
+import { useAlert } from "../../../context/AlertContext";
+import { AvatarPicker } from "../../../components/AvatarPicker";
+import { resolveAvatarUrl } from "../../../utils/avatar";
+import { useOwnerStats } from "../../../hooks/useOwnerStats";
 
 // ==================== TIPI ====================
 interface OwnerStats {

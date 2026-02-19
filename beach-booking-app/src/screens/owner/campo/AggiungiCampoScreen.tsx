@@ -11,13 +11,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
-import { sportIcons } from "../../utils/sportIcons";
+import { sportIcons } from "../../../utils/sportIcons";
 
-import API_URL from "../../config/api";
-import { useAlert } from "../../context/AlertContext";
+import API_URL from "../../../config/api";
+import { useAlert } from "../../../context/AlertContext";
 
 /* =======================
    INTERFACES

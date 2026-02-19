@@ -22,7 +22,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
 import { Avatar } from "../../../components/Avatar";
-import { CommunityTheme } from "../../components/Community/communityTheme";
+import { CommunityTheme } from "../../../components/Community/communityTheme";
 import { styles } from "../styles-player/UserProfileScreen.styles";
 import { PostCard } from '../../../components/Community/PostCard/PostCard';
 
