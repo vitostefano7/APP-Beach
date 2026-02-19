@@ -259,7 +259,6 @@ const loadPosts = async () => {
           type: 'warning',
           title: 'Permesso necessario',
           message: 'Devi concedere il permesso per accedere alle tue foto',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
         return;
       }
@@ -280,7 +279,6 @@ const loadPosts = async () => {
         type: 'error',
         title: 'Errore',
         message: 'Impossibile selezionare l\'immagine',
-        buttons: [{ text: 'OK', style: 'default' }],
       });
     }
   };
@@ -294,7 +292,6 @@ const loadPosts = async () => {
           type: 'warning',
           title: 'Permesso necessario',
           message: 'Devi concedere il permesso per usare la fotocamera',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
         return;
       }
@@ -314,7 +311,6 @@ const loadPosts = async () => {
         type: 'error',
         title: 'Errore',
         message: 'Impossibile scattare la foto',
-        buttons: [{ text: 'OK', style: 'default' }],
       });
     }
   };
@@ -380,7 +376,6 @@ const loadPosts = async () => {
           type: 'success',
           title: 'Perfetto!',
           message: 'La tua immagine profilo è stata aggiornata con successo',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
       } else {
         console.log("❌ Errore upload:", json.message);
@@ -388,7 +383,6 @@ const loadPosts = async () => {
           type: 'error',
           title: 'Ops!',
           message: json.message || 'Non siamo riusciti a caricare l\'immagine. Riprova.',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
       }
     } catch (error) {
@@ -402,7 +396,6 @@ const loadPosts = async () => {
         type: 'error',
         title: 'Errore di connessione',
         message: 'Verifica la tua connessione internet e riprova',
-        buttons: [{ text: 'OK', style: 'default' }],
       });
     }
   };
@@ -432,14 +425,12 @@ const loadPosts = async () => {
           type: 'success',
           title: 'Fatto!',
           message: 'La tua immagine profilo è stata rimossa',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
       } else {
         showAlert({
           type: 'error',
           title: 'Ops!',
           message: 'Non siamo riusciti a rimuovere l\'immagine',
-          buttons: [{ text: 'OK', style: 'default' }],
         });
       }
     } catch (error) {
@@ -448,7 +439,6 @@ const loadPosts = async () => {
         type: 'error',
         title: 'Errore',
         message: 'Non siamo riusciti a rimuovere l\'immagine',
-        buttons: [{ text: 'OK', style: 'default' }],
       });
     }
   };
@@ -457,11 +447,11 @@ const loadPosts = async () => {
     showAlert({
       type: 'warning',
       title: 'Conferma uscita',
-      message: 'Vuoi uscire dal tuo account',
-      buttons: [
-        { text: "Annulla", style: "cancel" },
-        { text: "Esci", style: "destructive", onPress: logout }
-      ]
+      message: 'Vuoi uscire dal tuo account?',
+      showCancel: true,
+      confirmText: 'Esci',
+      cancelText: 'Annulla',
+      onConfirm: logout
     });
   };
 

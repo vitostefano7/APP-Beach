@@ -164,6 +164,34 @@ function getStrutturaImageFiles(): string[] {
     .map((file) => path.join(STRUTTURA_IMG_DIR, file));
 }
 
+/**
+ * Converte openingHours della struttura in weeklySchedule per i campi
+ * openingHours: { monday: { closed: boolean, slots: [{open, close}] } }
+ * weeklySchedule: { monday: { enabled: boolean, open: string, close: string } }
+ */
+function convertOpeningHoursToWeeklySchedule(openingHours: any): any {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const weeklySchedule: any = {};
+
+  for (const day of days) {
+    const dayHours = openingHours[day];
+    if (!dayHours || dayHours.closed || !dayHours.slots || dayHours.slots.length === 0) {
+      // Giorno chiuso
+      weeklySchedule[day] = { enabled: false, open: "09:00", close: "22:00" };
+    } else {
+      // Giorno aperto - usa il primo slot disponibile
+      const firstSlot = dayHours.slots[0];
+      weeklySchedule[day] = {
+        enabled: true,
+        open: firstSlot.open || "09:00",
+        close: firstSlot.close || "22:00",
+      };
+    }
+  }
+
+  return weeklySchedule;
+}
+
 async function uploadStrutturaImagesToCloudinary(): Promise<string[]> {
   const files = getStrutturaImageFiles();
   if (!files.length) {
@@ -604,6 +632,9 @@ async function seed() {
           strutturaImages.push(...shuffled.slice(0, numImages));
         }
 
+        // ✅ Prima struttura (Beach Volley Milano Centro) chiusa sabato/domenica per TESTING
+        const isClosedWeekend = idx === 0;
+
         return {
           name: s.name,
           description: s.description,
@@ -622,8 +653,8 @@ async function seed() {
             wednesday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
             thursday: { closed: false, slots: [{ open: "09:00", close: "22:00" }] },
             friday: { closed: false, slots: [{ open: "09:00", close: "23:00" }] },
-            saturday: { closed: false, slots: [{ open: "08:00", close: "23:00" }] },
-            sunday: { closed: false, slots: [{ open: "08:00", close: "22:00" }] },
+            saturday: { closed: isClosedWeekend, slots: isClosedWeekend ? [] : [{ open: "08:00", close: "23:00" }] },
+            sunday: { closed: isClosedWeekend, slots: isClosedWeekend ? [] : [{ open: "08:00", close: "22:00" }] },
           },
           images: strutturaImages,
           rating: { average: s.rating, count: s.count },
@@ -1149,6 +1180,9 @@ async function seed() {
               ]
             : [];
 
+          // ✅ Genera weeklySchedule dai openingHours della struttura
+          const weeklySchedule = convertOpeningHoursToWeeklySchedule(struttura.openingHours);
+
           campiData.push({
             struttura: struttura._id,
             name: `Campo ${isBeach ? "Beach" : "Volley"} ${i}`,
@@ -1170,15 +1204,7 @@ async function seed() {
               periodOverrides: { enabled: enablePeriodOverride, periods: periodOverrides },
               playerCountPricing: { enabled: !!enablePlayerPricing, prices: playerPrices },
             },
-            weeklySchedule: {
-              monday: { enabled: true, open: "09:00", close: "22:00" },
-              tuesday: { enabled: true, open: "09:00", close: "22:00" },
-              wednesday: { enabled: true, open: "09:00", close: "22:00" },
-              thursday: { enabled: true, open: "09:00", close: "22:00" },
-              friday: { enabled: true, open: "09:00", close: "23:00" },
-              saturday: { enabled: true, open: "08:00", close: "23:00" },
-              sunday: { enabled: true, open: "08:00", close: "22:00" },
-            },
+            weeklySchedule,
           });
         }
     });

@@ -38,6 +38,7 @@ export type OwnerRootStackParamList = {
   OwnerCercaAmiciScreen: undefined;
   OwnerNotifiche: undefined;
   OwnerStatistics: undefined;
+  ProfiloUtente: { userId: string };
   EarningsStats: {
     earnings: {
       totalEarnings: number;
@@ -152,7 +153,7 @@ export default function OwnerRootStack() {
         component={OwnerCercaAmiciScreen} 
       />
       <Stack.Screen 
-        name="UserProfile"
+        name="ProfiloUtente"
         component={UserProfileScreen} 
       />
       <Stack.Screen 

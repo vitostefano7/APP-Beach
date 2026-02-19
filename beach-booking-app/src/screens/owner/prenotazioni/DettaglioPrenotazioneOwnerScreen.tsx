@@ -261,6 +261,8 @@ export default function OwnerDettaglioPrenotazioneScreen() {
 
       const data = await res.json();
       console.log("✅ Booking caricato:", data);
+      console.log("👤 User data:", data.user);
+      console.log("📝 Username:", data.user?.username);
       
       // Add matchId for compatibility with search function
       data.matchId = data.match._id;
@@ -822,7 +824,24 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             </View>
           </View>
 
-          <View style={{ width: 32 }} />
+          {!isCancelled && isFuture ? (
+            <Pressable
+              onPress={handleCancel}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: '#FFEBEE',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+              hitSlop={10}
+            >
+              <Ionicons name="trash-outline" size={20} color="#F44336" />
+            </Pressable>
+          ) : (
+            <View style={{ width: 32 }} />
+          )}
         </View>
       </View>
 
@@ -854,7 +873,7 @@ export default function OwnerDettaglioPrenotazioneScreen() {
             <View style={styles.clientCard}>
               <Pressable
                 style={styles.clientInfoPressable}
-                onPress={() => setShowClientProfile(true)}
+                onPress={() => openUserProfile(booking.user?._id)}
               >
                 <Avatar
                   name={booking.user?.name}
@@ -867,9 +886,9 @@ export default function OwnerDettaglioPrenotazioneScreen() {
                   <Text style={styles.clientName}>
                     {booking.user?.name || "Utente"} {booking.user?.surname || ""}
                   </Text>
-                  {booking.user?.email && (
+                  {booking.user?.username && (
                     <Text style={styles.clientEmail}>
-                      {booking.user.email}
+                      @{booking.user.username}
                     </Text>
                   )}
                 </View>

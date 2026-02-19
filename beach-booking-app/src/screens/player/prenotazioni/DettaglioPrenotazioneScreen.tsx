@@ -477,17 +477,16 @@ export default function DettaglioPrenotazioneScreen() {
     // Solo il creatore della prenotazione può cancellarla
     const bookingUserId = booking.match?.createdBy?._id;
     const isBookingCreator = bookingUserId === getUserId(user);
-    // Solo se la partita non è ancora iniziata e mancano meno di 24 ore
+    // Solo se la partita non è ancora iniziata o passata
     console.log('canCancelBooking check:', {
       isBookingCreator,
       bookingUserId,
       userId: getUserId(user),
       isMatchInProgress: isMatchInProgress(),
       isMatchPassed: isMatchPassed(),
-      isWithin24Hours: isWithin24Hours(),
       bookingStatus: booking.status
     });
-    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && isWithin24Hours() && booking.status !== "cancelled";
+    return isBookingCreator && !isMatchInProgress() && !isMatchPassed() && booking.status !== "cancelled";
   };
 
   const handleSubmitScore = async (winner: 'A' | 'B' | null, sets: { teamA: number; teamB: number }[]) => {

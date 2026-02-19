@@ -9,6 +9,7 @@ import {
   TextInput,
   StyleSheet,
   Dimensions,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useContext, useEffect, useState, useRef } from "react";
@@ -70,6 +71,23 @@ type Post = {
   createdAt: string;
 };
 
+type Struttura = {
+  _id: string;
+  name: string;
+  description?: string;
+  images?: string[];
+  location?: {
+    address: string;
+    city: string;
+  };
+};
+
+type OwnerFollowInfo = {
+  strutturaId: string;
+  strutturaName: string;
+  followId: string; // ID del documento UserFollower per unfollow
+};
+
 export default function UserProfileScreen() {
   const { token, user: currentUser } = useContext(AuthContext);
   const navigation = useNavigation<UserProfileNavigationProp>();
@@ -88,6 +106,13 @@ export default function UserProfileScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [activeInputPostId, setActiveInputPostId] = useState<string | null>(null);
   const currentScrollOffset = useRef(0);
+
+  // Stati per owner follow con strutture
+  const [ownerStrutture, setOwnerStrutture] = useState<Struttura[]>([]);
+  const [loadingStrutture, setLoadingStrutture] = useState(false);
+  const [showStrutturaPickerModal, setShowStrutturaPickerModal] = useState(false);
+  const [ownerFollowingStrutture, setOwnerFollowingStrutture] = useState<OwnerFollowInfo[]>([]);
+  const [loadingOwnerFollow, setLoadingOwnerFollow] = useState(false);
 
   // Supporto opzionale blur (expo-blur). Se non presente useremo un overlay semitrasparente
   let BlurViewImpl: any = View;
@@ -168,6 +193,13 @@ export default function UserProfileScreen() {
         }
         
         setData(json);
+
+        // Se l'utente corrente è un owner, carica le sue strutture e verifica quali seguono questo user
+        if (currentUser?.role === 'owner') {
+          console.log("👤 [UserProfile] Utente corrente è owner, caricamento strutture...");
+          await loadOwnerStrutture();
+          await loadOwnerFollowStatus();
+        }
       } else {
         console.error("❌ [UserProfile] Error loading user profile:", res.status);
         const errorText = await res.text();
@@ -213,12 +245,214 @@ export default function UserProfileScreen() {
     }
   };
 
+  // Carica le strutture dell'owner
+  const loadOwnerStrutture = async () => {
+    if (!token || !currentUser || currentUser.role !== 'owner') return;
+
+    try {
+      setLoadingStrutture(true);
+      console.log("🏢 [UserProfile] Caricamento strutture owner...");
+
+      const res = await fetch(`${API_URL}/owner/strutture`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const strutture = await res.json();
+        console.log("✅ [UserProfile] Strutture caricate:", strutture.length);
+        setOwnerStrutture(strutture);
+      } else {
+        console.error("❌ [UserProfile] Error loading strutture:", res.status);
+        setOwnerStrutture([]);
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception loading strutture:", error);
+      setOwnerStrutture([]);
+    } finally {
+      setLoadingStrutture(false);
+    }
+  };
+
+  // Verifica quali strutture dell'owner seguono già questo utente
+  const loadOwnerFollowStatus = async () => {
+    if (!token || !userId || !currentUser || currentUser.role !== 'owner') return;
+
+    try {
+      setLoadingOwnerFollow(true);
+      console.log("🔍 [UserProfile] Verifico follow strutture per userId:", userId);
+
+      // Per ogni struttura, verifica se segue questo user
+      // Nota: potremmo ottimizzare con un endpoint dedicato, ma per ora iteriamo
+      const struttureRes = await fetch(`${API_URL}/owner/strutture`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!struttureRes.ok) {
+        console.error("❌ [UserProfile] Error loading strutture for follow check");
+        setOwnerFollowingStrutture([]);
+        return;
+      }
+
+      const strutture = await struttureRes.json();
+      const followingInfo: OwnerFollowInfo[] = [];
+
+      // Per ogni struttura, controlla se esiste un UserFollower per questo user
+      for (const struttura of strutture) {
+        try {
+          const checkRes = await fetch(
+            `${API_URL}/community/users/${userId}/follow-status?strutturaId=${struttura._id}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            // Se la struttura segue questo user, aggiungi all'array
+            if (checkData.isFollowing && checkData.followId) {
+              followingInfo.push({
+                strutturaId: struttura._id,
+                strutturaName: struttura.name,
+                followId: checkData.followId,
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`❌ [UserProfile] Error checking follow for struttura ${struttura._id}:`, error);
+        }
+      }
+
+      console.log("✅ [UserProfile] Strutture che seguono questo user:", followingInfo.length);
+      setOwnerFollowingStrutture(followingInfo);
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception loading owner follow status:", error);
+      setOwnerFollowingStrutture([]);
+    } finally {
+      setLoadingOwnerFollow(false);
+    }
+  };
+
+  // Owner segue l'utente con una struttura specifica
+  const handleFollowAsStruttura = async (strutturaId: string, strutturaName: string) => {
+    if (!token || !userId || sendingRequest) {
+      console.log("⚠️ [UserProfile] Cannot follow as struttura:", { hasToken: !!token, userId, sendingRequest });
+      return;
+    }
+
+    console.log("📤 [UserProfile] Following user as struttura:", { strutturaId, strutturaName, userId });
+
+    try {
+      setSendingRequest(true);
+      const res = await fetch(`${API_URL}/community/users/${userId}/follow`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ strutturaId }),
+      });
+
+      console.log("📡 [UserProfile] Follow response status:", res.status);
+
+      if (res.ok) {
+        const result = await res.json();
+        console.log("✅ [UserProfile] Follow as struttura SUCCESS:", JSON.stringify(result, null, 2));
+        
+        // Aggiungi alla lista delle strutture che seguono
+        setOwnerFollowingStrutture((prev) => [
+          ...prev,
+          {
+            strutturaId,
+            strutturaName,
+            followId: result.follower?._id || result._id,
+          },
+        ]);
+
+        setShowStrutturaPickerModal(false);
+      } else {
+        const errorData = await res.json();
+        console.error("❌ [UserProfile] Follow as struttura FAILED:", errorData);
+        alert(errorData.message || "Errore durante il follow");
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception following as struttura:", error);
+      alert("Errore durante il follow");
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  // Owner rimuove il follow di una struttura specifica
+  const handleUnfollowAsStruttura = async (strutturaId: string, strutturaName: string) => {
+    if (!token || !userId || unfollowing) {
+      console.log("⚠️ [UserProfile] Cannot unfollow as struttura:", { hasToken: !!token, userId, unfollowing });
+      return;
+    }
+
+    console.log("📤 [UserProfile] Unfollowing user as struttura:", { strutturaId, strutturaName, userId });
+
+    try {
+      setUnfollowing(true);
+      const res = await fetch(`${API_URL}/community/users/${userId}/follow`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ strutturaId }),
+      });
+
+      console.log("📡 [UserProfile] Unfollow response status:", res.status);
+
+      if (res.ok) {
+        console.log("✅ [UserProfile] Unfollow as struttura SUCCESS");
+        
+        // Rimuovi dalla lista delle strutture che seguono
+        setOwnerFollowingStrutture((prev) =>
+          prev.filter((info) => info.strutturaId !== strutturaId)
+        );
+      } else {
+        const errorData = await res.json();
+        console.error("❌ [UserProfile] Unfollow as struttura FAILED:", errorData);
+        alert(errorData.message || "Errore durante l'unfollow");
+      }
+    } catch (error) {
+      console.error("❌ [UserProfile] Exception unfollowing as struttura:", error);
+      alert("Errore durante l'unfollow");
+    } finally {
+      setUnfollowing(false);
+    }
+  };
+
   const handleSendFriendRequest = async () => {
     if (!token || !userId || sendingRequest) {
       console.log("⚠️ [UserProfile] Cannot send request:", { hasToken: !!token, userId, sendingRequest });
       return;
     }
 
+    // Se l'utente corrente è un owner, apri il modal per selezionare la struttura
+    if (currentUser?.role === 'owner') {
+      console.log("🏢 [UserProfile] Owner detected, opening struttura picker modal");
+      
+      // Se non ha strutture, mostra un avviso
+      if (ownerStrutture.length === 0) {
+        alert("Devi creare almeno una struttura per poter seguire gli utenti");
+        return;
+      }
+
+      // Se ha una sola struttura, segui direttamente senza mostrare il modal
+      if (ownerStrutture.length === 1) {
+        console.log("🏢 [UserProfile] Single struttura, following directly");
+        await handleFollowAsStruttura(ownerStrutture[0]._id, ownerStrutture[0].name);
+        return;
+      }
+
+      // Altrimenti, mostra il modal picker
+      setShowStrutturaPickerModal(true);
+      return;
+    }
+
+    // Comportamento standard per player (Friendship user-to-user)
     console.log("📤 [UserProfile] Sending follow request to:", userId);
     console.log("📤 [UserProfile] Current friendshipStatus:", data?.friendshipStatus);
 
@@ -590,6 +824,12 @@ export default function UserProfileScreen() {
   const isFriend = data.friendshipStatus === 'accepted';
   const isPrivateProfile = data.isPrivate && !isFriend;
 
+  // Per owner: verifica se ci sono strutture disponibili per seguire
+  const isOwner = currentUser?.role === 'owner';
+  const hasStrutture = ownerStrutture.length > 0;
+  const allStruttureFollowing = isOwner && hasStrutture && ownerFollowingStrutture.length === ownerStrutture.length;
+  const canOwnerFollow = isOwner && hasStrutture && !allStruttureFollowing && !isCurrentUser;
+
   // Blocca la visualizzazione dei post se profilo privato o richiesta pending
   const canSeePosts = !isPrivateProfile && !isPending;
 
@@ -631,6 +871,38 @@ export default function UserProfileScreen() {
 
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.username}>@{data.user.username}</Text>
+
+          {/* Badge: Strutture dell'owner che seguono questo utente */}
+          {currentUser?.role === 'owner' && ownerFollowingStrutture.length > 0 && (
+            <View style={{ marginTop: 8, paddingHorizontal: 20, width: '100%' }}>
+              {ownerFollowingStrutture.map((followInfo) => (
+                <View
+                  key={followInfo.strutturaId}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#E3F2FD',
+                    borderRadius: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    marginBottom: 6,
+                  }}
+                >
+                  <Ionicons name="business" size={16} color="#2196F3" />
+                  <Text style={{ color: '#2196F3', fontSize: 13, fontWeight: '600', marginLeft: 6, flex: 1 }}>
+                    Seguito da {followInfo.strutturaName}
+                  </Text>
+                  <Pressable
+                    onPress={() => handleUnfollowAsStruttura(followInfo.strutturaId, followInfo.strutturaName)}
+                    style={{ padding: 4 }}
+                    disabled={unfollowing}
+                  >
+                    <Ionicons name="close-circle" size={18} color="#FF5722" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Show if they follow you or want to follow you */}
           {data.theyFollowMe && !isPending && !isFriend && (
@@ -726,9 +998,90 @@ export default function UserProfileScreen() {
           ) : null}
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 10 }}>
-            {canSendRequest && (
+            {/* Owner: Pulsante "Segui come struttura" */}
+            {isOwner && !isCurrentUser && (
+              <>
+                {canOwnerFollow ? (
+                  <Pressable
+                    style={{
+                      backgroundColor: sendingRequest ? '#ccc' : '#2196F3',
+                      borderRadius: 25,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      flex: 1,
+                      marginHorizontal: 5,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                    }}
+                    onPress={handleSendFriendRequest}
+                    disabled={sendingRequest || loadingStrutture}
+                  >
+                    {sendingRequest || loadingStrutture ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="business" size={20} color="#fff" />
+                        <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }} numberOfLines={1}>
+                          Segui
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : !hasStrutture ? (
+                  <View
+                    style={{
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: 25,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      flex: 1,
+                      marginHorizontal: 5,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#666', fontSize: 13, textAlign: 'center' }}>
+                      Crea una struttura per seguire
+                    </Text>
+                  </View>
+                ) : allStruttureFollowing ? (
+                  <View
+                    style={{
+                      backgroundColor: '#4CAF50',
+                      borderRadius: 25,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      width: '48%',
+                      marginHorizontal: 5,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>
+                      Già seguito
+                    </Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+
+            {/* Player: Pulsante standard "Segui" */}
+            {!isOwner && canSendRequest && (
               <Pressable
-                style={{ backgroundColor: sendingRequest ? '#ccc' : '#2196F3', borderRadius: 25, paddingHorizontal: data.user.profilePrivacy === 'private' ? 25 : 15, paddingVertical: 12, width: data.user.profilePrivacy === 'private' ? '90%' : '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                style={{
+                  backgroundColor: sendingRequest ? '#ccc' : '#2196F3',
+                  borderRadius: 25,
+                  paddingHorizontal: data.user.profilePrivacy === 'private' ? 25 : 15,
+                  paddingVertical: 12,
+                  width: data.user.profilePrivacy === 'private' ? '90%' : '48%',
+                  marginHorizontal: 5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                }}
                 onPress={handleSendFriendRequest}
                 disabled={sendingRequest}
               >
@@ -744,9 +1097,21 @@ export default function UserProfileScreen() {
                 )}
               </Pressable>
             )}
-            {isFriend && (
+
+            {/* Player: Pulsante "Smetti di seguire" (Friendship) */}
+            {!isOwner && isFriend && (
               <Pressable
-                style={{ backgroundColor: unfollowing ? '#ccc' : '#FF5722', borderRadius: 25, paddingHorizontal: 25, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                style={{
+                  backgroundColor: unfollowing ? '#ccc' : '#FF5722',
+                  borderRadius: 25,
+                  paddingHorizontal: 25,
+                  paddingVertical: 12,
+                  width: '48%',
+                  marginHorizontal: 5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                }}
                 onPress={handleUnfollow}
                 disabled={unfollowing}
               >
@@ -760,8 +1125,23 @@ export default function UserProfileScreen() {
                 )}
               </Pressable>
             )}
-            {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public') && (
-              <Pressable style={{ backgroundColor: '#2196F3', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 12, width: '48%', marginHorizontal: 5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }} onPress={handleChat}>
+
+            {/* Pulsante Chat: disponibile per player con amicizia o profilo pubblico, sempre per owner */}
+            {!isCurrentUser && (isFriend || data.user.profilePrivacy === 'public' || isOwner) && (
+              <Pressable
+                style={{
+                  backgroundColor: '#2196F3',
+                  borderRadius: 25,
+                  paddingHorizontal: 15,
+                  paddingVertical: 12,
+                  width: isOwner && (canOwnerFollow || allStruttureFollowing || !hasStrutture) ? '48%' : !isOwner ? '48%' : '100%',
+                  marginHorizontal: 5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                }}
+                onPress={handleChat}
+              >
                 <Ionicons name="chatbubble-outline" size={20} color="#fff" />
                 <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 5 }}>Chat</Text>
               </Pressable>
@@ -817,6 +1197,130 @@ export default function UserProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Modal per selezionare la struttura (Owner) */}
+      <Modal
+        visible={showStrutturaPickerModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowStrutturaPickerModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => setShowStrutturaPickerModal(false)}
+          />
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingTop: 20,
+              paddingBottom: 40,
+              maxHeight: '70%',
+            }}
+          >
+            {/* Header del modal */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 20,
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1a1a1a' }}>
+                Seleziona struttura
+              </Text>
+              <Pressable onPress={() => setShowStrutturaPickerModal(false)}>
+                <Ionicons name="close" size={28} color="#666" />
+              </Pressable>
+            </View>
+
+            {/* Lista strutture */}
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {ownerStrutture
+                .filter((s) => !ownerFollowingStrutture.some((f) => f.strutturaId === s._id))
+                .map((struttura) => (
+                  <Pressable
+                    key={struttura._id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#F5F5F5',
+                      borderRadius: 12,
+                      padding: 16,
+                      marginBottom: 12,
+                    }}
+                    onPress={() => handleFollowAsStruttura(struttura._id, struttura.name)}
+                    disabled={sendingRequest}
+                  >
+                    {/* Immagine struttura */}
+                    {struttura.images && struttura.images.length > 0 ? (
+                      <Image
+                        source={{ uri: struttura.images[0] }}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 8,
+                          backgroundColor: '#E0E0E0',
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 8,
+                          backgroundColor: '#E0E0E0',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="business" size={32} color="#999" />
+                      </View>
+                    )}
+
+                    {/* Info struttura */}
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text
+                        style={{ fontSize: 16, fontWeight: 'bold', color: '#1a1a1a' }}
+                        numberOfLines={1}
+                      >
+                        {struttura.name}
+                      </Text>
+                      {struttura.location && (
+                        <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }} numberOfLines={1}>
+                          {struttura.location.city}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Icona freccia */}
+                    <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+                  </Pressable>
+                ))}
+
+              {ownerStrutture.filter((s) => !ownerFollowingStrutture.some((f) => f.strutturaId === s._id))
+                .length === 0 && (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+                  <Text style={{ fontSize: 16, color: '#666', marginTop: 12, textAlign: 'center' }}>
+                    Tutte le tue strutture seguono già questo utente
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

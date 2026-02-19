@@ -73,9 +73,14 @@ export async function generateStrutture(owners: any[]) {
         const defaultClosing = "23:00";
         const days = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
         const oh: any = {};
+        
+        // ✅ Prima struttura (idx===0) ha weekend chiuso per testing occupancy
+        const isClosedWeekend = idx === 0;
+        
         days.forEach((d) => {
           // Occasionally close weekends for variety
-          if ((d === "saturday" || d === "sunday") && Math.random() < 0.3) {
+          const shouldCloseWeekend = isClosedWeekend || Math.random() < 0.3;
+          if ((d === "saturday" || d === "sunday") && shouldCloseWeekend) {
             oh[d] = { closed: true };
           } else {
             oh[d] = { slots: [{ open: defaultOpening, close: defaultClosing }] };

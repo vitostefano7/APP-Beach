@@ -25,12 +25,16 @@ import { Avatar } from "../../components/Avatar";
 import { useAlert } from "../../context/AlertContext";
 import { AvatarPicker } from "../../components/AvatarPicker";
 import { resolveAvatarUrl } from "../../utils/avatar";
+import { useOwnerStats } from "../../hooks/useOwnerStats";
 
 // ==================== TIPI ====================
 interface OwnerStats {
   strutture: number;
   prenotazioni: number;
   incassoTotale: number;
+  incassoOggi: number;
+  incassoSettimana: number;
+  incassoMese: number;
   tassoOccupazione: number;
   nuoviClienti: number;
 }
@@ -73,6 +77,25 @@ interface Booking {
 
 interface Struttura {
   id: string;
+  _id?: string;
+  name?: string;
+  openingHours?: any;
+  [key: string]: any;
+}
+
+interface Campo {
+  _id: string;
+  name: string;
+  struttura: string;
+  weeklySchedule?: {
+    monday?: { open: string; close: string; closed?: boolean };
+    tuesday?: { open: string; close: string; closed?: boolean };
+    wednesday?: { open: string; close: string; closed?: boolean };
+    thursday?: { open: string; close: string; closed?: boolean };
+    friday?: { open: string; close: string; closed?: boolean };
+    saturday?: { open: string; close: string; closed?: boolean };
+    sunday?: { open: string; close: string; closed?: boolean };
+  };
   [key: string]: any;
 }
 
@@ -80,18 +103,13 @@ interface Struttura {
 
 // ==================== CUSTOM HOOKS ====================
 const useOwnerProfile = (token: string | null) => {
-  const [stats, setStats] = useState<OwnerStats>({
-    strutture: 0,
-    prenotazioni: 0,
-    incassoTotale: 0,
-    tassoOccupazione: 0,
-    nuoviClienti: 0,
-  });
   const [earnings, setEarnings] = useState<OwnerEarnings>({
     totalEarnings: 0,
     earnings: [],
   });
   const [strutture, setStrutture] = useState<Struttura[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [campi, setCampi] = useState<Campo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,34 +147,47 @@ const useOwnerProfile = (token: string | null) => {
 
       const profileData: ProfileResponse = await profileRes.json();
       
-      // Carica statistiche
+      // Carica dati
       const struttureData: Struttura[] = struttureRes.ok ? await struttureRes.json() : [];
-      const bookings: Booking[] = bookingsRes.ok ? await bookingsRes.json() : [];
-      const earningsData: OwnerEarnings = earningsRes.ok ? await earningsRes.json() : { totalEarnings: 0, earnings: [] };
+      const bookingsData: Booking[] = bookingsRes.ok ? await bookingsRes.json() : [];
       
-      const confirmedBookings = bookings.filter((b) => b.status === "confirmed");
-      const incasso = confirmedBookings.reduce((sum, b) => sum + (b.price || 0), 0);
-
-      // Calcola clienti unici (usa user._id dalla struttura dei bookings)
-      const nuoviClienti = new Set(
-        bookings
-          .filter((b) => b.user?._id)
-          .map((b) => b.user!._id)
-      ).size;
-
-      // Calcola tasso occupazione (stima basata su prenotazioni per struttura)
-      const tassoOccupazione = struttureData.length > 0 
-        ? Math.min(100, Math.round((confirmedBookings.length / struttureData.length) * 10)) 
-        : 0;
+      // Carica campi per ogni struttura
+      const allCampi: Campo[] = [];
+      for (const struttura of struttureData) {
+        try {
+          const campiRes = await fetch(
+            `${API_URL}/campi/owner/struttura/${struttura._id || struttura.id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          if (campiRes.ok) {
+            const campiData = await campiRes.json();
+            allCampi.push(...campiData);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
+        }
+      }
+      
+      // Gestione earnings
+      let earningsData: OwnerEarnings = { totalEarnings: 0, earnings: [] };
+      if (earningsRes.ok) {
+        try {
+          earningsData = await earningsRes.json();
+        } catch (err) {
+          console.error("❌ Error parsing earnings:", err);
+        }
+      }
 
       setStrutture(struttureData);
+      setBookings(bookingsData);
+      setCampi(allCampi);
       setEarnings(earningsData);
-      setStats({
+
+      console.log("✅ Profile loaded:", {
         strutture: struttureData.length,
-        prenotazioni: bookings.length,
-        incassoTotale: incasso,
-        tassoOccupazione,
-        nuoviClienti,
+        bookings: bookingsData.length,
+        campi: allCampi.length,
       });
 
       return profileData.user;
@@ -169,7 +200,7 @@ const useOwnerProfile = (token: string | null) => {
     }
   }, [token]);
 
-  return { stats, earnings, strutture, loading, error, fetchProfile, setError };
+  return { earnings, strutture, bookings, campi, loading, error, fetchProfile, setError };
 };
 
 const useAvatarManager = (
@@ -529,7 +560,10 @@ export default function OwnerProfileScreen() {
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
 
-  const { stats, earnings, strutture, loading, error, fetchProfile, setError } = useOwnerProfile(token);
+  const { earnings, strutture, bookings, campi, loading, error, fetchProfile, setError } = useOwnerProfile(token);
+  
+  // Calcola statistiche usando il hook dedicato
+  const stats = useOwnerStats(bookings, strutture, campi);
   const {
     avatarUrl,
     avatarError,
@@ -798,11 +832,11 @@ export default function OwnerProfileScreen() {
 
           <Pressable 
             style={styles.actionCard}
-            onPress={() => navigation.navigate("Reviews")}
+            onPress={() => navigation.navigate("OwnerBookings")}
           >
-            <Ionicons name="star" size={32} color="white" />
-            <Text style={styles.actionCardTitle}>Recensioni</Text>
-            <Text style={styles.actionCardSubtitle}>4.8 ⭐</Text>
+            <Ionicons name="calendar" size={32} color="white" />
+            <Text style={styles.actionCardTitle}>Prenotazioni</Text>
+            <Text style={styles.actionCardSubtitle}>{stats.prenotazioni} Totali</Text>
           </Pressable>
         </View>
 
@@ -819,25 +853,56 @@ export default function OwnerProfileScreen() {
             </Pressable>
           </View>
           
-          {/* Card Guadagni Cliccabile */}
-          <Pressable 
-            style={styles.earningsCard}
-            onPress={() => navigation.navigate("EarningsStats", { earnings: earnings })}
-          >
-            <View style={styles.earningsHeader}>
-              <View style={styles.earningsIconContainer}>
-                <Ionicons name="wallet" size={32} color="#2196F3" />
+          {/* Card Guadagni - 3 Periodi */}
+          <View style={styles.earningsGrid}>
+            <Pressable 
+              style={styles.earningsPeriodCard}
+              onPress={() => navigation.navigate("EarningsStats", { 
+                earnings: {
+                  totalEarnings: stats.incassoOggi,
+                  earnings: [],
+                }
+              })}
+            >
+              <View style={styles.earningsPeriodHeader}>
+                <Ionicons name="calendar-outline" size={24} color="#4CAF50" />
+                <Text style={styles.earningsPeriodLabel}>Oggi</Text>
               </View>
-              <View style={styles.earningsContent}>
-                <Text style={styles.earningsLabel}>Guadagni Totali</Text>
-                <Text style={styles.earningsValue}>€{earnings.totalEarnings.toFixed(2)}</Text>
-                <Text style={styles.earningsSubtext}>
-                  {earnings.earnings.length} transazioni
-                </Text>
+              <Text style={styles.earningsPeriodValue}>€{stats.incassoOggi.toFixed(0)}</Text>
+            </Pressable>
+
+            <Pressable 
+              style={styles.earningsPeriodCard}
+              onPress={() => navigation.navigate("EarningsStats", { 
+                earnings: {
+                  totalEarnings: stats.incassoSettimana,
+                  earnings: [],
+                }
+              })}
+            >
+              <View style={styles.earningsPeriodHeader}>
+                <Ionicons name="calendar" size={24} color="#2196F3" />
+                <Text style={styles.earningsPeriodLabel}>Settimana</Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#2196F3" />
-            </View>
-          </Pressable>
+              <Text style={styles.earningsPeriodValue}>€{stats.incassoSettimana.toFixed(0)}</Text>
+            </Pressable>
+
+            <Pressable 
+              style={styles.earningsPeriodCard}
+              onPress={() => navigation.navigate("EarningsStats", { 
+                earnings: {
+                  totalEarnings: stats.incassoMese,
+                  earnings: [],
+                }
+              })}
+            >
+              <View style={styles.earningsPeriodHeader}>
+                <Ionicons name="stats-chart" size={24} color="#FF9800" />
+                <Text style={styles.earningsPeriodLabel}>Mese</Text>
+              </View>
+              <Text style={styles.earningsPeriodValue}>€{stats.incassoMese.toFixed(0)}</Text>
+            </Pressable>
+          </View>
 
           {/* Altre Statistiche */}
           <View style={styles.businessStatsCard}>
@@ -1295,6 +1360,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     fontWeight: "500",
+  },
+
+  // EARNINGS GRID - 3 periodi
+  earningsGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+
+  earningsPeriodCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  earningsPeriodHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+
+  earningsPeriodLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+  },
+
+  earningsPeriodValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1a1a1a",
   },
 
   // STRUTTURE CARD

@@ -22,7 +22,6 @@ import {
   Pressable,
   Alert,
   TextInput,
-  Modal,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +30,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import SportIcon from '../../../components/SportIcon';
+import FilterModal from "../../../components/FilterModal";
 
 import { AuthContext } from "../../../context/AuthContext";
 import API_URL from "../../../config/api";
@@ -1296,235 +1296,160 @@ export default function CercaPartitaScreen() {
         </>
       )}
 
-      <Modal
+      <FilterModal
         visible={showCalendar}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowCalendar(false)}
+        title="Seleziona una data"
+        onClose={() => setShowCalendar(false)}
       >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.filterModal}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Seleziona una data</Text>
-            </View>
-
-            <View style={styles.calendarContainer}>
-              <Calendar
-                current={formatDate(dateFilter) || formatDate(new Date())}
-                minDate={formatDate(new Date())}
-                onDayPress={(day) => {
-                  setDateFilter(new Date(day.dateString));
-                  setShowCalendar(false);
-                }}
-                markedDates={{
-                  [formatDate(dateFilter) || ""]: {
-                    selected: true,
-                    selectedColor: "#2196F3",
-                  },
-                }}
-                theme={{
-                  backgroundColor: "#ffffff",
-                  calendarBackground: "#ffffff",
-                  textSectionTitleColor: "#666",
-                  selectedDayBackgroundColor: "#2196F3",
-                  selectedDayTextColor: "#ffffff",
-                  todayTextColor: "#2196F3",
-                  dayTextColor: "#1A1A1A",
-                  textDisabledColor: "#d9d9d9",
-                  dotColor: "#2196F3",
-                  selectedDotColor: "#ffffff",
-                  arrowColor: "#2196F3",
-                  monthTextColor: "#1A1A1A",
-                  indicatorColor: "#2196F3",
-                  textDayFontWeight: "500",
-                  textMonthFontWeight: "700",
-                  textDayHeaderFontWeight: "600",
-                  textDayFontSize: 15,
-                  textMonthFontSize: 18,
-                  textDayHeaderFontSize: 13,
-                }}
-              />
-            </View>
-
-            <View style={styles.filterModalFooter}>
-              <Pressable
-                style={styles.filterModalCancel}
-                onPress={() => setShowCalendar(false)}
-              >
-                <Text style={styles.filterModalCancelText}>Annulla</Text>
-              </Pressable>
-            </View>
-          </View>
+        <View style={styles.calendarContainer}>
+          <Calendar
+            current={formatDate(dateFilter) || formatDate(new Date())}
+            minDate={formatDate(new Date())}
+            onDayPress={(day) => {
+              setDateFilter(new Date(day.dateString));
+              setShowCalendar(false);
+            }}
+            markedDates={{
+              [formatDate(dateFilter) || ""]: {
+                selected: true,
+                selectedColor: "#2196F3",
+              },
+            }}
+            theme={{
+              backgroundColor: "#ffffff",
+              calendarBackground: "#ffffff",
+              textSectionTitleColor: "#666",
+              selectedDayBackgroundColor: "#2196F3",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#2196F3",
+              dayTextColor: "#1A1A1A",
+              textDisabledColor: "#d9d9d9",
+              dotColor: "#2196F3",
+              selectedDotColor: "#ffffff",
+              arrowColor: "#2196F3",
+              monthTextColor: "#1A1A1A",
+              indicatorColor: "#2196F3",
+              textDayFontWeight: "500",
+              textMonthFontWeight: "700",
+              textDayHeaderFontWeight: "600",
+              textDayFontSize: 15,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 13,
+            }}
+          />
         </View>
-      </Modal>
+      </FilterModal>
 
-      <Modal
+      <FilterModal
         visible={showSportPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowSportPicker(false)}
+        title="Scegli sport"
+        onClose={() => setShowSportPicker(false)}
+        contentScrollable
       >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.filterModal}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Scegli sport</Text>
-            </View>
-            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
-              {loadingSports ? (
-                <View style={styles.citySuggestionItem}>
-                  <ActivityIndicator size="small" color="#2196F3" />
-                  <Text style={styles.citySuggestionText}>Caricamento sport...</Text>
-                </View>
-              ) : (
-                <>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterModalOption,
-                      styles.filterModalOptionWithBorder,
-                      pressed && { backgroundColor: "#E3F2FD" }
-                    ]}
-                    onPress={() => {
-                      setSportFilter(null);
-                      setShowSportPicker(false);
-                    }}
-                  >
-                    <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
-                  </Pressable>
-                  {sports.map((sport, index) => (
-                    <Pressable
-                      key={sport._id}
-                      style={({ pressed }) => [
-                        styles.filterModalOption,
-                        index < sports.length - 1 && styles.filterModalOptionWithBorder,
-                        pressed && { backgroundColor: "#E3F2FD" }
-                      ]}
-                      onPress={() => {
-                        setSportFilter(sport.code);
-                        setShowSportPicker(false);
-                      }}
-                    >
-                      <SportIcon sport={sport.code} size={16} color="#2196F3" />
-                      <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{sport.name}</Text>
-                    </Pressable>
-                  ))}
-                </>
-              )}
-            </ScrollView>
-            <View style={styles.filterModalFooter}>
-              <Pressable
-                style={styles.filterModalCancel}
-                onPress={() => setShowSportPicker(false)}
-              >
-                <Text style={styles.filterModalCancelText}>Annulla</Text>
-              </Pressable>
-            </View>
+        {loadingSports ? (
+          <View style={styles.citySuggestionItem}>
+            <ActivityIndicator size="small" color="#2196F3" />
+            <Text style={styles.citySuggestionText}>Caricamento sport...</Text>
           </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showPlayersPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowPlayersPicker(false)}
-      >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.filterModal}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>
-                {sportFilter ? `Formati per ${getSportLabel(sportFilter)}` : 'Scegli formato partita'}
-              </Text>
-              {sportFilter && (
-                <Text style={styles.filterModalSubtitle}>
-                  Solo i formati disponibili per questo sport
-                </Text>
-              )}
-            </View>
-            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
+        ) : (
+          <>
+            <Pressable
+              style={({ pressed }) => [
+                styles.filterModalOption,
+                styles.filterModalOptionWithBorder,
+                pressed && { backgroundColor: "#E3F2FD" }
+              ]}
+              onPress={() => {
+                setSportFilter(null);
+                setShowSportPicker(false);
+              }}
+            >
+              <Text style={styles.filterModalOptionText}>✨ Tutti gli sport</Text>
+            </Pressable>
+            {sports.map((sport, index) => (
               <Pressable
+                key={sport._id}
                 style={({ pressed }) => [
                   styles.filterModalOption,
-                  styles.filterModalOptionWithBorder,
+                  index < sports.length - 1 && styles.filterModalOptionWithBorder,
                   pressed && { backgroundColor: "#E3F2FD" }
                 ]}
                 onPress={() => {
-                  setPlayersFilter(null);
-                  setShowPlayersPicker(false);
+                  setSportFilter(sport.code);
+                  setShowSportPicker(false);
                 }}
               >
-                <Text style={styles.filterModalOptionText}>✨ Tutti i formati</Text>
+                <SportIcon sport={sport.code} size={16} color="#2196F3" />
+                <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{sport.name}</Text>
               </Pressable>
-              {playersOptions.map((option, index) => (
-                <Pressable
-                  key={option}
-                  style={({ pressed }) => [
-                    styles.filterModalOption,
-                    index < playersOptions.length - 1 && styles.filterModalOptionWithBorder,
-                    pressed && { backgroundColor: "#E3F2FD" }
-                  ]}
-                  onPress={() => {
-                    setPlayersFilter(option);
-                    setShowPlayersPicker(false);
-                  }}
-                >
-                  <Ionicons name="people" size={16} color="#2196F3" />
-                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{option}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={styles.filterModalFooter}>
-              <Pressable
-                style={styles.filterModalCancel}
-                onPress={() => setShowPlayersPicker(false)}
-              >
-                <Text style={styles.filterModalCancelText}>Annulla</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+            ))}
+          </>
+        )}
+      </FilterModal>
 
-      <Modal
-        visible={showTimePicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowTimePicker(false)}
+      <FilterModal
+        visible={showPlayersPicker}
+        title={sportFilter ? `Formati per ${getSportLabel(sportFilter)}` : 'Scegli formato partita'}
+        subtitle={sportFilter ? 'Solo i formati disponibili per questo sport' : undefined}
+        onClose={() => setShowPlayersPicker(false)}
+        contentScrollable
       >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.filterModal}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Seleziona un orario</Text>
-            </View>
-            <ScrollView style={styles.filterModalContent} showsVerticalScrollIndicator={false}>
-              {timeSlots.map((slot, index) => (
-                <Pressable
-                  key={slot}
-                  style={({ pressed }) => [
-                    styles.filterModalOption,
-                    index < timeSlots.length - 1 && styles.filterModalOptionWithBorder,
-                    pressed && { backgroundColor: "#E3F2FD" }
-                  ]}
-                  onPress={() => {
-                    setTimeFilter(slot);
-                    setShowTimePicker(false);
-                  }}
-                >
-                  <Ionicons name="time" size={16} color="#2196F3" />
-                  <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{slot}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={styles.filterModalFooter}>
-              <Pressable
-                style={styles.filterModalCancel}
-                onPress={() => setShowTimePicker(false)}
-              >
-                <Text style={styles.filterModalCancelText}>Annulla</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <Pressable
+          style={({ pressed }) => [
+            styles.filterModalOption,
+            styles.filterModalOptionWithBorder,
+            pressed && { backgroundColor: "#E3F2FD" }
+          ]}
+          onPress={() => {
+            setPlayersFilter(null);
+            setShowPlayersPicker(false);
+          }}
+        >
+          <Text style={styles.filterModalOptionText}>✨ Tutti i formati</Text>
+        </Pressable>
+        {playersOptions.map((option, index) => (
+          <Pressable
+            key={option}
+            style={({ pressed }) => [
+              styles.filterModalOption,
+              index < playersOptions.length - 1 && styles.filterModalOptionWithBorder,
+              pressed && { backgroundColor: "#E3F2FD" }
+            ]}
+            onPress={() => {
+              setPlayersFilter(option);
+              setShowPlayersPicker(false);
+            }}
+          >
+            <Ionicons name="people" size={16} color="#2196F3" />
+            <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{option}</Text>
+          </Pressable>
+        ))}
+      </FilterModal>
+
+      <FilterModal
+        visible={showTimePicker}
+        title="Seleziona un orario"
+        onClose={() => setShowTimePicker(false)}
+        contentScrollable
+      >
+        {timeSlots.map((slot, index) => (
+          <Pressable
+            key={slot}
+            style={({ pressed }) => [
+              styles.filterModalOption,
+              index < timeSlots.length - 1 && styles.filterModalOptionWithBorder,
+              pressed && { backgroundColor: "#E3F2FD" }
+            ]}
+            onPress={() => {
+              setTimeFilter(slot);
+              setShowTimePicker(false);
+            }}
+          >
+            <Ionicons name="time" size={16} color="#2196F3" />
+            <Text style={[styles.filterModalOptionText, { marginLeft: 12 }]}>{slot}</Text>
+          </Pressable>
+        ))}
+      </FilterModal>
 
       {/* 🆕 Overlay selezione città iniziale - Non blocca i tab */}
       {showCitySelectionModal && (

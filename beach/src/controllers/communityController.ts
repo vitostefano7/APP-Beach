@@ -1691,6 +1691,7 @@ export const getUserFollowStatus = async (req: AuthRequest, res: Response) => {
 
     res.json({
       isFollowing,
+      followId: follower?._id?.toString() || null,
       status: follower?.status || null,
     });
   } catch (error) {

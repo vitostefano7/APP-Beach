@@ -1000,7 +1000,7 @@ export const getOwnerBookingById = async (req: AuthRequest, res: Response) => {
           }
         ],
       })
-      .populate("user", "name surname email avatarUrl");
+      .populate("user", "name surname email username avatarUrl");
 
     if (!booking) {
       console.log("❌ Prenotazione non trovata:", id);

@@ -4,6 +4,37 @@ import { randomInt, randomElement } from "./config";
 import mongoose from "mongoose";
 import { getRandomSportForEnvironment, getRecommendedSurfaceForSport, getMaxPlayersForSport } from "./seedSports";
 
+/**
+ * Converte openingHours (formato Struttura) in weeklySchedule (formato Campo)
+ * openingHours: { monday: { closed: true } | { slots: [{open, close}] } }
+ * weeklySchedule: { monday: { enabled: boolean, open?: string, close?: string } }
+ */
+function convertOpeningHoursToWeeklySchedule(openingHours: any) {
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const weeklySchedule: any = {};
+
+  days.forEach((day) => {
+    const dayConfig = openingHours[day];
+    if (!dayConfig || dayConfig.closed === true) {
+      // Giorno chiuso
+      weeklySchedule[day] = { enabled: false };
+    } else if (dayConfig.slots && dayConfig.slots.length > 0) {
+      // Usa il primo slot (in caso di multi-slot, prendiamo il primo)
+      const firstSlot = dayConfig.slots[0];
+      weeklySchedule[day] = {
+        enabled: true,
+        open: firstSlot.open,
+        close: firstSlot.close,
+      };
+    } else {
+      // Fallback: giorno abilitato con orari di default
+      weeklySchedule[day] = { enabled: true, open: "09:00", close: "22:00" };
+    }
+  });
+
+  return weeklySchedule;
+}
+
 export async function generateCampi(strutture: any[], sportMapping: Record<string, mongoose.Types.ObjectId>) {
   console.log(`🏐 Creazione campi per ${strutture.length} strutture...`);
 
@@ -163,15 +194,8 @@ export async function generateCampi(strutture: any[], sportMapping: Record<strin
           periodOverrides: { enabled: false, periods: [] },
           playerCountPricing: { enabled: !!enablePlayerPricing, prices: playerPrices },
         },
-        weeklySchedule: {
-          monday: { enabled: true, open: "09:00", close: "22:00" },
-          tuesday: { enabled: true, open: "09:00", close: "22:00" },
-          wednesday: { enabled: true, open: "09:00", close: "22:00" },
-          thursday: { enabled: true, open: "09:00", close: "22:00" },
-          friday: { enabled: true, open: "09:00", close: "23:00" },
-          saturday: { enabled: true, open: "08:00", close: "23:00" },
-          sunday: { enabled: true, open: "08:00", close: "22:00" },
-        },
+        // ✅ Sincronizza weeklySchedule con openingHours della struttura
+        weeklySchedule: convertOpeningHoursToWeeklySchedule(struttura.openingHours),
       });
     }
   }

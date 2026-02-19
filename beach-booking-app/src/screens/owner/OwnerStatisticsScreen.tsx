@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback, useEffect } from "react";
+import { useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +16,7 @@ import { BarChart, LineChart } from "react-native-gifted-charts";
 import { Picker } from '@react-native-picker/picker';
 import { Platform } from 'react-native';
 import API_URL from "../../config/api";
+import { useOwnerStats } from "../../hooks/useOwnerStats";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -25,6 +26,7 @@ interface Booking {
   startTime: string;
   endTime: string;
   status: string;
+  duration?: number;
   user: {
     _id: string;
     name: string;
@@ -43,6 +45,13 @@ interface Struttura {
   name: string;
 }
 
+interface Campo {
+  _id: string;
+  name: string;
+  struttura: string;
+  weeklySchedule?: any;
+}
+
 interface User {
   _id: string;
   name: string;
@@ -56,6 +65,7 @@ export default function OwnerStatisticsScreen() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [strutture, setStrutture] = useState<Struttura[]>([]);
+  const [campi, setCampi] = useState<Campo[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   
   const [selectedStruttura, setSelectedStruttura] = useState<string>("all");
@@ -84,6 +94,26 @@ export default function OwnerStatisticsScreen() {
         setBookings(bookingsData);
         setStrutture(struttureData);
 
+        // Carica campi per ogni struttura (necessari per calcolo tasso occupazione)
+        const allCampi: Campo[] = [];
+        for (const struttura of struttureData) {
+          try {
+            const campiRes = await fetch(
+              `${API_URL}/campi/owner/struttura/${struttura._id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (campiRes.ok) {
+              const campiData = await campiRes.json();
+              allCampi.push(...campiData);
+            }
+          } catch (err) {
+            console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
+          }
+        }
+        
+        setCampi(allCampi);
+
         // Estrai utenti unici dalle prenotazioni
         const uniqueUsers = Array.from(
           new Map(
@@ -106,6 +136,15 @@ export default function OwnerStatisticsScreen() {
     loadData();
   }, [loadData]);
 
+  // Filtra strutture e campi in base ai filtri selezionati
+  const filteredStrutture = selectedStruttura === "all" 
+    ? strutture 
+    : strutture.filter(s => s._id === selectedStruttura);
+
+  const filteredCampi = selectedStruttura === "all"
+    ? campi
+    : campi.filter(c => c.struttura === selectedStruttura);
+
   // Filtra prenotazioni
   const filteredBookings = bookings.filter((b) => {
     if (selectedStruttura !== "all" && b.campo?.struttura?._id !== selectedStruttura) {
@@ -116,6 +155,94 @@ export default function OwnerStatisticsScreen() {
     }
     return true;
   });
+
+  // Calcola statistiche con tasso occupazione (usa dati filtrati)
+  const stats = useOwnerStats(filteredBookings, filteredStrutture, filteredCampi);
+
+  // Calcola tasso occupazione per ogni struttura usando useMemo
+  const struttureStats = useMemo(() => {
+    return strutture.map(struttura => {
+      const strutturaCampi = campi.filter(c => c.struttura === struttura._id);
+      const strutturaBookings = bookings.filter(b => b.campo?.struttura?._id === struttura._id);
+      const strutturaObj = [struttura];
+      
+      // Calcola inline le statistiche
+      const confirmedBookings = strutturaBookings.filter(b => b.status === "confirmed");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      
+      const bookingsLastMonth = confirmedBookings.filter((b) => {
+        const bookingDate = new Date(b.date || b.startTime);
+        return bookingDate >= monthAgo && bookingDate < today;
+      });
+      
+      const orePrenotateMese = bookingsLastMonth.reduce((sum, b) => {
+        // Usa duration se presente, altrimenti calcola da startTime/endTime
+        let duration = b.duration || 1;
+        if (!b.duration && b.startTime && b.endTime) {
+          try {
+            const [startH, startM] = b.startTime.split(':').map(Number);
+            const [endH, endM] = b.endTime.split(':').map(Number);
+            const calc = (endH + endM / 60) - (startH + startM / 60);
+            if (calc > 0) duration = calc;
+          } catch (e) {
+            duration = 1;
+          }
+        }
+        console.log(`      📝 [LOG] Booking ${b._id}: startTime=${b.startTime} endTime=${b.endTime} duration=${b.duration} → usato=${duration}h`);
+        return sum + duration;
+      }, 0);
+      
+      // Calcola ore disponibili
+      const oreSettimanali = strutturaCampi.reduce((total, campo) => {
+        if (!campo.weeklySchedule) return total;
+        let weeklyHours = 0;
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        for (const day of days) {
+          const schedule = campo.weeklySchedule[day];
+          if (schedule && schedule.enabled !== false && schedule.closed !== true && schedule.open && schedule.close) {
+            const [openH, openM] = schedule.open.split(':').map(Number);
+            const [closeH, closeM] = schedule.close.split(':').map(Number);
+            const hours = (closeH + closeM / 60) - (openH + openM / 60);
+            weeklyHours += hours > 0 ? hours : 0;
+          }
+        }
+        return total + weeklyHours;
+      }, 0);
+      
+      const oreMensili = oreSettimanali * 4.33;
+      const tassoOccupazione = oreMensili > 0 ? Math.min(100, Math.round((orePrenotateMese / oreMensili) * 100)) : 0;
+      
+      return {
+        struttura,
+        campiCount: strutturaCampi.length,
+        bookingsTotal: strutturaBookings.length,
+        bookingsConfirmed: confirmedBookings.length,
+        tassoOccupazione
+      };
+    });
+  }, [bookings, strutture, campi]);
+
+  // Log dettagliato tasso occupazione per ogni struttura
+  useEffect(() => {
+    if (struttureStats.length > 0) {
+      console.log('\n📊 ========== TASSO OCCUPAZIONE PER STRUTTURA ==========');
+      
+      struttureStats.forEach(stat => {
+        console.log(`\n🏢 ${stat.struttura.name} (${stat.struttura._id})`);
+        console.log(`   • Campi: ${stat.campiCount}`);
+        console.log(`   • Prenotazioni totali: ${stat.bookingsTotal}`);
+        console.log(`   • Prenotazioni confermate: ${stat.bookingsConfirmed}`);
+        console.log(`   • 📈 TASSO OCCUPAZIONE: ${stat.tassoOccupazione}%`);
+      });
+      
+      console.log('\n🔍 Tasso occupazione attuale visualizzato nel tile: ' + stats.tassoOccupazione + '%');
+      console.log('   (Filtro: ' + (selectedStruttura === 'all' ? 'TUTTE LE STRUTTURE' : strutture.find(s => s._id === selectedStruttura)?.name || selectedStruttura) + ')');
+      console.log('====================================================\n');
+    }
+  }, [struttureStats, stats.tassoOccupazione, selectedStruttura, strutture]);
 
   // Calcola statistiche orarie per settimana
   const getHourlyStats = () => {
@@ -270,16 +397,37 @@ export default function OwnerStatisticsScreen() {
         <View style={styles.statsCards}>
           <View style={styles.statCard}>
             <Ionicons name="calendar" size={28} color="#2196F3" />
-            <Text style={styles.statValue}>{filteredBookings.length}</Text>
-            <Text style={styles.statLabel}>Prenotazioni</Text>
+            <Text style={styles.statValue}>
+              <Text style={{ fontSize: 22 }}>
+                {filteredBookings.filter(b => {
+                  const d = new Date(b.date + "T" + b.endTime);
+                  return d < new Date();
+                }).length}
+              </Text>
+              <Text style={{ fontSize: 14, color: "#999", fontWeight: "700" }}>
+                /{filteredBookings.length}
+              </Text>
+            </Text>
+            <Text style={styles.statLabel}>Concluse / Totali</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Ionicons name="pie-chart" size={28} color="#FF9800" />
+            <Text style={styles.statValue}>{stats.tassoOccupazione}%</Text>
+            <Text style={styles.statLabel}>Occupazione</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="time" size={28} color="#4CAF50" />
             <Text style={styles.statValue}>
-              {topHours[0]?.count || 0}
+              <Text style={{ fontSize: 22 }}>{topHours[0]?.count || 0}</Text>
+              <Text style={{ fontSize: 13, color: "#999", fontWeight: "700" }}>
+                {topHours[0]?.count > 0
+                  ? ` / ${topHours[0].hour.toString().padStart(2, "0")}:00`
+                  : ""}
+              </Text>
             </Text>
-            <Text style={styles.statLabel}>Ora di punta</Text>
+            <Text style={styles.statLabel}>Max Prenotazioni / Orario</Text>
           </View>
         </View>
 
