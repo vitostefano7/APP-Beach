@@ -9,17 +9,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback, useEffect, useMemo } from "react";
-import { AuthContext } from "../../../context/AuthContext";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { AuthContext } from "../../context/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { BarChart } from "react-native-gifted-charts";
-import API_URL from "../../../config/api";
-import { useOwnerDashboardStats } from "../../../hooks/useOwnerDashboardStats";
-import FilterModal from "../../../components/FilterModal";
-import SportIcon from "../../../components/SportIcon";
-import { Avatar } from "../../../components/Avatar";
+import API_URL from "../../config/api";
+import { useOwnerDashboardStats } from "../../hooks/useOwnerDashboardStats";
+import FilterModal from "../../components/FilterModal";
+import SportIcon from "../../components/SportIcon";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const ALL_USERS_FILTER = "__all_users__";
 
 interface Booking {
   _id?: string;
@@ -34,7 +34,6 @@ interface Booking {
     _id: string;
     name: string;
     surname?: string;
-    avatarUrl?: string;
   };
   campo?: {
     struttura?: {
@@ -62,7 +61,6 @@ interface User {
   _id: string;
   name: string;
   surname?: string;
-  avatarUrl?: string;
 }
 
 type DurationFilter = "all" | 1 | 1.5;
@@ -70,9 +68,7 @@ type DurationFilter = "all" | 1 | 1.5;
 export default function OwnerStatisticsScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
   const periodOptions = [7, 14, 30, 60, 90] as const;
-  const routeStrutturaId = route?.params?.strutturaId as string | undefined;
 
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -81,16 +77,13 @@ export default function OwnerStatisticsScreen() {
   const [users, setUsers] = useState<User[]>([]);
   
   const [selectedStruttura, setSelectedStruttura] = useState<string>("all");
-  const [selectedUser, setSelectedUser] = useState<string>("all");
+  const [selectedUser, setSelectedUser] = useState<string>(ALL_USERS_FILTER);
   const [selectedPeriodDays, setSelectedPeriodDays] = useState<(typeof periodOptions)[number]>(30);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [activeFilterType, setActiveFilterType] = useState<"struttura" | "cliente" | "periodo" | "sport" | null>(null);
   const [durationFilter, setDurationFilter] = useState<DurationFilter>("all");
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [expandedSlots, setExpandedSlots] = useState<Record<string, boolean>>({});
-  const [expandedTopUsers, setExpandedTopUsers] = useState<Record<string, boolean>>({});
-  const [topDurationFilter, setTopDurationFilter] = useState<1 | 1.5>(1);
-  const [routeFilterApplied, setRouteFilterApplied] = useState(false);
 
   // Carica dati
   const loadData = useCallback(async () => {
@@ -115,26 +108,24 @@ export default function OwnerStatisticsScreen() {
         setBookings(bookingsData);
         setStrutture(struttureData);
 
-        // Carica campi per ogni struttura in parallelo (necessari per calcolo tasso occupazione)
-        const campiChunks = await Promise.all(
-          struttureData.map(async (struttura: Struttura) => {
-            try {
-              const campiRes = await fetch(
-                `${API_URL}/campi/owner/struttura/${struttura._id}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-
-              if (!campiRes.ok) return [] as Campo[];
+        // Carica campi per ogni struttura (necessari per calcolo tasso occupazione)
+        const allCampi: Campo[] = [];
+        for (const struttura of struttureData) {
+          try {
+            const campiRes = await fetch(
+              `${API_URL}/campi/owner/struttura/${struttura._id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (campiRes.ok) {
               const campiData = await campiRes.json();
-              return Array.isArray(campiData) ? (campiData as Campo[]) : [];
-            } catch (err) {
-              console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
-              return [] as Campo[];
+              allCampi.push(...campiData);
             }
-          })
-        );
-
-        const allCampi = campiChunks.flat();
+          } catch (err) {
+            console.warn(`⚠️ Errore caricamento campi struttura ${struttura._id}:`, err);
+          }
+        }
+        
         setCampi(allCampi);
 
         // Estrai utenti unici dalle prenotazioni
@@ -159,26 +150,6 @@ export default function OwnerStatisticsScreen() {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (routeFilterApplied) return;
-    if (!routeStrutturaId) {
-      setRouteFilterApplied(true);
-      return;
-    }
-    if (strutture.length === 0) return;
-
-    if (strutture.some((s) => s._id === routeStrutturaId)) {
-      setSelectedStruttura(routeStrutturaId);
-    }
-    setRouteFilterApplied(true);
-  }, [routeFilterApplied, routeStrutturaId, strutture]);
-
-  useEffect(() => {
-    if (durationFilter === 1 || durationFilter === 1.5) {
-      setTopDurationFilter(durationFilter);
-    }
-  }, [durationFilter]);
-
   // Filtra strutture e campi in base ai filtri selezionati
   const {
     filteredStrutture,
@@ -186,8 +157,7 @@ export default function OwnerStatisticsScreen() {
     periodFilteredBookings,
     hourlyStats,
     weeklyStats,
-    topHours: _hookTopHours,
-    topUsersBySlot: _hookTopUsersBySlot,
+    topHours,
     struttureStats,
     ownerStats: stats,
   } = useOwnerDashboardStats({
@@ -195,7 +165,7 @@ export default function OwnerStatisticsScreen() {
     strutture,
     campi,
     selectedStruttura,
-    selectedUser,
+    selectedUser: selectedUser === ALL_USERS_FILTER ? "all" : selectedUser,
     selectedPeriodDays,
     durationFilter,
     selectedSport,
@@ -203,9 +173,9 @@ export default function OwnerStatisticsScreen() {
 
 
   const selectedUserLabel = useMemo(() => {
-    if (selectedUser === "all") return "Tutti";
+    if (selectedUser === ALL_USERS_FILTER) return "Tutti";
     const user = users.find((u) => u._id === selectedUser);
-    if (!user) return "Tutti";
+    if (!user) return selectedUser;
 
     const fullName = `${user.name}${user.surname ? " " + user.surname : ""}`;
     return fullName.length > 28 ? `${fullName.slice(0, 25)}...` : fullName;
@@ -241,94 +211,12 @@ export default function OwnerStatisticsScreen() {
     return selectedSport.length > 20 ? `${selectedSport.slice(0, 17)}...` : selectedSport;
   }, [selectedSport]);
 
-  const selectedDurationHours: number = topDurationFilter;
-
-  const getBookingDurationHours = (booking: Booking): number => {
-    const directDuration = Number(booking.duration);
-    if (Number.isFinite(directDuration) && directDuration > 0) return directDuration;
-
-    if (booking.startTime && booking.endTime) {
-      const [startH, startM] = booking.startTime.split(":").map(Number);
-      const [endH, endM] = booking.endTime.split(":").map(Number);
-      const calc = (endH + endM / 60) - (startH + startM / 60);
-      if (calc > 0) return Math.round(calc * 100) / 100;
-    }
-
-    return 1;
-  };
-
-  const durationFilteredPeriodBookings = useMemo(() => {
-    if (durationFilter === "all") return periodFilteredBookings;
-
-    return periodFilteredBookings.filter((booking) => {
-      const duration = getBookingDurationHours(booking);
-      return Math.abs(duration - durationFilter) < 0.01;
-    });
-  }, [periodFilteredBookings, durationFilter]);
-
-  const topDurationFilteredPeriodBookings = useMemo(() => {
-    return periodFilteredBookings.filter((booking) => {
-      const duration = getBookingDurationHours(booking);
-      return Math.abs(duration - topDurationFilter) < 0.01;
-    });
-  }, [periodFilteredBookings, topDurationFilter]);
-
-  const { topHours, topUsersBySlot } = useMemo(() => {
-    const slotSize = topDurationFilter;
-    const slotForBooking = (booking: Booking, size: number) => {
-      try {
-        const timeParts = (booking.startTime || "").split(":");
-        const h = parseInt(timeParts[0]);
-        const m = parseInt(timeParts[1] || "0");
-        if (!Number.isFinite(h)) return undefined;
-        const decimalHour = h + (m || 0) / 60;
-        return Math.floor(decimalHour / size) * size;
-      } catch { return undefined; }
-    };
-    const slotCountMap = new Map<number, number>();
-    const slotUserMap = new Map<number, Map<string, { name: string; count: number }>>();
-    topDurationFilteredPeriodBookings.forEach((booking) => {
-      const slot = slotForBooking(booking, slotSize);
-      if (slot === undefined) return;
-      slotCountMap.set(slot, (slotCountMap.get(slot) || 0) + 1);
-      const userId = booking.user?._id || "unknown";
-      const userName = booking.user
-        ? `${booking.user.name}${booking.user.surname ? " " + booking.user.surname : ""}`
-        : "Anonimo";
-      if (!slotUserMap.has(slot)) slotUserMap.set(slot, new Map());
-      const userMap = slotUserMap.get(slot)!;
-      const existing = userMap.get(userId);
-      userMap.set(userId, { name: userName, count: (existing ? existing.count : 0) + 1 });
-    });
-    const topHoursArr = Array.from(slotCountMap.entries())
-      .map(([hour, count]) => ({ hour, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    const topUsersBySlotObj: Record<number, Array<{ userId: string; name: string; count: number }>> = {};
-    slotUserMap.forEach((userMap, slot) => {
-      topUsersBySlotObj[slot] = Array.from(userMap.entries())
-        .map(([userId, info]) => ({ userId, name: info.name, count: info.count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-    });
-    return { topHours: topHoursArr, topUsersBySlot: topUsersBySlotObj };
-  }, [topDurationFilteredPeriodBookings, topDurationFilter]);
-
-  const completedDurationFilteredBookings = useMemo(
-    () =>
-      durationFilteredPeriodBookings.filter((booking) => {
-        if (!booking.date || !booking.endTime) return false;
-        const bookingEnd = new Date(`${booking.date}T${booking.endTime}`);
-        return bookingEnd < new Date();
-      }).length,
-    [durationFilteredPeriodBookings]
-  );
+  const selectedDurationHours = durationFilter === 1.5 ? 1.5 : 1;
 
   const sportBookingsStats = useMemo(() => {
     const sportCountMap = new Map<string, number>();
 
-    durationFilteredPeriodBookings.forEach((booking) => {
-
+    periodFilteredBookings.forEach((booking) => {
       const bookingCampo: any = booking.campo;
       const bookingCampoId =
         typeof bookingCampo === "string"
@@ -349,7 +237,7 @@ export default function OwnerStatisticsScreen() {
     return Array.from(sportCountMap.entries())
       .map(([sport, count]) => ({ sport, count }))
       .sort((a, b) => b.count - a.count);
-  }, [durationFilteredPeriodBookings, campi]);
+  }, [periodFilteredBookings, campi]);
 
   const maxSportBookings = useMemo(
     () => sportBookingsStats.reduce((max, item) => Math.max(max, item.count), 0),
@@ -382,46 +270,6 @@ export default function OwnerStatisticsScreen() {
       .slice(0, 5);
   }, [periodFilteredBookings]);
 
-  const topUserSportsByUser = useMemo(() => {
-    const userSportCountMap = new Map<string, Map<string, number>>();
-
-    periodFilteredBookings.forEach((booking) => {
-      const userId = booking.user?._id;
-      if (!userId) return;
-
-      const bookingCampo: any = booking.campo;
-      const bookingCampoId =
-        typeof bookingCampo === "string"
-          ? bookingCampo
-          : bookingCampo?._id || bookingCampo?.id;
-
-      const campoFromList = campi.find((c) => c._id === bookingCampoId);
-      const sportName =
-        getSportName(campoFromList?.sport) ||
-        getSportName(campoFromList?.type) ||
-        getSportName((bookingCampo as any)?.sport) ||
-        getSportName((bookingCampo as any)?.type) ||
-        "Non specificato";
-
-      if (!userSportCountMap.has(userId)) {
-        userSportCountMap.set(userId, new Map<string, number>());
-      }
-
-      const sportsMap = userSportCountMap.get(userId)!;
-      sportsMap.set(sportName, (sportsMap.get(sportName) || 0) + 1);
-    });
-
-    const result: Record<string, Array<{ sport: string; count: number }>> = {};
-    userSportCountMap.forEach((sportsMap, userId) => {
-      result[userId] = Array.from(sportsMap.entries())
-        .map(([sport, count]) => ({ sport, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-    });
-
-    return result;
-  }, [periodFilteredBookings, campi]);
-
 
 
   // Debug logs disabled to reduce console noise (previously printed detailed occupazione per struttura)
@@ -429,11 +277,10 @@ export default function OwnerStatisticsScreen() {
     // intentionally left empty
   }, [struttureStats, stats.tassoOccupazione, selectedStruttura, strutture]);
 
-  const WEEKLY_BAR_WIDTH = 25;
-  const WEEKLY_SPACING = 15;
+  const WEEKLY_BAR_WIDTH = 32;
+  const WEEKLY_SPACING = 18;
   const WEEKLY_NO_OF_SECTIONS = 5;
   const WEEKLY_CHART_HEIGHT = 200;
-  const WEEKLY_Y_AXIS_WIDTH = 35;
 
   const weeklyMaxValue = useMemo(
     () => weeklyStats.data.reduce((max, value) => Math.max(max, value), 0),
@@ -452,10 +299,13 @@ export default function OwnerStatisticsScreen() {
     );
   }, [weeklyAxisMax]);
 
-  const weeklyViewportWidth = SCREEN_WIDTH - 104;
+  const weeklyViewportWidth = SCREEN_WIDTH - 120;
   const weeklyContentWidth =
-    weeklyStats.data.length * (WEEKLY_BAR_WIDTH + WEEKLY_SPACING) + 8;
-  const weeklyChartWidth = Math.max(weeklyViewportWidth, weeklyContentWidth);
+    weeklyStats.data.length * (WEEKLY_BAR_WIDTH + WEEKLY_SPACING) + 24;
+  const weeklyChartWidth = Math.max(
+    weeklyViewportWidth + 24,
+    weeklyContentWidth
+  );
 
   const hourlyChartData = useMemo(
     () =>
@@ -565,7 +415,7 @@ export default function OwnerStatisticsScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.singleFilterChip,
-                selectedUser !== "all" && styles.filterChipActive,
+                selectedUser !== ALL_USERS_FILTER && styles.filterChipActive,
                 pressed && { opacity: 0.85 },
               ]}
               onPress={() => {
@@ -574,10 +424,10 @@ export default function OwnerStatisticsScreen() {
               }}
             >
               <View style={styles.singleFilterChipLeft}>
-                <Ionicons name="person-outline" size={16} color={selectedUser !== "all" ? "white" : "#2196F3"} />
-                <Text style={[styles.singleFilterChipText, selectedUser !== "all" && styles.filterChipTextActive]}>Cliente: {selectedUserLabel}</Text>
+                <Ionicons name="person-outline" size={16} color={selectedUser !== ALL_USERS_FILTER ? "white" : "#2196F3"} />
+                <Text style={[styles.singleFilterChipText, selectedUser !== ALL_USERS_FILTER && styles.filterChipTextActive]}>Cliente: {selectedUserLabel}</Text>
               </View>
-              <Ionicons name="chevron-down" size={18} color={selectedUser !== "all" ? "white" : "#2196F3"} />
+              <Ionicons name="chevron-down" size={18} color={selectedUser !== ALL_USERS_FILTER ? "white" : "#2196F3"} />
             </Pressable>
 
             {availableSports.length > 0 && (
@@ -626,10 +476,13 @@ export default function OwnerStatisticsScreen() {
             <Ionicons name="calendar" size={28} color="#2196F3" />
             <Text style={styles.statValue}>
               <Text style={{ fontSize: 22 }}>
-                {completedDurationFilteredBookings}
+                {periodFilteredBookings.filter(b => {
+                  const d = new Date(b.date + "T" + b.endTime);
+                  return d < new Date();
+                }).length}
               </Text>
               <Text style={{ fontSize: 14, color: "#999", fontWeight: "700" }}>
-                /{durationFilteredPeriodBookings.length}
+                /{periodFilteredBookings.length}
               </Text>
             </Text>
             <Text style={styles.statLabel}>Concluse / Totali</Text>
@@ -648,7 +501,7 @@ export default function OwnerStatisticsScreen() {
             <Text style={styles.statLabel}>Max Prenotazioni / Orario</Text>
           </View>
 
-          {selectedUser === "all" && (
+          {selectedUser === ALL_USERS_FILTER && (
             <View style={styles.statCard}>
               <Ionicons name="pie-chart" size={28} color="#FF9800" />
               <Text style={styles.statValue}>{stats.tassoOccupazione}%</Text>
@@ -661,38 +514,16 @@ export default function OwnerStatisticsScreen() {
 
         {/* GRAFICO SETTIMANALE */}
         <View style={styles.chartSection}>
-          <View style={styles.topTitleRow}>
-            <Text style={styles.chartTitle}>Prenotazioni per Giorno</Text>
-            <View style={styles.slotToggle}>
-              <Pressable
-                style={[styles.slotToggleBtn, durationFilter === "all" && styles.slotToggleBtnActive]}
-                onPress={() => setDurationFilter("all")}
-              >
-                <Text style={[styles.slotToggleBtnText, durationFilter === "all" && styles.slotToggleBtnTextActive]}>Tutte</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.slotToggleBtn, durationFilter === 1 && styles.slotToggleBtnActive]}
-                onPress={() => setDurationFilter(1)}
-              >
-                <Text style={[styles.slotToggleBtnText, durationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.slotToggleBtn, durationFilter === 1.5 && styles.slotToggleBtnActive]}
-                onPress={() => setDurationFilter(1.5)}
-              >
-                <Text style={[styles.slotToggleBtnText, durationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
-              </Pressable>
-            </View>
-          </View>
+          <Text style={styles.chartTitle}>Prenotazioni per Giorno</Text>
           <Text style={styles.chartSubtitle}>Distribuzione settimanale • {selectedPeriodLabel}</Text>
 
           {weeklyStats.data.some((v) => v > 0) ? (
             <View style={styles.giftedChartContainer}>
               <View style={styles.hourlyChartRow}>
-                <View style={[styles.hourlyYAxisColumn, { width: WEEKLY_Y_AXIS_WIDTH, marginRight: 7 }]}>
+                <View style={styles.hourlyYAxisColumn}>
                   <View style={[styles.hourlyYAxisLabelsContainer, { height: WEEKLY_CHART_HEIGHT }]}>
                     {weeklyYAxisLabels.map((tick, index) => (
-                      <Text key={`weekly-tick-${index}`} style={[styles.hourlyYAxisLabel, { fontSize: 11 }]}>
+                      <Text key={`weekly-tick-${index}`} style={styles.hourlyYAxisLabel}>
                         {tick}
                       </Text>
                     ))}
@@ -842,36 +673,14 @@ export default function OwnerStatisticsScreen() {
 
         {selectedSport === "all" && (
           <View style={styles.chartSection}>
-            <View style={styles.topTitleRow}>
-              <Text style={styles.chartTitle}>Prenotazioni per Sport</Text>
-              <View style={styles.slotToggle}>
-                <Pressable
-                  style={[styles.slotToggleBtn, durationFilter === "all" && styles.slotToggleBtnActive]}
-                  onPress={() => setDurationFilter("all")}
-                >
-                  <Text style={[styles.slotToggleBtnText, durationFilter === "all" && styles.slotToggleBtnTextActive]}>Tutte</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.slotToggleBtn, durationFilter === 1 && styles.slotToggleBtnActive]}
-                  onPress={() => setDurationFilter(1)}
-                >
-                  <Text style={[styles.slotToggleBtnText, durationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.slotToggleBtn, durationFilter === 1.5 && styles.slotToggleBtnActive]}
-                  onPress={() => setDurationFilter(1.5)}
-                >
-                  <Text style={[styles.slotToggleBtnText, durationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
-                </Pressable>
-              </View>
-            </View>
+            <Text style={styles.chartTitle}>Prenotazioni per Sport</Text>
             <Text style={styles.chartSubtitle}>Distribuzione per sport • {selectedPeriodLabel}</Text>
 
             {sportBookingsStats.length > 0 ? (
               <View style={styles.giftedChartContainer}>
                 {sportBookingsStats.map((item) => {
                   const ratio = maxSportBookings > 0 ? item.count / maxSportBookings : 0;
-                  const barWidth = `${Math.max(8, Math.round(ratio * 100))}%`;
+                  const barWidth: number = Math.max(24, Math.round(ratio * (SCREEN_WIDTH - 96)));
 
                   return (
                     <View key={item.sport} style={styles.sportRow}>
@@ -903,145 +712,62 @@ export default function OwnerStatisticsScreen() {
             <Text style={styles.topTitle}>Top 5 Fasce Orarie</Text>
             <View style={styles.slotToggle}>
               <Pressable
-                style={[styles.slotToggleBtn, topDurationFilter === 1 && styles.slotToggleBtnActive]}
-                onPress={() => setTopDurationFilter(1)}
+                style={[styles.slotToggleBtn, durationFilter === "all" && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter("all")}
               >
-                <Text style={[styles.slotToggleBtnText, topDurationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
+                <Text style={[styles.slotToggleBtnText, durationFilter === "all" && styles.slotToggleBtnTextActive]}>Tutte</Text>
               </Pressable>
               <Pressable
-                style={[styles.slotToggleBtn, topDurationFilter === 1.5 && styles.slotToggleBtnActive]}
-                onPress={() => setTopDurationFilter(1.5)}
+                style={[styles.slotToggleBtn, durationFilter === 1 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1)}
               >
-                <Text style={[styles.slotToggleBtnText, topDurationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotToggleBtn, durationFilter === 1.5 && styles.slotToggleBtnActive]}
+                onPress={() => setDurationFilter(1.5)}
+              >
+                <Text style={[styles.slotToggleBtnText, durationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
               </Pressable>
             </View>
           </View>
-          {topHours.map((item, index) => {
-            const key = item.hour.toString();
-            const isOpen = !!expandedSlots[key];
-            const usersForSlot = (topUsersBySlot && topUsersBySlot[item.hour]) || [];
-            return (
-              <View key={key}>
-                <Pressable
-                  onPress={() => setExpandedSlots((s) => ({ ...s, [key]: !s[key] }))}
-                  style={({ pressed }) => [styles.topItem, isOpen && styles.topItemOpen, pressed && { opacity: 0.9 }]}
-                >
+          {topHours.map((item, index) => (
+            <View key={index} style={styles.topItem}>
+              <View style={styles.topRank}>
+                <Text style={styles.topRankText}>{index + 1}</Text>
+              </View>
+              <Text style={styles.topHour}>
+                {formatSlotTime(item.hour)} - {formatSlotTime(item.hour + selectedDurationHours)}
+              </Text>
+              <Text style={styles.topCount}>{item.count} prenotazioni</Text>
+            </View>
+          ))}
+        </View>
+
+        {selectedUser === ALL_USERS_FILTER && (
+          <View style={styles.topSection}>
+            <Text style={styles.topTitle}>Top 5 Utenti</Text>
+            <View style={{ height: 12 }} />
+            {topUsers.length > 0 ? (
+              topUsers.map((item, index) => (
+                <View key={item.id} style={styles.topItem}>
                   <View style={styles.topRank}>
                     <Text style={styles.topRankText}>{index + 1}</Text>
                   </View>
-                  <Text style={styles.topHour}>
-                    {formatSlotTime(item.hour)} - {formatSlotTime(item.hour + selectedDurationHours)}
+                  <Text style={styles.topUserName} numberOfLines={1}>
+                    {item.fullName}
                   </Text>
                   <Text style={styles.topCount}>{item.count} prenotazioni</Text>
-                </Pressable>
-
-                {isOpen && (
-                  <View style={styles.expandedPanel}>
-                    {usersForSlot.length > 0 ? (
-                      usersForSlot.map((u) => {
-                        const userObj = users.find((x) => x._id === u.userId);
-                        const avatarUrl = userObj?.avatarUrl || undefined;
-                        const displayName = userObj ? `${userObj.name}${userObj.surname ? ' ' + userObj.surname : ''}` : u.name;
-
-                        return (
-                          <Pressable
-                            key={u.userId}
-                            style={styles.expandedUserRow}
-                            onPress={() => {
-                              if (u.userId && u.userId !== 'unknown') navigation.navigate('ProfiloUtente', { userId: u.userId });
-                            }}
-                          >
-                            <Avatar
-                              name={userObj?.name || displayName}
-                              surname={userObj?.surname}
-                              avatarUrl={avatarUrl}
-                              size={36}
-                            />
-
-                            <Text style={styles.expandedUserName} numberOfLines={1}>{displayName}</Text>
-                            <Text style={styles.expandedUserCount}>{u.count} pren.</Text>
-                          </Pressable>
-                        );
-                      })
-                    ) : (
-                      <Text style={styles.expandedEmpty}>Nessun utente</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.topSection}>
-          <Text style={styles.topTitle}>Top 5 Utenti</Text>
-          <View style={{ height: 12 }} />
-          {topUsers.length > 0 ? (
-            topUsers.map((item, index) => {
-              const userObj = users.find((u) => u._id === item.id);
-              const displayName = userObj
-                ? `${userObj.name}${userObj.surname ? ` ${userObj.surname}` : ""}`
-                : item.fullName;
-              const isOpen = !!expandedTopUsers[item.id];
-              const topSports = topUserSportsByUser[item.id] || [];
-
-              return (
-                <View key={item.id}>
-                  <Pressable
-                    onPress={() => setExpandedTopUsers((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-                    style={({ pressed }) => [styles.topItem, isOpen && styles.topItemOpen, pressed && { opacity: 0.9 }]}
-                  >
-                    <View style={styles.topRank}>
-                      <Text style={styles.topRankText}>{index + 1}</Text>
-                    </View>
-                    <Avatar
-                      name={userObj?.name || displayName}
-                      surname={userObj?.surname}
-                      avatarUrl={userObj?.avatarUrl}
-                      size={32}
-                    />
-                    <Text style={styles.topUserName} numberOfLines={1}>
-                      {displayName}
-                    </Text>
-                    <View style={styles.topItemRightMeta}>
-                      <Text style={styles.topCount}>{item.count} prenotazioni</Text>
-                      <Ionicons
-                        name={isOpen ? "chevron-up" : "chevron-down"}
-                        size={18}
-                        color="#888"
-                      />
-                    </View>
-                  </Pressable>
-
-                  {isOpen && (
-                    <View style={styles.expandedPanel}>
-                      {topSports.length > 0 ? (
-                        topSports.map((sportItem) => (
-                          <View key={`${item.id}-${sportItem.sport}`} style={styles.expandedSportRow}>
-                            <View style={styles.expandedSportLeft}>
-                              <SportIcon sport={sportItem.sport} size={16} color="#2196F3" />
-                              <Text style={styles.expandedSportName} numberOfLines={1}>
-                                {sportItem.sport}
-                              </Text>
-                            </View>
-                            <Text style={styles.expandedSportCount}>{sportItem.count} pren.</Text>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={styles.expandedEmpty}>Nessun dato sport disponibile</Text>
-                      )}
-                    </View>
-                  )}
                 </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyChart}>
-              <Ionicons name="people-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyChartText}>Nessun dato disponibile</Text>
-            </View>
-          )}
-        </View>
+              ))
+            ) : (
+              <View style={styles.emptyChart}>
+                <Ionicons name="people-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyChartText}>Nessun dato disponibile</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1059,117 +785,107 @@ export default function OwnerStatisticsScreen() {
         }
         onClose={() => setFilterModalVisible(false)}
         contentScrollable
-        searchable={activeFilterType !== "periodo"}
-        searchPlaceholder={
-          activeFilterType === "struttura" ? "Cerca struttura..." :
-          activeFilterType === "cliente" ? "Cerca cliente..." :
-          activeFilterType === "sport" ? "Cerca sport..." : ""
-        }
       >
-        {(search) => (
-          <>
-            {activeFilterType !== "periodo" && (
+        {activeFilterType !== "periodo" && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.filterModalOption,
+              styles.filterModalOptionWithBorder,
+              pressed && { backgroundColor: "#E3F2FD" },
+            ]}
+            onPress={() => {
+              if (activeFilterType === "struttura") setSelectedStruttura("all");
+              else if (activeFilterType === "cliente") setSelectedUser(ALL_USERS_FILTER);
+              else if (activeFilterType === "sport") setSelectedSport("all");
+              setFilterModalVisible(false);
+            }}
+          >
+            <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
+          </Pressable>
+        )}
+
+        {activeFilterType === "struttura"
+          ? strutture.map((struttura, index) => (
               <Pressable
+                key={struttura._id}
                 style={({ pressed }) => [
                   styles.filterModalOption,
-                  styles.filterModalOptionWithBorder,
+                  index < strutture.length - 1 && styles.filterModalOptionWithBorder,
                   pressed && { backgroundColor: "#E3F2FD" },
                 ]}
                 onPress={() => {
-                  if (activeFilterType === "struttura") setSelectedStruttura("all");
-                  else if (activeFilterType === "cliente") setSelectedUser("all");
-                  else if (activeFilterType === "sport") setSelectedSport("all");
+                  setSelectedStruttura(struttura._id);
                   setFilterModalVisible(false);
                 }}
               >
-                <Text style={styles.filterModalOptionText}>✨ Tutti</Text>
+                <View style={styles.filterModalRow}>
+                  <Ionicons name="business-outline" size={16} color="#2196F3" />
+                  <Text style={styles.filterModalOptionText}>{struttura.name}</Text>
+                </View>
               </Pressable>
-            )}
-
-            {activeFilterType === "struttura"
-              ? strutture.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map((struttura, index) => (
+            ))
+          : activeFilterType === "cliente"
+            ? users.map((user, index) => {
+                const fullName = `${user.name}${user.surname ? " " + user.surname : ""}`;
+                return (
                   <Pressable
-                    key={struttura._id}
+                    key={user._id}
                     style={({ pressed }) => [
                       styles.filterModalOption,
-                      index < strutture.length - 1 && styles.filterModalOptionWithBorder,
+                      index < users.length - 1 && styles.filterModalOptionWithBorder,
                       pressed && { backgroundColor: "#E3F2FD" },
                     ]}
                     onPress={() => {
-                      setSelectedStruttura(struttura._id);
+                      setSelectedUser(user._id);
                       setFilterModalVisible(false);
                     }}
                   >
                     <View style={styles.filterModalRow}>
-                      <Ionicons name="business-outline" size={16} color="#2196F3" />
-                      <Text style={styles.filterModalOptionText}>{struttura.name}</Text>
+                      <Ionicons name="person-outline" size={16} color="#2196F3" />
+                      <Text style={styles.filterModalOptionText}>{fullName}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })
+            : activeFilterType === "sport"
+              ? availableSports.map((sport, index) => (
+                  <Pressable
+                    key={sport}
+                    style={({ pressed }) => [
+                      styles.filterModalOption,
+                      index < availableSports.length - 1 && styles.filterModalOptionWithBorder,
+                      pressed && { backgroundColor: "#E3F2FD" },
+                    ]}
+                    onPress={() => {
+                      setSelectedSport(sport);
+                      setFilterModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.filterModalRow}>
+                      <SportIcon sport={sport} size={16} color="#2196F3" />
+                      <Text style={styles.filterModalOptionText}>{sport}</Text>
                     </View>
                   </Pressable>
                 ))
-              : activeFilterType === "cliente"
-                ? users.filter(u => `${u.name}${u.surname ? " " + u.surname : ""}`.toLowerCase().includes(search.toLowerCase())).map((user, index) => {
-                    const fullName = `${user.name}${user.surname ? " " + user.surname : ""}`;
-                    return (
-                      <Pressable
-                        key={user._id}
-                        style={({ pressed }) => [
-                          styles.filterModalOption,
-                          index < users.length - 1 && styles.filterModalOptionWithBorder,
-                          pressed && { backgroundColor: "#E3F2FD" },
-                        ]}
-                        onPress={() => {
-                          setSelectedUser(user._id);
-                          setFilterModalVisible(false);
-                        }}
-                      >
-                        <View style={styles.filterModalRow}>
-                          <Ionicons name="person-outline" size={16} color="#2196F3" />
-                          <Text style={styles.filterModalOptionText}>{fullName}</Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })
-                : activeFilterType === "sport"
-                  ? availableSports.filter(s => s.toLowerCase().includes(search.toLowerCase())).map((sport, index) => (
-                      <Pressable
-                        key={sport}
-                        style={({ pressed }) => [
-                          styles.filterModalOption,
-                          index < availableSports.length - 1 && styles.filterModalOptionWithBorder,
-                          pressed && { backgroundColor: "#E3F2FD" },
-                        ]}
-                        onPress={() => {
-                          setSelectedSport(sport);
-                          setFilterModalVisible(false);
-                        }}
-                      >
-                        <View style={styles.filterModalRow}>
-                          <SportIcon sport={sport} size={16} color="#2196F3" />
-                          <Text style={styles.filterModalOptionText}>{sport}</Text>
-                        </View>
-                      </Pressable>
-                    ))
-                  : periodOptions.map((days, index) => (
-                      <Pressable
-                        key={days}
-                        style={({ pressed }) => [
-                          styles.filterModalOption,
-                          index < periodOptions.length - 1 && styles.filterModalOptionWithBorder,
-                          pressed && { backgroundColor: "#E3F2FD" },
-                        ]}
-                        onPress={() => {
-                          setSelectedPeriodDays(days);
-                          setFilterModalVisible(false);
-                        }}
-                      >
-                        <View style={styles.filterModalRow}>
-                          <Ionicons name="calendar-outline" size={16} color="#2196F3" />
-                          <Text style={styles.filterModalOptionText}>Ultimi {days} giorni</Text>
-                        </View>
-                      </Pressable>
-                    ))}
-          </>
-        )}
+              : periodOptions.map((days, index) => (
+                  <Pressable
+                    key={days}
+                    style={({ pressed }) => [
+                      styles.filterModalOption,
+                      index < periodOptions.length - 1 && styles.filterModalOptionWithBorder,
+                      pressed && { backgroundColor: "#E3F2FD" },
+                    ]}
+                    onPress={() => {
+                      setSelectedPeriodDays(days);
+                      setFilterModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.filterModalRow}>
+                      <Ionicons name="calendar-outline" size={16} color="#2196F3" />
+                      <Text style={styles.filterModalOptionText}>Ultimi {days} giorni</Text>
+                    </View>
+                  </Pressable>
+                ))}
       </FilterModal>
     </SafeAreaView>
   );
@@ -1476,14 +1192,14 @@ const styles = StyleSheet.create({
   slotToggle: {
     flexDirection: "row",
     backgroundColor: "#F0F0F0",
-    borderRadius: 14,
-    padding: 1,
+    borderRadius: 20,
+    padding: 2,
   },
 
   slotToggleBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
   },
 
   slotToggleBtnActive: {
@@ -1491,7 +1207,7 @@ const styles = StyleSheet.create({
   },
 
   slotToggleBtnText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
     color: "#888",
   },
@@ -1520,12 +1236,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  topItemOpen: {
-    marginBottom: 0,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-
   topRank: {
     width: 32,
     height: 32,
@@ -1551,7 +1261,6 @@ const styles = StyleSheet.create({
 
   topUserName: {
     flex: 1,
-    marginLeft: 10,
     fontSize: 15,
     fontWeight: "700",
     color: "#1a1a1a",
@@ -1561,84 +1270,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#666",
-  },
-
-  topItemRightMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginLeft: 8,
-  },
-
-  expandedPanel: {
-    backgroundColor: "white",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    marginTop: 0,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-  },
-
-  expandedUserRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
-  },
-
-  expandedUserName: {
-    flex: 1,
-    fontSize: 14,
-    color: "#1a1a1a",
-    fontWeight: "700",
-  },
-
-  expandedUserCount: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "700",
-  },
-
-  expandedEmpty: {
-    fontSize: 13,
-    color: "#999",
-    fontWeight: "600",
-    paddingVertical: 8,
-  },
-
-  expandedSportRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    paddingVertical: 6,
-  },
-
-  expandedSportLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  expandedSportName: {
-    flex: 1,
-    fontSize: 14,
-    color: "#1a1a1a",
-    fontWeight: "700",
-  },
-
-  expandedSportCount: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "700",
   },
 
   sportRow: {
@@ -1667,7 +1298,7 @@ const styles = StyleSheet.create({
   },
 
   sportRowTrack: {
-    width: "100%",
+    alignSelf: "stretch",
     height: 10,
     backgroundColor: "#EAF3FF",
     borderRadius: 999,
@@ -1675,7 +1306,7 @@ const styles = StyleSheet.create({
   },
 
   sportRowBar: {
-    height: "100%",
+    height: 10,
     backgroundColor: "#2196F3",
     borderRadius: 999,
   },

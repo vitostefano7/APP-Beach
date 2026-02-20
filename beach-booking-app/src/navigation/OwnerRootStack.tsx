@@ -37,7 +37,7 @@ export type OwnerRootStackParamList = {
   ModificaCampo: { campoId: string };
   OwnerCercaAmiciScreen: undefined;
   OwnerNotifiche: undefined;
-  OwnerStatistics: undefined;
+  OwnerStatistics: { strutturaId?: string } | undefined;
   ProfiloUtente: { userId: string };
   EarningsStats: {
     earnings: {

@@ -40,17 +40,14 @@ const OwnerNotificheScreen = () => {
   // Carica notifiche quando la schermata è visibile
   useFocusEffect(
     useCallback(() => {
-      console.log("🔄 [OwnerNotifiche] Caricamento notifiche...");
       loadNotifications();
       fetchUnreadCount();
     }, [filter])
   );
 
   const loadNotifications = async () => {
-    console.log("📡 [OwnerNotifiche] Fetching notifiche con filtro:", filter);
     const isReadFilter = filter === 'unread' ? false : undefined;
     await fetchNotifications(isReadFilter);
-    console.log("✅ [OwnerNotifiche] Notifiche caricate:", notifications.length);
   };
 
   const onRefresh = async () => {
@@ -61,44 +58,34 @@ const OwnerNotificheScreen = () => {
   };
 
   const handleNotificationPress = async (notification: Notification) => {
-    console.log("👆 [OwnerNotifiche] Pressed notifica:", notification._id, "type:", notification.type);
-    
     // Marca come letta se non lo è già
     if (!notification.isRead) {
-      console.log("📖 [OwnerNotifiche] Marking as read:", notification._id);
       await markAsRead(notification._id);
     }
 
     // Naviga alla risorsa correlata
     if (notification.type === 'match_join' && notification.relatedId) {
-      console.log("🎯 [OwnerNotifiche] Navigating to booking for match_join:", notification.relatedId);
       navigation.navigate('OwnerDettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
     } else if (notification.type === 'match_result' && notification.relatedId) {
-      console.log("🏆 [OwnerNotifiche] Navigating to booking for match_result:", notification.relatedId);
       navigation.navigate('OwnerDettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
     } else if (notification.relatedModel === 'Booking' && notification.relatedId) {
-      console.log("🏐 [OwnerNotifiche] Navigating to booking:", notification.relatedId);
       navigation.navigate('OwnerDettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
     } else if (notification.relatedModel === 'Match' && notification.relatedId) {
-      console.log("🎯 [OwnerNotifiche] Navigating to match:", notification.relatedId);
       // Per ora navighiamo alla prenotazione associata al match
       // In futuro potremmo avere una schermata dedicata per i match
       navigation.navigate('OwnerDettaglioPrenotazione', {
         bookingId: notification.relatedId,
       });
     } else if (notification.relatedModel === 'Struttura' && notification.relatedId) {
-      console.log("🏢 [OwnerNotifiche] Navigating to struttura:", notification.relatedId);
       navigation.navigate('StrutturaDashboard', {
         strutturaId: notification.relatedId,
       });
-    } else {
-      console.log("❓ [OwnerNotifiche] Unknown relatedModel:", notification.relatedModel);
     }
   };
 
@@ -240,8 +227,6 @@ const OwnerNotificheScreen = () => {
   };
 
   const filteredNotifications = notifications;
-
-  console.log("🎨 [OwnerNotifiche] Rendering with", filteredNotifications.length, "notifications, unread:", unreadCount);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

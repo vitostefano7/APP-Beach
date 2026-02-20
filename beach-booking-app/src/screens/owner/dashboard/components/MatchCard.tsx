@@ -43,6 +43,16 @@ type MatchCardProps = {
   onPress: () => void;
 };
 
+type SportIcon =
+  | {
+      library: "Ionicons";
+      name: React.ComponentProps<typeof Ionicons>["name"];
+    }
+  | {
+      library: "FontAwesome5";
+      name: React.ComponentProps<typeof FontAwesome5>["name"];
+    };
+
 export default function MatchCard({ match, onPress }: MatchCardProps) {
   const { booking, players, maxPlayers, status, isPublic, createdBy } = match;
 
@@ -105,12 +115,6 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
 
   // Verifica che booking sia valido
   if (!booking || !booking.campo || !booking.campo.struttura) {
-    console.log("⚠️ [MatchCard] Dati booking incompleti:", {
-      hasBooking: !!booking,
-      hasCampo: booking ? !!booking.campo : false,
-      hasStruttura: booking?.campo ? !!booking.campo.struttura : false,
-      matchId: match._id
-    });
     return null;
   }
 
@@ -172,7 +176,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
   const playersPerTeam = maxPlayers / 2;
 
   // Icona per sport
-  const getSportIcon = () => {
+  const getSportIcon = (): SportIcon => {
     // Gestisce sia string che oggetto {_id, name}
     const sportValue = typeof booking.campo.sport === 'string' 
       ? booking.campo.sport 
@@ -191,6 +195,8 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
     }
     return (booking.campo.sport as any)?.name || 'Sport';
   };
+
+  const sportIcon = getSportIcon();
 
   return (
     <Pressable style={styles.matchCard} onPress={onPress}>
@@ -302,15 +308,15 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
             </Text>
           </View>
           <View style={styles.matchVisibilityBadge}>
-            {getSportIcon().library === "FontAwesome5" ? (
+            {sportIcon.library === "FontAwesome5" ? (
               <FontAwesome5
-                name={getSportIcon().name}
+                name={sportIcon.name}
                 size={12}
                 color="#2196F3"
               />
             ) : (
               <Ionicons
-                name={getSportIcon().name}
+                name={sportIcon.name}
                 size={12}
                 color="#2196F3"
               />

@@ -224,6 +224,12 @@ export default function StrutturaDashboardScreen() {
     });
   };
 
+  const handleGoToStatistics = () => {
+    navigation.navigate("OwnerStatistics", {
+      strutturaId,
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -394,6 +400,12 @@ export default function StrutturaDashboardScreen() {
           </Pressable>
         </View>
 
+        <Pressable style={styles.statisticsButton} onPress={handleGoToStatistics}>
+          <Ionicons name="stats-chart" size={16} color="white" />
+          <Text style={styles.statisticsButtonText}>Vai alle statistiche di questa struttura</Text>
+          <Ionicons name="chevron-forward" size={16} color="white" />
+        </Pressable>
+
         {/* SEZIONE ORARI (visibile solo se showHours è true) */}
         {showHours && (
           <View style={styles.section}>
@@ -518,7 +530,7 @@ export default function StrutturaDashboardScreen() {
                       if (!icon) return <Ionicons name="help-circle" size={18} color="#2196F3" />;
                       if (icon.library === 'FontAwesome5') return <FontAwesome5 name={icon.name} size={18} color="#2196F3" />;
                       if (icon.library === 'FontAwesome6') return <FontAwesome6 name={icon.name} size={18} color="#2196F3" />;
-                      if (icon.library === 'Ionicons') return <Ionicons name={icon.name} size={18} color="#2196F3" />;
+                      if (icon.library === 'Ionicons') return <Ionicons name={icon.name as any} size={18} color="#2196F3" />;
                       return <Ionicons name="help-circle" size={18} color="#2196F3" />;
                     })()}
                   </View>
@@ -814,6 +826,28 @@ const styles = StyleSheet.create({
     bottom: 5,
     right: 5,
   },
+  statisticsButton: {
+    marginBottom: 14,
+    backgroundColor: "#2196F3",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  statisticsButtonText: {
+    flex: 1,
+    marginHorizontal: 8,
+    color: "white",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   // SECTIONS
   section: {
@@ -957,6 +991,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
+  },
+  statusIndicatorActive: {
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
   statusDotSmall: {
     width: 4,

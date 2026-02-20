@@ -7,7 +7,7 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useState, useContext, useCallback } from "react";
+import React, { useState, useContext, useCallback, useMemo } from "react";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -117,7 +117,6 @@ export default function OwnerDashboardScreen() {
     if (!token) return;
 
     try {
-      console.log("🔄 [OwnerDashboard] Loading dashboard data...");
       setLoading(true);
       
       await Promise.all([
@@ -128,7 +127,6 @@ export default function OwnerDashboardScreen() {
         loadRecentActivities(),
         loadUpcomingMatches(),
       ]);
-      console.log("✅ [OwnerDashboard] Dashboard data loaded successfully");
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento dati:", error);
     } finally {
@@ -136,7 +134,7 @@ export default function OwnerDashboardScreen() {
     }
   };
 
-  const loadStrutture = async () => {
+  const loadStrutture = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -151,9 +149,9 @@ export default function OwnerDashboardScreen() {
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento strutture:", error);
     }
-  };
+  }, [token]);
 
-  const loadTodayBookings = async () => {
+  const loadTodayBookings = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -175,9 +173,9 @@ export default function OwnerDashboardScreen() {
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento prenotazioni oggi:", error);
     }
-  };
+  }, [token]);
 
-  const loadMonthRevenue = async () => {
+  const loadMonthRevenue = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -200,43 +198,35 @@ export default function OwnerDashboardScreen() {
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore calcolo incasso:", error);
     }
-  };
+  }, [token]);
 
-  const loadUnreadNotifications = async () => {
+  const loadUnreadNotifications = useCallback(async () => {
     if (!token) return;
 
     try {
-      console.log("📡 [OwnerDashboard] Fetching unread notifications count...");
       const res = await fetch(`${API_URL}/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
-        console.log("✅ [OwnerDashboard] Unread notifications:", data.count || 0);
         setUnreadNotifications(data.count || 0);
-      } else {
-        console.log("❌ [OwnerDashboard] Failed to fetch unread count, status:", res.status);
       }
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento notifiche:", error);
     }
-  };
+  }, [token]);
 
-  const loadRecentActivities = async () => {
+  const loadRecentActivities = useCallback(async () => {
     if (!token) return;
 
     try {
-      console.log("📊 [OwnerDashboard] Caricamento attività...");
       const res = await fetch(`${API_URL}/owner/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("📊 [OwnerDashboard] Response status:", res.status);
-
       if (res.ok) {
         const data = await res.json();
-        console.log("📊 [OwnerDashboard] Prenotazioni ricevute:", data.length);
         
         // Prendi ultime 10 prenotazioni ordinate per data creazione
         const activities: Activity[] = data
@@ -251,31 +241,24 @@ export default function OwnerDashboardScreen() {
           }));
 
         setRecentActivities(activities);
-        console.log("📊 [OwnerDashboard] Attività caricate:", activities.length);
       } else {
         console.error("❌ [OwnerDashboard] Errore response:", res.status, res.statusText);
       }
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento attività:", error);
     }
-  };
+  }, [token]);
 
-  const loadUpcomingMatches = async () => {
+  const loadUpcomingMatches = useCallback(async () => {
     if (!token) return;
 
     try {
-      console.log("🏐 [OwnerDashboard] Caricamento match...");
       const res = await fetch(`${API_URL}/owner/matches`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const matches = await res.json();
-        console.log("🏐 [OwnerDashboard] Match ricevuti:", matches.length);
-        if (matches.length > 0) {
-          console.log("🏐 [OwnerDashboard] Primo match:", JSON.stringify(matches[0], null, 2));
-        }
-        
         setUpcomingMatches(matches);
       } else {
         console.error("❌ [OwnerDashboard] Errore response match:", res.status);
@@ -283,25 +266,16 @@ export default function OwnerDashboardScreen() {
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento match:", error);
     }
-  };
+  }, [token]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadDashboardData();
-    setRefreshing(false);
-  };
-
-  const handleCallUser = (phone?: string) => {
+  const handleCallUser = useCallback((phone?: string) => {
     if (phone) {
       // Linking.openURL(`tel:${phone}`);
-      console.log("📞 Chiamata a:", phone);
     }
-  };
+  }, []);
 
-  const handleChatUser = async (bookingId: string) => {
+  const handleChatUser = useCallback(async (bookingId: string) => {
     try {
-      console.log("💬 [OwnerDashboard] Apertura chat per booking:", bookingId);
-
       // Ottieni i dettagli completi della prenotazione per avere l'userId
       const res = await fetch(`${API_URL}/bookings/owner/${bookingId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -313,7 +287,6 @@ export default function OwnerDashboardScreen() {
       }
 
       const bookingDetails = await res.json();
-      console.log("✅ [OwnerDashboard] Dettagli prenotazione ricevuti");
 
       // Crea conversazione con l'utente
       const chatRes = await fetch(`${API_URL}/api/conversations/user/${bookingDetails.user._id}`, {
@@ -326,7 +299,6 @@ export default function OwnerDashboardScreen() {
       }
 
       const conversation = await chatRes.json();
-      console.log("✅ [OwnerDashboard] Conversazione creata:", conversation._id);
 
       // Naviga alla chat
       navigation.navigate("Chat", {
@@ -339,7 +311,58 @@ export default function OwnerDashboardScreen() {
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore apertura chat:", error);
     }
-  };
+  }, [token, navigation]);
+
+  const activeStrutture = useMemo(
+    () => strutture.filter(s => s.isActive).length,
+    [strutture]
+  );
+
+  const upcomingBookings = useMemo(
+    () => todayBookings.filter(b => {
+      const now = new Date();
+      const bookingTime = new Date(`${b.date}T${b.startTime}`);
+      return bookingTime > now;
+    }),
+    [todayBookings]
+  );
+
+  const handleViewAllBookings = useCallback(() => {
+    navigation.navigate("OwnerBookings", {
+      filterDate: new Date().toISOString().split('T')[0],
+      fromDashboard: true,
+    });
+  }, [navigation]);
+
+  const handleViewOwnerBookings = useCallback(() => {
+    navigation.navigate("OwnerBookings");
+  }, [navigation]);
+
+  const handleViewStrutture = useCallback(() => {
+    navigation.navigate("Strutture");
+  }, [navigation]);
+
+  const handleCreaStruttura = useCallback(() => {
+    navigation.navigate("CreaStruttura");
+  }, [navigation]);
+
+  const handleNotificationsPress = useCallback(() => {
+    navigation.navigate("OwnerNotifiche");
+  }, [navigation]);
+
+  const handleStatsPress = useCallback((type: string) => {
+    if (type === "bookings") {
+      navigation.navigate("OwnerBookings");
+    } else if (type === "strutture") {
+      navigation.navigate("Strutture");
+    }
+  }, [navigation]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  }, [loadDashboardData]);
 
   if (loading) {
     return (
@@ -351,13 +374,6 @@ export default function OwnerDashboardScreen() {
       </SafeAreaView>
     );
   }
-
-  const activeStrutture = strutture.filter(s => s.isActive).length;
-  const upcomingBookings = todayBookings.filter(b => {
-    const now = new Date();
-    const bookingTime = new Date(`${b.date}T${b.startTime}`);
-    return bookingTime > now;
-  });
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -379,10 +395,7 @@ export default function OwnerDashboardScreen() {
           user={user}
           todayBookingsCount={todayBookings.length}
           unreadNotifications={unreadNotifications}
-          onNotificationsPress={() => {
-            console.log("🔔 [OwnerDashboard] Notifications button pressed, unread:", unreadNotifications);
-            navigation.navigate("OwnerNotifiche");
-          }}
+          onNotificationsPress={handleNotificationsPress}
         />
 
         {/* Quick Stats */}
@@ -391,13 +404,7 @@ export default function OwnerDashboardScreen() {
           totalStrutture={strutture.length}
           todayBookings={todayBookings.length}
           monthRevenue={monthRevenue}
-          onStatsPress={(type) => {
-            if (type === "bookings") {
-              navigation.navigate("OwnerBookings");
-            } else if (type === "strutture") {
-              navigation.navigate("Strutture");
-            }
-          }}
+          onStatsPress={handleStatsPress}
         />
 
         {/* Prossime Prenotazioni Oggi */}
@@ -406,10 +413,7 @@ export default function OwnerDashboardScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Prenotazioni Oggi</Text>
               <Pressable
-                onPress={() => navigation.navigate("OwnerBookings", {
-                  filterDate: new Date().toISOString().split('T')[0],
-                  fromDashboard: true
-                })}
+                onPress={handleViewAllBookings}
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Vedi tutte</Text>
@@ -438,21 +442,20 @@ export default function OwnerDashboardScreen() {
           <View style={[styles.section, { marginBottom: 1 }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Partite in Programma</Text>
-              <View style={styles.sectionTitle}>
-                  <Pressable
-                  onPress={() => navigation.navigate("OwnerBookings")}
-                  style={styles.sectionLink}
-                >
-                  <Text style={styles.sectionLinkText}>Prenotazioni</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#2196F3" />
-                </Pressable>
-              </View>
+              <Pressable
+                onPress={handleViewOwnerBookings}
+                style={styles.sectionLink}
+              >
+                <Text style={styles.sectionLinkText}>Prenotazioni</Text>
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+              </Pressable>
             </View>
 
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
+              removeClippedSubviews
             >
               {upcomingMatches.map((match) => (
                 <MatchCard
@@ -475,7 +478,7 @@ export default function OwnerDashboardScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Le Tue Strutture</Text>
               <Pressable
-                onPress={() => navigation.navigate("Strutture")}
+                onPress={handleViewStrutture}
                 style={styles.sectionLink}
               >
                 <Text style={styles.sectionLinkText}>Gestisci</Text>
@@ -487,6 +490,7 @@ export default function OwnerDashboardScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
+              removeClippedSubviews
             >
               {strutture.map((struttura) => {
                 const strutturaBookings = todayBookings.filter(
@@ -516,23 +520,17 @@ export default function OwnerDashboardScreen() {
               <Text style={styles.sectionTitle}>Attività Recenti</Text>
             </View>
 
-            {(() => {
-              console.log("🎨 [OwnerDashboard] Rendering activities:", recentActivities.length);
-              return recentActivities.slice(0, 5).map((activity, index) => {
-                console.log("🎨 [OwnerDashboard] Activity:", activity.type, activity.booking.userName);
-                return (
-                  <ActivityFeedItem
-                    key={`${activity.booking._id}-${index}`}
-                    activity={activity}
-                    onPress={() =>
-                      navigation.navigate("OwnerDettaglioPrenotazione", {
-                        bookingId: activity.booking._id,
-                      })
-                    }
-                  />
-                );
-              });
-            })()}
+            {recentActivities.slice(0, 5).map((activity, index) => (
+              <ActivityFeedItem
+                key={`${activity.booking._id}-${index}`}
+                activity={activity}
+                onPress={() =>
+                  navigation.navigate("OwnerDettaglioPrenotazione", {
+                    bookingId: activity.booking._id,
+                  })
+                }
+              />
+            ))}
           </View>
         )}
 
@@ -548,7 +546,7 @@ export default function OwnerDashboardScreen() {
             </Text>
             <Pressable
               style={styles.emptyButton}
-              onPress={() => navigation.navigate("CreaStruttura")}
+              onPress={handleCreaStruttura}
             >
               <Ionicons name="add" size={18} color="white" />
               <Text style={styles.emptyButtonText}>Aggiungi Struttura</Text>
