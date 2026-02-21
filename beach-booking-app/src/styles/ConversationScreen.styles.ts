@@ -71,9 +71,9 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#E3F2FD",
     borderWidth: 1.5,
-    borderColor: "#4CAF50",
+    borderColor: "#2196F3",
   },
   strutturaChipContent: {
     flexDirection: "row",
@@ -84,7 +84,7 @@ export const styles = StyleSheet.create({
   strutturaChipSelectorText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#2E7D32",
+    color: "#1565C0",
     flex: 1,
   },
   listContent: {
@@ -122,7 +122,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 0,
     borderLeftWidth: 3,
-    borderLeftColor: "#4CAF50",
+    borderLeftColor: "#2196F3",
   },
   conversationCardUser: {
     flexDirection: "row",
@@ -425,12 +425,12 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#E3F2FD",
     justifyContent: "center",
     alignItems: "center",
   },
   modalItemIconActive: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#2196F3",
   },
   modalItemText: {
     fontSize: 14,
@@ -438,7 +438,7 @@ export const styles = StyleSheet.create({
     color: "#333",
   },
   modalItemTextActive: {
-    color: "#2E7D32",
+    color: "#1565C0",
     fontWeight: "700",
   },
   modalItemSubtext: {

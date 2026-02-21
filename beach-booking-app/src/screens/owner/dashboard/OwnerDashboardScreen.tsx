@@ -288,10 +288,12 @@ export default function OwnerDashboardScreen() {
 
       const bookingDetails = await res.json();
 
-      // Crea conversazione con l'utente
-      const chatRes = await fetch(`${API_URL}/api/conversations/user/${bookingDetails.user._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Crea conversazione con l'utente (come struttura della prenotazione)
+      const strutturaId = bookingDetails.campo?.struttura?._id;
+      const chatRes = await fetch(
+        `${API_URL}/api/conversations/user/${bookingDetails.user._id}${strutturaId ? `?strutturaId=${strutturaId}` : ""}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (!chatRes.ok) {
         console.error("❌ [OwnerDashboard] Errore creazione conversazione:", chatRes.status);
@@ -301,12 +303,17 @@ export default function OwnerDashboardScreen() {
       const conversation = await chatRes.json();
 
       // Naviga alla chat
+      const struttura = bookingDetails.campo?.struttura;
       navigation.navigate("Chat", {
         conversationId: conversation._id,
-        strutturaName: bookingDetails.campo.struttura.name,
-        userName: bookingDetails.user.name,
+        userName: bookingDetails.user.surname
+          ? `${bookingDetails.user.name} ${bookingDetails.user.surname}`
+          : bookingDetails.user.name,
         userId: bookingDetails.user._id,
-        struttura: bookingDetails.campo.struttura,
+        userAvatar: bookingDetails.user.avatarUrl,
+        struttura,
+        strutturaName: struttura?.name,
+        strutturaAvatar: struttura?.images?.[0],
       });
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore apertura chat:", error);
@@ -321,8 +328,9 @@ export default function OwnerDashboardScreen() {
   const upcomingBookings = useMemo(
     () => todayBookings.filter(b => {
       const now = new Date();
-      const bookingTime = new Date(`${b.date}T${b.startTime}`);
-      return bookingTime > now;
+      const bookingStart = new Date(`${b.date}T${b.startTime}`);
+      const bookingEnd = new Date(`${b.date}T${b.endTime}`);
+      return bookingStart > now || (now >= bookingStart && now <= bookingEnd);
     }),
     [todayBookings]
   );

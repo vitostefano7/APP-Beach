@@ -362,7 +362,7 @@ const ConversationScreen: React.FC<ConversationScreenProps> = ({ role }) => {
                 : filter === "group"
                 ? "Le chat di gruppo dei match appariranno qui"
                 : "Quando i clienti ti contatteranno o verranno creati match, le chat appariranno qui"
-              : "Contatta una struttura per iniziare una chat!"}
+              : "Contatta una struttura o un giocatore per iniziare una chat!"}
           </Text>
         </View>
       ) : (

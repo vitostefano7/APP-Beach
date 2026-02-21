@@ -270,6 +270,9 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.35)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
 
   bookingTime: {

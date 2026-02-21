@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { styles } from "../../styles/ConversationScreen.styles";
+import SportIcon from "../SportIcon";
 
 interface MatchModalProps {
   visible: boolean;
@@ -73,6 +74,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
                 const date = booking?.date ? new Date(booking.date) : null;
                 const time = booking?.startTime;
                 const sport = booking?.campo?.sport || "Sport";
+                const sportCode = typeof sport === "object" ? sport?.code || sport?.name : sport;
 
                 return (
                   <Pressable
@@ -82,11 +84,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
                   >
                     <View style={styles.modalItemLeft}>
                       <View style={styles.modalItemIcon}>
-                        <FontAwesome5
-                          name="volleyball-ball"
-                          size={20}
-                          color="#4CAF50"
-                        />
+                        <SportIcon sport={sportCode} size={20} color="#2196F3" />
                       </View>
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>

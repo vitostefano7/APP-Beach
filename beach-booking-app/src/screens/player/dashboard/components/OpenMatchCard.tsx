@@ -127,7 +127,7 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
       </View>
 
       {/* Visualizzazione Team Grafica */}
-      {maxPlayers > 2 && (
+      {maxPlayers >= 2 && (
         <View style={styles.openMatchTeams}>
           {/* Team A */}
           <View style={styles.openMatchTeamContainer}>

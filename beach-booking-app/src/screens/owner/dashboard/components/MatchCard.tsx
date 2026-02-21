@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { FontAwesome5 } from "@expo/vector-icons";
+import SportIcon from "../../../../components/SportIcon";
 import { styles } from "../styles/OwnerDashboardScreen.styles";
 
 type MatchCardProps = {
@@ -42,16 +42,6 @@ type MatchCardProps = {
   };
   onPress: () => void;
 };
-
-type SportIcon =
-  | {
-      library: "Ionicons";
-      name: React.ComponentProps<typeof Ionicons>["name"];
-    }
-  | {
-      library: "FontAwesome5";
-      name: React.ComponentProps<typeof FontAwesome5>["name"];
-    };
 
 export default function MatchCard({ match, onPress }: MatchCardProps) {
   const { booking, players, maxPlayers, status, isPublic, createdBy } = match;
@@ -175,17 +165,11 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
   const teamB = players.filter((p) => p.team === "B" && p.status === "confirmed");
   const playersPerTeam = maxPlayers / 2;
 
-  // Icona per sport
-  const getSportIcon = (): SportIcon => {
-    // Gestisce sia string che oggetto {_id, name}
-    const sportValue = typeof booking.campo.sport === 'string' 
-      ? booking.campo.sport 
-      : (booking.campo.sport as any)?.name || '';
-    const sport = sportValue.toLowerCase();
-    if (sport.includes("padel")) return { library: "Ionicons", name: "tennisball" };
-    if (sport.includes("calcetto") || sport.includes("calcio")) return { library: "Ionicons", name: "football" };
-    if (sport.includes("volley")) return { library: "FontAwesome5", name: "volleyball-ball" };
-    return { library: "Ionicons", name: "trophy" };
+  const getSportValue = () => {
+    if (typeof booking.campo.sport === "string") {
+      return booking.campo.sport;
+    }
+    return (booking.campo.sport as any)?.code || (booking.campo.sport as any)?.name || "";
   };
 
   // Ottiene il nome dello sport da visualizzare
@@ -196,7 +180,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
     return (booking.campo.sport as any)?.name || 'Sport';
   };
 
-  const sportIcon = getSportIcon();
+  const sportValue = getSportValue();
 
   return (
     <Pressable style={styles.matchCard} onPress={onPress}>
@@ -308,19 +292,7 @@ export default function MatchCard({ match, onPress }: MatchCardProps) {
             </Text>
           </View>
           <View style={styles.matchVisibilityBadge}>
-            {sportIcon.library === "FontAwesome5" ? (
-              <FontAwesome5
-                name={sportIcon.name}
-                size={12}
-                color="#2196F3"
-              />
-            ) : (
-              <Ionicons
-                name={sportIcon.name}
-                size={12}
-                color="#2196F3"
-              />
-            )}
+            <SportIcon sport={sportValue} size={12} color="#2196F3" />
             <Text style={styles.matchVisibilityText}>
               {getSportName()}
             </Text>

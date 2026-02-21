@@ -68,6 +68,7 @@ export default function BookingTodayCard({
       <View style={styles.bookingHeader}>
         <View style={styles.bookingTimeWrapper}>
           <View style={styles.timeLabel}>
+            <Ionicons name="time-outline" size={15} color="#ffffff" />
             <Text style={styles.bookingTime}>
               {booking.startTime} - {booking.endTime}
             </Text>
@@ -93,6 +94,7 @@ export default function BookingTodayCard({
           </View>
 
           <View style={styles.bookingRow}>
+            <Ionicons name="location-outline" size={16} color="#2196F3" />
             {booking.campo.sport?.code && (
               <SportIcon sport={booking.campo.sport.code} size={16} color="#2196F3" />
             )}
