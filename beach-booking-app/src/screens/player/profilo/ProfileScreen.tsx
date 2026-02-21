@@ -7,7 +7,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -65,6 +65,12 @@ export default function ProfileScreen() {
   const [venuesStats, setVenuesStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
+  // cache per le statistiche (in particolare performance) - validità 60 secondi
+  const STATS_CACHE_TTL = 60_000; // 60 secondi
+  const statsCacheRef = useRef<{ performance?: any; social?: any; venues?: any }>({});
+  const lastStatsFetchRef = useRef<number>(0);
+  const isStatsFetchingRef = useRef(false);
+
   // Stati per i post
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -94,8 +100,13 @@ export default function ProfileScreen() {
       if (token) {
         refreshUnreadCount();
         loadProfile();
-        loadStats();
+        const controller = new AbortController();
+        loadStats(controller.signal);
         loadPosts();
+        return () => {
+          controller.abort();
+          isStatsFetchingRef.current = false;
+        };
       }
     }, [token])
   );
@@ -175,20 +186,43 @@ export default function ProfileScreen() {
     }
   };
 
-  const loadStats = async () => {
-    try {
-      setStatsLoading(true);
+  const loadStats = async (signal?: AbortSignal, force = false) => {
+    if (!token) return;
+    if (isStatsFetchingRef.current) return;
 
+    const now = Date.now();
+    const hasCachedData = !!statsCacheRef.current.performance;
+    const isCacheFresh = now - lastStatsFetchRef.current < STATS_CACHE_TTL;
+
+    // se cache valida e non forzato, ripristina e continua a mostrare i dati attuali
+    if (!force && hasCachedData && isCacheFresh) {
+      console.log("🗄️ Statistiche cache valide, salto il fetch");
+      setPerformanceStats(statsCacheRef.current.performance || null);
+      setSocialStats(statsCacheRef.current.social || null);
+      setVenuesStats(statsCacheRef.current.venues || null);
+      return;
+    }
+
+    isStatsFetchingRef.current = true;
+    // mostriamo il loader solo se non abbiamo dati precedenti o se si tratta di un refresh forzato
+    if (!hasCachedData || force) {
+      setStatsLoading(true);
+    }
+
+    try {
       // Chiamate parallele per performance, social e venues
       const [performanceRes, playedWithRes, venuesRes] = await Promise.all([
         fetch(`${API_URL}/users/me/performance-stats`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal,
         }),
         fetch(`${API_URL}/users/me/played-with`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal,
         }),
         fetch(`${API_URL}/users/me/frequented-venues`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal,
         }),
       ]);
 
@@ -201,29 +235,42 @@ export default function ProfileScreen() {
       }
 
       // Social stats (played with)
+      let socialPayload: any = null;
       if (playedWithRes.ok) {
         const socialData = await playedWithRes.json();
-        setSocialStats({
+        socialPayload = {
           totalPeopleMet: socialData.playedWith?.length || 0,
           topPlayers: socialData.playedWith || [],
-        });
+        };
+        setSocialStats(socialPayload);
       }
 
       // Venues stats
+      let venuesPayload: any = null;
       if (venuesRes.ok) {
         const venuesData = await venuesRes.json();
-        setVenuesStats({
+        venuesPayload = {
           totalVenues: venuesData.venues?.length || 0,
           topVenues: venuesData.venues || [],
           lastMatch: perfData?.lastMatch,
           preferredDay: perfData?.preferredDay,
           matchesThisMonth: perfData?.matchesThisMonth,
-        });
+        };
+        setVenuesStats(venuesPayload);
       }
+
+      // aggiorna cache (inclusa performance e gli eventuali payload appena calcolati)
+      statsCacheRef.current = {
+        performance: perfData,
+        social: socialPayload,
+        venues: venuesPayload,
+      };
+      lastStatsFetchRef.current = Date.now();
     } catch (e) {
       console.error("Errore caricamento statistiche", e);
     } finally {
       setStatsLoading(false);
+      isStatsFetchingRef.current = false;
     }
   };
 const loadPosts = async () => {
