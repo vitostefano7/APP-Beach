@@ -30,6 +30,7 @@ import { SuggestedItemsCarousel } from './components/SuggestedItemsCarousel';
 import { styles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get('window');
+const DASHBOARD_FETCH_TIMEOUT_MS = 12000;
 
 const InviteCardTitle = ({ count, onViewAll }: { count: number, onViewAll: () => void }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -91,7 +92,14 @@ export default function HomeScreen() {
   const [showAllInvites, setShowAllInvites] = useState(false);
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [openMatches, setOpenMatches] = useState<any[]>([]);
+  const [openMatchesLoading, setOpenMatchesLoading] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const hasBootstrappedRef = React.useRef(false);
+  const dashboardRunIdRef = React.useRef(0);
+  const requestSeqRef = React.useRef(0);
+  const openMatchesRequestKeyRef = React.useRef<string | null>(null);
+  const openMatchesInFlightRef = React.useRef(false);
+  const openMatchesDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Hook per il filtraggio geografico
   const {
@@ -119,11 +127,47 @@ export default function HomeScreen() {
     refetch: refreshSuggestions,
     sendFriendRequest,
     followStruttura,
-  } = useSuggestedItems({ friendsLimit: 4, struttureLimit: 2 });
+  } = useSuggestedItems({ friendsLimit: 4, struttureLimit: 2, autoLoad: false });
+
+  const fetchWithTimeout = useCallback(async (
+    url: string,
+    options: RequestInit = {},
+    timeoutMs: number = DASHBOARD_FETCH_TIMEOUT_MS,
+    label: string = 'request'
+  ) => {
+    const reqId = ++requestSeqRef.current;
+    const start = performance.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    console.log(`🌐 [DASH-REQ#${reqId}] START ${label} | timeout=${timeoutMs}ms`);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      const elapsed = performance.now() - start;
+      console.log(`🌐 [DASH-REQ#${reqId}] END ${label} | status=${response.status} | ${elapsed.toFixed(0)}ms`);
+      return response;
+    } catch (error: any) {
+      const elapsed = performance.now() - start;
+      if (error?.name === 'AbortError') {
+        console.warn(`⏰ [DASH-REQ#${reqId}] TIMEOUT ${label} | ${elapsed.toFixed(0)}ms`);
+      } else {
+        console.error(`❌ [DASH-REQ#${reqId}] FAIL ${label} | ${elapsed.toFixed(0)}ms`, error);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
-      console.log("\n🔵 [FOCUS] useFocusEffect CHIAMATO");
+      dashboardRunIdRef.current += 1;
+      const runId = dashboardRunIdRef.current;
+      console.log(`\n🔵 [FOCUS] useFocusEffect CHIAMATO | DASH#${runId}`);
       const focusStartTime = performance.now();
       const allTimings: any = {};
       
@@ -131,7 +175,7 @@ export default function HomeScreen() {
       const printReport = () => {
         const totalFocusTime = performance.now() - focusStartTime;
         const dashTimings = (window as any).__dashboardTimings || {};
-        
+
         console.log("\n" + "=".repeat(50));
         console.log("📊 RESOCONTO PERFORMANCE DASHBOARD");
         console.log("=".repeat(50));
@@ -142,6 +186,7 @@ export default function HomeScreen() {
         console.log("-".repeat(50));
         console.log(`🎯 TEMPO TOTALE: ${typeof totalFocusTime === 'number' ? totalFocusTime.toFixed(0) : 0}ms (${typeof totalFocusTime === 'number' ? (totalFocusTime / 1000).toFixed(2) : 0}s)`);
         console.log("=".repeat(50) + "\n");
+        console.log(`🧭 [DASH#${runId}] END focus run`);
         
         // Pulisci i dati temporanei
         delete (window as any).__dashboardTimings;
@@ -149,12 +194,15 @@ export default function HomeScreen() {
       
       // Esegui tutte le operazioni e aspetta il completamento
       (async () => {
-        // Carica dashboard (include preferenze e dati principali)
-        await loadDashboardData();
-        
-        // Carica suggerimenti
+        // Carica dashboard e suggerimenti in parallelo
         const suggestionsStart = performance.now();
-        await refreshSuggestions();
+        const suggestionsPromise = refreshSuggestions().finally(() => {
+          allTimings.suggestions = performance.now() - suggestionsStart;
+        });
+
+        await loadDashboardData();
+        await suggestionsPromise;
+
         allTimings.suggestions = performance.now() - suggestionsStart;
         
         // Aspetta ancora un attimo per loadOpenMatches (chiamato da useEffect)
@@ -168,50 +216,56 @@ export default function HomeScreen() {
 
   // Richiedi GPS IMMEDIATAMENTE al mount del componente
   React.useEffect(() => {
-    console.log("🛰️ [GPS] useEffect GPS mount - richiesta GPS IMMEDIATA");
     // Per nuovi utenti senza preferenze, il GPS è l'unico modo per mostrare match
     // Quindi lo richiediamo subito invece di aspettare 1 secondo
     requestGPSLocation();
   }, []); // Dipendenze vuote = solo al mount
 
   // Carica i match aperti quando cambiano le preferenze geografiche
-  const prevDepsRef = React.useRef<any>({});
   React.useEffect(() => {
-    const prev = prevDepsRef.current;
-    const current = {
-      gpsCoords: gpsCoords ? `${gpsCoords.lat},${gpsCoords.lng}` : null,
-      hasPreferences: !!userPreferences,
-      preferredCity: userPreferences?.preferredLocation?.city,
+    if (!preferencesLoaded) {
+      return;
+    }
+
+    const requestKey = JSON.stringify({
+      gps: gpsCoords ? `${gpsCoords.lat.toFixed(3)},${gpsCoords.lng.toFixed(3)}` : null,
+      preferred: userPreferences?.preferredLocation?.city || null,
+      preferredCoords: userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng
+        ? `${userPreferences.preferredLocation.lat.toFixed(3)},${userPreferences.preferredLocation.lng.toFixed(3)}`
+        : null,
       visitedCount: visitedStruttureIds?.length || 0,
-      preferencesLoaded
+    });
+
+    console.log(`🧭 [DASH#${dashboardRunIdRef.current}] [EFFECT-MATCH] requestKey=${requestKey}`);
+
+    if (openMatchesRequestKeyRef.current === requestKey && openMatchesInFlightRef.current) {
+      return;
+    }
+
+    if (openMatchesDebounceRef.current) {
+      clearTimeout(openMatchesDebounceRef.current);
+    }
+
+    openMatchesDebounceRef.current = setTimeout(async () => {
+      if (openMatchesInFlightRef.current && openMatchesRequestKeyRef.current === requestKey) {
+        return;
+      }
+
+      openMatchesRequestKeyRef.current = requestKey;
+      openMatchesInFlightRef.current = true;
+
+      try {
+        await loadOpenMatches();
+      } finally {
+        openMatchesInFlightRef.current = false;
+      }
+    }, 250);
+
+    return () => {
+      if (openMatchesDebounceRef.current) {
+        clearTimeout(openMatchesDebounceRef.current);
+      }
     };
-    
-    console.log("🔄 [EFFECT-MATCH] useEffect match aperti chiamato");
-    console.log("   Valori PRECEDENTI:", prev);
-    console.log("   Valori CORRENTI:", current);
-    
-    // Identifica cosa è cambiato
-    const changes: string[] = [];
-    if (prev.gpsCoords !== current.gpsCoords) changes.push('gpsCoords');
-    if (prev.hasPreferences !== current.hasPreferences) changes.push('hasPreferences');
-    if (prev.preferredCity !== current.preferredCity) changes.push('preferredCity');
-    if (prev.visitedCount !== current.visitedCount) changes.push('visitedCount');
-    if (prev.preferencesLoaded !== current.preferencesLoaded) changes.push('preferencesLoaded');
-    
-    if (changes.length > 0) {
-      console.log("   🔀 CAMBIAMENTI:", changes.join(', '));
-    } else {
-      console.log("   ⚠️ NESSUN CAMBIAMENTO RILEVATO (possibile re-render non necessario)");
-    }
-    
-    prevDepsRef.current = current;
-    
-    if (preferencesLoaded) {
-      console.log("✅ [EFFECT-MATCH] Preferenze caricate, chiamo loadOpenMatches()");
-      loadOpenMatches();
-    } else {
-      console.log("⏸️ [EFFECT-MATCH] Preferenze non ancora caricate, skip loadOpenMatches");
-    }
   }, [gpsCoords, userPreferences, visitedStruttureIds, preferencesLoaded]);
 
   const loadDashboardData = async () => {
@@ -220,32 +274,33 @@ export default function HomeScreen() {
     const timings: Record<string, number> = {};
     
     try {
-      console.log("📊 [LOAD-DASH] setLoading(true)");
-      setLoading(true);
+      if (!hasBootstrappedRef.current) {
+        setLoading(true);
+      }
 
-      // Carica prima le preferenze e le strutture visitate
-      console.log("📊 [LOAD-DASH] Caricamento preferenze e strutture visitate...");
+      console.log("📊 [LOAD-DASH] Caricamento parallelo preferenze + dati principali...");
+
       const prefsStart = performance.now();
-      await Promise.all([
+      const preferencesPromise = Promise.all([
         loadUserPreferences(),
         loadVisitedStrutture(),
-      ]);
-      timings.preferences = performance.now() - prefsStart;
-      console.log(`📊 [LOAD-DASH] Preferenze caricate in ${typeof timings.preferences === 'number' ? timings.preferences.toFixed(0) : 0}ms`);
-      
-      console.log("📊 [LOAD-DASH] setPreferencesLoaded(true)");
-      setPreferencesLoaded(true);
+      ]).finally(() => {
+        timings.preferences = performance.now() - prefsStart;
+        console.log(`📊 [LOAD-DASH] Preferenze caricate in ${typeof timings.preferences === 'number' ? timings.preferences.toFixed(0) : 0}ms`);
+        setPreferencesLoaded(true);
+      });
 
-      // Carica tutto il resto TRANNE i match aperti (li carica il useEffect)
-      console.log("📊 [LOAD-DASH] Caricamento dati principali (booking, inviti, match recenti)...");
       const dataStart = performance.now();
-      await Promise.all([
+      const mainDataPromise = Promise.all([
         loadNextBooking(),
         loadPendingInvites(),
         loadRecentMatchesAndStats(),
-      ]);
-      timings.mainData = performance.now() - dataStart;
-      console.log(`📊 [LOAD-DASH] Dati principali caricati in ${typeof timings.mainData === 'number' ? timings.mainData.toFixed(0) : 0}ms`);
+      ]).finally(() => {
+        timings.mainData = performance.now() - dataStart;
+        console.log(`📊 [LOAD-DASH] Dati principali caricati in ${typeof timings.mainData === 'number' ? timings.mainData.toFixed(0) : 0}ms`);
+      });
+
+      await Promise.all([preferencesPromise, mainDataPromise]);
 
     } catch (error) {
       console.error("❌ [LOAD-DASH] Errore caricamento dashboard:", error);
@@ -254,9 +309,11 @@ export default function HomeScreen() {
       
       // Salva i tempi per il resoconto finale
       (window as any).__dashboardTimings = timings;
-      
+
       console.log(`📊 [LOAD-DASH] setLoading(false) - Tempo totale: ${typeof timings.total === 'number' ? timings.total.toFixed(0) : 0}ms`);
       console.log("📊 [LOAD-DASH] ========== FINE loadDashboardData ==========\n");
+
+      hasBootstrappedRef.current = true;
       setLoading(false);
       setRefreshing(false);
     }
@@ -264,9 +321,9 @@ export default function HomeScreen() {
 
   const loadNextBooking = async () => {
     try {
-      const bookingsRes = await fetch(`${API_URL}/bookings/me`, {
+      const bookingsRes = await fetchWithTimeout(`${API_URL}/bookings/me`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      }, DASHBOARD_FETCH_TIMEOUT_MS, 'GET /bookings/me');
       
       if (bookingsRes.ok) {
         const bookings = await bookingsRes.json();
@@ -385,9 +442,9 @@ export default function HomeScreen() {
     try {
       // console.log("=== CARICAMENTO INVITI PENDENTI ===");
       
-      const res = await fetch(`${API_URL}/matches/me`, {
+      const res = await fetchWithTimeout(`${API_URL}/matches/pending-invites`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      }, DASHBOARD_FETCH_TIMEOUT_MS, 'GET /matches/pending-invites');
       
       if (res.ok) {
         const allMatches = await res.json();
@@ -469,55 +526,41 @@ export default function HomeScreen() {
     const startTime = performance.now();
     
     try {
+      setOpenMatchesLoading(true);
+
       // *** PRE-CHECK CRITERI GEOGRAFICI ***
       // ⚡ OTTIMIZZAZIONE: Controlla PRIMA di fare la chiamata API
       // Se non ci sono criteri geografici, evitiamo di sprecare 1.7s chiamando il server
-      console.log("🌍 [LOAD-MATCH] Pre-check criteri geografici...");
-      console.log("🌍 [LOAD-MATCH] GPS coords:", gpsCoords ? `${gpsCoords.lat}, ${gpsCoords.lng}` : "NESSUNO");
-      console.log("🌍 [LOAD-MATCH] Preferred location:", userPreferences?.preferredLocation?.city || "NESSUNA");
-      console.log("🌍 [LOAD-MATCH] Visited structures:", visitedStruttureIds?.length || 0);
-      
       const hasGPS = !!gpsCoords;
       const hasPreferredCity = !!(userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng);
       const hasVisitedStructures = visitedStruttureIds && visitedStruttureIds.length > 0;
       
       // 🚀 Se non ci sono criteri, esci SUBITO senza chiamare l'API
       if (!hasGPS && !hasPreferredCity && !hasVisitedStructures) {
-        console.log("⚡ [LOAD-MATCH] NESSUN CRITERIO GEOGRAFICO - skip chiamata API (risparmio ~1.7s)");
-        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (no criteri, 0ms) ==========\n");
         setOpenMatches([]);
         return;
       }
       
       // Solo SE ci sono criteri geografici, procedi con la chiamata API
-      console.log("🎯 [LOAD-MATCH] Criteri geografici OK, fetch match aperti...");
-      const res = await fetch(`${API_URL}/matches?status=open`, {
+      const res = await fetchWithTimeout(`${API_URL}/matches?status=open`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log(`🎯 [LOAD-MATCH] Risposta ricevuta: ${res.status}`);
+      }, DASHBOARD_FETCH_TIMEOUT_MS, 'GET /matches?status=open');
 
       if (!res.ok) {
         console.error(`❌ [LOAD-MATCH] Errore risposta server: ${res.status}`);
-        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (errore) ==========\n");
         setOpenMatches([]);
         return;
       }
 
-      console.log("🎯 [LOAD-MATCH] Parsing dati...");
       const data = await res.json();
       const rawMatches = Array.isArray(data) ? data : Array.isArray(data.matches) ? data.matches : [];
-      
-      console.log(`🎯 [LOAD-MATCH] ${rawMatches.length} match grezzi ricevuti`);
 
       if (rawMatches.length === 0) {
-        console.log("ℹ️ [LOAD-MATCH] Nessun match aperto dal server");
-        console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches (vuoto) ==========\n");
         setOpenMatches([]);
         return;
       }
 
       // *** APPLICA FILTRO GEOGRAFICO ***
-      console.log("🌍 [LOAD-MATCH] Applicazione filtro geografico...");
       
       // Determina modalità di filtro geografico
       let referenceLat: number | null = null;
@@ -530,16 +573,13 @@ export default function HomeScreen() {
         referenceLng = gpsCoords.lng;
         searchRadius = 30;
         filterMode = 'gps';
-        console.log("✅ [LOAD-MATCH] Modalità filtro: GPS - raggio 30km");
       } else if (userPreferences?.preferredLocation?.lat && userPreferences?.preferredLocation?.lng) {
         referenceLat = userPreferences.preferredLocation.lat;
         referenceLng = userPreferences.preferredLocation.lng;
         searchRadius = userPreferences.preferredLocation.radius || 30;
         filterMode = 'preferred';
-        console.log(`✅ [LOAD-MATCH] Modalità filtro: CITTÀ PREFERITA - ${userPreferences.preferredLocation.city}, raggio ${searchRadius}km`);
       } else if (visitedStruttureIds && visitedStruttureIds.length > 0) {
         filterMode = 'visited';
-        console.log(`✅ [LOAD-MATCH] Modalità filtro: STRUTTURE VISITATE - ${visitedStruttureIds.length} strutture`);
       }
       
       // Applica il filtro geografico
@@ -617,7 +657,7 @@ export default function HomeScreen() {
       // console.log(`   - Mostrati: primi 10 match`);
 
       const finalMatches = sorted.slice(0, 10);
-      console.log(`🎯 [LOAD-MATCH] Impostati ${finalMatches.length} match aperti`);
+      console.log(`🧭 [DASH#${dashboardRunIdRef.current}] [OPEN-MATCHES] raw=${rawMatches.length} geo=${geoFiltered.length} eligible=${filtered.length} final=${finalMatches.length}`);
       setOpenMatches(finalMatches);
       
       // Log dettagliato per ogni card mostrata
@@ -640,8 +680,8 @@ export default function HomeScreen() {
       setOpenMatches([]);
     } finally {
       const totalTime = performance.now() - startTime;
+      setOpenMatchesLoading(false);
       console.log(`🎯 [LOAD-MATCH] Tempo totale: ${typeof totalTime === 'number' ? totalTime.toFixed(0) : 0}ms`);
-      console.log("🎯 [LOAD-MATCH] ========== FINE loadOpenMatches ==========\n");
       // Salva timing per resoconto finale
       if ((window as any).__dashboardTimings) {
         (window as any).__dashboardTimings.openMatches = totalTime;
@@ -651,9 +691,9 @@ export default function HomeScreen() {
 
   const loadRecentMatchesAndStats = async () => {
     try {
-      const matchesRes = await fetch(`${API_URL}/matches/me?status=completed`, {
+      const matchesRes = await fetchWithTimeout(`${API_URL}/matches/me?status=completed`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      }, DASHBOARD_FETCH_TIMEOUT_MS, 'GET /matches/me?status=completed');
       
       if (matchesRes.ok) {
         const allMatches = await matchesRes.json();
@@ -873,9 +913,6 @@ export default function HomeScreen() {
   };
 
   const validPendingInvites = getValidPendingInvites(pendingInvites || [], user?.id || "");
-
-  console.log("Dashboard - pendingInvites raw:", pendingInvites);
-  console.log("Dashboard - validPendingInvites:", validPendingInvites);
   
   const completedMatches = recentMatches.filter((match: any) => 
     match.status === "completed" && match.score?.sets?.length > 0
@@ -1068,6 +1105,10 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
             />
+          ) : openMatchesLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#2196F3" />
+            </View>
           ) : (
             <EmptyStateCard
               icon="search-outline"

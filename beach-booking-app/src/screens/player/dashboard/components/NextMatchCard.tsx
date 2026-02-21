@@ -96,11 +96,6 @@ const NextMatchCard: React.FC<NextMatchCardProps> = ({ booking, onPress }) => {
   const matchStart = new Date(`${booking.date}T${booking.startTime}:00`);
   const hoursUntil = (matchStart.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-  // Debug players
-  console.log("NextMatchCard - hasMatch:", booking.hasMatch);
-  console.log("NextMatchCard - players:", booking.players);
-  console.log("NextMatchCard - players length:", booking.players?.length);
-
   return (
     <Pressable style={[styles.nextMatchCard, matchInProgress && { borderWidth: 2, borderColor: '#4CAF50' }]} onPress={onPress}>
       {/* Immagine in alto */}

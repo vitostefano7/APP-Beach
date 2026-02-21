@@ -20,12 +20,7 @@ export const UnreadMessagesProvider = ({ children }: { children: React.ReactNode
   const [loading, setLoading] = useState(false);
 
   const refreshUnreadCount = useCallback(async () => {
-    /*console.log('🔄 [UnreadContext] refreshUnreadCount CALLED');
-    console.log('🔄 [UnreadContext] Token exists:', !!token);
-    console.log('🔄 [UnreadContext] User:', user?.name || 'NULL'); */
-    
     if (!token || !user) {
-      console.log('❌ [UnreadContext] No token or user, setting count to 0');
       setUnreadCount(0);
       return;
     }
@@ -33,18 +28,13 @@ export const UnreadMessagesProvider = ({ children }: { children: React.ReactNode
     try {
       setLoading(true);
       const url = `${API_URL}/api/conversations/unread-count`;
-      console.log('📡 [UnreadContext] Fetching from:', url);
       
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      /*console.log('📡 [UnreadContext] Response status:', res.status);*/
-
       if (res.ok) {
         const data = await res.json();
-        /*console.log('✅ [UnreadContext] Data received:', data);
-        console.log('🔔 [UnreadContext] Setting unreadCount to:', data.unreadCount);*/
         setUnreadCount(data.unreadCount || 0);
       } else {
         console.error('❌ [UnreadContext] Response NOT OK:', res.status);
@@ -60,27 +50,20 @@ export const UnreadMessagesProvider = ({ children }: { children: React.ReactNode
 
   // Carica al mount e quando cambiano token/user
   useEffect(() => {
-    console.log('🎬 [UnreadContext] useEffect triggered');
-    console.log('🎬 [UnreadContext] Token changed:', !!token);
-    console.log('🎬 [UnreadContext] User changed:', user?.name || 'NULL');
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
   // Polling ogni 30 secondi
   useEffect(() => {
     if (!token || !user) {
-      console.log('⏸️ [UnreadContext] Polling disabled (no token/user)');
       return;
     }
 
-    console.log('⏰ [UnreadContext] Polling started (30s interval)');
     const interval = setInterval(() => {
-      console.log('⏰ [UnreadContext] Polling tick');
       refreshUnreadCount();
     }, 30000);
 
     return () => {
-      console.log('🛑 [UnreadContext] Polling stopped');
       clearInterval(interval);
     };
   }, [token, user, refreshUnreadCount]);

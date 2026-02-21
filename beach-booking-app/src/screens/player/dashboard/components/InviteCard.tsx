@@ -21,7 +21,6 @@ const InviteCard: React.FC<InviteCardProps> = ({
   onRespond 
 }) => {
   const navigation = useNavigation<any>();
-  console.log("🎯 InviteCard rendering");
 
   const match = invite.match || invite;
   const booking = invite.booking || match.booking;
@@ -35,8 +34,6 @@ const InviteCard: React.FC<InviteCardProps> = ({
   // Calcola il prezzo per persona
   const pricePerPerson = booking?.price && match?.players ? 
     (booking.price / match.players.length).toFixed(2) : null;
-
-  console.log(`Match ID: ${matchId}, My status: ${myStatus}`);
 
   // Constante per le ore di cut-off
   const CUTOFF_HOURS_BEFORE = 2; // Inviti si chiudono 2 ore prima
@@ -60,19 +57,16 @@ const InviteCard: React.FC<InviteCardProps> = ({
 
   // 2. POI controlla lo stato: se NON è pending OPPURE è scaduto → non mostrare
   if (myStatus !== "pending" || expired) {
-    console.log(`Skipping invite ${matchId}, status: ${myStatus}, expired: ${expired}`);
     return null; // Non renderizzare niente, l'invito scompare
   }
 
   const handleCardPress = () => {
     const bookingId = booking?._id;
     if (!bookingId) {
-      console.log(`No booking ID found for invite: ${matchId}`);
       Alert.alert("Errore", "Dettagli prenotazione non disponibili");
       return;
     }
-    
-    console.log(`Card pressed - navigating to DettaglioPrenotazione with bookingId: ${bookingId}`);
+
     navigation.navigate("DettaglioPrenotazione", {
       bookingId,
     });
@@ -80,8 +74,7 @@ const InviteCard: React.FC<InviteCardProps> = ({
 
   const handleAccept = (e: any) => {
     e.stopPropagation();
-    console.log(`Accepting invite: ${matchId}`);
-    
+
     Alert.alert(
       "Conferma partecipazione",
       "Vuoi accettare l'invito a questa partita?",
@@ -93,7 +86,6 @@ const InviteCard: React.FC<InviteCardProps> = ({
         {
           text: "Accetta",
           onPress: () => {
-            console.log(`User confirmed accept for match: ${matchId}`);
             onRespond(matchId, "accept");
           },
           style: "default"
@@ -104,8 +96,7 @@ const InviteCard: React.FC<InviteCardProps> = ({
 
   const handleDecline = (e: any) => {
     e.stopPropagation();
-    console.log(`Declining invite: ${matchId}`);
-    
+
     Alert.alert(
       "Rifiuta invito",
       "Sei sicuro di voler rifiutare questo invito?",
@@ -117,7 +108,6 @@ const InviteCard: React.FC<InviteCardProps> = ({
         {
           text: "Rifiuta",
           onPress: () => {
-            console.log(`User confirmed decline for match: ${matchId}`);
             onRespond(matchId, "decline");
           },
           style: "destructive"

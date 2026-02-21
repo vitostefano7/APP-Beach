@@ -46,27 +46,17 @@ export const useNotifications = () => {
         url += `&isRead=${isRead}`;
       }
 
-      console.log('🔍 [useNotifications] Fetching notifications:', { url, isRead });
-
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log('📡 [useNotifications] Response status:', response.status);
-
       if (!response.ok) {
         throw new Error('Errore nel caricamento delle notifiche');
       }
 
       const data: NotificationsResponse = await response.json();
-      console.log('✅ [useNotifications] Notifications loaded:', {
-        count: data.notifications.length,
-        total: data.total,
-        hasMore: data.hasMore,
-        types: data.notifications.map(n => n.type)
-      });
       
       setNotifications(data.notifications);
       
@@ -84,22 +74,17 @@ export const useNotifications = () => {
   // Carica il conteggio delle notifiche non lette
   const fetchUnreadCount = useCallback(async () => {
     try {
-      console.log('🔍 [useNotifications] Fetching unread count');
-
       const response = await fetch(`${API_URL}/notifications/unread-count`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log('📡 [useNotifications] Unread count response status:', response.status);
-
       if (!response.ok) {
         throw new Error('Errore nel caricamento del conteggio');
       }
 
       const data = await response.json();
-      console.log('✅ [useNotifications] Unread count:', data.count);
       
       setUnreadCount(data.count);
       

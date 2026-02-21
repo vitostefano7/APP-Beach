@@ -19,7 +19,6 @@ const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
 };
 
 const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin }) => {
-  console.log('Sport:', match.booking?.campo?.sport?.code);
   const confirmedPlayers = getPlayersCount(match.players, 'confirmed');
   const maxPlayers = match.maxPlayers || 0;
   const available = Math.max(maxPlayers - confirmedPlayers, 0);

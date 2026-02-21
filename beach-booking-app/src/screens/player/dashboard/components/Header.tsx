@@ -34,11 +34,6 @@ const Header: React.FC<HeaderProps> = ({ user, pendingInvites }) => {
   // Calcola il totale delle notifiche includendo gli inviti pending
   const totalNotifications = notificationsUnreadCount + (pendingInvites?.length || 0);
 
-  // Disabilitato il log degli inviti pendenti per evitare spam nella console
-  // console.log("Header - pendingInvites:", pendingInvites);
-  console.log("Header - notificationsUnreadCount:", notificationsUnreadCount);
-  console.log("Header - totalNotifications:", totalNotifications);
-
   const openChatModal = () => {
     // Animazione del bottone
     Animated.parallel([

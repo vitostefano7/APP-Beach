@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnreadMessages } from "../context/UnreadMessagesContext";
@@ -17,40 +17,20 @@ const Tab = createBottomTabNavigator();
 export default function PlayerTabs() {
   const { unreadCount, refreshUnreadCount } = useUnreadMessages();
   const insets = useSafeAreaInsets();
-  const previousUnreadCount = useRef(unreadCount);
 
   // 🔥 FORZA REFRESH IMMEDIATO AL MOUNT
   useEffect(() => {
-    console.log('🔥 PlayerTabs mounted, forcing refresh');
     refreshUnreadCount();
   }, [refreshUnreadCount]);
-
-  // DEBUG unread count changes
-  useEffect(() => {
-    if (previousUnreadCount.current !== unreadCount) {
-      console.log('📊 Unread count changed:', previousUnreadCount.current, '->', unreadCount);
-      previousUnreadCount.current = unreadCount;
-    }
-  }, [unreadCount]);
-
-  // DEBUG ridotto - solo quando necessario
-  useEffect(() => {
-    const interval = setInterval(() => {
-      console.log('🔄 PlayerTabs render check - unreadCount:', unreadCount);
-    }, 5000); // Solo ogni 5 secondi
-    return () => clearInterval(interval);
-  }, [unreadCount]);
 
   const getTabBarStyle = (route: any) => {
     const routeName = getFocusedRouteNameFromRoute(route) ?? "";
     
     if (routeName === "Chat" || routeName === "GroupChat") {
-      console.log('✅ Hiding tab bar for Chat');
       return { display: "none" };
     }
     
     if (routeName === "ConfermaPrenotazione") {
-      console.log('✅ Hiding tab bar for ConfermaPrenotazione');
       return { display: "none" };
     }
     

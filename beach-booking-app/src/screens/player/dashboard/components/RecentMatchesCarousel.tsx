@@ -30,24 +30,6 @@ const RecentMatchesCarousel: React.FC<RecentMatchesCarouselProps> = ({
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-
-  // DEBUG: Log dettagliato delle ultime partite mostrate
-  if (matches && matches.length > 0) {
-    const shownMatches = matches.slice(0, 10);
-    console.log("======== DEBUG ULTIME PARTITE =========");
-    console.log("Numero partite mostrate: ", shownMatches.length);
-    console.log("ID partite: ", shownMatches.map(m => m._id));
-    // Risultati e partecipanti
-    shownMatches.forEach((match, idx) => {
-      const sets = match.score?.sets || [];
-      const result = sets.length > 0
-        ? sets.map((set: any, i: number) => `Set${i+1}: ${set.teamA}-${set.teamB}`).join(", ")
-        : "Nessun risultato";
-      const numPlayers = Array.isArray(match.players) ? match.players.length : 0;
-      console.log(`Partita #${idx+1} | ID: ${match._id} | Risultato: ${result} | Partecipanti: ${numPlayers}`);
-    });
-  }
-  console.log("=======================================");
   if (!matches || matches.length === 0) {
     return (
       <View style={styles.emptyCarouselContainer}>

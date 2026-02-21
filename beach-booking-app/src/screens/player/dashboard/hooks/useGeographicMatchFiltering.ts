@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import API_URL from '../../../../config/api';
 
 export type GeographicFilterMode = 'gps' | 'preferred' | 'visited' | 'none';
 
@@ -120,7 +121,7 @@ export const useGeographicMatchFiltering = (token: string | null) => {
     setIsLoadingPreferences(true);
     try {
       console.log("📍 [GeographicFilter] Caricamento preferenze...");
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/preferences`, {
+      const res = await fetch(`${API_URL}/users/preferences`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -141,7 +142,7 @@ export const useGeographicMatchFiltering = (token: string | null) => {
 
     try {
       console.log("🏟️ [GeographicFilter] Caricamento strutture visitate...");
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/my?status=completed`, {
+      const res = await fetch(`${API_URL}/bookings/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -150,8 +151,15 @@ export const useGeographicMatchFiltering = (token: string | null) => {
         const bookings = Array.isArray(data) ? data : data.bookings || [];
         const strutturaIds = [...new Set(
           bookings
-            .filter((b: any) => b.booking?.campo?.struttura?._id)
-            .map((b: any) => b.booking.campo.struttura._id)
+            .filter((b: any) => {
+              const struttura = b?.campo?.struttura || b?.booking?.campo?.struttura;
+              const strutturaId = typeof struttura === 'object' ? struttura?._id : struttura;
+              return !!strutturaId;
+            })
+            .map((b: any) => {
+              const struttura = b?.campo?.struttura || b?.booking?.campo?.struttura;
+              return typeof struttura === 'object' ? struttura?._id : struttura;
+            })
         )];
         setVisitedStruttureIds(strutturaIds);
         console.log('🏟️ [GeographicFilter] Strutture visitate:', strutturaIds.length);
