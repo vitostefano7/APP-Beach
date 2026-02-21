@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useRef } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
@@ -125,14 +125,32 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   /* =========================
      LOAD BOOKINGS
   ========================= */
-  const loadBookings = useCallback(async () => {
+  const CACHE_TTL = 30_000; // 30 secondi
+  const isFetchingRef = useRef(false);
+  const lastFetchRef = useRef<number>(0);
+  const bookingsRef = useRef<Booking[]>([]);
+
+  const loadBookings = useCallback(async (signal?: AbortSignal, force = false) => {
     if (!token) return;
+    if (isFetchingRef.current) return;
+
+    const hasCachedData = bookingsRef.current.length > 0;
+    const isCacheFresh = Date.now() - lastFetchRef.current < CACHE_TTL;
+
+    // Salta il fetch se i dati sono freschi (a meno di un force refresh)
+    if (!force && hasCachedData && isCacheFresh) return;
+
+    isFetchingRef.current = true;
+
+    // Mostra il pull-to-refresh indicator solo se forzato dall'utente
+    // Prima apertura usa il loading full-screen già inizializzato a true
+    // Aggiornamento silenzioso (cache scaduta): nessun indicatore visibile
+    if (force) setRefreshing(true);
 
     try {
-      setRefreshing(true);
-
       const res = await fetch(`${API_URL}/bookings/me`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal,
       });
 
       if (!res.ok) throw new Error();
@@ -141,31 +159,36 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       console.log(`📋 Caricate ${data.length} prenotazioni`);
       console.log(`   - ${data.filter((b: any) => b.isMyBooking).length} create da te`);
       console.log(`   - ${data.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
-      
+
       // Debug: vediamo i players
       data.forEach((b: any, i: number) => {
         if (b.players && b.players.length > 0) {
           //console.log(`🎮 Prenotazione ${i + 1}: ${b.players.length} players`, b.players);
         }
       });
-      
+
+      lastFetchRef.current = Date.now();
+      bookingsRef.current = data;
       setBookings(data);
-      setLoading(false);
-    } catch {
-      showCustomAlert("Errore", "Impossibile caricare le prenotazioni");
-      setLoading(false);
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        showCustomAlert("Errore", "Impossibile caricare le prenotazioni");
+      }
     } finally {
+      setLoading(false);
       setRefreshing(false);
+      isFetchingRef.current = false;
     }
   }, [token]);
 
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
-
   useFocusEffect(
     useCallback(() => {
-      loadBookings();
+      const controller = new AbortController();
+      loadBookings(controller.signal);
+      return () => {
+        controller.abort();
+        isFetchingRef.current = false;
+      };
     }, [loadBookings])
   );
 
@@ -841,7 +864,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             renderItem={renderBookingCard}
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
-            onRefresh={loadBookings}
+            onRefresh={() => loadBookings(undefined, true)}
             showsVerticalScrollIndicator={false}
           />
         )}
