@@ -1,6 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Post } from '../../../types/community.types';
 import API_URL from '../../../config/api';
+
+const FEED_CACHE_TTL_MS = 60 * 1000;
+
+type FeedCacheEntry = {
+  posts: Post[];
+  offset: number;
+  hasMore: boolean;
+  updatedAt: number;
+};
+
+const postsFeedCache = new Map<string, FeedCacheEntry>();
 
 interface UsePostsOptions {
   token: string;
@@ -32,6 +43,7 @@ export const usePosts = ({
   filter = 'all',
   pageSize = 50,
 }: UsePostsOptions): UsePostsReturn => {
+  const cacheKey = `${userId || 'anon'}:${strutturaId || 'none'}:${filter}:${pageSize}`;
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -39,6 +51,21 @@ export const usePosts = ({
   const [offset, setOffset] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const applyCacheEntry = useCallback((entry: FeedCacheEntry) => {
+    setPosts(entry.posts);
+    setOffset(entry.offset);
+    setHasMore(entry.hasMore);
+  }, []);
+
+  const writeCacheEntry = useCallback((nextPosts: Post[], nextOffset: number, nextHasMore: boolean) => {
+    postsFeedCache.set(cacheKey, {
+      posts: nextPosts,
+      offset: nextOffset,
+      hasMore: nextHasMore,
+      updatedAt: Date.now(),
+    });
+  }, [cacheKey]);
 
   const buildPostsUrl = useCallback((nextOffset: number) => {
     let url = `${API_URL}/community/posts?limit=${pageSize}&offset=${nextOffset}`;
@@ -74,9 +101,47 @@ export const usePosts = ({
     return postsData.length >= pageSize;
   };
 
-  const loadPosts = useCallback(async () => {
+  useEffect(() => {
+    const cachedEntry = postsFeedCache.get(cacheKey);
+
+    if (cachedEntry) {
+      console.log('⚡ [usePosts] cache hydrate', {
+        cacheKey,
+        postsLength: cachedEntry.posts.length,
+        ageMs: Date.now() - cachedEntry.updatedAt,
+      });
+      applyCacheEntry(cachedEntry);
+      return;
+    }
+
+    setPosts([]);
+    setOffset(0);
+    setHasMore(true);
+  }, [cacheKey, applyCacheEntry]);
+
+  const loadPostsInternal = useCallback(async (forceNetwork = false) => {
+    const cachedEntry = postsFeedCache.get(cacheKey);
+    const cacheAgeMs = cachedEntry ? Date.now() - cachedEntry.updatedAt : Number.POSITIVE_INFINITY;
+    const isCacheFresh = !!cachedEntry && cacheAgeMs < FEED_CACHE_TTL_MS;
+
+    if (cachedEntry) {
+      applyCacheEntry(cachedEntry);
+    }
+
+    if (!forceNetwork && isCacheFresh) {
+      console.log('✅ [usePosts] loadPosts:served-from-cache', {
+        cacheKey,
+        postsLength: cachedEntry?.posts.length || 0,
+        ageMs: cacheAgeMs,
+      });
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      setLoading(true);
+      setLoading(!cachedEntry);
       setError(null);
 
       const nextOffset = 0;
@@ -87,7 +152,9 @@ export const usePosts = ({
         strutturaId: strutturaId || null,
         pageSize,
         nextOffset,
-        currentPostsLength: posts.length,
+        cacheKey,
+        cacheHit: !!cachedEntry,
+        forceNetwork,
       });
       console.log('📡 Fetching posts from:', url);
 
@@ -104,28 +171,37 @@ export const usePosts = ({
       const data = await response.json();
       const postsData = getPostsFromResponse(data);
       const nextHasMore = getHasMoreFromResponse(data, postsData);
-      
+
       console.log('✅ [usePosts] loadPosts:success', {
         received: postsData.length,
         nextOffset: postsData.length,
         hasMore: nextHasMore,
         total: typeof data?.total === 'number' ? data.total : null,
       });
+
       setPosts(postsData);
       setOffset(postsData.length);
       setHasMore(nextHasMore);
+      writeCacheEntry(postsData, postsData.length, nextHasMore);
     } catch (err: any) {
       console.error('❌ Error loading posts:', err);
       setError(err.message || 'Failed to load posts');
-      setPosts([]);
-      setOffset(0);
-      setHasMore(false);
+
+      if (!cachedEntry) {
+        setPosts([]);
+        setOffset(0);
+        setHasMore(false);
+      }
     } finally {
       console.log('🏁 [usePosts] loadPosts:end');
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, buildPostsUrl, filter, strutturaId, pageSize, posts.length]);
+  }, [cacheKey, buildPostsUrl, token, filter, strutturaId, pageSize, applyCacheEntry, writeCacheEntry]);
+
+  const loadPosts = useCallback(async () => {
+    await loadPostsInternal(false);
+  }, [loadPostsInternal]);
 
   const loadMorePosts = useCallback(async () => {
     if (loading || loadingMore || refreshing || !hasMore) {
@@ -179,13 +255,15 @@ export const usePosts = ({
       setPosts(prev => {
         const existingPostIds = new Set(prev.map(post => post._id));
         const uniqueNewPosts = postsData.filter(post => !existingPostIds.has(post._id));
+        const mergedPosts = [...prev, ...uniqueNewPosts];
+        writeCacheEntry(mergedPosts, offset + postsData.length, nextHasMore);
         console.log('🧮 [usePosts] loadMorePosts:merge', {
           previousLength: prev.length,
           incomingLength: postsData.length,
           uniqueIncomingLength: uniqueNewPosts.length,
-          nextLength: prev.length + uniqueNewPosts.length,
+          nextLength: mergedPosts.length,
         });
-        return [...prev, ...uniqueNewPosts];
+        return mergedPosts;
       });
       setOffset(prev => prev + postsData.length);
       setHasMore(nextHasMore);
@@ -196,30 +274,45 @@ export const usePosts = ({
       console.log('🏁 [usePosts] loadMorePosts:end');
       setLoadingMore(false);
     }
-  }, [loading, loadingMore, refreshing, hasMore, buildPostsUrl, offset, token, posts.length, filter, strutturaId, pageSize]);
+  }, [loading, loadingMore, refreshing, hasMore, buildPostsUrl, offset, token, posts.length, filter, strutturaId, pageSize, writeCacheEntry]);
 
   const refreshPosts = useCallback(async () => {
     console.log('🔄 [usePosts] refreshPosts:start');
     setRefreshing(true);
-    await loadPosts();
+    await loadPostsInternal(true);
     console.log('✅ [usePosts] refreshPosts:end');
-  }, [loadPosts]);
+  }, [loadPostsInternal]);
 
   const addPost = useCallback((post: Post) => {
-    setPosts(prev => [post, ...prev]);
-    setOffset(prev => prev + 1);
-  }, []);
+    setPosts(prev => {
+      const existingPostIds = new Set(prev.map(item => item._id));
+      const nextPosts = existingPostIds.has(post._id)
+        ? prev
+        : [post, ...prev];
+      const nextOffset = nextPosts.length;
+      setOffset(nextOffset);
+      writeCacheEntry(nextPosts, nextOffset, hasMore);
+      return nextPosts;
+    });
+  }, [hasMore, writeCacheEntry]);
 
   const updatePost = useCallback((postId: string, updates: Partial<Post>) => {
-    setPosts(prev =>
-      prev.map(post => (post._id === postId ? { ...post, ...updates } : post))
-    );
-  }, []);
+    setPosts(prev => {
+      const nextPosts = prev.map(post => (post._id === postId ? { ...post, ...updates } : post));
+      writeCacheEntry(nextPosts, nextPosts.length, hasMore);
+      return nextPosts;
+    });
+  }, [hasMore, writeCacheEntry]);
 
   const removePost = useCallback((postId: string) => {
-    setPosts(prev => prev.filter(post => post._id !== postId));
-    setOffset(prev => Math.max(0, prev - 1));
-  }, []);
+    setPosts(prev => {
+      const nextPosts = prev.filter(post => post._id !== postId);
+      const nextOffset = nextPosts.length;
+      setOffset(nextOffset);
+      writeCacheEntry(nextPosts, nextOffset, hasMore);
+      return nextPosts;
+    });
+  }, [hasMore, writeCacheEntry]);
 
   return {
     posts,
