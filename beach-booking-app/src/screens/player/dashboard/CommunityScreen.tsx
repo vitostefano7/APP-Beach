@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { AuthContext } from '../../../context/AuthContext';
 import {
   CommunityHeader,
@@ -26,6 +27,7 @@ import { useAlert } from '../../../context/AlertContext';
 
 export default function CommunityScreen() {
   const navigation = useNavigation<any>();
+  const bottomTabBarHeight = useBottomTabBarHeight();
   const { token, user } = useContext(AuthContext);
 
   // State
@@ -102,7 +104,6 @@ export default function CommunityScreen() {
   const handleLoadMore = async ({ distanceFromEnd }: { distanceFromEnd: number }) => {
     const now = Date.now();
     const minLoadMoreIntervalMs = 700;
-    const maxDistanceFromEnd = 160;
 
     const guardState = {
       hasUserScrolled: hasUserScrolled.current,
@@ -120,7 +121,6 @@ export default function CommunityScreen() {
     if (
       !hasUserScrolled.current
       || distanceFromEnd < 0
-      || distanceFromEnd > maxDistanceFromEnd
       || loading
       || refreshing
       || loadingMore
@@ -291,7 +291,10 @@ export default function CommunityScreen() {
             data={posts}
             keyExtractor={(item) => item._id}
             renderItem={renderPost}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: bottomTabBarHeight + CommunityTheme.spacing.lg },
+            ]}
             refreshing={refreshing}
             onRefresh={refreshPosts}
             onEndReached={handleLoadMore}
@@ -300,6 +303,7 @@ export default function CommunityScreen() {
               onEndReachedCalledDuringMomentum.current = false;
             }}
             onScrollBeginDrag={() => {
+              onEndReachedCalledDuringMomentum.current = false;
               if (!hasUserScrolled.current) {
                 hasUserScrolled.current = true;
                 console.log('🖐️ [CommunityScreen] User started dragging feed');

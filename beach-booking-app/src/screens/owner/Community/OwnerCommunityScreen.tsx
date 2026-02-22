@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { AuthContext } from '../../../context/AuthContext';
 import API_URL from '../../../config/api';
 import {
@@ -29,6 +30,7 @@ import { Post, Struttura, CommunityTab } from '../../../types/community.types';
 
 export default function OwnerCommunityScreen() {
   const navigation = useNavigation<any>();
+  const bottomTabBarHeight = useBottomTabBarHeight();
   const { token, user } = useContext(AuthContext);
 
   // State
@@ -154,12 +156,10 @@ export default function OwnerCommunityScreen() {
   const handleLoadMore = async ({ distanceFromEnd }: { distanceFromEnd: number }) => {
     const now = Date.now();
     const minLoadMoreIntervalMs = 700;
-    const maxDistanceFromEnd = 160;
 
     if (
       !hasUserScrolled.current
       || distanceFromEnd < 0
-      || distanceFromEnd > maxDistanceFromEnd
       || loading
       || refreshing
       || loadingMore
@@ -333,7 +333,10 @@ export default function OwnerCommunityScreen() {
             data={posts}
             keyExtractor={(item) => item._id}
             renderItem={renderPost}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: bottomTabBarHeight + CommunityTheme.spacing.lg },
+            ]}
             refreshing={refreshing}
             onRefresh={refreshPosts}
             onEndReached={handleLoadMore}
@@ -342,6 +345,7 @@ export default function OwnerCommunityScreen() {
               onEndReachedCalledDuringMomentum.current = false;
             }}
             onScrollBeginDrag={() => {
+              onEndReachedCalledDuringMomentum.current = false;
               hasUserScrolled.current = true;
             }}
             onScroll={(event) => {
