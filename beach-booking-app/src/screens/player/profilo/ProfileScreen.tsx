@@ -233,6 +233,8 @@ export default function ProfileScreen() {
       if (performanceRes.ok) {
         perfData = await performanceRes.json();
         setPerformanceStats(perfData);
+      } else {
+        await performanceRes.text();
       }
 
       // Social stats (played with)
@@ -244,6 +246,8 @@ export default function ProfileScreen() {
           topPlayers: socialData.playedWith || [],
         };
         setSocialStats(socialPayload);
+      } else {
+        await playedWithRes.text();
       }
 
       // Venues stats
@@ -258,6 +262,8 @@ export default function ProfileScreen() {
           matchesThisMonth: perfData?.matchesThisMonth,
         };
         setVenuesStats(venuesPayload);
+      } else {
+        await venuesRes.text();
       }
 
       // aggiorna cache (inclusa performance e gli eventuali payload appena calcolati)

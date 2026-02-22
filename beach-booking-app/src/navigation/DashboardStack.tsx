@@ -45,7 +45,7 @@ export type DashboardStackParamList = {
   FriendsList: { userId?: string; filter?: "followers" | "following" | "all" } | undefined;
   Notifiche: undefined;
   CercaPartita: undefined;
-  Storico: { initialFilter?: "all" | "upcoming" | "past" } | undefined;
+  Storico: { initialFilter?: "all" | "upcoming" | "past"; showBackButton?: boolean } | undefined;
   Community: undefined;
   CreatePost: undefined;
   PostDetail: { postId: string };

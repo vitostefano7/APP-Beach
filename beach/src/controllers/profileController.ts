@@ -1130,9 +1130,6 @@ export const getPerformanceStats = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
-    console.log('📌 [getPerformanceStats] Inizio:', { userId });
-
-    console.log('📊 [getPerformanceStats] Calcolo statistiche performance');
     // Match giocati (completed e confirmed)
     const completedMatches = await Match.find({
       "players.user": userId,
@@ -1287,16 +1284,7 @@ export const getUserPosts = async (req: AuthRequest, res: Response) => {
     console.log('📌 [getUserPosts] Inizio:', { userId, currentUserId, limit, offset });
     console.log("📝 getUserPosts chiamato per userId:", userId);
 
-    // Validate userId format
-    if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "ID utente non valido" });
-    }
-
-    const user = await User.findOne({
-      _id: userId,
-      isActive: true,
-    }).select("profilePrivacy");
-
+    const user = await User.findById(userId).select("profilePrivacy");
     if (!user) {
       return res.status(404).json({ message: "Utente non trovato" });
     }

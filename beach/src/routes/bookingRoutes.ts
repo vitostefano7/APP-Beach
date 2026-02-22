@@ -2,10 +2,12 @@ import express from "express";
 import {
   createBooking,
   getMyBookings,
+   getMyBookingsPaginated,
   getBookingById,
    addPaymentToBooking,
   cancelBooking,
   getOwnerBookings,
+   getOwnerBookingsPaginated,
   getBookingsByCampo,
   getOwnerBookingById,
   cancelOwnerBooking,
@@ -39,6 +41,12 @@ router.post("/:id/payments", requireAuth, addPaymentToBooking);
  */
 router.get("/me", requireAuth, getMyBookings);
 
+/**
+ * Le mie prenotazioni paginate
+ * GET /bookings/me/paginated?page=1&limit=10&timeFilter=upcoming|past|invites
+ */
+router.get("/me/paginated", requireAuth, getMyBookingsPaginated);
+
 /* =========================
    OWNER ROUTES
 ========================= */
@@ -48,6 +56,12 @@ router.get("/me", requireAuth, getMyBookings);
  * GET /bookings/owner
  */
 router.get("/owner", requireAuth, ownerOnly, getOwnerBookings);
+
+/**
+ * Prenotazioni owner paginate
+ * GET /bookings/owner/paginated?page=1&limit=10&timeFilter=all|upcoming|past|ongoing
+ */
+router.get("/owner/paginated", requireAuth, ownerOnly, getOwnerBookingsPaginated);
 
 /**
  * Singola prenotazione owner

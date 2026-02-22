@@ -1154,7 +1154,7 @@ export default function HomeScreen() {
                     });
                   }
                 }}
-                onViewAll={() => navigation.navigate("Storico", { initialFilter: "past" })}
+                onViewAll={() => navigation.navigate("Storico", { initialFilter: "past", showBackButton: true })}
               />
             );
           })()

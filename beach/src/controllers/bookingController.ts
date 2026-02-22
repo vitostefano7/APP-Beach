@@ -5,11 +5,80 @@ import Campo from "../models/Campo";
 import CampoCalendarDay from "../models/campoCalendarDay";
 import Match from "../models/Match";
 import Struttura from "../models/Strutture";
+import Sport from "../models/Sport";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { calculatePrice } from "../utils/pricingUtils";
 import { getDefaultMaxPlayersForSport } from "../utils/matchSportRules";
 import { createNotification } from "../utils/notificationHelper";
+
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+
+const parsePagination = (query: any) => {
+  const rawPage = Number(query?.page ?? 1);
+  const rawLimit = Number(query?.limit ?? DEFAULT_PAGE_SIZE);
+
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), MAX_PAGE_SIZE)
+    : DEFAULT_PAGE_SIZE;
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+  };
+};
+
+const isPastBookingTime = (booking: any, now: Date) => {
+  if (booking.status === "cancelled") return true;
+  const end = new Date(`${booking.date}T${booking.endTime}:00`);
+  return end.getTime() < now.getTime();
+};
+
+const isUpcomingBookingTime = (booking: any, now: Date) => {
+  if (booking.status === "cancelled") return false;
+  const start = new Date(`${booking.date}T${booking.startTime}:00`);
+  return start.getTime() > now.getTime();
+};
+
+const isOngoingBookingTime = (booking: any, now: Date) => {
+  if (booking.status === "cancelled") return false;
+  const start = new Date(`${booking.date}T${booking.startTime}:00`);
+  const end = new Date(`${booking.date}T${booking.endTime}:00`);
+  return now.getTime() >= start.getTime() && now.getTime() <= end.getTime();
+};
+
+const getNowParts = () => {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const nowTime = now.toTimeString().slice(0, 5);
+  return { today, nowTime };
+};
+
+const buildPastCondition = (today: string, nowTime: string) => ({
+  $or: [
+    { status: "cancelled" },
+    { date: { $lt: today } },
+    { date: today, endTime: { $lt: nowTime } },
+  ],
+});
+
+const buildUpcomingCondition = (today: string, nowTime: string) => ({
+  status: { $ne: "cancelled" },
+  $or: [
+    { date: { $gt: today } },
+    { date: today, startTime: { $gt: nowTime } },
+  ],
+});
+
+const buildOngoingCondition = (today: string, nowTime: string) => ({
+  status: { $ne: "cancelled" },
+  date: today,
+  startTime: { $lte: nowTime },
+  endTime: { $gte: nowTime },
+});
 
 /* =====================================================
    PLAYER
@@ -549,6 +618,161 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * 📌 PRENOTAZIONI DEL PLAYER PAGINATE
+ * GET /bookings/me/paginated?page=1&limit=10&timeFilter=upcoming|past|invites
+ */
+export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const { page, limit, skip } = parsePagination(req.query);
+    const timeFilter = String(req.query?.timeFilter || "upcoming");
+    const { today, nowTime } = getNowParts();
+
+    const [matchBookingIdsRaw, pendingInviteBookingIdsRaw] = await Promise.all([
+      Match.distinct("booking", { "players.user": userObjectId }),
+      Match.distinct("booking", { players: { $elemMatch: { user: userObjectId, status: "pending" } } }),
+    ]);
+
+    const matchBookingIds = Array.from(new Set(matchBookingIdsRaw.map((id: any) => id.toString()))).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+    const pendingInviteBookingIds = Array.from(new Set(pendingInviteBookingIdsRaw.map((id: any) => id.toString()))).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+
+    const baseQuery: any = {
+      $or: [
+        { user: userObjectId },
+        { _id: { $in: matchBookingIds } },
+      ],
+    };
+
+    const upcomingOrOngoingCondition = {
+      $or: [buildUpcomingCondition(today, nowTime), buildOngoingCondition(today, nowTime)],
+    };
+
+    const andQuery = (...conditions: any[]) => ({
+      $and: conditions.filter(Boolean),
+    });
+
+    const countsQuery = {
+      all: Booking.countDocuments(baseQuery),
+      upcoming: Booking.countDocuments(
+        andQuery(baseQuery, upcomingOrOngoingCondition, { _id: { $nin: pendingInviteBookingIds } })
+      ),
+      past: Booking.countDocuments(andQuery(baseQuery, buildPastCondition(today, nowTime))),
+      invites: pendingInviteBookingIds.length
+        ? Booking.countDocuments({ _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } })
+        : Promise.resolve(0),
+    };
+
+    let listQuery: any = { ...baseQuery };
+    let sort: any = { date: 1, startTime: 1 };
+
+    if (timeFilter === "past") {
+      listQuery = andQuery(baseQuery, buildPastCondition(today, nowTime));
+      sort = { date: -1, startTime: -1 };
+    } else if (timeFilter === "invites") {
+      listQuery = {
+        _id: { $in: pendingInviteBookingIds },
+        user: { $ne: userObjectId },
+      };
+      sort = { date: 1, startTime: 1 };
+    } else {
+      listQuery = andQuery(baseQuery, upcomingOrOngoingCondition, { _id: { $nin: pendingInviteBookingIds } });
+      sort = { date: 1, startTime: 1 };
+    }
+
+    const [counts, total, pageBookings] = await Promise.all([
+      Promise.all([countsQuery.all, countsQuery.upcoming, countsQuery.past, countsQuery.invites]).then(
+        ([all, upcoming, past, invites]) => ({ all, upcoming, past, invites })
+      ),
+      Booking.countDocuments(listQuery),
+      Booking.find(listQuery)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: "campo",
+          populate: [
+            {
+              path: "struttura",
+              select: "name location images",
+            },
+            {
+              path: "sport",
+              select: "name code icon",
+            },
+          ],
+        }),
+    ]);
+
+    const bookingIds = pageBookings.map((b) => b._id);
+    const matches = bookingIds.length
+      ? await Match.find({ booking: { $in: bookingIds } })
+          .populate("players.user", "name surname username avatarUrl")
+          .populate("createdBy", "name surname username avatarUrl")
+          .select("booking status players maxPlayers isPublic winner score createdBy")
+      : [];
+
+    const matchMap = new Map<string, any>();
+    matches.forEach((match) => {
+      matchMap.set(match.booking.toString(), {
+        _id: match._id,
+        status: match.status,
+        players: match.players,
+        maxPlayers: match.maxPlayers,
+        isPublic: match.isPublic,
+        winner: match.winner,
+        sets: match.score?.sets || [],
+        createdBy: match.createdBy,
+      });
+    });
+
+    const items = pageBookings.map((booking) => {
+      const bookingObj = (booking as any).toObject();
+      const matchData = matchMap.get(booking._id.toString());
+      const isMyBooking = bookingObj.user.toString() === userId;
+      const isInvitedPlayer = !isMyBooking && !!matchData;
+
+      let matchSummary = null;
+      if (matchData?.winner && matchData?.sets && matchData.sets.length > 0) {
+        matchSummary = {
+          winner: matchData.winner,
+          sets: matchData.sets,
+        };
+      }
+
+      return {
+        ...bookingObj,
+        hasMatch: !!matchData,
+        matchId: matchData?._id,
+        matchSummary,
+        isMyBooking,
+        isInvitedPlayer,
+        players: matchData?.players || [],
+        maxPlayers: matchData?.maxPlayers || 4,
+      };
+    });
+
+    return res.json({
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasNext: page * limit < total,
+      },
+      counts,
+    });
+  } catch (err) {
+    console.error("❌ getMyBookingsPaginated error:", err);
+    return res.status(500).json({ message: "Errore server" });
+  }
+};
+
 
 /**
  * 📌 SINGOLA PRENOTAZIONE
@@ -952,6 +1176,177 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
     console.error("❌ getOwnerBookings error:", err);
     console.error("Error details:", err);
     res.status(500).json({ message: "Errore server", error: String(err) });
+  }
+};
+
+/**
+ * 📌 PRENOTAZIONI RICEVUTE DALL'OWNER PAGINATE
+ * GET /bookings/owner/paginated?page=1&limit=10&timeFilter=all|upcoming|past|ongoing
+ */
+export const getOwnerBookingsPaginated = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerId = req.user!.id;
+    const { page, limit, skip } = parsePagination(req.query);
+    const timeFilter = String(req.query?.timeFilter || "upcoming");
+    const username = String(req.query?.username || "").trim().toLowerCase();
+    const strutturaId = String(req.query?.strutturaId || "").trim();
+    const campoId = String(req.query?.campoId || "").trim();
+    const sportCode = String(req.query?.sport || "").trim().toLowerCase();
+    const date = String(req.query?.date || "").trim();
+    const { today, nowTime } = getNowParts();
+
+    const emptyResponse = {
+      items: [],
+      pagination: { page, limit, total: 0, hasNext: false },
+      counts: { all: 0, upcoming: 0, past: 0, ongoing: 0 },
+    };
+
+    const ownerStrutture = await Struttura.find({ owner: ownerId }).select("_id").lean();
+    if (!ownerStrutture.length) {
+      return res.json(emptyResponse);
+    }
+
+    const ownerStrutturaIds = ownerStrutture.map((s: any) => s._id.toString());
+
+    let selectedStrutturaIds = ownerStrutturaIds;
+    if (strutturaId) {
+      if (!mongoose.Types.ObjectId.isValid(strutturaId) || !ownerStrutturaIds.includes(strutturaId)) {
+        return res.json(emptyResponse);
+      }
+      selectedStrutturaIds = [strutturaId];
+    }
+
+    const campoQuery: any = {
+      struttura: { $in: selectedStrutturaIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    };
+
+    if (campoId) {
+      if (!mongoose.Types.ObjectId.isValid(campoId)) {
+        return res.json(emptyResponse);
+      }
+      campoQuery._id = new mongoose.Types.ObjectId(campoId);
+    }
+
+    if (sportCode) {
+      const sport = await Sport.findOne({ code: sportCode }).select("_id").lean();
+      if (!sport) {
+        return res.json(emptyResponse);
+      }
+      campoQuery.sport = sport._id;
+    }
+
+    const filteredCampi = await Campo.find(campoQuery).select("_id").lean();
+    if (!filteredCampi.length) {
+      return res.json(emptyResponse);
+    }
+
+    const bookingBaseQuery: any = {
+      campo: { $in: filteredCampi.map((c: any) => c._id) },
+    };
+
+    if (date) {
+      bookingBaseQuery.date = date;
+    }
+
+    if (username) {
+      const usernameRegex = new RegExp(username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const matchingUsers = await User.find({
+        $or: [{ name: usernameRegex }, { surname: usernameRegex }, { username: usernameRegex }],
+      })
+        .select("_id")
+        .lean();
+
+      if (!matchingUsers.length) {
+        return res.json(emptyResponse);
+      }
+
+      bookingBaseQuery.user = { $in: matchingUsers.map((u: any) => u._id) };
+    }
+
+    const pastCondition = buildPastCondition(today, nowTime);
+    const upcomingCondition = buildUpcomingCondition(today, nowTime);
+    const ongoingCondition = buildOngoingCondition(today, nowTime);
+
+    const counts = await Promise.all([
+      Booking.countDocuments(bookingBaseQuery),
+      Booking.countDocuments({ ...bookingBaseQuery, ...upcomingCondition }),
+      Booking.countDocuments({ ...bookingBaseQuery, ...pastCondition }),
+      Booking.countDocuments({ ...bookingBaseQuery, ...ongoingCondition }),
+    ]).then(([all, upcoming, past, ongoing]) => ({ all, upcoming, past, ongoing }));
+
+    let finalQuery: any = { ...bookingBaseQuery };
+    let sort: any = { date: -1, startTime: -1 };
+
+    if (timeFilter === "upcoming") {
+      finalQuery = { ...bookingBaseQuery, ...upcomingCondition };
+      sort = { date: 1, startTime: 1 };
+    } else if (timeFilter === "past") {
+      finalQuery = { ...bookingBaseQuery, ...pastCondition };
+      sort = { date: -1, startTime: -1 };
+    } else if (timeFilter === "ongoing") {
+      finalQuery = { ...bookingBaseQuery, ...ongoingCondition };
+      sort = { date: 1, startTime: 1 };
+    }
+
+    const [total, pageBookings] = await Promise.all([
+      Booking.countDocuments(finalQuery),
+      Booking.find(finalQuery)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: "campo",
+          populate: [
+            {
+              path: "struttura",
+              select: "name location",
+            },
+            {
+              path: "sport",
+            },
+          ],
+        })
+        .populate("user", "name surname email avatarUrl")
+        .lean(),
+    ]);
+
+    const matchIds = Array.from(
+      new Set(
+        pageBookings
+          .map((b: any) => b.match)
+          .filter((id: any) => id)
+          .map((id: any) => String(id))
+      )
+    );
+
+    let matchMap = new Map<string, any>();
+    if (matchIds.length > 0) {
+      const matches = await Match.find({ _id: { $in: matchIds } })
+        .populate("players.user", "name surname username avatarUrl email")
+        .populate("createdBy", "name surname username avatarUrl email")
+        .lean();
+      matchMap = new Map(matches.map((m: any) => [String(m._id), m]));
+    }
+
+    const items = pageBookings.map((booking: any) => {
+      if (!booking.match) return booking;
+      const populatedMatch = matchMap.get(String(booking.match));
+      return populatedMatch ? { ...booking, match: populatedMatch } : booking;
+    });
+
+    return res.json({
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasNext: page * limit < total,
+      },
+      counts,
+    });
+  } catch (err) {
+    console.error("❌ getOwnerBookingsPaginated error:", err);
+    return res.status(500).json({ message: "Errore server" });
   }
 };
 

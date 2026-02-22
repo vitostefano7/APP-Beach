@@ -9,9 +9,11 @@ import {
   Modal,
   Alert,
   ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback, useRef } from "react";
+import { useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
@@ -50,6 +52,7 @@ interface Booking {
       name: string;
       location: {
         city: string;
+        address?: string;
       };
     };
   };
@@ -68,6 +71,24 @@ interface Booking {
   isInvitedPlayer?: boolean;
   players?: Player[];
   maxPlayers?: number;
+  paymentMode?: "split" | "full";
+  numberOfPeople?: number;
+}
+
+interface PaginatedBookingsResponse {
+  items: Booking[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasNext: boolean;
+  };
+  counts: {
+    all: number;
+    upcoming: number;
+    past: number;
+    invites: number;
+  };
 }
 
 /* =========================
@@ -79,12 +100,16 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [counts, setCounts] = useState({ all: 0, upcoming: 0, past: 0, invites: 0 });
+  const [pagination, setPagination] = useState({ page: 1, hasNext: false, total: 0 });
   // Normalizza initialFilter per evitare valori non supportati (es. "all")
   const rawInitialFilter = route?.params?.initialFilter;
   const initialFilter = rawInitialFilter === "past" || rawInitialFilter === "invites" ? rawInitialFilter : "upcoming";
   const [filter, setFilter] = useState<"upcoming" | "past" | "invites">(initialFilter);
-  const fromDashboard = route?.params?.fromDashboard || false; 
+  const fromDashboard = route?.params?.fromDashboard || false;
+  const showBackButton = route?.params?.showBackButton || false;
 
   // Nuovi stati per i filtri avanzati
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -125,51 +150,68 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   /* =========================
      LOAD BOOKINGS
   ========================= */
-  const CACHE_TTL = 30_000; // 30 secondi
+  const PAGE_SIZE = 15;
+  const PREFETCH_SCROLL_RATIO = 0.8;
   const isFetchingRef = useRef(false);
-  const lastFetchRef = useRef<number>(0);
-  const bookingsRef = useRef<Booking[]>([]);
+  const hasFocusedOnceRef = useRef(false);
+  const lastPrefetchPageRef = useRef(0);
 
-  const loadBookings = useCallback(async (signal?: AbortSignal, force = false) => {
+  const loadBookings = useCallback(async ({
+    signal,
+    page = 1,
+    force = false,
+  }: {
+    signal?: AbortSignal;
+    page?: number;
+    force?: boolean;
+  } = {}) => {
     if (!token) return;
     if (isFetchingRef.current) return;
 
-    const hasCachedData = bookingsRef.current.length > 0;
-    const isCacheFresh = Date.now() - lastFetchRef.current < CACHE_TTL;
-
-    // Salta il fetch se i dati sono freschi (a meno di un force refresh)
-    if (!force && hasCachedData && isCacheFresh) return;
-
     isFetchingRef.current = true;
 
-    // Mostra il pull-to-refresh indicator solo se forzato dall'utente
-    // Prima apertura usa il loading full-screen già inizializzato a true
-    // Aggiornamento silenzioso (cache scaduta): nessun indicatore visibile
-    if (force) setRefreshing(true);
+    if (page === 1) {
+      if (force) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+    } else {
+      setLoadingMore(true);
+    }
 
     try {
-      const res = await fetch(`${API_URL}/bookings/me`, {
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        timeFilter: filter,
+      });
+
+      const res = await fetch(`${API_URL}/bookings/me/paginated?${query.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal,
       });
 
       if (!res.ok) throw new Error();
 
-      const data = await res.json();
-      console.log(`📋 Caricate ${data.length} prenotazioni`);
-      console.log(`   - ${data.filter((b: any) => b.isMyBooking).length} create da te`);
-      console.log(`   - ${data.filter((b: any) => b.isInvitedPlayer).length} come player invitato`);
-
-      // Debug: vediamo i players
-      data.forEach((b: any, i: number) => {
-        if (b.players && b.players.length > 0) {
-          //console.log(`🎮 Prenotazione ${i + 1}: ${b.players.length} players`, b.players);
-        }
+      const data: PaginatedBookingsResponse = await res.json();
+      setCounts(data.counts);
+      setPagination({
+        page: data.pagination.page,
+        hasNext: data.pagination.hasNext,
+        total: data.pagination.total,
       });
 
-      lastFetchRef.current = Date.now();
-      bookingsRef.current = data;
-      setBookings(data);
+      if (page === 1) {
+        lastPrefetchPageRef.current = 0;
+        setBookings(data.items);
+      } else {
+        setBookings((prev) => {
+          const prevIds = new Set(prev.map((b) => b._id));
+          const dedupedNew = data.items.filter((b) => !prevIds.has(b._id));
+          return [...prev, ...dedupedNew];
+        });
+      }
     } catch (err: any) {
       if (err?.name !== "AbortError") {
         showCustomAlert("Errore", "Impossibile caricare le prenotazioni");
@@ -177,19 +219,48 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
       isFetchingRef.current = false;
     }
-  }, [token]);
+  }, [token, filter]);
 
   useFocusEffect(
     useCallback(() => {
       const controller = new AbortController();
-      loadBookings(controller.signal);
+      hasFocusedOnceRef.current = true;
+      loadBookings({ signal: controller.signal, page: 1 });
       return () => {
         controller.abort();
         isFetchingRef.current = false;
       };
     }, [loadBookings])
+  );
+
+  useEffect(() => {
+    if (!hasFocusedOnceRef.current) return;
+    loadBookings({ page: 1 });
+  }, [filter, loadBookings]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loading || refreshing || loadingMore || !pagination.hasNext) return;
+    loadBookings({ page: pagination.page + 1 });
+  }, [loading, refreshing, loadingMore, pagination, loadBookings]);
+
+  const handleScrollPrefetch = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (loading || refreshing || loadingMore || !pagination.hasNext) return;
+      if (pagination.page <= lastPrefetchPageRef.current) return;
+
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      if (!contentSize.height) return;
+
+      const scrollProgress = (contentOffset.y + layoutMeasurement.height) / contentSize.height;
+      if (scrollProgress >= PREFETCH_SCROLL_RATIO) {
+        lastPrefetchPageRef.current = pagination.page;
+        handleLoadMore();
+      }
+    },
+    [loading, refreshing, loadingMore, pagination, handleLoadMore]
   );
 
   /* =========================
@@ -301,32 +372,8 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   /* =========================
      FILTER
   ========================= */
-  const filteredBookings = bookings.filter((b) => {
-    // Controlla se l'utente ha un invito pendente
-    const hasPendingInvite = b.isInvitedPlayer && b.players?.some(p => p.user._id === user._id && p.status === "pending");
-    
-    if (filter === "upcoming") {
-      // "Future": escludi gli inviti pendenti
-      return (isUpcomingBooking(b) || isOngoingBooking(b)) && !hasPendingInvite;
-    }
-    if (filter === "past") return isPastBooking(b);
-    if (filter === "invites") return hasPendingInvite;
-    return true;
-  });
-
-  // Ordinamento: per le prossime, ordina per data/ora crescente
-  // Per le passate, ordina per data/ora decrescente
-  const sortedBookings = [...filteredBookings].sort((a, b) => {
-    const aDate = new Date(`${a.date}T${a.startTime}:00`).getTime();
-    const bDate = new Date(`${b.date}T${b.startTime}:00`).getTime();
-    
-    if (filter === "upcoming" || filter === "invites") {
-      return aDate - bDate; // Più recenti prima
-    } else if (filter === "past") {
-      return bDate - aDate; // Più recenti ultime
-    }
-    return bDate - aDate; // Di default, più recenti prima
-  });
+  const filteredBookings = bookings;
+  const sortedBookings = filteredBookings;
 
   // Estrazione valori unici per i filtri dalle prenotazioni già filtrate per stato (future/passate/tutte)
   const availableCities = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
@@ -352,9 +399,9 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   });
 
   // Calcola i conteggi per i filtri
-  const upcomingCount = bookings.filter(b => isUpcomingBooking(b) || isOngoingBooking(b)).length;
-  const pastCount = bookings.filter(b => isPastBooking(b)).length;
-  const invitesCount = bookings.filter(b => b.isInvitedPlayer && b.players?.some(p => p.user._id === user._id && p.status === "pending")).length;
+  const upcomingCount = counts.upcoming;
+  const pastCount = counts.past;
+  const invitesCount = counts.invites;
 
   /* =========================
      FILTER CHIP COMPONENT
@@ -420,7 +467,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     const matchFormat = item.maxPlayers && item.maxPlayers % 2 === 0 ? `${item.maxPlayers / 2}v${item.maxPlayers / 2}` : null;
     
     // Controlla se l'utente ha status pending in questa prenotazione
-    const isPendingInvite = item.isInvitedPlayer && item.players?.some(p => p.user._id === user._id && p.status === "pending");
+    const isPendingInvite = item.isInvitedPlayer && item.players?.some(p => p.user._id === (user as any)?._id && p.status === "pending");
 
     return (
       <Pressable
@@ -504,7 +551,9 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           />
           <InfoRow
             icon="location-outline"
-            text={`${item.campo.struttura.location.address}, ${item.campo.struttura.location.city}` || 'Indirizzo non disponibile'}
+            text={item.campo.struttura.location.address
+              ? `${item.campo.struttura.location.address}, ${item.campo.struttura.location.city}`
+              : item.campo.struttura.location.city || 'Indirizzo non disponibile'}
           />
         </View>
 
@@ -695,8 +744,15 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
           <View>
             <View style={styles.header}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={styles.headerTitle}>Le Mie Prenotazioni</Text>
-                {/* Chip Inviti accanto al titolo */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {showBackButton && (
+                    <Pressable onPress={() => navigation.goBack()} style={{ padding: 4, marginRight: 4 }}>
+                      <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
+                    </Pressable>
+                  )}
+                  <Text style={styles.headerTitle}>Le Mie Prenotazioni</Text>
+                </View>
+              {/* Chip Inviti accanto al titolo */}
                 <Pressable
                   style={[
                     styles.filterBtn,
@@ -737,7 +793,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                     {invitesCount}
                   </Text>
                 </Pressable>
-              </View>
+            </View>
 
               {/* FILTERS */}
               <View style={styles.filters}>
@@ -864,7 +920,12 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             renderItem={renderBookingCard}
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
-            onRefresh={() => loadBookings(undefined, true)}
+            onRefresh={() => loadBookings({ page: 1, force: true })}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.8}
+            onScroll={handleScrollPrefetch}
+            scrollEventThrottle={16}
+            ListFooterComponent={null}
             showsVerticalScrollIndicator={false}
           />
         )}

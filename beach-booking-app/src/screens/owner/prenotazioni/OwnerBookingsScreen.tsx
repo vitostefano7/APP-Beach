@@ -8,10 +8,12 @@ import {
   Modal,
   ScrollView,
   TextInput,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { Avatar } from "../../../components/Avatar";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback, useEffect } from "react";
+import { useContext, useState, useCallback, useEffect, useRef } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -67,6 +69,22 @@ interface Booking {
       winner: "A" | "B";
       sets: { teamA: number; teamB: number }[];
     };
+  };
+}
+
+interface OwnerPaginatedBookingsResponse {
+  items: Booking[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasNext: boolean;
+  };
+  counts: {
+    all: number;
+    upcoming: number;
+    past: number;
+    ongoing: number;
   };
 }
 
@@ -535,7 +553,15 @@ export default function OwnerBookingsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [counts, setCounts] = useState({ all: 0, upcoming: 0, past: 0, ongoing: 0 });
+  const [pagination, setPagination] = useState({ page: 1, hasNext: false, total: 0 });
+  const isFetchingRef = useRef(false);
+  const hasFocusedOnceRef = useRef(false);
+  const PAGE_SIZE = 15;
+  const PREFETCH_SCROLL_RATIO = 0.8;
+  const lastPrefetchPageRef = useRef(0);
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "ongoing">(route.params?.filterDate ? "all" : "upcoming");
   
   const [filterUsername, setFilterUsername] = useState("");
@@ -609,107 +635,126 @@ export default function OwnerBookingsScreen() {
     }
   }, [token]);
 
-  const loadBookings = useCallback(async () => {
+  const loadBookings = useCallback(async ({
+    page = 1,
+    force = false,
+  }: {
+    page?: number;
+    force?: boolean;
+  } = {}) => {
     if (!token) return;
+    if (isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
 
     try {
-      setRefreshing(true);
-      const res = await fetch(`${API_URL}/bookings/owner`, {
+      if (page === 1) {
+        if (force) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+      } else {
+        setLoadingMore(true);
+      }
+
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        timeFilter: filter,
+      });
+
+      if (filterUsername.trim()) query.append("username", filterUsername.trim());
+      if (filterStruttura) query.append("strutturaId", filterStruttura);
+      if (filterCampo) query.append("campoId", filterCampo);
+      if (filterSport) query.append("sport", filterSport);
+      if (filterDate) query.append("date", filterDate);
+
+      const res = await fetch(`${API_URL}/bookings/owner/paginated?${query.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      
-      console.log(`📋 Caricate ${data.length} prenotazioni owner`);
-      
-      // Debug: check first booking structure
-      if (data.length > 0) {
-        console.log("📝 Prima prenotazione:", JSON.stringify(data[0], null, 2));
+      const data: OwnerPaginatedBookingsResponse = await res.json();
+
+      setCounts(data.counts);
+      setPagination({
+        page: data.pagination.page,
+        hasNext: data.pagination.hasNext,
+        total: data.pagination.total,
+      });
+
+      if (page === 1) {
+        lastPrefetchPageRef.current = 0;
+        setBookings(data.items);
+      } else {
+        setBookings((prev) => {
+          const prevIds = new Set(prev.map((b) => b._id));
+          const dedupedNew = data.items.filter((b) => !prevIds.has(b._id));
+          return [...prev, ...dedupedNew];
+        });
       }
-      
-      setBookings(data);
+
       setLoading(false);
     } catch (err) {
       console.log("❌ Errore fetch owner bookings");
       setLoading(false);
     } finally {
       setRefreshing(false);
+      setLoadingMore(false);
+      isFetchingRef.current = false;
     }
-  }, [token]);
+  }, [token, filter, filterUsername, filterStruttura, filterCampo, filterSport, filterDate]);
 
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
+        hasFocusedOnceRef.current = true;
         await loadOwnerData();
-        await loadBookings();
+        await loadBookings({ page: 1 });
       };
       loadData();
     }, [loadOwnerData, loadBookings])
+  );
+
+  useEffect(() => {
+    if (!hasFocusedOnceRef.current) return;
+    loadBookings({ page: 1 });
+  }, [filter, filterUsername, filterStruttura, filterCampo, filterSport, filterDate, loadBookings]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loading || refreshing || loadingMore || !pagination.hasNext) return;
+    loadBookings({ page: pagination.page + 1 });
+  }, [loading, refreshing, loadingMore, pagination, loadBookings]);
+
+  const handleScrollPrefetch = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (loading || refreshing || loadingMore || !pagination.hasNext) return;
+      if (pagination.page <= lastPrefetchPageRef.current) return;
+
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      if (!contentSize.height) return;
+
+      const scrollProgress = (contentOffset.y + layoutMeasurement.height) / contentSize.height;
+      if (scrollProgress >= PREFETCH_SCROLL_RATIO) {
+        lastPrefetchPageRef.current = pagination.page;
+        handleLoadMore();
+      }
+    },
+    [loading, refreshing, loadingMore, pagination, handleLoadMore]
   );
 
   /* =========================
      FILTERS
   ========================= */
   const getFilteredCount = (timeFilter: "all" | "upcoming" | "past" | "ongoing") => {
-    return bookings.filter((b) => {
-      // Filter by time
-      if (timeFilter === "upcoming" && !isUpcomingBooking(b)) return false;
-      if (timeFilter === "ongoing" && !isOngoingBooking(b)) return false;
-      if (timeFilter === "past" && !isPastBooking(b)) return false;
-      
-      // Filter by struttura
-      if (filterStruttura && b.campo?.struttura?._id !== filterStruttura) return false;
-      
-      // Filter by campo
-      if (filterCampo && b.campo?._id !== filterCampo) return false;
-      
-      // Filter by date
-      if (filterDate && b.date !== filterDate) return false;
-      
-      return true;
-    }).length;
+    if (timeFilter === "upcoming") return counts.upcoming;
+    if (timeFilter === "ongoing") return counts.ongoing;
+    if (timeFilter === "past") return counts.past;
+    return counts.all;
   };
 
-  const filteredBookings = bookings.filter((b) => {
-    // Filter by time
-    if (filter === "upcoming" && !isUpcomingBooking(b)) return false;
-    if (filter === "ongoing" && !isOngoingBooking(b)) return false;
-    if (filter === "past" && !isPastBooking(b)) return false;
-    
-    // Filter by username
-    if (filterUsername.trim()) {
-      const searchLower = filterUsername.toLowerCase().trim();
-      const userName = (b.user?.name?.toLowerCase() || "") + " " + (b.user?.surname?.toLowerCase() || "");
-      if (!userName.includes(searchLower)) return false;
-    }
-    
-    // Filter by struttura
-    if (filterStruttura && b.campo?.struttura?._id !== filterStruttura) return false;
-    
-    // Filter by campo
-    if (filterCampo && b.campo?._id !== filterCampo) return false;
-    
-    // Filter by sport
-    if (filterSport && b.campo?.sport?.code !== filterSport) return false;
-    
-    // Filter by date
-    if (filterDate && b.date !== filterDate) return false;
-    
-    return true;
-  });
-
-  const sortedBookings = [...filteredBookings].sort((a, b) => {
-    const aDate = new Date(`${a.date}T${a.startTime}:00`).getTime();
-    const bDate = new Date(`${b.date}T${b.startTime}:00`).getTime();
-    
-    if (filter === "upcoming" || filter === "ongoing") {
-      return aDate - bDate;
-    } else if (filter === "past") {
-      return bDate - aDate;
-    }
-    return bDate - aDate;
-  });
+  const sortedBookings = bookings;
 
   const campiFiltered = filterStruttura
     ? campi.filter((c) => c.strutturaId === filterStruttura)
@@ -724,7 +769,7 @@ export default function OwnerBookingsScreen() {
   };
 
   const hasActiveFilters = filterUsername || filterStruttura || filterCampo || filterSport || filterDate;
-  const hasOngoingBookings = bookings.some((booking) => isOngoingBooking(booking));
+  const hasOngoingBookings = counts.ongoing > 0;
 
   useEffect(() => {
     if (filter === "ongoing" && !hasOngoingBookings) {
@@ -977,10 +1022,15 @@ export default function OwnerBookingsScreen() {
             showsVerticalScrollIndicator={false}
             onRefresh={async () => {
               await loadOwnerData();
-              await loadBookings();
+              await loadBookings({ page: 1, force: true });
             }}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.8}
+            onScroll={handleScrollPrefetch}
+            scrollEventThrottle={16}
             refreshing={refreshing}
             contentContainerStyle={styles.listContent}
+            ListFooterComponent={null}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="calendar-outline" size={64} color="#ccc" />
@@ -1543,6 +1593,16 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 8,
   },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "500",
+  },
   infoRowMain: {
     flexDirection: "row",
     alignItems: "center",
@@ -1744,6 +1804,10 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: 10,
     marginBottom: 20,
+  },
+  calendarContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
   clearDateButton: {
     alignSelf: "center",
