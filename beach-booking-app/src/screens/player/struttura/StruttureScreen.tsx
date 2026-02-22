@@ -632,7 +632,6 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   
   const [activeCity, setActiveCity] = useState<string | null>(null);
   const [activeRadius, setActiveRadius] = useState<number | null>(null);
-  const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [availableSports, setAvailableSports] = useState<string[]>([]);
   const [sportsList, setSportsList] = useState<string[]>([]);
   const [loadingSports, setLoadingSports] = useState<boolean>(false);
@@ -1324,6 +1323,20 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   const filteredStrutture = filterStrutture(strutture, filters, query);
   const activeFiltersCount = countActiveFilters(filters);
 
+  const orderedSports = React.useMemo(() => {
+    const selected = filters.sport?.trim().toLowerCase();
+    if (!selected) return availableSports;
+
+    const selectedSports = availableSports.filter(
+      (sport) => sport.trim().toLowerCase() === selected
+    );
+    const otherSports = availableSports.filter(
+      (sport) => sport.trim().toLowerCase() !== selected
+    );
+
+    return [...selectedSports, ...otherSports];
+  }, [availableSports, filters.sport]);
+
   // Funzione per ordinare le strutture
   const sortedStrutture = React.useMemo(() => {
     const sorted = [...filteredStrutture];
@@ -1956,19 +1969,9 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
               style={styles.sportChipsContainer}
               contentContainerStyle={styles.sportChipsContent}
             >
-              {availableSports.map((sport) => {
-                const isActive = selectedSport === sport;
-                
-                const getSportIcon = (sportName: string) => {
-                  const lower = sportName.toLowerCase();
-                  if (lower.includes('padel')) return 'tennisball';
-                  if (lower.includes('tennis')) return 'tennisball';
-                  if (lower.includes('football') || lower.includes('calcio')) return 'football';
-                  if (lower.includes('volley')) return 'basketball';
-                  return 'fitness';
-                };
-                
-                const icon = getSportIcon(sport);
+              {orderedSports.map((sport) => {
+                const isActive =
+                  (filters.sport || "").trim().toLowerCase() === sport.trim().toLowerCase();
                 
                 return (
                   <Pressable
@@ -1979,15 +1982,13 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                     ]}
                     onPress={() => {
                       if (isActive) {
-                        setSelectedSport(null);
                         setFilters(prev => ({ ...prev, sport: null }));
                       } else {
-                        setSelectedSport(sport);
                         setFilters(prev => ({ ...prev, sport }));
                       }
                     }}
                   >
-                    <Ionicons name={icon as any} size={18} color={isActive ? 'white' : '#2979ff'} />
+                    <SportIcon sport={sport} size={18} color={isActive ? 'white' : '#2979ff'} />
                     <Text style={[
                       styles.sportChipText,
                       isActive && styles.sportChipTextActive,

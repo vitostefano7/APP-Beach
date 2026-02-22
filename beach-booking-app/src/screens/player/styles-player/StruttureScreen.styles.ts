@@ -101,6 +101,7 @@ export const styles = StyleSheet.create({
   },
 
   sportChipsContainer: {
+    marginTop: 4,
     marginBottom: 6,
   },
 
@@ -127,7 +128,7 @@ export const styles = StyleSheet.create({
   },
 
   sportChipText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#666",
   },

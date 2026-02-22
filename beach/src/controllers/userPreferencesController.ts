@@ -323,14 +323,23 @@ export const getFavoriteStrutture = async (req: AuthRequest, res: Response) => {
           isActive: true,
         })
           .select('sport indoor pricePerHour')
+          .populate('sport', 'name code')
           .lean();
 
         const sportsSet = new Set<string>();
-        campi.forEach((campo) => {
-          if (campo.sport === 'beach volley') {
-            sportsSet.add('Beach Volley');
-          } else if (campo.sport === 'volley') {
-            sportsSet.add('Volley');
+        campi.forEach((campo: any) => {
+          const sportValue = campo.sport;
+
+          if (sportValue && typeof sportValue === 'object') {
+            const normalizedSport = sportValue.name || sportValue.code;
+            if (normalizedSport) {
+              sportsSet.add(String(normalizedSport));
+            }
+            return;
+          }
+
+          if (typeof sportValue === 'string' && sportValue.trim()) {
+            sportsSet.add(sportValue.trim());
           }
         });
         const sports = Array.from(sportsSet);

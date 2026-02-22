@@ -155,7 +155,12 @@ export function filterStrutture(
 
     // Filtro sport
     if (filters.sport) {
-      if (!s.sports || !s.sports.includes(filters.sport)) {
+      const normalizedSelectedSport = filters.sport.trim().toLowerCase();
+      const hasMatchingSport =
+        Array.isArray(s.sports) &&
+        s.sports.some((sport) => sport?.trim().toLowerCase() === normalizedSelectedSport);
+
+      if (!hasMatchingSport) {
         return false;
       }
     }
