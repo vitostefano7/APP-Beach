@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   Image,
+  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -205,15 +206,13 @@ export default function CreatePostScreen() {
           type: 'success',
           title: 'Successo',
           message: 'Post pubblicato con successo!',
-          buttons: [
-            {
-              text: 'OK',
-              onPress: () => {
-                console.log('🔙 Navigazione indietro alla Community');
-                navigation.goBack();
-              },
-            },
-          ],
+          hideButtons: true,
+          disableBackdropClose: true,
+          autoCloseMs: 1000,
+          onAutoClose: () => {
+            console.log('🔙 Navigazione indietro alla Community');
+            navigation.goBack();
+          },
         });
       } else {
         const errorText = await response.text();

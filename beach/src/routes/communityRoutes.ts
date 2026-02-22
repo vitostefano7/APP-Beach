@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createPost,
+  updatePost,
   getPosts,
   getPost,
   getMyPosts,
@@ -61,6 +62,9 @@ router.get("/posts/:postId", requireAuth, getPost);
 
 // POST /community/posts - Crea nuovo post
 router.post("/posts", requireAuth, upload.single("image"), createPost);
+
+// PUT /community/posts/:postId - Modifica post
+router.put("/posts/:postId", requireAuth, updatePost);
 
 // POST /community/posts/:postId/like - Like/Unlike post
 router.post("/posts/:postId/like", requireAuth, likePost);

@@ -9,6 +9,7 @@ import PostDetailScreen from "../screens/player/dashboard/PostDetailScreen";
 import CercaAmiciScreen from "../screens/player/dashboard/CercaAmiciScreen"; 
 import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen/FieldDetailsScreen";
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
+import ProfileScreen from "../screens/player/profilo/ProfileScreen";
 
 export type CommunityStackParamList = {
   DashboardRoot: undefined;
@@ -21,6 +22,7 @@ export type CommunityStackParamList = {
   CercaAmici: undefined;
   DettaglioStruttura: { strutturaId?: string; struttura?: any };
   ProfiloUtente: { userId: string };
+  MioProfile: undefined;
 };
 
 const Stack = createNativeStackNavigator<CommunityStackParamList>();
@@ -57,6 +59,11 @@ export default function CommunityStack() {
       <Stack.Screen
         name="ProfiloUtente"
         component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MioProfile"
+        component={ProfileScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

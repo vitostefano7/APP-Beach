@@ -16,6 +16,9 @@ interface PostCardProps {
   onShare: (postId: string) => void;
   onAuthorPress?: (authorId: string, isStructure: boolean) => void;
   onDeletePost?: (postId: string) => void;
+  onEditPost?: (postId: string, content: string) => Promise<boolean | void> | boolean | void;
+  activeEditPostId?: string | null;
+  onSetActiveEditPostId?: (postId: string | null) => void;
   isLiked?: boolean;
   strutturaId?: string;
   onInputFocus?: (postId: string, inputBottomEdge?: number) => void;
@@ -30,6 +33,9 @@ export const PostCard: React.FC<PostCardProps> = ({
   onShare,
   onAuthorPress,
   onDeletePost,
+  onEditPost,
+  activeEditPostId,
+  onSetActiveEditPostId,
   isLiked,
   strutturaId,
   onInputFocus,
@@ -37,9 +43,18 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [comments, setComments] = useState<Comment[]>(post.comments || []);
   const [commentText, setCommentText] = useState('');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editPostText, setEditPostText] = useState(post.content || '');
+  const [savingPostEdit, setSavingPostEdit] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const inputRef = useRef<TextInput>(null);
+  const editInputRef = useRef<TextInput>(null);
   const cardRef = useRef<View>(null);
+  const hasExternalEditControl = typeof onSetActiveEditPostId === 'function';
+  const isEditingCurrentPost = hasExternalEditControl
+    ? activeEditPostId === post._id
+    : isEditingPost;
 
   const { showAlert } = useAlert();
 
@@ -80,6 +95,18 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [post._id]);
 
+  useEffect(() => {
+    setEditPostText(post.content || '');
+  }, [post.content, post._id]);
+
+  useEffect(() => {
+    if (isEditingCurrentPost) {
+      setTimeout(() => {
+        editInputRef.current?.focus();
+      }, 0);
+    }
+  }, [isEditingCurrentPost]);
+
   const { posting, postComment } = useComments({
     token,
     postId: post._id,
@@ -91,18 +118,19 @@ export const PostCard: React.FC<PostCardProps> = ({
     },
   });
   // Determine if post is from a structure or user
-  const isStrutturaPost = post.isStrutturaPost && post.struttura;
+  const isStrutturaPost = !!(post.isStrutturaPost && post.struttura);
+  const strutturaData = post.struttura;
   
   const displayName = isStrutturaPost 
-    ? post.struttura!.name 
+    ? strutturaData?.name || 'Struttura' 
     : post.user?.surname 
       ? `${post.user.name} ${post.user.surname}` 
       : (post.user?.name || 'Utente sconosciuto');
   const displayAvatar = isStrutturaPost 
-    ? post.struttura!.images[0] 
+    ? strutturaData?.images?.[0] 
     : post.user?.avatarUrl;
   const authorId = isStrutturaPost 
-    ? post.struttura!._id 
+    ? strutturaData?._id 
     : post.user?._id;
 
   const liked = isLiked ?? post.likes?.includes(currentUserId || '');
@@ -110,7 +138,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const commentsCount = comments.length;
   
   // Check if current user owns this post
-  const isOwnPost = !isStrutturaPost && post.user?._id === currentUserId;
+  const isOwnPost = post.user?._id === currentUserId;
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -181,19 +209,101 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handleDeletePost = () => {
+    setMenuVisible(false);
     showAlert({
-      type: 'warning',
+      type: 'error',
       title: 'Elimina post',
       message: 'Sei sicuro di voler eliminare questo post?',
-      buttons: [
-        { text: 'Annulla', style: 'cancel' },
-        {
-          text: 'Elimina',
-          style: 'destructive',
-          onPress: () => onDeletePost?.(post._id),
-        },
-      ],
+      showCancel: true,
+      cancelText: 'Annulla',
+      confirmText: 'Elimina',
+      onConfirm: () => onDeletePost?.(post._id),
     });
+  };
+
+  const handleStartEditPost = () => {
+    setMenuVisible(false);
+    setEditPostText(post.content || '');
+    if (hasExternalEditControl) {
+      onSetActiveEditPostId?.(post._id);
+    } else {
+      setIsEditingPost(true);
+    }
+  };
+
+  const handleCancelEditPost = () => {
+    if (hasExternalEditControl) {
+      onSetActiveEditPostId?.(null);
+    } else {
+      setIsEditingPost(false);
+    }
+    setEditPostText(post.content || '');
+  };
+
+  const handleSaveEditPost = async () => {
+    const trimmedContent = editPostText.trim();
+
+    if (!trimmedContent) {
+      showAlert({
+        type: 'warning',
+        title: 'Contenuto non valido',
+        message: 'Il contenuto del post non può essere vuoto.',
+      });
+      return;
+    }
+
+    if (trimmedContent.length > 1000) {
+      showAlert({
+        type: 'warning',
+        title: 'Contenuto troppo lungo',
+        message: 'Massimo 1000 caratteri.',
+      });
+      return;
+    }
+
+    if (!onEditPost) {
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Modifica non disponibile in questa schermata.',
+      });
+      return;
+    }
+
+    const saveTimeoutMs = 12000;
+
+    try {
+      setSavingPostEdit(true);
+      const editResult = await Promise.race<boolean | void>([
+        onEditPost(post._id, trimmedContent),
+        new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), saveTimeoutMs);
+        }),
+      ]);
+
+      if (editResult === false) {
+        showAlert({
+          type: 'error',
+          title: 'Timeout salvataggio',
+          message: 'La modifica sta impiegando troppo tempo. Riprova.',
+        });
+        return;
+      }
+      if (hasExternalEditControl) {
+        onSetActiveEditPostId?.(null);
+      } else {
+        setIsEditingPost(false);
+      }
+    } catch (error) {
+      console.error('Error saving edited post:', error);
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile salvare la modifica. Riprova.',
+      });
+    } finally {
+      setSavingPostEdit(false);
+    }
   };
 
   const handleDeleteComment = (commentId: string) => {
@@ -201,53 +311,48 @@ export const PostCard: React.FC<PostCardProps> = ({
       type: 'warning',
       title: 'Elimina commento',
       message: 'Sei sicuro di voler eliminare questo commento?',
-      buttons: [
-        { text: 'Annulla', style: 'cancel' },
-        {
-          text: 'Elimina',
-          style: 'destructive',
-          onPress: async () => {
-            // Call the delete API
-            try {
-              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/community/posts/${post._id}/comments/${commentId}`, {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
-              
-              if (response.ok) {
-                // Remove from local state
-                setComments(prev => prev.filter(c => c._id !== commentId));
-              }
-            } catch (error) {
-              console.error('Error deleting comment:', error);
-            }
-          },
-        },
-      ],
+      showCancel: true,
+      cancelText: 'Annulla',
+      confirmText: 'Elimina',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/community/posts/${post._id}/comments/${commentId}`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          if (response.ok) {
+            setComments(prev => prev.filter(c => c._id !== commentId));
+          }
+        } catch (error) {
+          console.error('Error deleting comment:', error);
+        }
+      },
     });
   };
 
   const renderComment = ({ item }: { item: Comment }) => {
     const isStructureComment = !!item.struttura;
+    const commentUser = item.user as Comment['user'] & { surname?: string; username?: string };
     
     // Log per debug
     if (!isStructureComment) {
       console.log('👤 [PostCard] Comment user data:', {
         commentId: item._id,
-        userName: item.user?.name,
-        userSurname: item.user?.surname,
-        userUsername: item.user?.username,
-        fullUser: item.user,
+        userName: commentUser?.name,
+        userSurname: commentUser?.surname,
+        userUsername: commentUser?.username,
+        fullUser: commentUser,
       });
     }
     
     const displayName = isStructureComment 
       ? item.struttura!.name 
-      : item.user?.surname 
-        ? `${item.user.name} ${item.user.surname}` 
-        : (item.user?.name || item.user?.username || 'Utente');
+      : commentUser?.surname 
+        ? `${commentUser.name} ${commentUser.surname}` 
+        : (commentUser?.name || commentUser?.username || 'Utente');
     const displayAvatar = isStructureComment 
       ? item.struttura!.images[0] 
       : item.user?.avatarUrl;
@@ -337,18 +442,57 @@ export const PostCard: React.FC<PostCardProps> = ({
           </View>
         </Pressable>
         {isOwnPost && (
+          <View style={styles.postMenuWrapper}>
           <TouchableOpacity 
-            onPress={handleDeletePost}
+            onPress={() => setMenuVisible(prev => !prev)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.postMenuButton}
           >
             <Ionicons name="ellipsis-vertical" size={20} color={CommunityTheme.colors.textSecondary} />
           </TouchableOpacity>
+          {menuVisible && (
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={handleStartEditPost}>
+                <Text style={styles.dropdownItemText}>Modifica il post</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={handleDeletePost}>
+                <Text style={[styles.dropdownItemText, styles.dropdownItemDelete]}>Elimina il post</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          </View>
         )}
       </View>
 
       {/* Post Content */}
-      <Text style={styles.content}>{post.content}</Text>
+      {isEditingCurrentPost ? (
+        <View style={styles.editContainer}>
+          <TextInput
+            ref={editInputRef}
+            style={styles.editInput}
+            value={editPostText}
+            onChangeText={setEditPostText}
+            multiline
+            maxLength={1000}
+            placeholder="Modifica contenuto post"
+            placeholderTextColor={CommunityTheme.colors.textTertiary}
+          />
+          <View style={styles.editActionsRow}>
+            <TouchableOpacity style={styles.editCancelButton} onPress={handleCancelEditPost} disabled={savingPostEdit}>
+              <Text style={styles.editCancelText}>Annulla</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.editSaveButton} onPress={handleSaveEditPost} disabled={savingPostEdit}>
+              {savingPostEdit ? (
+                <ActivityIndicator size="small" color={CommunityTheme.colors.cardBackground} />
+              ) : (
+                <Text style={styles.editSaveText}>Salva</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <Text style={styles.content}>{post.content}</Text>
+      )}
 
       {/* Post Image */}
       {post.image && (
@@ -542,10 +686,72 @@ const styles = StyleSheet.create({
   postMenuButton: {
     padding: CommunityTheme.spacing.xs,
   },
-  header: {
+  postMenuWrapper: {
+    position: 'relative',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 28,
+    right: 0,
+    minWidth: 150,
+    backgroundColor: CommunityTheme.colors.cardBackground,
+    borderRadius: CommunityTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: CommunityTheme.colors.borderLight,
+    zIndex: 10,
+    overflow: 'hidden',
+    ...CommunityTheme.shadows.card,
+  },
+  dropdownItem: {
+    paddingVertical: CommunityTheme.spacing.sm,
+    paddingHorizontal: CommunityTheme.spacing.md,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: CommunityTheme.colors.textPrimary,
+    fontWeight: '500',
+  },
+  dropdownItemDelete: {
+    color: CommunityTheme.colors.like,
+  },
+  editContainer: {
+    marginBottom: CommunityTheme.spacing.md,
+  },
+  editInput: {
+    backgroundColor: CommunityTheme.colors.background,
+    borderRadius: CommunityTheme.borderRadius.sm,
+    paddingHorizontal: CommunityTheme.spacing.md,
+    paddingVertical: CommunityTheme.spacing.sm,
+    fontSize: 15,
+    color: CommunityTheme.colors.textPrimary,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  editActionsRow: {
+    marginTop: CommunityTheme.spacing.sm,
     flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: CommunityTheme.spacing.sm,
+  },
+  editCancelButton: {
+    paddingVertical: CommunityTheme.spacing.xs,
+    paddingHorizontal: CommunityTheme.spacing.md,
+  },
+  editCancelText: {
+    color: CommunityTheme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  editSaveButton: {
+    backgroundColor: CommunityTheme.colors.primary,
+    borderRadius: CommunityTheme.borderRadius.sm,
+    paddingVertical: CommunityTheme.spacing.xs,
+    paddingHorizontal: CommunityTheme.spacing.md,
+    minWidth: 64,
     alignItems: 'center',
-    flex: 1,
+  },
+  editSaveText: {
+    color: CommunityTheme.colors.cardBackground,
+    fontWeight: '600',
   },
   commentsSection: {
     marginTop: CommunityTheme.spacing.md,

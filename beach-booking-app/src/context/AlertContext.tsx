@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,6 +13,10 @@ interface AlertOptions {
   onConfirm?: () => void;
   onCancel?: () => void;
   showCancel?: boolean;
+  hideButtons?: boolean;
+  disableBackdropClose?: boolean;
+  autoCloseMs?: number;
+  onAutoClose?: () => void;
 }
 
 interface AlertContextType {
@@ -32,6 +36,7 @@ export const useAlert = () => {
 
 export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [visible, setVisible] = useState(false);
+  const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [alertOptions, setAlertOptions] = useState<AlertOptions>({
     title: '',
     message: '',
@@ -41,7 +46,20 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [opacityAnim] = useState(new Animated.Value(0));
   const [translateYAnim] = useState(new Animated.Value(-50));
 
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+      }
+    };
+  }, []);
+
   const showAlert = (options: AlertOptions) => {
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+
     setAlertOptions(options);
     setVisible(true);
     
@@ -70,9 +88,23 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         useNativeDriver: true,
       }),
     ]).start();
+
+    if (options.autoCloseMs && options.autoCloseMs > 0) {
+      autoCloseTimerRef.current = setTimeout(() => {
+        if (options.onAutoClose) {
+          options.onAutoClose();
+        }
+        hideAlert();
+      }, options.autoCloseMs);
+    }
   };
 
   const hideAlert = () => {
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+
     Animated.parallel([
       Animated.timing(scaleAnim, {
         toValue: 0.8,
@@ -135,7 +167,11 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         visible={visible}
         transparent
         animationType="none"
-        onRequestClose={hideAlert}
+        onRequestClose={
+          alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons
+            ? () => {}
+            : hideAlert
+        }
       >
         <Animated.View 
           style={[
@@ -147,7 +183,11 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         >
           <Pressable 
             style={StyleSheet.absoluteFill}
-            onPress={alertOptions.showCancel ? undefined : hideAlert}
+            onPress={
+              alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons
+                ? undefined
+                : hideAlert
+            }
             activeOpacity={1}
           />
           <Animated.View 
@@ -172,33 +212,35 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               <Text style={styles.title}>{alertOptions.title}</Text>
               <Text style={styles.message}>{alertOptions.message}</Text>
 
-              <View style={styles.buttonContainer}>
-                {alertOptions.showCancel && (
+              {!alertOptions.hideButtons && (
+                <View style={styles.buttonContainer}>
+                  {alertOptions.showCancel && (
+                    <Pressable
+                      style={[styles.button, styles.cancelButton]}
+                      onPress={handleCancel}
+                      android_ripple={{ color: '#e0e0e0' }}
+                    >
+                      <Text style={styles.cancelButtonText}>
+                        {alertOptions.cancelText || 'Annulla'}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Pressable
-                    style={[styles.button, styles.cancelButton]}
-                    onPress={handleCancel}
-                    android_ripple={{ color: '#e0e0e0' }}
+                    style={[
+                      styles.button, 
+                      styles.confirmButton, 
+                      { backgroundColor: color },
+                      alertOptions.showCancel && { flex: 1 }
+                    ]}
+                    onPress={handleConfirm}
+                    android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
                   >
-                    <Text style={styles.cancelButtonText}>
-                      {alertOptions.cancelText || 'Annulla'}
+                    <Text style={styles.confirmButtonText}>
+                      {alertOptions.confirmText || 'OK'}
                     </Text>
                   </Pressable>
-                )}
-                <Pressable
-                  style={[
-                    styles.button, 
-                    styles.confirmButton, 
-                    { backgroundColor: color },
-                    alertOptions.showCancel && { flex: 1 }
-                  ]}
-                  onPress={handleConfirm}
-                  android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
-                >
-                  <Text style={styles.confirmButtonText}>
-                    {alertOptions.confirmText || 'OK'}
-                  </Text>
-                </Pressable>
-              </View>
+                </View>
+              )}
             </Pressable>
           </Animated.View>
         </Animated.View>

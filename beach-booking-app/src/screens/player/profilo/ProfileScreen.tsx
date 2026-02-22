@@ -75,6 +75,7 @@ export default function ProfileScreen() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [showAllPosts, setShowAllPosts] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
   // ✅ Sincronizza avatarUrl quando user cambia nel context
   useEffect(() => {
@@ -527,7 +528,16 @@ const loadPosts = async () => {
         style={styles.gradientHeader}
       >
         <View style={styles.header}>
-          <View style={styles.headerSpacer} />
+          {navigation.canGoBack() ? (
+            <Pressable
+              style={styles.settingsButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </Pressable>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
           <Text style={styles.headerTitle}>
             Il tuo profilo
           </Text>
@@ -886,12 +896,42 @@ const loadPosts = async () => {
                         headers: { Authorization: `Bearer ${token}` },
                       });
                       if (res.ok) {
+                        if (editingPostId === postId) {
+                          setEditingPostId(null);
+                        }
                         setPosts(prev => prev.filter(p => p._id !== postId));
                       }
                     } catch (e) {
                       console.error('Errore eliminazione post:', e);
                     }
                   }}
+                  onEditPost={async (postId: string, content: string) => {
+                    try {
+                      const url = `${API_URL}/community/posts/${postId}`;
+
+                      const res = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ content }),
+                      });
+
+                      if (!res.ok) {
+                        return false;
+                      }
+
+                      const data = await res.json();
+                      setPosts(prev => prev.map(p => p._id === postId ? { ...p, ...(data?.post || { content }) } : p));
+                      return true;
+                    } catch (e) {
+                      console.error('Errore modifica post:', e);
+                      return false;
+                    }
+                  }}
+                  activeEditPostId={editingPostId}
+                  onSetActiveEditPostId={setEditingPostId}
                   isLiked={post.likes?.includes(user.id)}
                   strutturaId={post.struttura?._id}
                 />

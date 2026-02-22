@@ -21,6 +21,7 @@ import { AuthContext } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/Avatar';
 import API_URL from '../../../config/api';
 import { StyleSheet } from 'react-native';
+import { useAlert } from '../../../context/AlertContext';
 
 interface Struttura {
   _id: string;
@@ -35,6 +36,7 @@ interface Struttura {
 export default function OwnerCreatePostScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
+  const { showAlert } = useAlert();
 
   const [content, setContent] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -196,12 +198,15 @@ export default function OwnerCreatePostScreen() {
       });
 
       if (response.ok) {
-        Alert.alert('Successo', 'Post pubblicato con successo!', [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        showAlert({
+          type: 'success',
+          title: 'Successo',
+          message: 'Post pubblicato con successo!',
+          hideButtons: true,
+          disableBackdropClose: true,
+          autoCloseMs: 1000,
+          onAutoClose: () => navigation.goBack(),
+        });
       } else {
         const errorText = await response.text();
         let error;

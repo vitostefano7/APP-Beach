@@ -235,6 +235,7 @@ export default function FieldDetailsScreen() {
   // Posts
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
   /* =======================
      INIT
@@ -569,10 +570,51 @@ export default function FieldDetailsScreen() {
       });
 
       if (res.ok) {
+        if (editingPostId === postId) {
+          setEditingPostId(null);
+        }
         setPosts(prev => prev.filter(p => p._id !== postId));
       }
     } catch (error) {
       console.error('Error deleting post:', error);
+    }
+  };
+
+  const handleEditPost = async (postId: string, content: string) => {
+    if (!token) return false;
+
+    try {
+      const url = `${API_URL}/community/posts/${postId}`;
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!res.ok) {
+        showAlert({
+          type: 'error',
+          title: 'Errore',
+          message: 'Impossibile modificare il post. Riprova.',
+        });
+        return false;
+      }
+
+      const data = await res.json();
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, ...(data?.post || { content }) } : p));
+      return true;
+    } catch (error) {
+      console.error('Error editing post:', error);
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile modificare il post. Riprova.',
+      });
+      return false;
     }
   };
 
@@ -2107,6 +2149,9 @@ export default function FieldDetailsScreen() {
                   onLike={handleLikePost}
                   onShare={handleSharePost}
                   onDeletePost={handleDeletePost}
+                  onEditPost={handleEditPost}
+                  activeEditPostId={editingPostId}
+                  onSetActiveEditPostId={setEditingPostId}
                   isLiked={post.likes?.includes(user?._id || '')}
                   strutturaId={struttura._id}
                   onAuthorPress={(authorId, isStructure) => {

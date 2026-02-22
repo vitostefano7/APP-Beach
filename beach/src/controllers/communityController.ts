@@ -397,6 +397,60 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * PUT /community/posts/:postId
+ * Modifica un post (solo se creato dall'utente)
+ */
+export const updatePost = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const userId = req.user?.id;
+
+    if (typeof content !== "string") {
+      return res.status(400).json({ message: "Content is required" });
+    }
+
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
+      return res.status(400).json({ message: "Content cannot be empty" });
+    }
+
+    if (trimmedContent.length > 1000) {
+      return res.status(400).json({ message: "Content too long (max 1000 characters)" });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      console.log('❌ Post non trovato:', postId);
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.user.toString() !== userId) {
+      console.log('❌ Utente non autorizzato a modificare questo post');
+      return res.status(403).json({ message: "You can only edit your own posts" });
+    }
+
+    post.content = trimmedContent;
+    await post.save();
+
+    await post.populate("user", "name surname username avatarUrl");
+    await post.populate("struttura", "name images location");
+    await post.populate("comments.user", "name surname username avatarUrl");
+    await post.populate("comments.struttura", "name images location");
+
+    console.log('✅ Post modificato con successo:', post._id);
+
+    res.json({
+      message: "Post updated successfully",
+      post,
+    });
+  } catch (error) {
+    console.error("❌ Errore modifica post:", error);
+    res.status(500).json({ message: "Errore nella modifica del post" });
+  }
+};
+
+/**
  * GET /community/my-posts
  * Recupera tutti i post dell'utente loggato
  */

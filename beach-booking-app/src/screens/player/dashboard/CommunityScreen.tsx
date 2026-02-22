@@ -24,6 +24,7 @@ import {
 import { usePosts, usePostInteractions } from '../../../components/Community/hooks';
 import { Post, CommunityTab } from '../../../types/community.types';
 import { useAlert } from '../../../context/AlertContext';
+import API_URL from '../../../config/api';
 
 export default function CommunityScreen() {
   const navigation = useNavigation<any>();
@@ -32,6 +33,7 @@ export default function CommunityScreen() {
 
   // State
   const [activeTab, setActiveTab] = useState<CommunityTab>('tutti');
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const currentScrollOffset = useRef<number>(0);
   const hasUserScrolled = useRef(false);
@@ -77,8 +79,8 @@ export default function CommunityScreen() {
   }, []);
 
   useEffect(() => {
-    loadPostsRef.current = loadPosts;
-  }, [loadPosts]);
+    loadPostsRef.current = refreshPosts;
+  }, [refreshPosts]);
 
   // Load posts on focus
   useFocusEffect(
@@ -189,6 +191,8 @@ export default function CommunityScreen() {
     console.log('👤 [CommunityScreen] Author pressed:', { authorId, isStructure });
     if (isStructure) {
       navigation.navigate('DettaglioStruttura', { strutturaId: authorId });
+    } else if (authorId === user?.id) {
+      navigation.navigate('MioProfile');
     } else {
       navigation.navigate('ProfiloUtente', { userId: authorId });
     }
@@ -196,7 +200,7 @@ export default function CommunityScreen() {
 
   const handleDeletePost = async (postId: string) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/community/posts/${postId}`, {
+      const response = await fetch(`${API_URL}/community/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -205,6 +209,9 @@ export default function CommunityScreen() {
       
       if (response.ok) {
         // Refresh posts to remove the deleted one
+        if (editingPostId === postId) {
+          setEditingPostId(null);
+        }
         await refreshPosts();
       }
     } catch (error) {
@@ -214,6 +221,47 @@ export default function CommunityScreen() {
         title: 'Errore',
         message: 'Impossibile eliminare il post. Riprova.',
       });
+    }
+  };
+
+  const handleEditPost = async (postId: string, content: string) => {
+    try {
+      const url = `${API_URL}/community/posts/${postId}`;
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        showAlert({
+          type: 'error',
+          title: 'Errore',
+          message: 'Impossibile modificare il post. Riprova.',
+        });
+        return false;
+      }
+
+      const data = await response.json();
+      if (data?.post) {
+        updatePost(postId, data.post);
+      } else {
+        updatePost(postId, { content });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error editing post:', error);
+      showAlert({
+        type: 'error',
+        title: 'Errore',
+        message: 'Impossibile modificare il post. Riprova.',
+      });
+      return false;
     }
   };
 
@@ -227,6 +275,9 @@ export default function CommunityScreen() {
       onInputFocus={handleInputFocus}
       onAuthorPress={handleAuthorPress}
       onDeletePost={handleDeletePost}
+      onEditPost={handleEditPost}
+      activeEditPostId={editingPostId}
+      onSetActiveEditPostId={setEditingPostId}
     />
   );
 
