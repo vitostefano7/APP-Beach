@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback, useRef } from 'react';
+import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -25,8 +25,6 @@ import { Post, CommunityTab } from '../../../types/community.types';
 import { useAlert } from '../../../context/AlertContext';
 
 export default function CommunityScreen() {
-  console.log('🚀 COMMUNITY SCREEN (PLAYER) MOUNTED');
-
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
 
@@ -34,6 +32,11 @@ export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState<CommunityTab>('tutti');
   const flatListRef = useRef<FlatList>(null);
   const currentScrollOffset = useRef<number>(0);
+  const hasUserScrolled = useRef(false);
+  const isLoadingMoreRef = useRef(false);
+  const onEndReachedCalledDuringMomentum = useRef(false);
+  const lastLoadMoreAtRef = useRef(0);
+  const loadPostsRef = useRef<() => Promise<void>>(async () => {});
 
   const { showAlert } = useAlert();
 
@@ -41,14 +44,18 @@ export default function CommunityScreen() {
   const {
     posts,
     loading,
+    loadingMore,
+    hasMore,
     refreshing,
     loadPosts,
+    loadMorePosts,
     refreshPosts,
     updatePost,
   } = usePosts({
     token: token || '',
     userId: user?.id,
     filter: 'following', // Player vede solo post di chi segue
+    pageSize: 10,
   });
 
   const { likePost } = usePostInteractions({
@@ -63,12 +70,20 @@ export default function CommunityScreen() {
     },
   });
 
+  useEffect(() => {
+    console.log('🚀 COMMUNITY SCREEN (PLAYER) FIRST MOUNT');
+  }, []);
+
+  useEffect(() => {
+    loadPostsRef.current = loadPosts;
+  }, [loadPosts]);
+
   // Load posts on focus
   useFocusEffect(
     useCallback(() => {
       console.log('🔄 Community screen focused, loading posts');
-      loadPosts();
-    }, [loadPosts])
+      loadPostsRef.current();
+    }, [])
   );
 
   const handleLike = async (postId: string) => {
@@ -82,6 +97,53 @@ export default function CommunityScreen() {
 
   const handleCreatePost = () => {
     navigation.navigate('CreatePost');
+  };
+
+  const handleLoadMore = async ({ distanceFromEnd }: { distanceFromEnd: number }) => {
+    const now = Date.now();
+    const minLoadMoreIntervalMs = 700;
+    const maxDistanceFromEnd = 160;
+
+    const guardState = {
+      hasUserScrolled: hasUserScrolled.current,
+      distanceFromEnd,
+      loading,
+      refreshing,
+      loadingMore,
+      isLoadingMoreRef: isLoadingMoreRef.current,
+      onEndReachedCalledDuringMomentum: onEndReachedCalledDuringMomentum.current,
+      msFromLastLoadMore: now - lastLoadMoreAtRef.current,
+      hasMore,
+      postsLength: posts.length,
+    };
+
+    if (
+      !hasUserScrolled.current
+      || distanceFromEnd < 0
+      || distanceFromEnd > maxDistanceFromEnd
+      || loading
+      || refreshing
+      || loadingMore
+      || isLoadingMoreRef.current
+      || onEndReachedCalledDuringMomentum.current
+      || now - lastLoadMoreAtRef.current < minLoadMoreIntervalMs
+      || !hasMore
+      || posts.length === 0
+    ) {
+      console.log('⏭️ [CommunityScreen] onEndReached:skip', guardState);
+      return;
+    }
+
+    try {
+      console.log('⬇️ [CommunityScreen] onEndReached:loadMore:start', guardState);
+      isLoadingMoreRef.current = true;
+      onEndReachedCalledDuringMomentum.current = true;
+      lastLoadMoreAtRef.current = now;
+      await loadMorePosts();
+      console.log('✅ [CommunityScreen] onEndReached:loadMore:done');
+    } finally {
+      isLoadingMoreRef.current = false;
+    }
   };
 
   const handleInputFocus = (postId: string, inputBottomEdge?: number) => {
@@ -232,6 +294,17 @@ export default function CommunityScreen() {
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
             onRefresh={refreshPosts}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            onMomentumScrollBegin={() => {
+              onEndReachedCalledDuringMomentum.current = false;
+            }}
+            onScrollBeginDrag={() => {
+              if (!hasUserScrolled.current) {
+                hasUserScrolled.current = true;
+                console.log('🖐️ [CommunityScreen] User started dragging feed');
+              }
+            }}
             onScroll={(event) => {
               currentScrollOffset.current = event.nativeEvent.contentOffset.y;
             }}
@@ -254,6 +327,13 @@ export default function CommunityScreen() {
               />
             }
             ListEmptyComponent={renderEmptyState()}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color={CommunityTheme.colors.primary} />
+                </View>
+              ) : null
+            }
             showsVerticalScrollIndicator={false}
           />
         )}
@@ -279,6 +359,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: CommunityTheme.spacing.md,
+  },
+  footerLoader: {
+    paddingVertical: CommunityTheme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
     flex: 1,

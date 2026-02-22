@@ -39,6 +39,10 @@ export default function OwnerCommunityScreen() {
   const [structureModalVisible, setStructureModalVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const currentScrollOffset = useRef<number>(0);
+  const hasUserScrolled = useRef(false);
+  const isLoadingMoreRef = useRef(false);
+  const onEndReachedCalledDuringMomentum = useRef(false);
+  const lastLoadMoreAtRef = useRef(0);
 
   // Custom hooks
   // Owner feed: always use the structure-following view. When a structure is selected
@@ -48,8 +52,11 @@ export default function OwnerCommunityScreen() {
   const {
     posts,
     loading,
+    loadingMore,
+    hasMore,
     refreshing,
     loadPosts,
+    loadMorePosts,
     refreshPosts,
     updatePost,
   } = usePosts({
@@ -57,6 +64,7 @@ export default function OwnerCommunityScreen() {
     userId: user?.id,
     strutturaId: selectedStructure?._id,
     filter: feedFilter,
+    pageSize: 10,
   });
 
   const { likePost } = usePostInteractions({
@@ -141,6 +149,37 @@ export default function OwnerCommunityScreen() {
       return;
     }
     navigation.navigate('OwnerCreatePost', { strutturaId: selectedStructure._id });
+  };
+
+  const handleLoadMore = async ({ distanceFromEnd }: { distanceFromEnd: number }) => {
+    const now = Date.now();
+    const minLoadMoreIntervalMs = 700;
+    const maxDistanceFromEnd = 160;
+
+    if (
+      !hasUserScrolled.current
+      || distanceFromEnd < 0
+      || distanceFromEnd > maxDistanceFromEnd
+      || loading
+      || refreshing
+      || loadingMore
+      || isLoadingMoreRef.current
+      || onEndReachedCalledDuringMomentum.current
+      || now - lastLoadMoreAtRef.current < minLoadMoreIntervalMs
+      || !hasMore
+      || posts.length === 0
+    ) {
+      return;
+    }
+
+    try {
+      isLoadingMoreRef.current = true;
+      onEndReachedCalledDuringMomentum.current = true;
+      lastLoadMoreAtRef.current = now;
+      await loadMorePosts();
+    } finally {
+      isLoadingMoreRef.current = false;
+    }
   };
 
   const handleAuthorPress = (authorId: string, isStructure: boolean) => {
@@ -297,6 +336,14 @@ export default function OwnerCommunityScreen() {
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
             onRefresh={refreshPosts}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            onMomentumScrollBegin={() => {
+              onEndReachedCalledDuringMomentum.current = false;
+            }}
+            onScrollBeginDrag={() => {
+              hasUserScrolled.current = true;
+            }}
             onScroll={(event) => {
               currentScrollOffset.current = event.nativeEvent.contentOffset.y;
             }}
@@ -321,6 +368,13 @@ export default function OwnerCommunityScreen() {
               ) : null
             }
             ListEmptyComponent={renderEmptyState()}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color={CommunityTheme.colors.primary} />
+                </View>
+              ) : null
+            }
             showsVerticalScrollIndicator={false}
           />
         )}
@@ -412,6 +466,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: CommunityTheme.spacing.md,
+  },
+  footerLoader: {
+    paddingVertical: CommunityTheme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
     flex: 1,

@@ -44,17 +44,9 @@ export const PostCard: React.FC<PostCardProps> = ({
   const { showAlert } = useAlert();
 
   useEffect(() => {
-    console.log('🎹 [PostCard] Setting up keyboard listeners for post:', post._id);
-    
     const keyboardWillShow = Keyboard.addListener(
       'keyboardWillShow',
       (e: KeyboardEvent) => {
-        console.log('🎹 [PostCard] Keyboard WILL show:', {
-          postId: post._id,
-          height: e.endCoordinates.height,
-          duration: e.duration,
-          screenY: e.endCoordinates.screenY,
-        });
         setKeyboardHeight(e.endCoordinates.height);
       }
     );
@@ -62,12 +54,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     const keyboardDidShow = Keyboard.addListener(
       'keyboardDidShow',
       (e: KeyboardEvent) => {
-        console.log('🎹 [PostCard] Keyboard DID show:', {
-          postId: post._id,
-          height: e.endCoordinates.height,
-          duration: e.duration,
-          screenY: e.endCoordinates.screenY,
-        });
         setKeyboardHeight(e.endCoordinates.height);
       }
     );
@@ -75,10 +61,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     const keyboardWillHide = Keyboard.addListener(
       'keyboardWillHide',
       (e: KeyboardEvent) => {
-        console.log('🎹 [PostCard] Keyboard WILL hide:', {
-          postId: post._id,
-          duration: e.duration,
-        });
         setKeyboardHeight(0);
       }
     );
@@ -86,15 +68,11 @@ export const PostCard: React.FC<PostCardProps> = ({
     const keyboardDidHide = Keyboard.addListener(
       'keyboardDidHide',
       () => {
-        console.log('🎹 [PostCard] Keyboard DID hide:', {
-          postId: post._id,
-        });
         setKeyboardHeight(0);
       }
     );
 
     return () => {
-      console.log('🎹 [PostCard] Removing keyboard listeners for post:', post._id);
       keyboardWillShow.remove();
       keyboardDidShow.remove();
       keyboardWillHide.remove();
@@ -114,13 +92,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   });
   // Determine if post is from a structure or user
   const isStrutturaPost = post.isStrutturaPost && post.struttura;
-  
-  console.log('👤 [PostCard] User data:', {
-    postId: post._id,
-    userName: post.user?.name,
-    userSurname: post.user?.surname,
-    fullUser: post.user,
-  });
   
   const displayName = isStrutturaPost 
     ? post.struttura!.name 
