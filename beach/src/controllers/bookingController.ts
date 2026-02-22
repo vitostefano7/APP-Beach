@@ -664,7 +664,12 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
       ),
       past: Booking.countDocuments(andQuery(baseQuery, buildPastCondition(today, nowTime))),
       invites: pendingInviteBookingIds.length
-        ? Booking.countDocuments({ _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } })
+        ? Booking.countDocuments(
+            andQuery(
+              { _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } },
+              upcomingOrOngoingCondition
+            )
+          )
         : Promise.resolve(0),
     };
 
@@ -675,10 +680,10 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
       listQuery = andQuery(baseQuery, buildPastCondition(today, nowTime));
       sort = { date: -1, startTime: -1 };
     } else if (timeFilter === "invites") {
-      listQuery = {
-        _id: { $in: pendingInviteBookingIds },
-        user: { $ne: userObjectId },
-      };
+      listQuery = andQuery(
+        { _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } },
+        upcomingOrOngoingCondition
+      );
       sort = { date: 1, startTime: 1 };
     } else {
       listQuery = andQuery(baseQuery, upcomingOrOngoingCondition, { _id: { $nin: pendingInviteBookingIds } });
