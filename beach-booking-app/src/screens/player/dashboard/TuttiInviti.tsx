@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -20,6 +21,11 @@ import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import SportIcon from "../../../components/SportIcon";
 import styles from "./TuttiInviti.styles";
+
+const CACHE_KEY = (filter: string) => `tuttiInviti_cache_${filter}`;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minuti
+const PAGE_SIZE = 10;
+const DEBUG_CACHE = false;
 
 type FilterType = "all" | "pending" | "confirmed" | "declined" | "expired";
 
@@ -56,93 +62,129 @@ export default function TuttiInvitiScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [invites, setInvites] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState<FilterType>(initialFilter);
+  const [cacheAge, setCacheAge] = useState<Date | null>(null);
+  const [counts, setCounts] = useState({ all: 0, pending: 0, confirmed: 0, declined: 0, expired: 0 });
 
   useFocusEffect(
     useCallback(() => {
       setFilter(initialFilter);
-      loadAllMatches();
+      loadAllMatches(1, true, initialFilter, false);
     }, [initialFilter])
   );
 
   // Nel file TuttiInviti.tsx, modifica loadAllMatches:
-const loadAllMatches = async () => {
+const loadAllMatches = async (
+  page = 1,
+  reset = false,
+  activeFilter: FilterType = filter,
+  forceNetwork = false
+) => {
   try {
-    setLoading(true);
-    console.log("📡 Caricamento TUTTI i match per utente:", user?.id);
-    console.log("📡 Token presente:", token ? "Sì" : "No");
-    console.log("📡 API URL:", API_URL);
+    if (reset && page === 1 && !forceNetwork) {
+      const raw = await AsyncStorage.getItem(CACHE_KEY(activeFilter));
+      if (raw) {
+        try {
+          const { data, timestamp, counts: cachedCounts, hasMore: cachedHasMore } = JSON.parse(raw);
+          const age = Date.now() - timestamp;
+          if (age < CACHE_TTL_MS) {
+            setInvites(data);
+            if (cachedCounts) setCounts(cachedCounts);
+            setHasMore(Boolean(cachedHasMore));
+            setCurrentPage(1);
+            setCacheAge(new Date(timestamp));
+            setLoading(false);
+            if (DEBUG_CACHE) {
+              console.log(`[Cache][${activeFilter}] ✅ HIT — ${data.length} inviti, età ${Math.round(age / 1000)}s`);
+            }
+            return;
+          }
+          if (DEBUG_CACHE) {
+            console.log(`[Cache][${activeFilter}] ⏰ SCADUTA — età ${Math.round(age / 1000)}s, verrà ricaricata`);
+          }
+        } catch {
+          if (DEBUG_CACHE) {
+            console.warn(`[Cache][${activeFilter}] ⚠️ Corrotta, ignorata`);
+          }
+        }
+      } else {
+        if (DEBUG_CACHE) {
+          console.log(`[Cache][${activeFilter}] Nessuna cache trovata`);
+        }
+      }
+    }
 
-    const res = await fetch(`${API_URL}/matches/me`, {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const res = await fetch(`${API_URL}/matches/pending-invites?all=true&page=${page}&limit=${PAGE_SIZE}&filter=${activeFilter}`, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
     });
 
-    console.log("📡 Risposta status:", res.status);
-    console.log("📡 Risposta headers:", Object.fromEntries(res.headers.entries()));
-
     if (res.ok) {
-      const data = await res.json();
-      console.log(`✅ Ricevuti ${data.length} match totali`);
-      console.log("📊 Primo match (se presente):", data[0] ? JSON.stringify(data[0], null, 2).substring(0, 500) : "Nessun match");
-      
-      const userInvites = data.filter((match: any) => {
-        console.log("🔍 Analizzo match:", match._id);
-        console.log("   Creato da:", match.createdBy?._id);
-        console.log("   Players:", match.players?.length);
-        
-        const myPlayer = match.players?.find((p: any) => {
-          const playerId = p.user?._id || p.user;
-          const userId = user?.id;
-          console.log(`   Comparo: ${playerId} === ${userId}`, playerId === userId);
-          return playerId === userId;
-        });
-        
-        const isCreatedByMe = match.createdBy?._id === user?.id;
-        console.log(`   Sono creatore? ${isCreatedByMe}`);
-        console.log(`   Sono player? ${!!myPlayer}`);
-        console.log(`   È invito? ${!!myPlayer && !isCreatedByMe}`);
-        
-        return myPlayer && !isCreatedByMe;
-      });
-      
-      console.log(`📋 ${userInvites.length} inviti totali da altri`);
-      setInvites(userInvites);
+      const { data, hasMore: more, counts: serverCounts } = await res.json();
+
+      const merged = reset ? data : [...invites, ...data];
+      setInvites(merged);
+      setHasMore(more);
+      setCurrentPage(page);
+      if (serverCounts) setCounts(serverCounts);
+
+      if (reset) {
+        const now = Date.now();
+        await AsyncStorage.setItem(
+          CACHE_KEY(activeFilter),
+          JSON.stringify({ data: merged, counts: serverCounts, hasMore: more, timestamp: now })
+        );
+        setCacheAge(new Date(now));
+        if (DEBUG_CACHE) {
+          console.log(`[Cache][${activeFilter}] 💾 SALVATA — ${merged.length} inviti`);
+        }
+      } else {
+        if (DEBUG_CACHE) {
+          console.log(`[Cache][${activeFilter}] 📄 Pagina ${page} caricata — ${data.length} nuovi, totale ${merged.length}`);
+        }
+      }
     } else {
       const errorText = await res.text();
-      console.error("❌ Errore completo nel caricamento:");
-      console.error("   Status:", res.status);
-      console.error("   Body:", errorText);
-      
-      // Prova a parsare come JSON se possibile
-      try {
-        const errorJson = JSON.parse(errorText);
-        console.error("   Error JSON:", errorJson);
-      } catch {
-        // Non è JSON, lascia come testo
-      }
-      
+      console.error("❌ [TuttiInviti] Errore caricamento:", res.status, errorText);
       showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare gli inviti' });
     }
   } catch (error) {
-    console.error("❌ Errore caricamento match:", error);
-    if (error instanceof Error) {
-      console.error("   Message:", error.message);
-      console.error("   Stack:", error.stack);
-    }
+    console.error("❌ [TuttiInviti] Errore:", error);
     showAlert({ type: 'error', title: 'Errore', message: 'Impossibile caricare gli inviti' });
   } finally {
     setLoading(false);
     setRefreshing(false);
+    setLoadingMore(false);
   }
 };
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadAllMatches();
+    loadAllMatches(1, true, filter, true);
+  };
+
+  const onLoadMore = () => {
+    if (!hasMore || loadingMore) return;
+    loadAllMatches(currentPage + 1, false, filter);
+  };
+
+  const handleFilterChange = (f: FilterType) => {
+    setFilter(f);
+    setInvites([]);
+    setCurrentPage(1);
+    loadAllMatches(1, true, f, false);
   };
 
   const formatDate = (dateStr: string) => {
@@ -221,59 +263,12 @@ const loadAllMatches = async () => {
     return myPlayer?.status || "unknown";
   };
 
-  const getFilteredInvites = () => {
-    if (filter === "all") {
-      return invites;
-    }
-    
-    if (filter === "pending") {
-      return invites.filter((invite) => {
-        const status = getMyPlayerStatus(invite);
-        const isExpired = isInviteExpired(invite);
-        return status === "pending" && !isExpired;
-      });
-    }
-    
-    if (filter === "expired") {
-      return invites.filter((invite) => {
-        const status = getMyPlayerStatus(invite);
-        const isExpired = isInviteExpired(invite);
-        return status === "pending" && isExpired;
-      });
-    }
-    
-    return invites.filter((invite) => {
-      const status = getMyPlayerStatus(invite);
-      return status === filter;
-    });
-  };
-
-  const filteredInvites = getFilteredInvites();
-
   const getFilterCount = (filterType: string) => {
-    if (filterType === "all") return invites.length;
-    
-    if (filterType === "pending") {
-      return invites.filter((invite) => {
-        const status = getMyPlayerStatus(invite);
-        const isExpired = isInviteExpired(invite);
-        return status === "pending" && !isExpired;
-      }).length;
-    }
-    
-    if (filterType === "expired") {
-      return invites.filter((invite) => {
-        const status = getMyPlayerStatus(invite);
-        const isExpired = isInviteExpired(invite);
-        return status === "pending" && isExpired;
-      }).length;
-    }
-    
-    return invites.filter((invite) => {
-      const status = getMyPlayerStatus(invite);
-      return status === filterType;
-    }).length;
+    return counts[filterType as keyof typeof counts] ?? 0;
   };
+
+  // Il backend filtra già per status/expired: invites è già il risultato corretto
+  const filteredInvites = invites;
 
   const canChangeDeclinedResponse = (invite: any) => {
     const booking = invite.booking;
@@ -616,7 +611,7 @@ const loadAllMatches = async () => {
         throw new Error(errorData.message || "Errore nella risposta");
       }
 
-      await loadAllMatches();
+      await loadAllMatches(1, true, filter);
       
       showAlert({
         type: response === "accept" ? 'success' : 'info',
@@ -655,15 +650,15 @@ const loadAllMatches = async () => {
       <View style={styles.statsBar}>
         <Pressable 
           style={[styles.statItem, filter === "all" && styles.statItemActive]}
-          onPress={() => setFilter("all")}
+          onPress={() => handleFilterChange("all")}
         >
-          <Text style={[styles.statValue, filter === "all" && styles.statValueActive]}>{invites.length}</Text>
+          <Text style={[styles.statValue, filter === "all" && styles.statValueActive]}>{counts.all}</Text>
           <Text style={[styles.statLabel, filter === "all" && styles.statLabelActive]}>Totali</Text>
         </Pressable>
         <View style={styles.statDivider} />
         <Pressable 
           style={[styles.statItem, filter === "pending" && styles.statItemActive]}
-          onPress={() => setFilter("pending")}
+          onPress={() => handleFilterChange("pending")}
         >
           <Text style={[styles.statValue, styles.statPending, filter === "pending" && styles.statValueActive]}>
             {getFilterCount("pending")}
@@ -673,7 +668,7 @@ const loadAllMatches = async () => {
         <View style={styles.statDivider} />
         <Pressable 
           style={[styles.statItem, filter === "confirmed" && styles.statItemActive]}
-          onPress={() => setFilter("confirmed")}
+          onPress={() => handleFilterChange("confirmed")}
         >
           <Text style={[styles.statValue, styles.statConfirmed, filter === "confirmed" && styles.statValueActive]}>
             {getFilterCount("confirmed")}
@@ -683,7 +678,7 @@ const loadAllMatches = async () => {
         <View style={styles.statDivider} />
         <Pressable 
           style={[styles.statItem, filter === "declined" && styles.statItemActive]}
-          onPress={() => setFilter("declined")}
+          onPress={() => handleFilterChange("declined")}
         >
           <Text style={[styles.statValue, styles.statDeclined, filter === "declined" && styles.statValueActive]}>
             {getFilterCount("declined")}
@@ -693,7 +688,7 @@ const loadAllMatches = async () => {
         <View style={styles.statDivider} />
         <Pressable 
           style={[styles.statItem, filter === "expired" && styles.statItemActive]}
-          onPress={() => setFilter("expired")}
+          onPress={() => handleFilterChange("expired")}
         >
           <Text style={[styles.statValue, styles.statExpired, filter === "expired" && styles.statValueActive]}>
             {getFilterCount("expired")}
@@ -738,6 +733,13 @@ const loadAllMatches = async () => {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onEndReached={onLoadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#2196F3" style={{ marginVertical: 16 }} />
+            ) : null
+          }
         />
       )}
     </SafeAreaView>

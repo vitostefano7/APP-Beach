@@ -92,6 +92,15 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
     await fetchNotifications(isReadFilter);
   };
 
+  useEffect(() => {
+    if (!notifications.length) return;
+    const counts = notifications.reduce<Record<string, number>>((acc, n) => {
+      acc[n.type] = (acc[n.type] || 0) + 1;
+      return acc;
+    }, {});
+    console.log(`[Notifiche][${role}] Totale: ${notifications.length}`, counts);
+  }, [notifications]);
+
   const loadPendingInvitesCount = async () => {
     try {
       const res = await fetch(`${API_URL}/matches/pending-invites`, {

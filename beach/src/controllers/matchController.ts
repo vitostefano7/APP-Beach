@@ -1306,50 +1306,114 @@ export const getMatchById = async (req: AuthRequest, res: Response) => {
 export const getPendingInvites = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    
-    console.log('🔍 [getPendingInvites] Richiesta per userId:', userId);
+    const showAll = req.query.all === 'true';
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const filterParam = (req.query.filter as string) || 'all'; // all | pending | confirmed | declined | expired
 
-    // Filtra direttamente in MongoDB: l'utente non è il creatore e ha status pending
-    const pendingInvites = await Match.find({
-      createdBy: { $ne: new mongoose.Types.ObjectId(userId) },
-      players: {
-        $elemMatch: { user: new mongoose.Types.ObjectId(userId), status: 'pending' }
-      }
-    })
-    .populate('createdBy', 'name surname username avatarUrl')
-    .populate('players.user', 'name surname username avatarUrl')
-    .populate({
-      path: 'booking',
-      populate: [
-        { 
-          path: 'campo', 
+    if (showAll) {
+      const now = new Date();
+      const cutoffMs = 2 * 60 * 60 * 1000;
+
+      const isExpiredFn = (match: any): boolean => {
+        const booking = match.booking;
+        if (!booking?.date || !booking?.startTime) return false;
+        try {
+          const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+          return now.getTime() > matchDateTime.getTime() - cutoffMs;
+        } catch { return false; }
+      };
+
+      // Fetch tutti i record con populate completo
+      const allInvites = await Match.find({
+        createdBy: { $ne: new mongoose.Types.ObjectId(userId) },
+        players: { $elemMatch: { user: new mongoose.Types.ObjectId(userId) } }
+      })
+        .populate('createdBy', 'name surname username avatarUrl')
+        .populate('players.user', 'name surname username avatarUrl')
+        .populate({
+          path: 'booking',
           populate: [
-            { path: 'struttura', select: 'name location' },
-            { path: 'sport', select: 'name' }
+            {
+              path: 'campo',
+              populate: [
+                { path: 'struttura', select: 'name location' },
+                { path: 'sport', select: 'name' }
+              ]
+            },
+            { path: 'user', select: 'name email' }
           ]
-        },
-        { path: 'user', select: 'name email' }
-      ]
+        })
+        .sort({ createdAt: -1 });
+
+      // Calcola counts sull'intero dataset
+      const counts = { all: 0, pending: 0, confirmed: 0, declined: 0, expired: 0 };
+      for (const match of allInvites) {
+        const myPlayer = (match.players as any[]).find(
+          (p: any) => (p.user?._id || p.user)?.toString() === userId
+        );
+        if (!myPlayer) continue;
+        counts.all++;
+        const expired = isExpiredFn(match);
+        if (myPlayer.status === 'pending' && expired) counts.expired++;
+        else if (myPlayer.status === 'pending') counts.pending++;
+        else if (myPlayer.status === 'confirmed') counts.confirmed++;
+        else if (myPlayer.status === 'declined') counts.declined++;
+      }
+
+      // Applica filtro attivo (JS, necessario per expired che richiede confronto date)
+      const filtered = allInvites.filter((match) => {
+        const myPlayer = (match.players as any[]).find(
+          (p: any) => (p.user?._id || p.user)?.toString() === userId
+        );
+        if (!myPlayer) return false;
+        const expired = isExpiredFn(match);
+        if (filterParam === 'all') return true;
+        if (filterParam === 'pending') return myPlayer.status === 'pending' && !expired;
+        if (filterParam === 'expired') return myPlayer.status === 'pending' && expired;
+        return myPlayer.status === filterParam;
+      });
+
+      // Paginazione JS sul dataset filtrato
+      const skip = (page - 1) * limit;
+      const paginated = filtered.slice(skip, skip + limit);
+      const hasMore = skip + paginated.length < filtered.length;
+
+      return res.json({ data: paginated, total: filtered.length, page, limit, hasMore, counts });
+    }
+
+    // Dashboard (no pagination): solo pending non scaduti
+    const invites = await Match.find({
+      createdBy: { $ne: new mongoose.Types.ObjectId(userId) },
+      players: { $elemMatch: { user: new mongoose.Types.ObjectId(userId), status: 'pending' } }
     })
-    .sort({ createdAt: -1 });
+      .populate('createdBy', 'name surname username avatarUrl')
+      .populate('players.user', 'name surname username avatarUrl')
+      .populate({
+        path: 'booking',
+        populate: [
+          {
+            path: 'campo',
+            populate: [
+              { path: 'struttura', select: 'name location' },
+              { path: 'sport', select: 'name' }
+            ]
+          },
+          { path: 'user', select: 'name email' }
+        ]
+      })
+      .sort({ createdAt: -1 });
 
-    console.log(`✅ [getPendingInvites] Trovati ${pendingInvites.length} inviti pendenti (prima del filtro scadenza)`);
-
-    // Filtra inviti scaduti: scaduto se ora > matchDateTime - 2h
     const now = new Date();
-    const nonExpired = pendingInvites.filter(match => {
+    const nonExpired = invites.filter(match => {
       const booking = (match as any).booking;
       if (!booking?.date || !booking?.startTime) return true;
       try {
         const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
         const cutoff = new Date(matchDateTime.getTime() - 2 * 60 * 60 * 1000);
         return now <= cutoff;
-      } catch {
-        return true;
-      }
+      } catch { return true; }
     });
-
-    console.log(`✅ [getPendingInvites] Inviti validi (non scaduti): ${nonExpired.length}`);
 
     res.json(nonExpired);
   } catch (err) {
