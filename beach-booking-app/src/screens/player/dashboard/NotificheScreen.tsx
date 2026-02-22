@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -42,6 +43,13 @@ const NotificheScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
 
+  // Ripristina il conteggio inviti dalla cache al primo render
+  useEffect(() => {
+    AsyncStorage.getItem('pendingInvitesCount').then(cached => {
+      if (cached !== null) setPendingInvitesCount(parseInt(cached, 10));
+    });
+  }, []);
+
   // Carica notifiche quando la schermata è visibile
   useFocusEffect(
     useCallback(() => {
@@ -60,40 +68,23 @@ const NotificheScreen = () => {
   const loadPendingInvitesCount = async () => {
     try {
       console.log('🔍 [NotificheScreen] Caricamento conteggio inviti...');
-      const res = await fetch(`${API_URL}/matches/me`, {
+      const res = await fetch(`${API_URL}/matches/pending-invites`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
-        const allMatches = await res.json();
-        console.log('📋 [NotificheScreen] Match ricevuti:', allMatches.length);
+        const pendingInvites = await res.json();
+        console.log('📋 [NotificheScreen] Inviti pending ricevuti:', pendingInvites.length);
 
-        if (!Array.isArray(allMatches)) {
+        if (!Array.isArray(pendingInvites)) {
           console.error("Formato dati inviti non valido");
           setPendingInvitesCount(0);
           return;
         }
 
-        const pendingInvites = allMatches.filter((match: any) => {
-          if (!match || !match.players) return false;
-
-          const myPlayer = match.players?.find((p: any) =>
-            p?.user?._id === user?.id
-          );
-
-          if (!myPlayer) return false;
-
-          const isPendingStatus = myPlayer.status === "pending";
-          const isCreator = match.createdBy?._id === user?.id;
-          const isExpired = isInviteExpired(match);
-
-          // console.log(`[NotificheScreen] Match ${match._id}: pending=${isPendingStatus}, isCreator=${isCreator}, expired=${isExpired}`);
-
-          return isPendingStatus && !isCreator && !isExpired;
-        });
-
         console.log('✅ [NotificheScreen] Inviti pendenti trovati:', pendingInvites.length);
         setPendingInvitesCount(pendingInvites.length);
+        await AsyncStorage.setItem('pendingInvitesCount', String(pendingInvites.length));
       }
     } catch (error) {
       console.error("Errore caricamento conteggio inviti:", error);
@@ -390,20 +381,18 @@ const NotificheScreen = () => {
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             {/* Bottone Inviti */}
             <Pressable
-              style={styles.invitesButtonContainer}
+              style={[styles.invitesButtonContainer, { position: 'relative' }]}
               onPress={() => navigation.navigate('TuttiInviti')}
             >
-              <View style={{ position: 'relative' }}>
-                <Ionicons name="mail-outline" size={20} color="#2196F3" />
-                {pendingInvitesCount > 0 && (
-                  <View style={styles.invitesBadge}>
-                    <Text style={styles.invitesBadgeText}>
-                      {pendingInvitesCount > 99 ? '99+' : pendingInvitesCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <Ionicons name="mail-outline" size={20} color="#2196F3" />
               <Text style={styles.invitesButtonText}>Inviti</Text>
+              {pendingInvitesCount > 0 && (
+                <View style={styles.invitesBadge}>
+                  <Text style={styles.invitesBadgeText}>
+                    {pendingInvitesCount > 99 ? '99+' : pendingInvitesCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
 
             {/* Bottone Segna tutte come lette */}

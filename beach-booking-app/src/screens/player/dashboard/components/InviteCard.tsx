@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -10,14 +10,12 @@ import { styles } from "../styles";
 interface InviteCardProps {
   invite: any;
   userId?: string;
-  onViewDetails: (invite: any) => void;
   onRespond: (matchId: string, response: "accept" | "decline") => void;
 }
 
 const InviteCard: React.FC<InviteCardProps> = ({ 
   invite, 
   userId, 
-  onViewDetails, 
   onRespond 
 }) => {
   const navigation = useNavigation<any>();
@@ -32,8 +30,10 @@ const InviteCard: React.FC<InviteCardProps> = ({
   const myStatus = myPlayer?.status || "unknown";
 
   // Calcola il prezzo per persona
-  const pricePerPerson = booking?.price && match?.players ? 
-    (booking.price / match.players.length).toFixed(2) : null;
+  const pricePerPerson = useMemo(
+    () => (booking?.price && match?.players ? (booking.price / match.players.length).toFixed(2) : null),
+    [booking?.price, match?.players]
+  );
 
   // Constante per le ore di cut-off
   const CUTOFF_HOURS_BEFORE = 2; // Inviti si chiudono 2 ore prima
@@ -53,14 +53,14 @@ const InviteCard: React.FC<InviteCardProps> = ({
     return now > cutoffTime;
   };
 
-  const expired = isExpired();
+  const expired = useMemo(() => isExpired(), [booking?.date, booking?.startTime]);
 
   // 2. POI controlla lo stato: se NON è pending OPPURE è scaduto → non mostrare
   if (myStatus !== "pending" || expired) {
     return null; // Non renderizzare niente, l'invito scompare
   }
 
-  const handleCardPress = () => {
+  const handleCardPress = useCallback(() => {
     const bookingId = booking?._id;
     if (!bookingId) {
       Alert.alert("Errore", "Dettagli prenotazione non disponibili");
@@ -70,9 +70,9 @@ const InviteCard: React.FC<InviteCardProps> = ({
     navigation.navigate("DettaglioPrenotazione", {
       bookingId,
     });
-  };
+  }, [booking?._id, navigation]);
 
-  const handleAccept = (e: any) => {
+  const handleAccept = useCallback((e: any) => {
     e.stopPropagation();
 
     Alert.alert(
@@ -92,9 +92,9 @@ const InviteCard: React.FC<InviteCardProps> = ({
         }
       ]
     );
-  };
+  }, [matchId, onRespond]);
 
-  const handleDecline = (e: any) => {
+  const handleDecline = useCallback((e: any) => {
     e.stopPropagation();
 
     Alert.alert(
@@ -114,7 +114,7 @@ const InviteCard: React.FC<InviteCardProps> = ({
         }
       ]
     );
-  };
+  }, [matchId, onRespond]);
 
   // Funzione per mostrare quanto tempo rimane (versione abbreviata)
   const getTimeRemaining = () => {
@@ -146,10 +146,10 @@ const InviteCard: React.FC<InviteCardProps> = ({
     }
   };
 
-  const timeRemaining = getTimeRemaining();
+  const timeRemaining = useMemo(() => getTimeRemaining(), [booking?.date, booking?.startTime]);
   
   // Estrai lo sport
-  const sportName = booking?.campo?.sport?.name || "Sport";
+  const sportName = useMemo(() => booking?.campo?.sport?.name || "Sport", [booking?.campo?.sport?.name]);
 
   return (
     <Pressable 
@@ -242,4 +242,10 @@ const InviteCard: React.FC<InviteCardProps> = ({
   );
 };
 
-export default InviteCard;
+export default React.memo(InviteCard, (prevProps, nextProps) => {
+  return (
+    prevProps.invite === nextProps.invite &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.onRespond === nextProps.onRespond
+  );
+});

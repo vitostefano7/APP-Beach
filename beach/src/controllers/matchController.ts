@@ -1309,9 +1309,12 @@ export const getPendingInvites = async (req: AuthRequest, res: Response) => {
     
     console.log('🔍 [getPendingInvites] Richiesta per userId:', userId);
 
-    // Carica tutti i match dell'utente
-    const allMatches = await Match.find({
-      'players.user': userId
+    // Filtra direttamente in MongoDB: l'utente non è il creatore e ha status pending
+    const pendingInvites = await Match.find({
+      createdBy: { $ne: new mongoose.Types.ObjectId(userId) },
+      players: {
+        $elemMatch: { user: new mongoose.Types.ObjectId(userId), status: 'pending' }
+      }
     })
     .populate('createdBy', 'name surname username avatarUrl')
     .populate('players.user', 'name surname username avatarUrl')
@@ -1330,25 +1333,25 @@ export const getPendingInvites = async (req: AuthRequest, res: Response) => {
     })
     .sort({ createdAt: -1 });
 
-    // Filtra solo gli inviti pending dove:
-    // 1. L'utente NON è il creatore
-    // 2. Lo status del player è "pending"
-    const pendingInvites = allMatches.filter(match => {
-      const isCreator = (match.createdBy as any)._id.toString() === userId;
-      
-      // Trova il player corrispondente all'utente
-      const myPlayer = match.players.find((p: any) => 
-        (p.user as any)._id.toString() === userId
-      );
-      
-      const isPending = myPlayer?.status === 'pending';
-      
-      return !isCreator && isPending;
+    console.log(`✅ [getPendingInvites] Trovati ${pendingInvites.length} inviti pendenti (prima del filtro scadenza)`);
+
+    // Filtra inviti scaduti: scaduto se ora > matchDateTime - 2h
+    const now = new Date();
+    const nonExpired = pendingInvites.filter(match => {
+      const booking = (match as any).booking;
+      if (!booking?.date || !booking?.startTime) return true;
+      try {
+        const matchDateTime = new Date(`${booking.date}T${booking.startTime}`);
+        const cutoff = new Date(matchDateTime.getTime() - 2 * 60 * 60 * 1000);
+        return now <= cutoff;
+      } catch {
+        return true;
+      }
     });
 
-    console.log(`✅ [getPendingInvites] Trovati ${pendingInvites.length} inviti pendenti`);
+    console.log(`✅ [getPendingInvites] Inviti validi (non scaduti): ${nonExpired.length}`);
 
-    res.json(pendingInvites);
+    res.json(nonExpired);
   } catch (err) {
     console.error('❌ [getPendingInvites] error:', err);
     res.status(500).json({ 

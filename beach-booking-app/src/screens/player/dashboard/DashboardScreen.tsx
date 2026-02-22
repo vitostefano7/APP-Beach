@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -24,13 +24,15 @@ import NextMatchCard from "./components/NextMatchCard";
 import InviteCard from "./components/InviteCard";
 import RecentMatchesCarousel from "./components/RecentMatchesCarousel";
 import EmptyStateCard from "./components/EmptyStateCard";
-import { SuggestedFriendCard } from '../../../components/CercaAmici/SuggestedFriendCard';
 import OpenMatchCard from './components/OpenMatchCard';
 import { SuggestedItemsCarousel } from './components/SuggestedItemsCarousel';
 import { styles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get('window');
 const DASHBOARD_FETCH_TIMEOUT_MS = 12000;
+const INVITES_PREVIEW_COUNT = 3;
+const INVITES_DASHBOARD_MAX_COUNT = 5;
+const ENABLE_INVITES_PERF_LOGS = __DEV__;
 
 const InviteCardTitle = ({ count, onViewAll }: { count: number, onViewAll: () => void }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -100,6 +102,11 @@ export default function HomeScreen() {
   const openMatchesRequestKeyRef = React.useRef<string | null>(null);
   const openMatchesInFlightRef = React.useRef(false);
   const openMatchesDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const invitesTogglePerfRef = React.useRef<{
+    startedAt: number;
+    action: 'expand' | 'collapse';
+    expectedCount: number;
+  } | null>(null);
   
   // Hook per il filtraggio geografico
   const {
@@ -750,14 +757,14 @@ export default function HomeScreen() {
     }
   };
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     // console.log("Refresh manuale...");
     setRefreshing(true);
     loadDashboardData();
     refreshSuggestions();
-  };
+  }, [refreshSuggestions]);
 
-  const respondToInvite = async (matchId: string, response: "accept" | "decline") => {
+  const respondToInvite = useCallback(async (matchId: string, response: "accept" | "decline") => {
     try {
       // console.log("=== RISPOSTA INVITO ===");
       // console.log("Match ID:", matchId);
@@ -799,28 +806,12 @@ export default function HomeScreen() {
       console.error("Errore risposta invito:", error);
       alert("Errore nella risposta all'invito. Riprova.");
     }
-  };
+  }, [pendingInvites, user?.id, token]);
 
-  const handleViewInviteDetails = (invite: any) => {
-    // console.log("Viewing invite details:", invite);
-    
-    const inviteId = invite._id || invite.match?._id;
-    
-    if (!inviteId || typeof inviteId !== 'string') {
-      console.error("ID invito non valido:", inviteId);
-      return;
-    }
-    
-    navigation.navigate("DettaglioInvito", {
-      inviteId: inviteId,
-      inviteData: invite,
-    });
-  };
-
-  const handleViewAllInvites = () => {
+  const handleViewAllInvites = useCallback(() => {
     // console.log("Navigating to all invites screen");
     navigation.navigate("TuttiInviti");
-  };
+  }, [navigation]);
 
   const handlePressFriend = (friend: any) => {
     const friendId = friend.user?._id || friend._id;
@@ -912,7 +903,63 @@ export default function HomeScreen() {
     );
   };
 
-  const validPendingInvites = getValidPendingInvites(pendingInvites || [], user?.id || "");
+  const validPendingInvites = useMemo(
+    () => getValidPendingInvites(pendingInvites || [], user?.id || ""),
+    [pendingInvites, user?.id]
+  );
+
+  const dashboardInvites = useMemo(
+    () => validPendingInvites.slice(0, INVITES_DASHBOARD_MAX_COUNT),
+    [validPendingInvites]
+  );
+
+  const visibleInvites = useMemo(
+    () => (showAllInvites
+      ? dashboardInvites
+      : dashboardInvites.slice(0, INVITES_PREVIEW_COUNT)),
+    [showAllInvites, dashboardInvites]
+  );
+
+  const handleInvitesSectionLayout = useCallback(() => {
+    if (!ENABLE_INVITES_PERF_LOGS) return;
+
+    const perf = invitesTogglePerfRef.current;
+    if (!perf) return;
+    if (visibleInvites.length !== perf.expectedCount) return;
+
+    const elapsed = performance.now() - perf.startedAt;
+    console.log(`📈 [INVITES-PERF] ${perf.action} tap→layout: ${elapsed.toFixed(0)}ms | cards=${visibleInvites.length}`);
+    invitesTogglePerfRef.current = null;
+  }, [visibleInvites.length]);
+
+  React.useEffect(() => {
+    if (!ENABLE_INVITES_PERF_LOGS) return;
+    console.log(
+      `📈 [INVITES-PERF] snapshot | total=${validPendingInvites.length} visible=${visibleInvites.length} showAll=${showAllInvites}`
+    );
+  }, [showAllInvites, validPendingInvites.length, visibleInvites.length]);
+
+  const toggleShowAllInvites = useCallback(() => {
+    setShowAllInvites((current) => {
+      const next = !current;
+
+      if (ENABLE_INVITES_PERF_LOGS) {
+        const expectedCount = next
+          ? dashboardInvites.length
+          : Math.min(dashboardInvites.length, INVITES_PREVIEW_COUNT);
+
+        invitesTogglePerfRef.current = {
+          startedAt: performance.now(),
+          action: next ? 'expand' : 'collapse',
+          expectedCount,
+        };
+
+        console.log(`📈 [INVITES-PERF] tap ${next ? 'expand' : 'collapse'} | targetCards=${expectedCount}`);
+      }
+
+      return next;
+    });
+  }, [dashboardInvites.length]);
   
   const completedMatches = recentMatches.filter((match: any) => 
     match.status === "completed" && match.score?.sets?.length > 0
@@ -1043,7 +1090,7 @@ export default function HomeScreen() {
 
         {/* Inviti in attesa - mostrati prima delle partite aperte */}
         {validPendingInvites.length > 0 && (
-          <View style={styles.section}>
+          <View style={styles.section} onLayout={handleInvitesSectionLayout}>
             <View style={styles.sectionHeader}>
               <InviteCardTitle 
                 count={validPendingInvites.length} 
@@ -1051,23 +1098,22 @@ export default function HomeScreen() {
               />
             </View>
             
-            {(showAllInvites ? validPendingInvites : validPendingInvites.slice(0, 3)).map((invite) => (
+            {visibleInvites.map((invite) => (
               <InviteCard
                 key={invite._id || invite.match?._id}
                 invite={invite}
                 userId={user?.id}
-                onViewDetails={handleViewInviteDetails}
                 onRespond={respondToInvite}
               />
             ))}
             
-            {validPendingInvites.length > 3 && (
+            {dashboardInvites.length > INVITES_PREVIEW_COUNT && (
               <Pressable 
                 style={styles.showMoreButton}
-                onPress={() => setShowAllInvites(s => !s)}
+                onPress={toggleShowAllInvites}
               >
                 <Text style={styles.showMoreText}>
-                  {showAllInvites ? `Mostra meno` : `Mostra altri ${validPendingInvites.length - 3} inviti`}
+                  {showAllInvites ? `Mostra meno` : `Mostra altri ${dashboardInvites.length - INVITES_PREVIEW_COUNT} inviti`}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#2196F3" style={ showAllInvites ? { transform: [{ rotate: '180deg' }] } : undefined } />
               </Pressable>

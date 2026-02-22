@@ -137,8 +137,8 @@ async function seed() {
     // /* -------- CONVERSATIONS -------- */
     // const { conversations, messages } = await generateConversations(users, strutture, matches);
 
-    // /* -------- NOTIFICATIONS -------- */
-    // const notifications = await generateNotifications(users, matches, bookings);
+    /* -------- NOTIFICATIONS -------- */
+    const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
 
     /* -------- GENERATE OUTPUT FILE -------- */
     console.log(`📝 Generazione lista_utenti.txt...`);
