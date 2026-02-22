@@ -18,10 +18,10 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../../config/api";
 import SportIcon from '../../../components/SportIcon';
 import FilterModal from "../../../components/FilterModal";
+import { getCachedData, setCachedData } from "../../../components/cache/cacheStorage";
 
 /* =========================
    TYPES
@@ -680,16 +680,13 @@ export default function OwnerBookingsScreen() {
 
       if (page === 1 && !force) {
         try {
-          const raw = await AsyncStorage.getItem(cacheKey);
-          if (raw) {
-            const parsed: OwnerBookingsCacheEntry = JSON.parse(raw);
-            if (parsed?.ts && parsed?.data && Date.now() - parsed.ts < CACHE_TTL_MS) {
-              lastPrefetchPageRef.current = 0;
-              setCounts(parsed.data.counts);
-              setPagination(parsed.data.pagination);
-              setBookings(parsed.data.items);
-              return;
-            }
+          const cached = await getCachedData<OwnerBookingsCacheEntry["data"]>(cacheKey, CACHE_TTL_MS);
+          if (cached) {
+            lastPrefetchPageRef.current = 0;
+            setCounts(cached.counts);
+            setPagination(cached.pagination);
+            setBookings(cached.items);
+            return;
           }
         } catch {
           // noop
@@ -737,19 +734,15 @@ export default function OwnerBookingsScreen() {
         setBookings(data.items);
 
         try {
-          const entry: OwnerBookingsCacheEntry = {
-            ts: Date.now(),
-            data: {
-              items: data.items,
-              counts: data.counts,
-              pagination: {
-                page: data.pagination.page,
-                hasNext: data.pagination.hasNext,
-                total: data.pagination.total,
-              },
+          await setCachedData(cacheKey, {
+            items: data.items,
+            counts: data.counts,
+            pagination: {
+              page: data.pagination.page,
+              hasNext: data.pagination.hasNext,
+              total: data.pagination.total,
             },
-          };
-          await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
+          });
         } catch {
           // noop
         }

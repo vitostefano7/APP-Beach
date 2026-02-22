@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -20,6 +19,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import API_URL from "../../../config/api";
 import { resolveAvatarUrl } from "../../../utils/avatar";
 import SportIcon from "../../../components/SportIcon";
+import {
+  getCachedEntry,
+  setCachedData,
+  removeCachedByPrefix,
+  removeCachedData,
+} from "../../../components/cache/cacheStorage";
 import styles from "./TuttiInviti.styles";
 
 const CACHE_KEY = (filter: string) => `tuttiInviti_cache_${filter}`;
@@ -86,34 +91,25 @@ const loadAllMatches = async (
 ) => {
   try {
     if (reset && page === 1 && !forceNetwork) {
-      const raw = await AsyncStorage.getItem(CACHE_KEY(activeFilter));
-      if (raw) {
-        try {
-          const { data, timestamp, counts: cachedCounts, hasMore: cachedHasMore } = JSON.parse(raw);
-          const age = Date.now() - timestamp;
-          if (age < CACHE_TTL_MS) {
-            setInvites(data);
-            if (cachedCounts) setCounts(cachedCounts);
-            setHasMore(Boolean(cachedHasMore));
-            setCurrentPage(1);
-            setCacheAge(new Date(timestamp));
-            setLoading(false);
-            if (DEBUG_CACHE) {
-              console.log(`[Cache][${activeFilter}] ✅ HIT — ${data.length} inviti, età ${Math.round(age / 1000)}s`);
-            }
-            return;
-          }
-          if (DEBUG_CACHE) {
-            console.log(`[Cache][${activeFilter}] ⏰ SCADUTA — età ${Math.round(age / 1000)}s, verrà ricaricata`);
-          }
-        } catch {
-          if (DEBUG_CACHE) {
-            console.warn(`[Cache][${activeFilter}] ⚠️ Corrotta, ignorata`);
-          }
+      const cached = await getCachedEntry<{ data: any[]; counts: any; hasMore: boolean }>(
+        CACHE_KEY(activeFilter),
+        CACHE_TTL_MS
+      );
+      if (cached) {
+        const age = Date.now() - cached.ts;
+        setInvites(cached.data.data || []);
+        if (cached.data.counts) setCounts(cached.data.counts);
+        setHasMore(Boolean(cached.data.hasMore));
+        setCurrentPage(1);
+        setCacheAge(new Date(cached.ts));
+        setLoading(false);
+        if (DEBUG_CACHE) {
+          console.log(`[Cache][${activeFilter}] ✅ HIT — ${(cached.data.data || []).length} inviti, età ${Math.round(age / 1000)}s`);
         }
+        return;
       } else {
         if (DEBUG_CACHE) {
-          console.log(`[Cache][${activeFilter}] Nessuna cache trovata`);
+          console.log(`[Cache][${activeFilter}] Nessuna cache valida trovata`);
         }
       }
     }
@@ -141,12 +137,8 @@ const loadAllMatches = async (
       if (serverCounts) setCounts(serverCounts);
 
       if (reset) {
-        const now = Date.now();
-        await AsyncStorage.setItem(
-          CACHE_KEY(activeFilter),
-          JSON.stringify({ data: merged, counts: serverCounts, hasMore: more, timestamp: now })
-        );
-        setCacheAge(new Date(now));
+        await setCachedData(CACHE_KEY(activeFilter), { data: merged, counts: serverCounts, hasMore: more });
+        setCacheAge(new Date());
         if (DEBUG_CACHE) {
           console.log(`[Cache][${activeFilter}] 💾 SALVATA — ${merged.length} inviti`);
         }
@@ -610,6 +602,11 @@ const loadAllMatches = async (
         console.error("❌ Errore risposta:", errorData);
         throw new Error(errorData.message || "Errore nella risposta");
       }
+
+      await Promise.all([
+        removeCachedByPrefix("tuttiInviti_cache_"),
+        removeCachedData("pendingInvitesCount"),
+      ]);
 
       await loadAllMatches(1, true, filter);
       

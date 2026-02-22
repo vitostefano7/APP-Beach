@@ -18,7 +18,6 @@
  */
 
 import React, { useState, useCallback, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -35,6 +34,7 @@ import { useNotifications, Notification } from '../../screens/player/dashboard/h
 import { AuthContext } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import API_URL from '../../config/api';
+import { getCachedData, setCachedData } from '../cache/cacheStorage';
 import { styles } from './NotificheScreen.styles';
 
 type FilterType = 'all' | 'unread';
@@ -72,8 +72,8 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
   // Player-only: ripristina il conteggio inviti dalla cache al primo render
   useEffect(() => {
     if (role !== 'player') return;
-    AsyncStorage.getItem('pendingInvitesCount').then(cached => {
-      if (cached !== null) setPendingInvitesCount(parseInt(cached, 10));
+    getCachedData<number>('pendingInvitesCount').then(cached => {
+      if (typeof cached === 'number') setPendingInvitesCount(cached);
     });
   }, [role]);
 
@@ -110,7 +110,7 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
         const data = await res.json();
         if (Array.isArray(data)) {
           setPendingInvitesCount(data.length);
-          await AsyncStorage.setItem('pendingInvitesCount', String(data.length));
+          await setCachedData('pendingInvitesCount', data.length);
         }
       }
     } catch (err) {

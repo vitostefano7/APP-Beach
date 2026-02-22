@@ -17,11 +17,11 @@ import { useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../../config/api";
 import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
 import SportIcon from "../../../components/SportIcon";
 import FilterModal from "../../../components/FilterModal";
+import { getCachedData, setCachedData } from "../../../components/cache/cacheStorage";
 
 /* =========================
    TYPES
@@ -183,16 +183,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 
   const readCache = useCallback(async () => {
     try {
-      const raw = await AsyncStorage.getItem(getCacheKey(filter));
-      if (!raw) return null;
-
-      const parsed: BookingsCacheEntry = JSON.parse(raw);
-      if (!parsed?.ts || !parsed?.data) return null;
-
-      const isFresh = Date.now() - parsed.ts < CACHE_TTL_MS;
-      if (!isFresh) return null;
-
-      return parsed.data;
+      return await getCachedData<BookingsCacheEntry["data"]>(getCacheKey(filter), CACHE_TTL_MS);
     } catch {
       return null;
     }
@@ -201,11 +192,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const writeCache = useCallback(
     async (payload: BookingsCacheEntry["data"]) => {
       try {
-        const entry: BookingsCacheEntry = {
-          ts: Date.now(),
-          data: payload,
-        };
-        await AsyncStorage.setItem(getCacheKey(filter), JSON.stringify(entry));
+        await setCachedData(getCacheKey(filter), payload);
       } catch {
         // noop
       }
