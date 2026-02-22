@@ -18,6 +18,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useRoute, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../../config/api";
 import SportIcon from '../../../components/SportIcon';
 import FilterModal from "../../../components/FilterModal";
@@ -85,6 +86,24 @@ interface OwnerPaginatedBookingsResponse {
     upcoming: number;
     past: number;
     ongoing: number;
+  };
+}
+
+interface OwnerBookingsCacheEntry {
+  ts: number;
+  data: {
+    items: Booking[];
+    counts: {
+      all: number;
+      upcoming: number;
+      past: number;
+      ongoing: number;
+    };
+    pagination: {
+      page: number;
+      hasNext: boolean;
+      total: number;
+    };
   };
 }
 
@@ -561,6 +580,7 @@ export default function OwnerBookingsScreen() {
   const hasFocusedOnceRef = useRef(false);
   const PAGE_SIZE = 15;
   const PREFETCH_SCROLL_RATIO = 0.8;
+  const CACHE_TTL_MS = 2 * 60 * 1000;
   const lastPrefetchPageRef = useRef(0);
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "ongoing">(route.params?.filterDate ? "all" : "upcoming");
   
@@ -648,6 +668,34 @@ export default function OwnerBookingsScreen() {
     isFetchingRef.current = true;
 
     try {
+      const normalizedUsername = filterUsername.trim().toLowerCase();
+      const cacheKey = `owner:bookings:paginated:${JSON.stringify({
+        filter,
+        username: normalizedUsername,
+        strutturaId: filterStruttura || "",
+        campoId: filterCampo || "",
+        sport: filterSport || "",
+        date: filterDate || "",
+      })}`;
+
+      if (page === 1 && !force) {
+        try {
+          const raw = await AsyncStorage.getItem(cacheKey);
+          if (raw) {
+            const parsed: OwnerBookingsCacheEntry = JSON.parse(raw);
+            if (parsed?.ts && parsed?.data && Date.now() - parsed.ts < CACHE_TTL_MS) {
+              lastPrefetchPageRef.current = 0;
+              setCounts(parsed.data.counts);
+              setPagination(parsed.data.pagination);
+              setBookings(parsed.data.items);
+              return;
+            }
+          }
+        } catch {
+          // noop
+        }
+      }
+
       if (page === 1) {
         if (force) {
           setRefreshing(true);
@@ -687,6 +735,24 @@ export default function OwnerBookingsScreen() {
       if (page === 1) {
         lastPrefetchPageRef.current = 0;
         setBookings(data.items);
+
+        try {
+          const entry: OwnerBookingsCacheEntry = {
+            ts: Date.now(),
+            data: {
+              items: data.items,
+              counts: data.counts,
+              pagination: {
+                page: data.pagination.page,
+                hasNext: data.pagination.hasNext,
+                total: data.pagination.total,
+              },
+            },
+          };
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
+        } catch {
+          // noop
+        }
       } else {
         setBookings((prev) => {
           const prevIds = new Set(prev.map((b) => b._id));

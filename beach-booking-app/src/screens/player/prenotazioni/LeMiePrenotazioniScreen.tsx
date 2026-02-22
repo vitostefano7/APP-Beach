@@ -17,6 +17,7 @@ import { useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../../config/api";
 import { ScaleInView } from "./DettaglioPrenotazione/components/AnimatedComponents";
 import SportIcon from "../../../components/SportIcon";
@@ -91,6 +92,24 @@ interface PaginatedBookingsResponse {
   };
 }
 
+interface BookingsCacheEntry {
+  ts: number;
+  data: {
+    items: Booking[];
+    counts: {
+      all: number;
+      upcoming: number;
+      past: number;
+      invites: number;
+    };
+    pagination: {
+      page: number;
+      hasNext: boolean;
+      total: number;
+    };
+  };
+}
+
 /* =========================
    SCREEN
 ========================= */
@@ -152,9 +171,47 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   ========================= */
   const PAGE_SIZE = 15;
   const PREFETCH_SCROLL_RATIO = 0.8;
+  const CACHE_TTL_MS = 2 * 60 * 1000;
   const isFetchingRef = useRef(false);
   const hasFocusedOnceRef = useRef(false);
   const lastPrefetchPageRef = useRef(0);
+
+  const getCacheKey = useCallback(
+    (timeFilter: "upcoming" | "past" | "invites") => `bookings:me:paginated:${timeFilter}`,
+    []
+  );
+
+  const readCache = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(getCacheKey(filter));
+      if (!raw) return null;
+
+      const parsed: BookingsCacheEntry = JSON.parse(raw);
+      if (!parsed?.ts || !parsed?.data) return null;
+
+      const isFresh = Date.now() - parsed.ts < CACHE_TTL_MS;
+      if (!isFresh) return null;
+
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  }, [filter, getCacheKey]);
+
+  const writeCache = useCallback(
+    async (payload: BookingsCacheEntry["data"]) => {
+      try {
+        const entry: BookingsCacheEntry = {
+          ts: Date.now(),
+          data: payload,
+        };
+        await AsyncStorage.setItem(getCacheKey(filter), JSON.stringify(entry));
+      } catch {
+        // noop
+      }
+    },
+    [filter, getCacheKey]
+  );
 
   const loadBookings = useCallback(async ({
     signal,
@@ -170,17 +227,28 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
 
     isFetchingRef.current = true;
 
-    if (page === 1) {
-      if (force) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-    } else {
-      setLoadingMore(true);
-    }
-
     try {
+      if (page === 1 && !force) {
+        const cached = await readCache();
+        if (cached) {
+          lastPrefetchPageRef.current = 0;
+          setCounts(cached.counts);
+          setPagination(cached.pagination);
+          setBookings(cached.items);
+          return;
+        }
+      }
+
+      if (page === 1) {
+        if (force) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+      } else {
+        setLoadingMore(true);
+      }
+
       const query = new URLSearchParams({
         page: String(page),
         limit: String(PAGE_SIZE),
@@ -205,6 +273,16 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       if (page === 1) {
         lastPrefetchPageRef.current = 0;
         setBookings(data.items);
+
+        await writeCache({
+          items: data.items,
+          counts: data.counts,
+          pagination: {
+            page: data.pagination.page,
+            hasNext: data.pagination.hasNext,
+            total: data.pagination.total,
+          },
+        });
       } else {
         setBookings((prev) => {
           const prevIds = new Set(prev.map((b) => b._id));
@@ -222,7 +300,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       setLoadingMore(false);
       isFetchingRef.current = false;
     }
-  }, [token, filter]);
+  }, [token, filter, readCache, writeCache]);
 
   useFocusEffect(
     useCallback(() => {
