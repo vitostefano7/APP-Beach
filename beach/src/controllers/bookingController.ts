@@ -52,7 +52,10 @@ const isOngoingBookingTime = (booking: any, now: Date) => {
 
 const getNowParts = () => {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const today = `${year}-${month}-${day}`;
   const nowTime = now.toTimeString().slice(0, 5);
   return { today, nowTime };
 };

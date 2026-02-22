@@ -630,6 +630,15 @@ export default function HomeScreen() {
         if (!match?._id || match.status && ['completed', 'cancelled', 'full'].includes(match.status)) return false;
         if (match.isPublic === false) return false;
 
+        const booking = match.booking;
+        if (!booking || booking.status === 'cancelled') return false;
+        if (!booking.date || !booking.startTime || !booking.endTime) return false;
+
+        const bookingStart = new Date(`${booking.date}T${booking.startTime}:00`);
+        const bookingEnd = new Date(`${booking.date}T${booking.endTime}:00`);
+        if (Number.isNaN(bookingStart.getTime()) || Number.isNaN(bookingEnd.getTime())) return false;
+        if (bookingEnd <= now) return false;
+
         const confirmedPlayers = match.players?.filter((p: any) => p.status === 'confirmed').length || 0;
         const maxPlayers = match.maxPlayers || 0;
         if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
