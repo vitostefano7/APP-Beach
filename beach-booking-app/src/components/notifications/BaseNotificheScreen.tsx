@@ -388,7 +388,7 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
             {role === 'player' && (
               <Pressable
                 style={[styles.invitesButtonContainer, { position: 'relative' }]}
-                onPress={() => navigation.navigate('TuttiInviti')}
+                onPress={() => navigation.navigate('TuttiInviti', { initialFilter: 'pending' })}
               >
                 <Ionicons name="mail-outline" size={20} color="#2196F3" />
                 <Text style={styles.invitesButtonText}>Inviti</Text>

@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useContext, useState, useCallback, useLayoutEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useAlert } from "../../../context/AlertContext";
@@ -21,10 +21,14 @@ import { resolveAvatarUrl } from "../../../utils/avatar";
 import SportIcon from "../../../components/SportIcon";
 import styles from "./TuttiInviti.styles";
 
+type FilterType = "all" | "pending" | "confirmed" | "declined" | "expired";
+
 export default function TuttiInvitiScreen() {
   const { token, user } = useContext(AuthContext);
   const { showAlert } = useAlert();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const initialFilter: FilterType = route.params?.initialFilter ?? "all";
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -53,13 +57,13 @@ export default function TuttiInvitiScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [invites, setInvites] = useState<any[]>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "declined" | "expired">("all");
+  const [filter, setFilter] = useState<FilterType>(initialFilter);
 
   useFocusEffect(
     useCallback(() => {
-      setFilter("all");
+      setFilter(initialFilter);
       loadAllMatches();
-    }, [])
+    }, [initialFilter])
   );
 
   // Nel file TuttiInviti.tsx, modifica loadAllMatches:

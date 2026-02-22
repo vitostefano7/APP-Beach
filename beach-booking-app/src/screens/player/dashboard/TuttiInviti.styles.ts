@@ -370,6 +370,7 @@ pageSubtitle: {
   quickActionText: {
     fontSize: 14,
     fontWeight: "600",
+    color: "#F44336",
   },
   quickAcceptText: {
     color: "white",
