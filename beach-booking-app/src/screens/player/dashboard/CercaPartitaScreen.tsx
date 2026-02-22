@@ -96,6 +96,10 @@ type MatchItem = {
   createdAt?: string;
 };
 
+type MatchListRow =
+  | { type: "date"; key: string; date: string }
+  | { type: "match"; key: string; match: MatchItem };
+
 const getPlayersCount = (players: MatchItem["players"], status?: "pending" | "confirmed") => {
   if (!players || players.length === 0) return 0;
   if (!status) return players.length;
@@ -111,12 +115,29 @@ const parseMatchStart = (match: MatchItem) => {
   }
 };
 
+const formatMatchDateHeader = (dateString?: string) => {
+  if (!dateString) return "Data non disponibile";
+  try {
+    const date = new Date(`${dateString}T00:00:00`);
+    return date.toLocaleDateString("it-IT", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
 interface SportData {
   _id: string;
   name: string;
   code: string;
   allowedFormations: string[];
 }
+
+const INITIAL_VISIBLE_MATCHES = 10;
+const MATCHES_LOAD_STEP = 10;
 
 const getDuration = (startTime?: string, endTime?: string) => {
   if (!startTime || !endTime) return null;
@@ -188,6 +209,7 @@ export default function CercaPartitaScreen() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSportPicker, setShowSportPicker] = useState(false);
+  const [visibleMatchCount, setVisibleMatchCount] = useState(INITIAL_VISIBLE_MATCHES);
   const cityInputRef = useRef<TextInput>(null);
 
   const getSportLabel = (sport?: string) => {
@@ -324,6 +346,10 @@ export default function CercaPartitaScreen() {
         if (maxPlayers <= 0 || confirmedPlayers >= maxPlayers) return false;
 
         const start = parseMatchStart(match);
+        if (!start) return false;
+
+        const registrationDeadline = new Date(start.getTime() - 45 * 60 * 1000);
+        if (registrationDeadline.getTime() <= now.getTime()) return false;
 
         const alreadyJoined = match.players?.some((player) => player.user?._id === user?.id);
         if (alreadyJoined) return false;
@@ -783,15 +809,46 @@ export default function CercaPartitaScreen() {
     return finalResult;
   }, [matches, cityFilter, dateFilter, timeFilter, sportFilter, userPreferences, manualCityCoords, visitedStruttureIds, playersFilter, currentFilter]);
 
-  const visitedMatches = useMemo(() => {
-    const visited = matches.filter((match) => {
-      const strutturaId = typeof match.booking?.campo?.struttura === 'object' 
-        ? (match.booking?.campo?.struttura as any)?._id 
-        : match.booking?.campo?.struttura;
-      return strutturaId && visitedStruttureIds.includes(strutturaId);
-    }).slice(0, 3); // Limita a 3 partite
-    return visited;
-  }, [matches, visitedStruttureIds]);
+  useEffect(() => {
+    setVisibleMatchCount(INITIAL_VISIBLE_MATCHES);
+  }, [filteredMatches]);
+
+  const visibleMatches = useMemo(() => {
+    return filteredMatches.slice(0, visibleMatchCount);
+  }, [filteredMatches, visibleMatchCount]);
+
+  const hasMoreMatches = visibleMatchCount < filteredMatches.length;
+
+  const loadMoreMatches = useCallback(() => {
+    if (!hasMoreMatches) return;
+    setVisibleMatchCount((prev) => Math.min(prev + MATCHES_LOAD_STEP, filteredMatches.length));
+  }, [hasMoreMatches, filteredMatches.length]);
+
+  const groupedListRows = useMemo<MatchListRow[]>(() => {
+    const rows: MatchListRow[] = [];
+    let lastDate = "";
+
+    visibleMatches.forEach((match) => {
+      const matchDate = match.booking?.date || "Data non disponibile";
+
+      if (matchDate !== lastDate) {
+        rows.push({
+          type: "date",
+          key: `date-${matchDate}`,
+          date: matchDate,
+        });
+        lastDate = matchDate;
+      }
+
+      rows.push({
+        type: "match",
+        key: `match-${match._id}`,
+        match,
+      });
+    });
+
+    return rows;
+  }, [visibleMatches]);
 
   // Gestione cambio testo città
   const handleCityTextChange = useCallback((text: string) => {
@@ -1054,10 +1111,15 @@ export default function CercaPartitaScreen() {
 
   const renderMatchCard = ({ item }: { item: MatchItem }) => {
     const bookingId = item.booking?._id;
+    const strutturaId = typeof item.booking?.campo?.struttura === 'object'
+      ? (item.booking?.campo?.struttura as any)?._id
+      : item.booking?.campo?.struttura;
+    const isVisitedStructure = !!strutturaId && visitedStruttureIds.includes(strutturaId);
 
     return (
       <OpenMatchCard
         match={item}
+        isVisitedStructure={isVisitedStructure}
         onPress={() => {
           if (!bookingId) {
             Alert.alert("Errore", "ID prenotazione non disponibile");
@@ -1068,6 +1130,18 @@ export default function CercaPartitaScreen() {
         onJoin={() => handleJoinMatch(item)}
       />
     );
+  };
+
+  const renderGroupedRow = ({ item }: { item: MatchListRow }) => {
+    if (item.type === "date") {
+      return (
+        <View style={styles.dateGroupHeader}>
+          <Text style={styles.dateGroupHeaderText}>{formatMatchDateHeader(item.date)}</Text>
+        </View>
+      );
+    }
+
+    return renderMatchCard({ item: item.match });
   };
 
   if (loading && !refreshing) {
@@ -1221,36 +1295,22 @@ export default function CercaPartitaScreen() {
       ) : (
         <>
           <FlatList
-            data={filteredMatches}
-            keyExtractor={(item) => item._id}
-            renderItem={renderMatchCard}
+            data={groupedListRows}
+            keyExtractor={(item) => item.key}
+            renderItem={renderGroupedRow}
             contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 24 }]}
-            ListHeaderComponent={
-              <>
-                {visitedMatches.length > 0 && (
-                  <View style={styles.visitedSection}>
-                    <Text style={styles.visitedTitle}>Partite nelle tue strutture visitate</Text>
-                    {visitedMatches.map((match) => (
-                      <OpenMatchCard
-                        key={match._id}
-                        match={match}
-                        onPress={() => {
-                          const bookingId = match.booking?._id;
-                          if (!bookingId) {
-                            Alert.alert("Errore", "ID prenotazione non disponibile");
-                            return;
-                          }
-                          navigation.navigate("DettaglioPrenotazione", { bookingId });
-                        }}
-                        onJoin={() => handleJoinMatch(match)}
-                      />
-                    ))}
-                  </View>
-                )}
-              </>
-            }
+            onEndReached={loadMoreMatches}
+            onEndReachedThreshold={0.35}
             onRefresh={onRefresh}
             refreshing={!!refreshing}
+            ListFooterComponent={
+              hasMoreMatches ? (
+                <View style={styles.loadMoreFooter}>
+                  <ActivityIndicator size="small" color="#2196F3" />
+                  <Text style={styles.loadMoreFooterText}>Carico altre partite...</Text>
+                </View>
+              ) : null
+            }
             ListEmptyComponent={
               activeFilterMode === 'none' ? (
                 <View style={styles.emptyState}>
@@ -2001,16 +2061,28 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "white",
   },
-  visitedSection: {
-    marginTop: 16,
+  dateGroupHeader: {
+    marginTop: 12,
     marginBottom: 8,
+    paddingHorizontal: 4,
   },
-  visitedTitle: {
-    fontSize: 16,
+  dateGroupHeaderText: {
+    fontSize: 15,
     fontWeight: "700",
-    color: "#333",
-    marginBottom: 12,
-    paddingHorizontal: 16,
+    color: "#1A1A1A",
+    textTransform: "capitalize",
+  },
+  loadMoreFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  loadMoreFooterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
   },
   // 🆕 Stili per il modal selezione città
   citySelectionFixedOverlay: {

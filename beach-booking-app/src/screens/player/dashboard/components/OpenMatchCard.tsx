@@ -10,6 +10,7 @@ interface OpenMatchCardProps {
   match: any;
   onPress: () => void;
   onJoin?: () => void;
+  isVisitedStructure?: boolean;
 }
 
 const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
@@ -18,7 +19,7 @@ const getPlayersCount = (players: any[], status?: 'pending' | 'confirmed') => {
   return players.filter((player) => player.status === status).length;
 };
 
-const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin }) => {
+const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin, isVisitedStructure }) => {
   const confirmedPlayers = getPlayersCount(match.players, 'confirmed');
   const maxPlayers = match.maxPlayers || 0;
   const available = Math.max(maxPlayers - confirmedPlayers, 0);
@@ -77,6 +78,12 @@ const OpenMatchCard: React.FC<OpenMatchCardProps> = ({ match, onPress, onJoin })
   return (
     <Pressable style={styles.openMatchCard} onPress={onPress}>
       <View style={styles.openMatchHeader}>
+        {isVisitedStructure && (
+          <View style={styles.openMatchVisitedBadge}>
+            <Ionicons name="location" size={11} color="#2196F3" />
+            <Text style={styles.openMatchVisitedBadgeText}>Struttura visitata</Text>
+          </View>
+        )}
         <View style={styles.openMatchTitleRow}>
           <Text style={styles.openMatchTitle} numberOfLines={1}>
             {match.booking?.campo?.struttura?.name || 'Struttura'}
