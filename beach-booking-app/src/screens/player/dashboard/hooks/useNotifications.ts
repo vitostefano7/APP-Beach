@@ -11,11 +11,11 @@ export interface Notification {
     username: string;
     avatarUrl?: string;
   };
-  type: 'new_follower' | 'follow_back' | 'match_invite' | 'match_start' | 'match_result' | 'match_join';
+  type: 'new_follower' | 'follow_back' | 'match_invite' | 'match_start' | 'match_result' | 'match_join' | 'invite_accepted' | 'invite_declined' | 'new_booking' | 'booking_cancelled' | 'booking_confirmed';
   title: string;
   message: string;
   relatedId?: string;
-  relatedModel?: 'Match' | 'Friendship' | 'Booking' | 'User';
+  relatedModel?: 'Match' | 'Friendship' | 'Booking' | 'User' | 'Struttura';
   isRead: boolean;
   readAt?: string;
   createdAt: string;

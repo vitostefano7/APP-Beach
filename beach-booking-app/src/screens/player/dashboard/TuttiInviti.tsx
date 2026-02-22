@@ -517,7 +517,7 @@ const loadAllMatches = async () => {
                 });
               }}
             >
-              <Ionicons name="close" size={16} color="#2196F3" />
+              <Ionicons name="close" size={16} color="red" />
               <Text style={styles.quickActionText}>Rifiuta</Text>
             </Pressable>
             <Pressable
