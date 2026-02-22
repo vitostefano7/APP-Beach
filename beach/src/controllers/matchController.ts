@@ -1323,10 +1323,10 @@ export const getPendingInvites = async (req: AuthRequest, res: Response) => {
       populate: [
         { 
           path: 'campo', 
-          populate: { 
-            path: 'struttura', 
-            select: 'name location' 
-          } 
+          populate: [
+            { path: 'struttura', select: 'name location' },
+            { path: 'sport', select: 'name' }
+          ]
         },
         { path: 'user', select: 'name email' }
       ]

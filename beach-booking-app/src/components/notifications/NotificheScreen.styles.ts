@@ -150,7 +150,8 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContent: {
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 90,
   },
   notificationCard: {
     backgroundColor: '#fff',

@@ -893,7 +893,7 @@ export const styles = StyleSheet.create({
   inviteDeclineText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#black",
+    color: "#F44336",
   },
   inviteAccept: {
     backgroundColor: "#4CAF50",
