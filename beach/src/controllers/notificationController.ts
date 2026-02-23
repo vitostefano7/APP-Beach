@@ -157,20 +157,34 @@ export const getUnreadCount = async (
 ) => {
   try {
     const userId = req.user!.id;
-    const { type } = req.query;
+    const { type, scope, limit = 50 } = req.query;
 
-    console.log('🔍 [getUnreadCount] Richiesta conteggio non lette:', { userId, type });
+    console.log('🔍 [getUnreadCount] Richiesta conteggio non lette:', { userId, type, scope, limit });
 
-    const query: any = {
-      recipient: userId,
-      isRead: false
+    const baseQuery: any = {
+      recipient: userId
     };
 
     if (type) {
-      query.type = type;
+      baseQuery.type = type;
     }
 
-    const count = await Notification.countDocuments(query);
+    let count = 0;
+
+    if (scope === 'visible') {
+      const latestNotifications = await Notification.find(baseQuery)
+        .sort({ createdAt: -1 })
+        .limit(Number(limit))
+        .select('isRead');
+
+      count = latestNotifications.reduce((acc, notification) => acc + (notification.isRead ? 0 : 1), 0);
+    } else {
+      const query: any = {
+        ...baseQuery,
+        isRead: false
+      };
+      count = await Notification.countDocuments(query);
+    }
 
     console.log('✅ [getUnreadCount] Conteggio non lette:', count);
 

@@ -1988,7 +1988,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                       }
                     }}
                   >
-                    <SportIcon sport={sport} size={18} color={isActive ? 'white' : '#2979ff'} />
+                    <SportIcon sport={sport} size={14} color="#2196F3" />
                     <Text style={[
                       styles.sportChipText,
                       isActive && styles.sportChipTextActive,

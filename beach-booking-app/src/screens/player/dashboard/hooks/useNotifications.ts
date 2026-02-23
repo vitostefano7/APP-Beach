@@ -74,7 +74,7 @@ export const useNotifications = () => {
   // Carica il conteggio delle notifiche non lette
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/notifications/unread-count`, {
+      const response = await fetch(`${API_URL}/notifications/unread-count?scope=visible&limit=50`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -85,7 +85,7 @@ export const useNotifications = () => {
       }
 
       const data = await response.json();
-      
+
       setUnreadCount(data.count);
       
       return data.count;

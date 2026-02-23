@@ -41,61 +41,46 @@ import { generateNotifications } from "./generateNotifications";
 import fs from "fs";
 import path from "path";
 
+async function measure<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  console.time(label);
+  try {
+    return await fn();
+  } finally {
+    console.timeEnd(label);
+  }
+}
+
 async function seed() {
   try {
+    console.time("⏱️ Seed totale");
     mongoose.set('debug', false);
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(MONGO_URI, { maxPoolSize: 20 });
     console.log("✅ MongoDB connesso");
 
     /* -------- CLEAN -------- */
-    await Promise.all([
-      Sport.deleteMany({}),
-      Post.deleteMany({}),
-      UserFollower.deleteMany({}),
-      StrutturaFollower.deleteMany({}),
-      // Message.deleteMany({}),
-      // Conversation.deleteMany({}),
-      // Notification.deleteMany({}),
-      // Friendship.deleteMany({}),
-      // Event.deleteMany({}),
-      // CommunityEvent.deleteMany({}),
-      Match.deleteMany({}),
-      Booking.deleteMany({}),
-      CampoCalendarDay.deleteMany({}),
-      Campo.deleteMany({}),
-      Struttura.deleteMany({}),
-      PlayerProfile.deleteMany({}),
-      UserPreferences.deleteMany({}),
-      User.deleteMany({}),
-    ]);
+    const db = mongoose.connection.db ?? (() => {
+      throw new Error("Connessione MongoDB non inizializzata correttamente");
+    })();
+    await measure("⏱️ Clean DB", () => db.dropDatabase());
     console.log("🧹 Database pulito");
 
     /* -------- SPORT -------- */
-    const sports = await seedSports();
-    const sportMapping = await getSportMapping();
+    const sports = await measure("⏱️ Seed sports", () => seedSports());
+    const sportMapping = await measure("⏱️ Build sport mapping", () => getSportMapping());
 
-    /* -------- AVATARS UPLOAD -------- */
-    console.log(`☁️ Upload avatar...`);
-    const avatarUrls = await uploadAvatarsToCloudinary();
-    if (avatarUrls.length) {
-      console.log(`✅ Avatar caricati: ${avatarUrls.length}`);
-    } else {
-      console.log("ℹ️ Nessun avatar caricato");
-    }
-
-    /* -------- STRUTTURA IMAGES UPLOAD -------- */
-    console.log(`☁️ Upload immagini strutture...`);
-    const strutturaImageUrls = await uploadStrutturaImagesToCloudinary();
-    if (strutturaImageUrls.length) {
-      console.log(`✅ Immagini strutture caricate: ${strutturaImageUrls.length}`);
-    } else {
-      console.log("ℹ️ Nessuna immagine struttura caricata");
-    }
+    /* -------- CLOUDINARY UPLOAD -------- */
+    console.log(`☁️ Upload avatar + immagini strutture...`);
+    const [avatarUrls, strutturaImageUrls] = await measure("⏱️ Cloudinary upload", () => Promise.all([
+      uploadAvatarsToCloudinary(),
+      uploadStrutturaImagesToCloudinary(),
+    ]));
+    console.log(`✅ Avatar caricati: ${avatarUrls.length}`);
+    console.log(`✅ Immagini strutture caricate: ${strutturaImageUrls.length}`);
 
     /* -------- USERS -------- */
     let users, players, owners;
     try {
-      const result = await generateUsers(avatarUrls);
+      const result = await measure("⏱️ Generate users", () => generateUsers(avatarUrls));
       users = result.users;
       players = result.players;
       owners = result.owners;
@@ -104,41 +89,42 @@ async function seed() {
       throw err;
     }
 
-    console.log('--- DOPO generateUsers, PRIMA DI generateStrutture ---');
     /* -------- STRUTTURE -------- */
-    console.log('--- PRIMA DI generateStrutture ---');
-    const strutture = await generateStrutture(owners);
-    console.log('--- DOPO generateStrutture ---');
+    const strutture = await measure("⏱️ Generate strutture", () => generateStrutture(owners));
+
+    /* -------- TASK INDIPENDENTI -------- */
+    const postsPromise = generatePosts(users, strutture);
+    const followersPromise = generateFollowers(users, strutture);
+    const friendshipsPromise = generateFriendships(players);
 
     /* -------- CAMPI -------- */
-    const campi = await generateCampi(strutture, sportMapping);
+    const campi = await measure("⏱️ Generate campi", () => generateCampi(strutture, sportMapping));
 
-    /* -------- CALENDAR -------- */
-    const calendar = await generateCalendar(campi);
-
-    /* -------- BOOKINGS -------- */
-    const bookings = await generateBookings(players, campi, strutture);
+    /* -------- CALENDAR + BOOKINGS -------- */
+    const [calendar, bookings] = await measure("⏱️ Calendar + bookings", () => Promise.all([
+      generateCalendar(campi),
+      generateBookings(players, campi, strutture),
+    ]));
     const today = new Date();
     const pastBookings = bookings.filter((b: any) => new Date(b.date) < today);
     const futureBookings = bookings.filter((b: any) => new Date(b.date) >= today);
 
     /* -------- MATCHES -------- */
-    const matches = await generateMatches(players, campi, pastBookings.concat(futureBookings), strutture);
-
-    /* -------- POSTS -------- */
-    const posts = await generatePosts(users, strutture);
-
-    /* -------- FOLLOWERS -------- */
-    const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
-
-    /* -------- FRIENDSHIPS -------- */
-    const friendships = await generateFriendships(players);
+    const matches = await measure("⏱️ Generate matches", () => generateMatches(players, campi, pastBookings.concat(futureBookings), strutture));
 
     // /* -------- CONVERSATIONS -------- */
-    const { conversations, messages } = await generateConversations(users, strutture, matches);
+    const conversationsPromise = generateConversations(users, strutture, matches);
 
     /* -------- NOTIFICATIONS -------- */
-    const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
+    const notificationsPromise = generateNotifications(users, matches, bookings, strutture, campi);
+
+    const [{ conversations, messages }, notifications, posts, { strutturaFollowers, userFollowers }, friendships] = await measure("⏱️ Async social tasks", () => Promise.all([
+      conversationsPromise,
+      notificationsPromise,
+      postsPromise,
+      followersPromise,
+      friendshipsPromise,
+    ]));
 
     /* -------- GENERATE OUTPUT FILE -------- */
     console.log(`📝 Generazione lista_utenti.txt...`);
@@ -169,9 +155,11 @@ async function seed() {
     // console.log(`💬 Messaggi: ${messages.length}`);
     // console.log(`🔔 Notifiche: ${notifications.length}`);
     console.log("=".repeat(50));
+    console.timeEnd("⏱️ Seed totale");
 
     process.exit(0);
   } catch (err) {
+    console.timeEnd("⏱️ Seed totale");
     console.error("❌ Errore seed:", err);
     process.exit(1);
   }

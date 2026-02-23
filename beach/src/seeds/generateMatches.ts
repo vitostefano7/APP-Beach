@@ -8,10 +8,33 @@ function formatDate(date: Date) {
 }
 
 export async function generateMatches(players: any[], campi: any[], savedBookings: any[], strutture: any[]) {
+  const seedScaleRaw = Number(process.env.SEED_SCALE ?? "1");
+  const seedScale = Number.isFinite(seedScaleRaw) && seedScaleRaw > 0 ? seedScaleRaw : 1;
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // Inizio della giornata di oggi
   const pastBookings = savedBookings.filter((b: any) => new Date(b.date) < todayStart);
   const futureBookings = savedBookings.filter((b: any) => new Date(b.date) >= todayStart);
+  const campoById = new Map<string, any>(
+    campi.map((campo: any) => [campo._id.toString(), campo])
+  );
+  const strutturaById = new Map<string, any>(
+    strutture.map((struttura: any) => [struttura._id.toString(), struttura])
+  );
+
+  const bookingMetaById = new Map<string, { strutturaId: string; sportCode: string; maxPlayers: number }>();
+  for (const booking of savedBookings) {
+    const bookingId = booking._id.toString();
+    const campo = campoById.get(booking.campo.toString());
+    const sportCode = typeof campo?.sport === "object" ? campo.sport.code : campo?.sport;
+    const strutturaId = booking.struttura?.toString() ?? campo?.struttura?.toString() ?? "";
+    const maxPlayers = booking.numberOfPeople || campo?.maxPlayers || 4;
+
+    bookingMetaById.set(bookingId, {
+      strutturaId,
+      sportCode: sportCode || "",
+      maxPlayers,
+    });
+  }
 
   const matches: any[] = [];
   const matchCounters = { completed: 0, noResult: 0, inProgress: 0, open: 0, full: 0, cancelled: 0, withInvites: 0 };
@@ -19,11 +42,14 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   const userInviteCount = new Map<string, number>();
   players.forEach((p: any) => userInviteCount.set(p._id.toString(), 0));
   // Helper function per verificare se una struttura supporta split payment
-  const canBePublic = (bookingId: any) => {
-    const booking = savedBookings.find((b: any) => b._id.toString() === bookingId.toString());
-    if (!booking) return false;
-    const struttura = strutture.find((s: any) => s._id.toString() === booking.struttura.toString());
-    return struttura?.isCostSplittingEnabled || false;
+  const canBePublicByStrutturaId = (strutturaId: string) => {
+    if (!strutturaId) return false;
+    return strutturaById.get(strutturaId)?.isCostSplittingEnabled || false;
+  };
+
+  const canBePublic = (booking: any) => {
+    const strutturaId = booking.struttura?.toString() || bookingMetaById.get(booking._id.toString())?.strutturaId || "";
+    return canBePublicByStrutturaId(strutturaId);
   };
 
   // Helper per ottenere maxPlayers dal booking o dal campo
@@ -34,7 +60,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     }
     
     // Altrimenti usa maxPlayers del campo
-    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    const campo = campoById.get(booking.campo.toString());
     return campo?.maxPlayers || 4; // default 4 se campo non trovato
   };
 
@@ -79,7 +105,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       joinDate.setHours(joinDate.getHours() - randomInt(1, 24));
       
       // ✅ Distribuzione bilanciata: primi playersPerTeam vanno in A, gli altri in B
-      const currentTeamACount = matchPlayers.filter(p => p.team === "A").length;
+      const currentTeamACount = j;
       const team = currentTeamACount < playersPerTeam ? "A" : "B";
       
       matchPlayers.push({
@@ -92,8 +118,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     }
 
     // Genera risultato realistico in base al tipo di sport
-    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
-    const sportCode = typeof campo?.sport === 'object' ? campo.sport.code : campo?.sport;
+    const sportCode = bookingMetaById.get(booking._id.toString())?.sportCode;
     const sportStr = (sportCode || '').toLowerCase();
     
     // Determina il tipo di sport
@@ -166,7 +191,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       createdBy: creator,
       players: matchPlayers,
       maxPlayers: maxPlayers,
-      isPublic: canBePublic(booking._id),
+      isPublic: canBePublic(booking),
       score: { sets },
       winner: winner,
       playedAt: new Date(booking.date),
@@ -180,7 +205,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   for (const booking of pastWithoutPeople) {
     const creator = booking.user;
     // Trova il campo per ottenere maxPlayers
-    const campo = campi.find((c: any) => c._id.toString() === booking.campo.toString());
+    const campo = campoById.get(booking.campo.toString());
     const maxPlayers = campo?.maxPlayers || 12; // default 12 se campo non trovato
     
     // Calcola il 50% dei giocatori
@@ -238,7 +263,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   // Usa solo booking che NON sono già stati usati per i match completati
   const usedPastBookingIds = new Set(matches.map(m => m.booking.toString()));
   const publicPastBookingsWithPeople = pastBookings
-    .filter((b: any) => b.numberOfPeople && canBePublic(b._id) && !usedPastBookingIds.has(b._id.toString()))
+    .filter((b: any) => b.numberOfPeople && canBePublic(b) && !usedPastBookingIds.has(b._id.toString()))
     .slice(0, Math.floor(pastBookings.length * 0.05)); // 5% dei booking passati
 
   for (const booking of publicPastBookingsWithPeople) {
@@ -314,23 +339,32 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   // Match aperti: almeno 1 per ogni sport di ogni struttura CHE SUPPORTA SPLIT PAYMENT
   const openMatchBookings: any[] = [];
   const usedBookingIds = new Set<string>();
+  const futureBookingsByStrutturaSport = new Map<string, any[]>();
+
+  for (const booking of futureBookings) {
+    const bookingId = booking._id.toString();
+    const meta = bookingMetaById.get(bookingId);
+    if (!meta?.strutturaId || !meta.sportCode) continue;
+
+    const key = `${meta.strutturaId}::${meta.sportCode}`;
+    if (!futureBookingsByStrutturaSport.has(key)) {
+      futureBookingsByStrutturaSport.set(key, []);
+    }
+    futureBookingsByStrutturaSport.get(key)!.push(booking);
+  }
   
   for (const [strutturaId, sportMap] of strutturaPerSport) {
     // ✅ VERIFICA CHE LA STRUTTURA SUPPORTI SPLIT PAYMENT
-    const struttura = strutture.find((s: any) => s._id.toString() === strutturaId);
-    if (!struttura?.isCostSplittingEnabled) {
+    if (!canBePublicByStrutturaId(strutturaId)) {
       continue; // Salta questa struttura se non supporta split payment
     }
     
-    for (const [sportCode, campiForSport] of sportMap) {
+    for (const [sportCode] of sportMap) {
       // Trova booking futuri per questo sport che non sono già stati usati
-      const availableBookings = futureBookings.filter((b: any) => {
-        if (usedBookingIds.has(b._id.toString())) return false;
-        const campo = campi.find((c: any) => c._id.toString() === b.campo.toString());
-        if (!campo) return false;
-        const bookingSportCode = typeof campo.sport === 'object' ? campo.sport.code : campo.sport;
-        return bookingSportCode === sportCode && campo.struttura.toString() === strutturaId;
-      });
+      const key = `${strutturaId}::${sportCode}`;
+      const availableBookings = (futureBookingsByStrutturaSport.get(key) || []).filter(
+        (b: any) => !usedBookingIds.has(b._id.toString())
+      );
       
       if (availableBookings.length > 0) {
         const booking = randomElement(availableBookings);
@@ -347,7 +381,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   for (const booking of openMatchBookings) {
     const creator = booking.user;
     const maxPlayers = getMaxPlayers(booking);
-    const isPublic = canBePublic(booking._id);
+    const isPublic = canBePublic(booking);
 
     // Trova un altro giocatore random che ha confermato
     let otherPlayer: any;
@@ -378,6 +412,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       const availableSlots = maxPlayers - currentPlayers;
       const numInvites = availableSlots > 0 ? randomInt(1, Math.min(3, availableSlots)) : 0; // 1-3 inviti
       const selectedPlayers = [creator.toString(), otherPlayer._id.toString()];
+      let teamACount = 1;
       
       for (let i = 0; i < numInvites; i++) {
         let invitedPlayer: any;
@@ -388,10 +423,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         
         matchPlayers.push({
           user: invitedPlayer._id,
-          team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+          team: teamACount < maxPlayers / 2 ? "A" : "B",
           status: "pending",
           joinedAt: new Date(),
         });
+        if (teamACount < maxPlayers / 2) teamACount++;
         
         // Incrementa il contatore di inviti per questo utente
         const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
@@ -417,7 +453,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   for (const booking of regularFutureBookings) {
     const creator = booking.user;
     const maxPlayers = getMaxPlayers(booking);
-    const isPublic = canBePublic(booking._id);
+    const isPublic = canBePublic(booking);
     const isFull = Math.random() > 0.5; // 50% completi, 50% aperti
 
     if (isFull && booking.numberOfPeople) {
@@ -454,7 +490,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         createdBy: creator,
         players: matchPlayers,
         maxPlayers: maxPlayers,
-        isPublic: canBePublic(booking._id),
+        isPublic: canBePublic(booking),
         status: "full",
       });
       matchCounters.full++;
@@ -476,6 +512,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         const availableSlots = maxPlayers - currentPlayers;
         const numInvites = availableSlots > 0 ? randomInt(1, Math.min(4, availableSlots)) : 0; // 1-4 inviti
         const selectedPlayers = [creator.toString()];
+        let teamACount = 1;
         
         for (let i = 0; i < numInvites; i++) {
           let invitedPlayer: any;
@@ -486,10 +523,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
           
           matchPlayers.push({
             user: invitedPlayer._id,
-            team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+            team: teamACount < maxPlayers / 2 ? "A" : "B",
             status: "pending",
             joinedAt: new Date(),
           });
+          if (teamACount < maxPlayers / 2) teamACount++;
           
           // Incrementa il contatore di inviti per questo utente
           const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
@@ -567,6 +605,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   // MATCH APERTI EXTRA - 20 utenti con 10 partite aperte ciascuno
   // ============================================
   console.log(`🎲 Creazione match aperti extra per garantire copertura...`);
+  console.time("⏱️ Extra open matches");
   const Booking = (await import("../models/Booking")).default;
   
   // Popola i campi con lo sport
@@ -579,13 +618,15 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
     })
   );
   
-  // Seleziona 20 utenti random
-  const selectedUsers = [...players].sort(() => Math.random() - 0.5).slice(0, Math.min(20, players.length));
+  // Seleziona utenti random (scalabile via SEED_SCALE)
+  const extraUsersCount = Math.max(1, Math.round(20 * seedScale));
+  const extraBookingsPerUser = Math.max(1, Math.round(10 * seedScale));
+  const selectedUsers = [...players].sort(() => Math.random() - 0.5).slice(0, Math.min(extraUsersCount, players.length));
   const extraBookings: any[] = [];
   
   for (const user of selectedUsers) {
-    // Crea 10 booking futuri per questo utente
-    for (let i = 0; i < 10; i++) {
+    // Crea booking futuri per questo utente
+    for (let i = 0; i < extraBookingsPerUser; i++) {
       // Seleziona struttura random
       const struttura = randomElement(strutture);
       if (!struttura) continue;
@@ -685,6 +726,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       const availableSlots = maxPlayers - currentPlayers;
       const numInvites = availableSlots > 0 ? randomInt(1, Math.min(3, availableSlots)) : 0;
       const selectedPlayers = [creator.toString(), otherPlayer._id.toString()];
+      let teamACount = 1;
       
       for (let i = 0; i < numInvites; i++) {
         let invitedPlayer: any;
@@ -695,10 +737,11 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         
         matchPlayers.push({
           user: invitedPlayer._id,
-          team: matchPlayers.filter(p => p.team === "A").length < maxPlayers / 2 ? "A" : "B",
+          team: teamACount < maxPlayers / 2 ? "A" : "B",
           status: "pending",
           joinedAt: new Date(),
         });
+        if (teamACount < maxPlayers / 2) teamACount++;
         
         const currentCount = userInviteCount.get(invitedPlayer._id.toString()) || 0;
         userInviteCount.set(invitedPlayer._id.toString(), currentCount + 1);
@@ -718,6 +761,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
   }
   
   console.log(`✅ Creati ${savedExtraBookings.length} match aperti extra distribuiti tra le strutture`);
+  console.timeEnd("⏱️ Extra open matches");
 
   // Controllo: ogni match deve avere almeno l'organizzatore in un team
   const invalidMatches = matches.filter(m => m.players.length === 0 || !m.players.some((p: any) => p.user.toString() === m.createdBy.toString()));
@@ -749,14 +793,29 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
 
   // 🔥 AGGIORNA I BOOKING CON IL RIFERIMENTO AL MATCH
   console.log(`🔄 Aggiornamento booking con riferimenti ai match...`);
-  
-  for (const match of savedMatches) {
-    await Booking.findByIdAndUpdate(match.booking, {
-      match: match._id,
-      hasMatch: true,
-      matchId: match._id.toString(),
-    });
+  console.time("⏱️ Booking-match linking");
+
+  const BATCH_SIZE = 1000;
+  for (let i = 0; i < savedMatches.length; i += BATCH_SIZE) {
+    const batch = savedMatches.slice(i, i + BATCH_SIZE);
+    const operations = batch.map((match: any) => ({
+      updateOne: {
+        filter: { _id: match.booking },
+        update: {
+          $set: {
+            match: match._id,
+            hasMatch: true,
+            matchId: match._id.toString(),
+          },
+        },
+      },
+    }));
+
+    if (operations.length > 0) {
+      await Booking.bulkWrite(operations, { ordered: false });
+    }
   }
+  console.timeEnd("⏱️ Booking-match linking");
   console.log(`✅ Booking aggiornati con riferimenti ai match`);
 
   return savedMatches;

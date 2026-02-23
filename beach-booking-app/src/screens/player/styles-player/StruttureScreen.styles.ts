@@ -101,40 +101,42 @@ export const styles = StyleSheet.create({
   },
 
   sportChipsContainer: {
-    marginTop: 4,
-    marginBottom: 6,
+    maxHeight: 50,
+    backgroundColor: "white",
   },
 
   sportChipsContent: {
-    gap: 10,
-    paddingVertical: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    gap: 8,
   },
 
   sportChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: "white",
-    borderWidth: 1.5,
-    borderColor: "#E0E0E0",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#f8f8f8",
   },
 
   sportChipActive: {
-    backgroundColor: "#2979ff",
-    borderColor: "#2979ff",
+    borderColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
   },
 
   sportChipText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "500",
     color: "#666",
   },
 
   sportChipTextActive: {
-    color: "white",
+    color: "#2196F3",
+    fontWeight: "600",
   },
 
   newResultsBar: {

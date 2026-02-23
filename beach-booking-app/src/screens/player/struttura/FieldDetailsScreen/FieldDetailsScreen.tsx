@@ -152,54 +152,42 @@ export default function FieldDetailsScreen() {
 
   // Support receiving either a full `struttura` object or just a `strutturaId` in params
   const { struttura: initialStruttura, strutturaId } = route.params ?? {};
+  // Use the passed struttura as a placeholder while the full data loads from the API
   const [strutturaState, setStrutturaState] = useState<any | null>(initialStruttura ?? null);
   const struttura = strutturaState;
 
-  // If a full `struttura` object is passed via navigation params, normalize its openingHours immediately
-  useEffect(() => {
-    if (!initialStruttura || !initialStruttura.openingHours) return;
-    const normalized = normalizeOpeningHours(initialStruttura.openingHours);
-    if (normalized) {
-      setStrutturaState((prev) => (prev ? { ...prev, openingHours: normalized } : { ...initialStruttura, openingHours: normalized }));
-    } else {
-      setStrutturaState((prev) => (prev ? { ...prev, openingHours: undefined } : initialStruttura));
-    }
-  }, [initialStruttura]);
+  // Always fetch the complete struttura from the API on mount.
+  // This ensures all fields (phone, openingHours, etc.) are populated even when
+  // navigation params only contain a partial object (e.g. from bookings or chat).
+  const effectiveStrutturaId: string | undefined = strutturaId ?? initialStruttura?._id;
 
   useEffect(() => {
-    if (!strutturaState && strutturaId) {
-      const loadStruttura = async () => {
-        try {
-          const res = await fetch(`${API_URL}/community/strutture/${strutturaId}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          });
+    if (!effectiveStrutturaId) return;
 
-          if (res.ok) {
-            const data = await res.json();
+    const loadStruttura = async () => {
+      try {
+        const res = await fetch(`${API_URL}/community/strutture/${effectiveStrutturaId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
 
-            // DEBUG: log raw openingHours from API to help diagnose missing hours
-            console.debug('RAW openingHours from API for struttura', strutturaId, ':', data.openingHours);
+        if (res.ok) {
+          const data = await res.json();
 
-            // Normalize openingHours robustly (supports stringified JSON, arrays, or italian keys)
-            const normalizedOH = normalizeOpeningHours(data.openingHours);
-            if (normalizedOH) {
-              data.openingHours = normalizedOH;
-            } else {
-              data.openingHours = undefined;
-            }
+          // Normalize openingHours robustly (supports stringified JSON, arrays, or italian keys)
+          const normalizedOH = normalizeOpeningHours(data.openingHours);
+          data.openingHours = normalizedOH ?? undefined;
 
-            setStrutturaState(data);
-          } else {
-            console.error('❌ [FieldDetails] Error fetching struttura:', res.status);
-          }
-        } catch (error) {
-          console.error('❌ [FieldDetails] Exception fetching struttura:', error);
+          setStrutturaState(data);
+        } else {
+          console.error('❌ [FieldDetails] Error fetching struttura:', res.status);
         }
-      };
+      } catch (error) {
+        console.error('❌ [FieldDetails] Exception fetching struttura:', error);
+      }
+    };
 
-      loadStruttura();
-    }
-  }, [strutturaId, token, strutturaState]);
+    loadStruttura();
+  }, [effectiveStrutturaId, token]);
   const scrollViewRef = useRef<ScrollView>(null);
   const galleryScrollViewRef = useRef<ScrollView>(null);
   const contentViewRef = useRef<View>(null);

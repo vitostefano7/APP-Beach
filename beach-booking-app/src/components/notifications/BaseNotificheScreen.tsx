@@ -23,7 +23,6 @@ import {
   Text,
   FlatList,
   Pressable,
-  RefreshControl,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -92,15 +91,6 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
     await fetchNotifications(isReadFilter);
   };
 
-  useEffect(() => {
-    if (!notifications.length) return;
-    const counts = notifications.reduce<Record<string, number>>((acc, n) => {
-      acc[n.type] = (acc[n.type] || 0) + 1;
-      return acc;
-    }, {});
-    console.log(`[Notifiche][${role}] Totale: ${notifications.length}`, counts);
-  }, [notifications]);
-
   const loadPendingInvitesCount = async () => {
     try {
       const res = await fetch(`${API_URL}/matches/pending-invites`, {
@@ -118,12 +108,17 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
     }
   };
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await loadNotifications();
-    await fetchUnreadCount();
-    if (role === 'player') await loadPendingInvitesCount();
-    setRefreshing(false);
+    void (async () => {
+      try {
+        await loadNotifications();
+        await fetchUnreadCount();
+        if (role === 'player') await loadPendingInvitesCount();
+      } finally {
+        setRefreshing(false);
+      }
+    })();
   };
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -472,9 +467,8 @@ const BaseNotificheScreen = ({ role }: BaseNotificheScreenProps) => {
             data={notifications}
             renderItem={renderNotification}
             keyExtractor={(item) => item._id}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             contentContainerStyle={styles.listContent}
           />
         )}
