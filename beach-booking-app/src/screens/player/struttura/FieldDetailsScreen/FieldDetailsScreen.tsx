@@ -15,7 +15,6 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import ImageViewer from "react-native-image-zoom-viewer";
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 
@@ -28,6 +27,7 @@ import { resolveImageUrl } from "../../../../utils/imageUtils";
 import OpenMatchCard from "../../dashboard/components/OpenMatchCard";
 import SportIcon from "../../../../components/SportIcon";
 import { PostCard } from "../../../../components/Community/PostCard/PostCard";
+import AmenityIcon from "../../../../components/AmenityIcon";
 
 import {
   MONTHS,
@@ -1091,7 +1091,7 @@ export default function FieldDetailsScreen() {
                 ({ key, label, icon }) => (
                   <View key={key} style={styles.amenityCard}>
                     <View style={styles.amenityIcon}>
-                      <Ionicons name={icon as any} size={16} color="#2196F3" />
+                      <AmenityIcon icon={icon} size={16} color="#2196F3" />
                     </View>
                     <Text style={styles.amenityLabel}>{label}</Text>
                   </View>

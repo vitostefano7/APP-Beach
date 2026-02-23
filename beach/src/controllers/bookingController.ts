@@ -83,6 +83,64 @@ const buildOngoingCondition = (today: string, nowTime: string) => ({
   endTime: { $gte: nowTime },
 });
 
+const isValidPendingInviteBooking = (booking: any, now: Date, cutoffHours = 2) => {
+  if (!booking) return false;
+  if (booking.status === "cancelled") return false;
+  if (!booking.date || !booking.startTime) return false;
+
+  try {
+    const start = new Date(`${booking.date}T${booking.startTime}:00`);
+    const cutoff = new Date(start.getTime() - cutoffHours * 60 * 60 * 1000);
+    return now.getTime() <= cutoff.getTime();
+  } catch {
+    return false;
+  }
+};
+
+const buildUserMatchFlags = ({
+  userId,
+  bookingOwnerId,
+  matchData,
+}: {
+  userId: string;
+  bookingOwnerId: string;
+  matchData?: any;
+}) => {
+  const isMyBooking = bookingOwnerId === userId;
+  const myPlayer = matchData?.players?.find((p: any) => p?.user?._id?.toString?.() === userId);
+
+  const isParticipant = myPlayer?.status === "confirmed";
+  const isPendingInvite = !isMyBooking && myPlayer?.status === "pending";
+  const isInviteAccepted = !isMyBooking && myPlayer?.status === "confirmed" && !!myPlayer?.respondedAt;
+  const isInviteDeclined = !isMyBooking && myPlayer?.status === "declined" && !!myPlayer?.respondedAt;
+  const isOpenJoinParticipant = !isMyBooking && myPlayer?.status === "confirmed" && !myPlayer?.respondedAt;
+
+  const isInvitedPlayer = isPendingInvite || isInviteAccepted || isInviteDeclined;
+
+  const participationType = isMyBooking
+    ? "created"
+    : isOpenJoinParticipant
+      ? "open_join"
+      : isInviteAccepted
+        ? "invite_accepted"
+        : isInviteDeclined
+          ? "invite_declined"
+          : isPendingInvite
+            ? "invite_pending"
+            : null;
+
+  return {
+    isMyBooking,
+    isParticipant,
+    isInvitedPlayer,
+    isPendingInvite,
+    isInviteAccepted,
+    isInviteDeclined,
+    isOpenJoinParticipant,
+    participationType,
+  };
+};
+
 /* =====================================================
    PLAYER
 ===================================================== */
@@ -582,11 +640,20 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       const bookingObj = (booking as any).toObject();
       const matchData = matchMap.get(booking._id.toString());
       
-      // Controlla se l'utente è il creatore della prenotazione originale
-      const isMyBooking = bookingObj.user.toString() === userId;
-      
-      // Controlla se l'utente è solo un player invitato
-      const isInvitedPlayer = !isMyBooking && matchData;
+      const {
+        isMyBooking,
+        isParticipant,
+        isInvitedPlayer,
+        isPendingInvite,
+        isInviteAccepted,
+        isInviteDeclined,
+        isOpenJoinParticipant,
+        participationType,
+      } = buildUserMatchFlags({
+        userId,
+        bookingOwnerId: bookingObj.user.toString(),
+        matchData,
+      });
       
       // Crea matchSummary se il match ha un risultato
       let matchSummary = null;
@@ -604,6 +671,12 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
         matchSummary,
         isMyBooking, // true se hai creato tu la prenotazione
         isInvitedPlayer, // true se sei stato invitato da qualcun altro
+        isParticipant, // true se partecipi alla partita (status confirmed)
+        isPendingInvite,
+        isInviteAccepted,
+        isInviteDeclined,
+        isOpenJoinParticipant,
+        participationType,
         players: matchData?.players || [],
         maxPlayers: matchData?.maxPlayers || 4,
       };
@@ -631,24 +704,38 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const { page, limit, skip } = parsePagination(req.query);
     const timeFilter = String(req.query?.timeFilter || "upcoming");
+    const now = new Date();
     const { today, nowTime } = getNowParts();
 
-    const [matchBookingIdsRaw, pendingInviteBookingIdsRaw] = await Promise.all([
-      Match.distinct("booking", { "players.user": userObjectId }),
-      Match.distinct("booking", { players: { $elemMatch: { user: userObjectId, status: "pending" } } }),
+    const [participantBookingIdsRaw, pendingInviteBookingIdsRaw] = await Promise.all([
+      Match.distinct("booking", {
+        players: { $elemMatch: { user: userObjectId, status: { $in: ["confirmed", "declined"] } } },
+      }),
+      Match.distinct("booking", {
+        createdBy: { $ne: userObjectId },
+        players: { $elemMatch: { user: userObjectId, status: "pending" } },
+      }),
     ]);
 
-    const matchBookingIds = Array.from(new Set(matchBookingIdsRaw.map((id: any) => id.toString()))).map(
+    const participantBookingIds = Array.from(new Set(participantBookingIdsRaw.map((id: any) => id.toString()))).map(
       (id) => new mongoose.Types.ObjectId(id)
     );
-    const pendingInviteBookingIds = Array.from(new Set(pendingInviteBookingIdsRaw.map((id: any) => id.toString()))).map(
+    const pendingInviteBookingIdsCandidates = Array.from(new Set(pendingInviteBookingIdsRaw.map((id: any) => id.toString()))).map(
       (id) => new mongoose.Types.ObjectId(id)
     );
+
+    const pendingInviteBookings = pendingInviteBookingIdsCandidates.length
+      ? await Booking.find({ _id: { $in: pendingInviteBookingIdsCandidates } }).select("_id date startTime status")
+      : [];
+
+    const pendingInviteBookingIds = pendingInviteBookings
+      .filter((booking) => isValidPendingInviteBooking(booking, now))
+      .map((booking) => booking._id);
 
     const baseQuery: any = {
       $or: [
         { user: userObjectId },
-        { _id: { $in: matchBookingIds } },
+        { _id: { $in: participantBookingIds } },
       ],
     };
 
@@ -662,16 +749,11 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
 
     const countsQuery = {
       all: Booking.countDocuments(baseQuery),
-      upcoming: Booking.countDocuments(
-        andQuery(baseQuery, upcomingOrOngoingCondition, { _id: { $nin: pendingInviteBookingIds } })
-      ),
+      upcoming: Booking.countDocuments(andQuery(baseQuery, upcomingOrOngoingCondition)),
       past: Booking.countDocuments(andQuery(baseQuery, buildPastCondition(today, nowTime))),
       invites: pendingInviteBookingIds.length
         ? Booking.countDocuments(
-            andQuery(
-              { _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } },
-              upcomingOrOngoingCondition
-            )
+            andQuery({ _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } })
           )
         : Promise.resolve(0),
     };
@@ -683,13 +765,10 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
       listQuery = andQuery(baseQuery, buildPastCondition(today, nowTime));
       sort = { date: -1, startTime: -1 };
     } else if (timeFilter === "invites") {
-      listQuery = andQuery(
-        { _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } },
-        upcomingOrOngoingCondition
-      );
+      listQuery = andQuery({ _id: { $in: pendingInviteBookingIds }, user: { $ne: userObjectId } });
       sort = { date: 1, startTime: 1 };
     } else {
-      listQuery = andQuery(baseQuery, upcomingOrOngoingCondition, { _id: { $nin: pendingInviteBookingIds } });
+      listQuery = andQuery(baseQuery, upcomingOrOngoingCondition);
       sort = { date: 1, startTime: 1 };
     }
 
@@ -742,8 +821,20 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
     const items = pageBookings.map((booking) => {
       const bookingObj = (booking as any).toObject();
       const matchData = matchMap.get(booking._id.toString());
-      const isMyBooking = bookingObj.user.toString() === userId;
-      const isInvitedPlayer = !isMyBooking && !!matchData;
+      const {
+        isMyBooking,
+        isParticipant,
+        isInvitedPlayer,
+        isPendingInvite,
+        isInviteAccepted,
+        isInviteDeclined,
+        isOpenJoinParticipant,
+        participationType,
+      } = buildUserMatchFlags({
+        userId,
+        bookingOwnerId: bookingObj.user.toString(),
+        matchData,
+      });
 
       let matchSummary = null;
       if (matchData?.winner && matchData?.sets && matchData.sets.length > 0) {
@@ -760,6 +851,12 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
         matchSummary,
         isMyBooking,
         isInvitedPlayer,
+        isParticipant,
+        isPendingInvite,
+        isInviteAccepted,
+        isInviteDeclined,
+        isOpenJoinParticipant,
+        participationType,
         players: matchData?.players || [],
         maxPlayers: matchData?.maxPlayers || 4,
       };

@@ -1,4 +1,5 @@
 import { formatSportName as getSportLabelFromUtils, SPORT_LABELS } from '../../../utils/sportUtils';
+import { AVAILABLE_AMENITIES, AmenityIcon } from '../../../amenities/availableAmenities';
 
 export const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 export const DAYS_SHORT = ["D", "L", "M", "M", "G", "V", "S"];
@@ -17,48 +18,10 @@ export const SURFACE_LABELS: Record<string, string> = {
   tartan: "Tartan",
 };
 
-// ✅ Lista amenities predefinite (uguale a ModificaStruttura)
-export const AVAILABLE_AMENITIES = [
-  { key: "toilets", label: "Bagni", icon: "man" },
-  { key: "lockerRoom", label: "Spogliatoi", icon: "shirt" },
-  { key: "showers", label: "Docce", icon: "water" },
-  { key: "parking", label: "Parcheggio", icon: "car" },
-  { key: "restaurant", label: "Ristorante", icon: "restaurant" },
-  { key: "bar", label: "Bar/Caffè", icon: "cafe" },
-  { key: "wifi", label: "WiFi", icon: "wifi" },
-  { key: "airConditioning", label: "Aria condizionata", icon: "snow" },
-  { key: "lighting", label: "Illuminazione notturna", icon: "bulb" },
-  { key: "gym", label: "Palestra", icon: "barbell" },
-  { key: "store", label: "Negozio sportivo", icon: "storefront" },
-  { key: "firstAid", label: "Pronto soccorso", icon: "medkit" },
-  { key: "locker", label: "Armadietti", icon: "locker" },
-  { key: "disabledAccess", label: "Accesso disabili", icon: "accessible" },
-  { key: "disabledParking", label: "Parcheggio disabili", icon: "parking" },
-  { key: "defibrillator", label: "Defibrillatore", icon: "heartbeat" },
-  { key: "relaxArea", label: "Area relax", icon: "sofa" },
-  { key: "equipmentRental", label: "Noleggio attrezzatura", icon: "attach-money" },
-  { key: "equipmentStorage", label: "Deposito attrezzatura", icon: "cube" },
-  { key: "coachService", label: "Allenatore/Istruttore", icon: "person" },
-  { key: "courses", label: "Corsi sportivi", icon: "school" },
-  { key: "tournaments", label: "Tornei/Eventi", icon: "trophy" },
-  { key: "scoreboard", label: "Tabellone segnapunti", icon: "stats-chart" },
-  { key: "coworking", label: "Area coworking", icon: "laptop" },
-  { key: "kidsArea", label: "Area bambini", icon: "happy" },
-  { key: "bikeParking", label: "Parcheggio bici", icon: "bicycle" },
-  { key: "chargingStation", label: "Ricarica auto elettriche", icon: "flash" },
-  { key: "spa", label: "SPA", icon: "spa" },
-  { key: "sauna", label: "Sauna", icon: "flame" },
-  { key: "turkishBath", label: "Bagno turco", icon: "water" },
-  { key: "massage", label: "Massaggi", icon: "hand-left" },
-
-
-
-
-
-];
+export { AVAILABLE_AMENITIES };
 
 // ✅ Helper: ottieni label e icon per amenity (predefinita o custom)
-export function getAmenityDisplay(amenityKey: string): { label: string; icon: string } {
+export function getAmenityDisplay(amenityKey: string): { label: string; icon: AmenityIcon } {
   const predefined = AVAILABLE_AMENITIES.find((a) => a.key === amenityKey);
   
   if (predefined) {
@@ -99,7 +62,7 @@ export function getAmenityDisplay(amenityKey: string): { label: string; icon: st
 }
 
 // ✅ Helper: converte array di amenities in array di display objects
-export function getAmenitiesDisplay(amenities: string[]): Array<{ key: string; label: string; icon: string }> {
+export function getAmenitiesDisplay(amenities: string[]): Array<{ key: string; label: string; icon: AmenityIcon }> {
   return amenities.map((key) => {
     const { label, icon } = getAmenityDisplay(key);
     return { key, label, icon };

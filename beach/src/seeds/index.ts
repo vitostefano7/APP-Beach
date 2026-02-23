@@ -126,19 +126,19 @@ async function seed() {
     const matches = await generateMatches(players, campi, pastBookings.concat(futureBookings), strutture);
 
     /* -------- POSTS -------- */
-    const posts = await generatePosts(users, strutture);
+    //const posts = await generatePosts(users, strutture);
 
     /* -------- FOLLOWERS -------- */
-    const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
+    //const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
 
     /* -------- FRIENDSHIPS -------- */
-    const friendships = await generateFriendships(players);
+    //const friendships = await generateFriendships(players);
 
     // /* -------- CONVERSATIONS -------- */
     // const { conversations, messages } = await generateConversations(users, strutture, matches);
 
     /* -------- NOTIFICATIONS -------- */
-    const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
+    //const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
 
     /* -------- GENERATE OUTPUT FILE -------- */
     console.log(`📝 Generazione lista_utenti.txt...`);
@@ -161,10 +161,10 @@ async function seed() {
     console.log(`📅 Giorni calendario: ${calendar.length}`);
     console.log(`📝 Prenotazioni: ${bookings.length} (${pastBookings.length} passate, ${futureBookings.length} future)`);
     console.log(`🏆 Match: ${matches.length}`);
-    console.log(`📰 Post: ${posts.length}`);
-    console.log(`👥 Follower strutture: ${strutturaFollowers.length}`);
-    console.log(`👥 Follower utenti: ${userFollowers.length}`);
-    console.log(`🤝 Amicizie: ${friendships.length}`);
+    // console.log(`📰 Post: ${posts.length}`);
+    // console.log(`👥 Follower strutture: ${strutturaFollowers.length}`);
+    // console.log(`👥 Follower utenti: ${userFollowers.length}`);
+    // console.log(`🤝 Amicizie: ${friendships.length}`);
     // console.log(`💬 Conversazioni: ${conversations.length}`);
     // console.log(`💬 Messaggi: ${messages.length}`);
     // console.log(`🔔 Notifiche: ${notifications.length}`);

@@ -19,6 +19,8 @@ import { DashboardStackParamList } from "../../../navigation/DashboardStack";
 import API_URL from "../../../config/api";
 import { styles } from "../styles-player/StrutturaDetailScreen.styles";
 import { AVAILABLE_AMENITIES, isCustomAmenity } from "../../owner/utils/ModificaStruttura-utils";
+import AmenityIcon from "../../../components/AmenityIcon";
+import { AmenityIcon as AmenityIconType } from "../../../amenities/availableAmenities";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -276,7 +278,7 @@ export default function StrutturaDetailScreen() {
 
   const getAmenityIcon = (amenity: string) => {
     const amenityConfig = AVAILABLE_AMENITIES.find(a => a.key === amenity);
-    return amenityConfig?.icon || 'checkmark-circle';
+    return (amenityConfig?.icon || 'checkmark-circle') as AmenityIconType;
   };
 
   const getAmenityLabel = (amenity: string) => {
@@ -536,11 +538,7 @@ export default function StrutturaDetailScreen() {
                 <View style={styles.amenitiesContainer}>
                   {struttura.amenities.map((amenity, index) => (
                     <View key={index} style={styles.amenityChip}>
-                      <Ionicons 
-                        name={getAmenityIcon(amenity) as any} 
-                        size={14} 
-                        color="#4CAF50" 
-                      />
+                      <AmenityIcon icon={getAmenityIcon(amenity)} size={14} color="#4CAF50" />
                       <Text style={styles.amenityText}>{getAmenityLabel(amenity)}</Text>
                     </View>
                   ))}

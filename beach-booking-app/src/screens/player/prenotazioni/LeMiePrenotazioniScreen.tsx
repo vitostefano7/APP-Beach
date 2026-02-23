@@ -37,6 +37,7 @@ interface Player {
   };
   team: "A" | "B";
   status: string;
+  respondedAt?: string;
 }
 
 interface Booking {
@@ -70,6 +71,7 @@ interface Booking {
   matchId?: string;
   isMyBooking?: boolean;
   isInvitedPlayer?: boolean;
+  isParticipant?: boolean;
   players?: Player[];
   maxPlayers?: number;
   paymentMode?: "split" | "full";
@@ -136,6 +138,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [selectedPartita, setSelectedPartita] = useState<string | null>(null);
 
   // Stati per il modal personalizzato
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
@@ -156,6 +159,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     setSelectedDay(null);
     setSelectedTime(null);
     setSelectedSport(null);
+    setSelectedPartita(null);
   };
 
   // Funzione helper per mostrare alert personalizzato
@@ -306,6 +310,12 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     loadBookings({ page: 1 });
   }, [filter, loadBookings]);
 
+  useEffect(() => {
+    if (filter === "invites" && selectedPartita !== null) {
+      setSelectedPartita(null);
+    }
+  }, [filter, selectedPartita]);
+
   const handleLoadMore = useCallback(() => {
     if (loading || refreshing || loadingMore || !pagination.hasNext) return;
     loadBookings({ page: pagination.page + 1 });
@@ -450,6 +460,27 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   }))].sort();
   const availableTimes = [...new Set(filteredBookings.filter(b => b.startTime).map(b => b.startTime))].sort();
 
+  const partitaOptions = [
+    "Create da me",
+    "Partecipato da partita aperta",
+    "Invitato (invito accettato)",
+  ];
+
+  const getPartitaType = (booking: Booking) => {
+    if (booking.isMyBooking) return "Create da me";
+
+    const myPlayer = booking.players?.find((p) => p.user?._id === (user as any)?._id);
+    const isConfirmedParticipant = myPlayer?.status === "confirmed" || booking.isParticipant;
+
+    if (!isConfirmedParticipant) return null;
+
+    if (myPlayer?.respondedAt || booking.isInvitedPlayer) {
+      return "Invitato (invito accettato)";
+    }
+
+    return "Partecipato da partita aperta";
+  };
+
   // Applicazione filtri avanzati
   const finalFilteredBookings = sortedBookings.filter(booking => {
     if (selectedCity && booking.campo.struttura.location.city !== selectedCity) return false;
@@ -460,6 +491,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       if (bookingDay !== selectedDay) return false;
     }
     if (selectedTime && booking.startTime !== selectedTime) return false;
+    if (selectedPartita && getPartitaType(booking) !== selectedPartita) return false;
     return true;
   });
 
@@ -476,16 +508,18 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     value, 
     options, 
     onSelect, 
-    icon 
+    icon,
+    disabled = false,
   }: { 
     label: string; 
     value: string | null; 
     options: string[]; 
     onSelect: (value: string | null) => void; 
     icon: string; 
+    disabled?: boolean;
   }) => {
     const handlePress = () => {
-      if (options.length === 0) return;
+      if (disabled || options.length === 0) return;
       
       setFilterModalLabel(label);
       setFilterModalOptions(options);
@@ -494,23 +528,31 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     };
 
     return (
-      <Pressable style={[styles.filterChip, value && styles.filterChipActive]} onPress={handlePress}>
+      <Pressable
+        style={[
+          styles.filterChip,
+          value && styles.filterChipActive,
+          disabled && styles.filterChipDisabled,
+        ]}
+        onPress={handlePress}
+        disabled={disabled}
+      >
         {label === "Sport" && value ? (
           <SportIcon sport={value} size={16} color={value ? "#2196F3" : "#2196F3"} />
         ) : (
           <Ionicons 
             name={icon as any} 
             size={16} 
-            color="#2196F3" 
+            color={disabled ? "#B0B0B0" : "#2196F3"}
           />
         )}
-        <Text style={[styles.filterChipText, value && styles.filterChipTextActive]}>
+        <Text style={[styles.filterChipText, value && styles.filterChipTextActive, disabled && styles.filterChipTextDisabled]}>
           {value || label}
         </Text>
         <Ionicons 
           name="chevron-down" 
           size={14} 
-          color={value ? "#2196F3" : "#666"} 
+          color={disabled ? "#B0B0B0" : (value ? "#2196F3" : "#666")} 
         />
       </Pressable>
     );
@@ -803,6 +845,14 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                 onSelect={setSelectedSport}
                 icon="football-outline"
               />
+              <FilterChip
+                label="Partita"
+                value={selectedPartita}
+                options={partitaOptions}
+                onSelect={setSelectedPartita}
+                icon="list-outline"
+                disabled={filter === "invites"}
+              />
             </ScrollView>
           </View>
         ) : (
@@ -954,6 +1004,14 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   icon="football-outline"
                 />
               )}
+              <FilterChip
+                label="Partita"
+                value={selectedPartita}
+                options={partitaOptions}
+                onSelect={setSelectedPartita}
+                icon="list-outline"
+                disabled={filter === "invites"}
+              />
             </ScrollView>
           </View>
         )}
@@ -1887,6 +1945,9 @@ const styles = StyleSheet.create({
     borderColor: "#2196F3",
     backgroundColor: "#E3F2FD",
   },
+  filterChipDisabled: {
+    opacity: 0.55,
+  },
   filterChipText: {
     fontSize: 14,
     color: "#666",
@@ -1895,6 +1956,9 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: "#2196F3",
     fontWeight: "600",
+  },
+  filterChipTextDisabled: {
+    color: "#B0B0B0",
   },
 
   // Filter Modal content

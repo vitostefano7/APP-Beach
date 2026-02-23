@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../../config/api";
 import { resolveImageUrl } from "../../../utils/imageUtils";
 import { searchAddress } from "./CreaStruttura/utils/CreaStruttura.utils";
+import AmenityIcon from "../../../components/AmenityIcon";
 
 import { styles } from "../styles/ModificaStruttura-styles";
 import {
@@ -87,12 +88,29 @@ export default function ModificaStrutturaScreen() {
     buttons: [{ text: 'OK', onPress: () => setAlertModal(prev => ({ ...prev, visible: false })) }]
   });
   
-  // Lista icone disponibili per servizi personalizzati
+  // Lista icone disponibili per servizi personalizzati (solo extra, senza duplicare le predefinite)
+  const predefinedAmenityIconNames = new Set(
+    AVAILABLE_AMENITIES.map((amenity) =>
+      typeof amenity.icon === "string" ? amenity.icon : amenity.icon.name
+    )
+  );
+
   const availableIcons = [
-    'star', 'restaurant', 'car', 'wifi', 'water', 'barbell', 'medical', 'gift',
-    'cafe', 'storefront', 'basketball', 'football', 'tennisball', 'happy',
-    'shirt', 'bulb', 'snow', 'expand', 'heart', 'beer', 'pizza', 'ice-cream'
-  ];
+    { name: 'star', label: 'Generico' },
+    { name: 'sparkles', label: 'Premium' },
+    { name: 'leaf', label: 'Eco' },
+    { name: 'paw', label: 'Pet' },
+    { name: 'game-controller', label: 'Gaming' },
+    { name: 'musical-notes', label: 'Musica' },
+    { name: 'videocam', label: 'Video' },
+    { name: 'camera', label: 'Foto' },
+    { name: 'book', label: 'Lettura' },
+    { name: 'briefcase', label: 'Business' },
+    { name: 'bed', label: 'Relax' },
+    { name: 'key', label: 'Accesso' },
+    { name: 'shield-checkmark', label: 'Sicurezza' },
+    { name: 'construct', label: 'Tecnico' },
+  ].filter((icon) => !predefinedAmenityIconNames.has(icon.name));
   
   const [customAmenityInput, setCustomAmenityInput] = useState("");
 
@@ -958,11 +976,7 @@ export default function ModificaStrutturaScreen() {
                   style={[styles.amenityChip, isSelected && styles.amenityChipActive]}
                   onPress={() => toggleAmenity(key)}
                 >
-                  <Ionicons 
-                    name={icon as any} 
-                    size={18} 
-                    color={isSelected ? "#2196F3" : "#999"} 
-                  />
+                  <AmenityIcon icon={icon} size={18} color={isSelected ? "#2196F3" : "#999"} />
                   <Text style={[styles.amenityChipText, isSelected && styles.amenityChipTextActive]}>
                     {label}
                   </Text>
@@ -1061,18 +1075,33 @@ export default function ModificaStrutturaScreen() {
             <View style={styles.iconGrid}>
               {availableIcons.map((icon) => (
                 <Pressable
-                  key={icon}
+                  key={icon.name}
                   style={[
                     styles.iconOption,
-                    selectedIcon === icon && styles.iconOptionSelected,
+                    selectedIcon === icon.name && styles.iconOptionSelected,
                   ]}
-                  onPress={() => setSelectedIcon(icon)}
+                  onPress={() => setSelectedIcon(icon.name)}
                 >
-                  <Ionicons
-                    name={icon as any}
-                    size={24}
-                    color={selectedIcon === icon ? "#2196F3" : "#666"}
-                  />
+                  <View style={{ alignItems: "center", gap: 4 }}>
+                    <Ionicons
+                      name={icon.name as any}
+                      size={24}
+                      color={selectedIcon === icon.name ? "#2196F3" : "#666"}
+                    />
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        fontSize: 10,
+                        color: selectedIcon === icon.name ? "#2196F3" : "#666",
+                        fontWeight: "600",
+                        textAlign: "center",
+                        maxWidth: 56,
+                        lineHeight: 12,
+                      }}
+                    >
+                      {icon.label}
+                    </Text>
+                  </View>
                 </Pressable>
               ))}
             </View>
