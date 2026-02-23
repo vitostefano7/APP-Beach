@@ -709,7 +709,7 @@ export const getMyBookingsPaginated = async (req: AuthRequest, res: Response) =>
 
     const [participantBookingIdsRaw, pendingInviteBookingIdsRaw] = await Promise.all([
       Match.distinct("booking", {
-        players: { $elemMatch: { user: userObjectId, status: { $in: ["confirmed", "declined"] } } },
+        players: { $elemMatch: { user: userObjectId, status: "confirmed" } },
       }),
       Match.distinct("booking", {
         createdBy: { $ne: userObjectId },

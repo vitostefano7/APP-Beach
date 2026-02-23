@@ -1,11 +1,12 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, Pressable, Alert } from "react-native";
+import React, { useMemo, useCallback, useState } from 'react';
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Avatar } from "../../../../components/Avatar";
 import SportIcon from "../../../../components/SportIcon";
 import { formatDate } from "../utils/dateFormatter";
 import { styles } from "../styles";
+import CustomAlert, { AlertConfig } from "../../../../components/CustomAlert";
 
 interface InviteCardProps {
   invite: any;
@@ -63,7 +64,18 @@ const InviteCard: React.FC<InviteCardProps> = ({
   const handleCardPress = useCallback(() => {
     const bookingId = booking?._id;
     if (!bookingId) {
-      Alert.alert("Errore", "Dettagli prenotazione non disponibili");
+      setAlertConfig({
+        type: "error",
+        title: "Errore",
+        message: "Dettagli prenotazione non disponibili",
+        buttons: [
+          {
+            text: "OK",
+            onPress: () => setAlertVisible(false),
+          },
+        ],
+      });
+      setAlertVisible(true);
       return;
     }
 
@@ -72,48 +84,50 @@ const InviteCard: React.FC<InviteCardProps> = ({
     });
   }, [booking?._id, navigation]);
 
+  const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+
   const handleAccept = useCallback((e: any) => {
     e.stopPropagation();
 
-    Alert.alert(
-      "Conferma partecipazione",
-      "Vuoi accettare l'invito a questa partita?",
-      [
+    setAlertConfig({
+      type: "info",
+      title: "Conferma partecipazione",
+      message: "Vuoi accettare l'invito a questa partita?",
+      buttons: [
         {
           text: "Annulla",
-          style: "cancel"
+          style: "cancel",
         },
         {
           text: "Accetta",
-          onPress: () => {
-            onRespond(matchId, "accept");
-          },
-          style: "default"
-        }
-      ]
-    );
+          onPress: () => onRespond(matchId, "accept"),
+        },
+      ],
+    });
+    setAlertVisible(true);
   }, [matchId, onRespond]);
 
   const handleDecline = useCallback((e: any) => {
     e.stopPropagation();
 
-    Alert.alert(
-      "Rifiuta invito",
-      "Sei sicuro di voler rifiutare questo invito?",
-      [
+    setAlertConfig({
+      type: "warning",
+      title: "Rifiuta invito",
+      message: "Sei sicuro di voler rifiutare questo invito?",
+      buttons: [
         {
           text: "Annulla",
-          style: "cancel"
+          style: "cancel",
         },
         {
           text: "Rifiuta",
-          onPress: () => {
-            onRespond(matchId, "decline");
-          },
-          style: "destructive"
-        }
-      ]
-    );
+          style: "destructive",
+          onPress: () => onRespond(matchId, "decline"),
+        },
+      ],
+    });
+    setAlertVisible(true);
   }, [matchId, onRespond]);
 
   // Funzione per mostrare quanto tempo rimane (versione abbreviata)
@@ -152,93 +166,101 @@ const InviteCard: React.FC<InviteCardProps> = ({
   const sportName = useMemo(() => booking?.campo?.sport?.name || "Sport", [booking?.campo?.sport?.name]);
 
   return (
-    <Pressable 
-      style={styles.inviteCard}
-      onPress={handleCardPress}
-    >
-      <View style={styles.inviteHeader}>
-        <View style={styles.inviteLeft}>
-          <Avatar
-            name={createdBy?.name}
-            surname={createdBy?.surname}
-            avatarUrl={createdBy?.avatarUrl}
-            size="small"
-            fallbackIcon="person"
-          />
-          <View style={styles.inviteInfo}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-              <Text style={styles.inviteTitle}>
-                {createdBy?.name} {createdBy?.surname} ti ha invitato
-              </Text>
-              {timeRemaining && (
-                <View style={styles.timeRemainingBadge}>
-                  <Ionicons name="time-outline" size={11} color="#FF9800" />
-                  <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.inviteDetails}>
-              {booking?.campo?.struttura?.name && (
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1}}>
-                  <Ionicons name="location-outline" size={12} color="#2196F3" />
-                  <Text style={styles.inviteDetailText} numberOfLines={1}>
-                    {booking.campo.struttura.name}
+    <>
+      <Pressable 
+        style={styles.inviteCard}
+        onPress={handleCardPress}
+      >
+        <View style={styles.inviteHeader}>
+          <View style={styles.inviteLeft}>
+            <Avatar
+              name={createdBy?.name}
+              surname={createdBy?.surname}
+              avatarUrl={createdBy?.avatarUrl}
+              size="small"
+              fallbackIcon="person"
+            />
+            <View style={styles.inviteInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={styles.inviteTitle}>
+                  {createdBy?.name} {createdBy?.surname} ti ha invitato
+                </Text>
+                {timeRemaining && (
+                  <View style={styles.timeRemainingBadge}>
+                    <Ionicons name="time-outline" size={11} color="#FF9800" />
+                    <Text style={styles.timeRemainingText}>{timeRemaining}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.inviteDetails}>
+                {booking?.campo?.struttura?.name && (
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1}}>
+                    <Ionicons name="location-outline" size={12} color="#2196F3" />
+                    <Text style={styles.inviteDetailText} numberOfLines={1}>
+                      {booking.campo.struttura.name}
+                    </Text>
+                  </View>
+                )}
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8}}>
+                  <SportIcon sport={sportName} size={12} color="#2196F3" />
+                  <Text style={styles.inviteDetailText}>
+                    {sportName}
                   </Text>
                 </View>
-              )}
-              <View style={{flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8}}>
-                <SportIcon sport={sportName} size={12} color="#2196F3" />
-                <Text style={styles.inviteDetailText}>
-                  {sportName}
-                </Text>
               </View>
             </View>
           </View>
         </View>
-      </View>
 
-      {booking && (
-        <View style={styles.inviteDateTime}>
-          <View style={styles.inviteDateBadge}>
-            <Ionicons name="calendar-outline" size={14} color="#2196F3" />
-            <Text style={styles.inviteDateText}>
-              {formatDate(booking.date)}
-            </Text>
-          </View>
-          <View style={styles.inviteTimeBadge}>
-            <Ionicons name="time-outline" size={14} color="#2196F3" />
-            <Text style={styles.inviteTimeText}>
-              {booking.startTime} - {booking.endTime}
-            </Text>
-          </View>
-          {pricePerPerson && (
-            <View style={styles.invitePriceBadge}>
-              <Ionicons name="wallet-outline" size={14} color="#2E7D32" />
-              <Text style={styles.invitePriceText}>
-                €{pricePerPerson}
+        {booking && (
+          <View style={styles.inviteDateTime}>
+            <View style={styles.inviteDateBadge}>
+              <Ionicons name="calendar-outline" size={14} color="#2196F3" />
+              <Text style={styles.inviteDateText}>
+                {formatDate(booking.date)}
               </Text>
             </View>
-          )}
-        </View>
-      )}
+            <View style={styles.inviteTimeBadge}>
+              <Ionicons name="time-outline" size={14} color="#2196F3" />
+              <Text style={styles.inviteTimeText}>
+                {booking.startTime} - {booking.endTime}
+              </Text>
+            </View>
+            {pricePerPerson && (
+              <View style={styles.invitePriceBadge}>
+                <Ionicons name="wallet-outline" size={14} color="#2E7D32" />
+                <Text style={styles.invitePriceText}>
+                  €{pricePerPerson}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
-      <View style={styles.inviteActions}>
-        <Pressable
-          style={[styles.inviteActionButton, styles.inviteDecline]}
-          onPress={handleDecline}
-        >
-          <Ionicons name="close" size={14} color="#F44336" />
-          <Text style={styles.inviteDeclineText}>Rifiuta</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.inviteActionButton, styles.inviteAccept]}
-          onPress={handleAccept}
-        >
-          <Ionicons name="checkmark" size={14} color="white" />
-          <Text style={styles.inviteAcceptText}>Accetta</Text>
-        </Pressable>
-      </View>
-    </Pressable>
+        <View style={styles.inviteActions}>
+          <Pressable
+            style={[styles.inviteActionButton, styles.inviteDecline]}
+            onPress={handleDecline}
+          >
+            <Ionicons name="close" size={14} color="#F44336" />
+            <Text style={styles.inviteDeclineText}>Rifiuta</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.inviteActionButton, styles.inviteAccept]}
+            onPress={handleAccept}
+          >
+            <Ionicons name="checkmark" size={14} color="white" />
+            <Text style={styles.inviteAcceptText}>Accetta</Text>
+          </Pressable>
+        </View>
+      </Pressable>
+
+      <CustomAlert
+        visible={alertVisible}
+        config={alertConfig}
+        onClose={() => setAlertVisible(false)}
+      />
+    </>
   );
 };
 

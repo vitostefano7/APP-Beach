@@ -126,19 +126,19 @@ async function seed() {
     const matches = await generateMatches(players, campi, pastBookings.concat(futureBookings), strutture);
 
     /* -------- POSTS -------- */
-    //const posts = await generatePosts(users, strutture);
+    const posts = await generatePosts(users, strutture);
 
     /* -------- FOLLOWERS -------- */
-    //const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
+    const { strutturaFollowers, userFollowers } = await generateFollowers(users, strutture);
 
     /* -------- FRIENDSHIPS -------- */
-    //const friendships = await generateFriendships(players);
+    const friendships = await generateFriendships(players);
 
     // /* -------- CONVERSATIONS -------- */
-    // const { conversations, messages } = await generateConversations(users, strutture, matches);
+    const { conversations, messages } = await generateConversations(users, strutture, matches);
 
     /* -------- NOTIFICATIONS -------- */
-    //const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
+    const notifications = await generateNotifications(users, matches, bookings, strutture, campi);
 
     /* -------- GENERATE OUTPUT FILE -------- */
     console.log(`📝 Generazione lista_utenti.txt...`);

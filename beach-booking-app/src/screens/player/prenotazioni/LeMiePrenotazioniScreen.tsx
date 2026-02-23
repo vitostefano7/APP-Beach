@@ -12,6 +12,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
@@ -72,6 +73,11 @@ interface Booking {
   isMyBooking?: boolean;
   isInvitedPlayer?: boolean;
   isParticipant?: boolean;
+  isPendingInvite?: boolean;
+  isInviteAccepted?: boolean;
+  isInviteDeclined?: boolean;
+  isOpenJoinParticipant?: boolean;
+  participationType?: "created" | "open_join" | "invite_accepted" | "invite_declined" | "invite_pending" | null;
   players?: Player[];
   maxPlayers?: number;
   paymentMode?: "split" | "full";
@@ -112,6 +118,15 @@ interface BookingsCacheEntry {
   };
 }
 
+LocaleConfig.locales['it'] = {
+  monthNames: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'],
+  monthNamesShort: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'],
+  dayNames: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],
+  dayNamesShort: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
+  today: 'Oggi'
+};
+LocaleConfig.defaultLocale = 'it';
+
 /* =========================
    SCREEN
 ========================= */
@@ -135,8 +150,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   // Nuovi stati per i filtri avanzati
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedStruttura, setSelectedStruttura] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedPartita, setSelectedPartita] = useState<string | null>(null);
 
@@ -151,13 +165,13 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const [filterModalLabel, setFilterModalLabel] = useState("");
   const [filterModalOptions, setFilterModalOptions] = useState<string[]>([]);
   const [filterModalOnSelect, setFilterModalOnSelect] = useState<((value: string | null) => void) | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Funzione per resettare i filtri avanzati quando si cambia il filtro temporale
   const resetAdvancedFilters = () => {
     setSelectedCity(null);
     setSelectedStruttura(null);
-    setSelectedDay(null);
-    setSelectedTime(null);
+    setSelectedDate(null);
     setSelectedSport(null);
     setSelectedPartita(null);
   };
@@ -416,6 +430,23 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
       month: "long",
     });
 
+  const formatDateFilterValue = (date: Date | null) => {
+    if (!date) return "Giorno";
+    return date.toLocaleDateString("it-IT", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
+  const formatDateKey = (date: Date | null) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   // Funzione per formattare il tempo rimanente
   const getTimeStatus = (booking: Booking): string => {
     if (isPastBooking(booking)) return "Conclusa";
@@ -454,11 +485,6 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
   const availableCities = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.location?.city).map(b => b.campo.struttura.location.city))].sort();
   const availableStrutture = [...new Set(filteredBookings.filter(b => b.campo?.struttura?.name).map(b => b.campo.struttura.name))].sort();
   const availableSports = [...new Set(filteredBookings.filter(b => b.campo?.sport).map(b => getSportName(b.campo.sport)))].sort();
-  const availableDays = [...new Set(filteredBookings.filter(b => b.date).map(b => {
-    const date = new Date(b.date);
-    return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-  }))].sort();
-  const availableTimes = [...new Set(filteredBookings.filter(b => b.startTime).map(b => b.startTime))].sort();
 
   const partitaOptions = [
     "Create da me",
@@ -486,11 +512,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
     if (selectedCity && booking.campo.struttura.location.city !== selectedCity) return false;
     if (selectedStruttura && booking.campo.struttura.name !== selectedStruttura) return false;
     if (selectedSport && getSportName(booking.campo.sport) !== selectedSport) return false;
-    if (selectedDay) {
-      const bookingDay = new Date(booking.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-      if (bookingDay !== selectedDay) return false;
-    }
-    if (selectedTime && booking.startTime !== selectedTime) return false;
+    if (selectedDate && booking.date !== formatDateKey(selectedDate)) return false;
     if (selectedPartita && getPartitaType(booking) !== selectedPartita) return false;
     return true;
   });
@@ -601,10 +623,17 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             )}
 
             {/* ✅ BADGE INVITATO */}
-            {item.isInvitedPlayer && (
+            {item.isInvitedPlayer && !item.isInviteDeclined && (
               <View style={styles.invitedBadge}>
                 <Ionicons name="people" size={14} color="#2196F3" />
                 <Text style={styles.invitedText}>Invitato</Text>
+              </View>
+            )}
+
+            {item.isInviteDeclined && (
+              <View style={styles.pendingBadge}>
+                <Ionicons name="close-circle" size={14} color="#FF9800" />
+                <Text style={styles.pendingText}>Invito rifiutato</Text>
               </View>
             )}
           </View>
@@ -824,20 +853,34 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                 onSelect={setSelectedStruttura}
                 icon="business-outline"
               />
-              <FilterChip
-                label="Giorno"
-                value={selectedDay}
-                options={availableDays}
-                onSelect={setSelectedDay}
-                icon="calendar-outline"
-              />
-              <FilterChip
-                label="Orario"
-                value={selectedTime}
-                options={availableTimes}
-                onSelect={setSelectedTime}
-                icon="time-outline"
-              />
+              <Pressable
+                style={[
+                  styles.filterChip,
+                  selectedDate && styles.filterChipActive,
+                ]}
+                onPress={() => setShowCalendar(true)}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={selectedDate ? "#2196F3" : "#2196F3"}
+                />
+                <Text style={[styles.filterChipText, selectedDate && styles.filterChipTextActive]}>
+                  {formatDateFilterValue(selectedDate)}
+                </Text>
+                {selectedDate ? (
+                  <Pressable
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      setSelectedDate(null);
+                    }}
+                  >
+                    <Ionicons name="close" size={14} color="#2196F3" />
+                  </Pressable>
+                ) : (
+                  <Ionicons name="chevron-down" size={14} color="#666" />
+                )}
+              </Pressable>
               <FilterChip
                 label="Sport"
                 value={selectedSport}
@@ -977,24 +1020,34 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                   icon="business-outline"
                 />
               )}
-              {availableDays.length > 1 && (
-                <FilterChip
-                  label="Giorno"
-                  value={selectedDay}
-                  options={availableDays}
-                  onSelect={setSelectedDay}
-                  icon="calendar-outline"
+              <Pressable
+                style={[
+                  styles.filterChip,
+                  selectedDate && styles.filterChipActive,
+                ]}
+                onPress={() => setShowCalendar(true)}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={selectedDate ? "#2196F3" : "#2196F3"}
                 />
-              )}
-              {availableTimes.length > 1 && (
-                <FilterChip
-                  label="Orario"
-                  value={selectedTime}
-                  options={availableTimes}
-                  onSelect={setSelectedTime}
-                  icon="time-outline"
-                />
-              )}
+                <Text style={[styles.filterChipText, selectedDate && styles.filterChipTextActive]}>
+                  {formatDateFilterValue(selectedDate)}
+                </Text>
+                {selectedDate ? (
+                  <Pressable
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      setSelectedDate(null);
+                    }}
+                  >
+                    <Ionicons name="close" size={14} color="#2196F3" />
+                  </Pressable>
+                ) : (
+                  <Ionicons name="chevron-down" size={14} color="#666" />
+                )}
+              </Pressable>
               {availableSports.length > 1 && (
                 <FilterChip
                   label="Sport"
@@ -1032,7 +1085,7 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
                 : filter === "past"
                 ? "Non hai prenotazioni concluse"
                 : filter === "invites"
-                ? "Non hai inviti pending"
+                ? "Non hai inviti"
                 : "Non hai ancora effettuato prenotazioni"}
             </Text>
           </View>
@@ -1156,6 +1209,49 @@ export default function LeMiePrenotazioniScreen({ route }: any) {
             ))}
           </>
         )}
+      </FilterModal>
+
+      <FilterModal
+        visible={showCalendar}
+        title="Seleziona una data"
+        onClose={() => setShowCalendar(false)}
+      >
+        <View style={styles.calendarContainer}>
+          <Calendar
+            current={formatDateKey(selectedDate) || formatDateKey(new Date())}
+            onDayPress={(day) => {
+              setSelectedDate(new Date(day.dateString + "T00:00:00"));
+              setShowCalendar(false);
+            }}
+            markedDates={{
+              [formatDateKey(selectedDate) || ""]: {
+                selected: true,
+                selectedColor: "#2196F3",
+              },
+            }}
+            theme={{
+              backgroundColor: "#ffffff",
+              calendarBackground: "#ffffff",
+              textSectionTitleColor: "#666",
+              selectedDayBackgroundColor: "#2196F3",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#2196F3",
+              dayTextColor: "#1A1A1A",
+              textDisabledColor: "#d9d9d9",
+              dotColor: "#2196F3",
+              selectedDotColor: "#ffffff",
+              arrowColor: "#2196F3",
+              monthTextColor: "#1A1A1A",
+              indicatorColor: "#2196F3",
+              textDayFontWeight: "500",
+              textMonthFontWeight: "700",
+              textDayHeaderFontWeight: "600",
+              textDayFontSize: 15,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 13,
+            }}
+          />
+        </View>
       </FilterModal>
     </View>
   );
@@ -1977,5 +2073,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "600",
+  },
+  calendarContainer: {
+    padding: 16,
+    backgroundColor: "white",
   },
 });
