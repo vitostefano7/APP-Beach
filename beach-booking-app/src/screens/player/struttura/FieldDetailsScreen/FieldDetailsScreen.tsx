@@ -10,6 +10,7 @@ import {
   FlatList,
   Alert,
   Modal,
+  Linking,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -204,6 +205,7 @@ export default function FieldDetailsScreen() {
   const contentViewRef = useRef<View>(null);
   const dayDetailRefs = useRef<Record<string, View>>({});
   const location = struttura?.location;
+  const strutturaPhone = struttura?.phone || struttura?.phoneNumber;
   const hasLocation = Boolean(location?.lat && location?.lng);
 
   const [campi, setCampi] = useState<Campo[]>([]);
@@ -675,6 +677,22 @@ export default function FieldDetailsScreen() {
     navigation.navigate('DettaglioPrenotazione', { bookingId, openJoinModal: true });
   };
 
+  const handleCallStruttura = async () => {
+    if (!strutturaPhone) {
+      Alert.alert("Numero non disponibile", "Questa struttura non ha un numero di telefono.");
+      return;
+    }
+
+    const telUrl = `tel:${strutturaPhone}`;
+    const canOpen = await Linking.canOpenURL(telUrl);
+    if (!canOpen) {
+      Alert.alert("Chiamata non supportata", "Impossibile aprire il dialer su questo dispositivo.");
+      return;
+    }
+
+    Linking.openURL(telUrl);
+  };
+
   return (
     <View style={styles.safe}>
       <ScrollView
@@ -991,6 +1009,27 @@ export default function FieldDetailsScreen() {
                 <Text style={styles.description}>{struttura.description}</Text>
               </View>
             )}
+
+            <Pressable style={styles.card} onPress={handleCallStruttura}>
+              <Text style={styles.cardTitle}>📞 Numero di telefono</Text>
+              <Text style={styles.address}>{strutturaPhone || "Numero non disponibile"}</Text>
+              <View
+                style={{
+                  marginTop: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="call-outline" size={16} color="#2196F3" />
+                  <Text style={{ color: "#2196F3", fontWeight: "600", fontSize: 13 }}>
+                    Tocca per chiamare
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#2196F3" />
+              </View>
+            </Pressable>
 
             {/* OPENING HOURS */}
             <View style={styles.card}>

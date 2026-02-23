@@ -7,6 +7,12 @@ import { randomInt, randomElement } from "./config";
 import fs from "fs";
 import cloudinary from "../config/cloudinary";
 
+function generateItalianMobilePhone() {
+  const prefix = `${randomInt(20, 99)}`;
+  const suffix = `${randomInt(1000000, 9999999)}`;
+  return `+393${prefix}${suffix}`;
+}
+
 export async function generateStrutture(owners: any[]) {
   // Leggi strutture statiche
   const staticPath = require('path').join(__dirname, 'strutture_statiche.txt');
@@ -49,15 +55,52 @@ export async function generateStrutture(owners: any[]) {
       const randomIdx = randomInt(0, strutturaImageUrls.length - 1);
       images.push(strutturaImageUrls[randomIdx]);
     }
-    const amenitiesList = randomElement([
-      ["bar", "docce", "spogliatoi"],
-      ["bar", "parcheggio"],
-      ["docce", "spogliatoi"],
-      ["bar", "docce", "spogliatoi", "parcheggio"],
-    ]);
+    // Usa la lista di servizi definiti nell'applicazione per evitare hard‑code
+    // la costante qui sotto è mantenuta in sincronia con AVAILABLE_AMENITIES
+    // presenti nel codice React; aggiungere chiavi lì aggiornerà automaticamente
+    // anche i seed.
+    const ALL_AMENITY_KEYS = [
+      "toilets",
+      "lockerRoom",
+      "showers",
+      "parking",
+      "restaurant",
+      "bar",
+      "wifi",
+      "airConditioning",
+      "lighting",
+      "gym",
+      "store",
+      "firstAid",
+      "locker",
+      "disabledAccess",
+      "disabledParking",
+      "defibrillator",
+      "relaxArea",
+      "equipmentRental",
+      "equipmentStorage",
+      "coachService",
+      "courses",
+      "tournaments",
+      "scoreboard",
+      "coworking",
+      "kidsArea",
+      "bikeParking",
+      "chargingStation",
+      "spa",
+      "sauna",
+      "turkishBath",
+      "massage",
+    ];
+
+    // crea un sottoinsieme casuale di servizi (1‑5 elementi)
+    const shuffled = [...ALL_AMENITY_KEYS].sort(() => Math.random() - 0.5);
+    const amenitiesCount = randomInt(1, Math.min(5, ALL_AMENITY_KEYS.length));
+    const amenitiesList = shuffled.slice(0, amenitiesCount);
     struttureData.push({
       name: name,
       description: generateStrutturaDescription(),
+      phone: generateItalianMobilePhone(),
       owner: owners[ownerIndex]._id,
       location: {
         address: addressPart,

@@ -35,6 +35,7 @@ type StrutturaData = {
     city: string;
     coordinates?: number[];
   };
+  phone?: string;
   phoneNumber?: string;
   email?: string;
   website?: string;
@@ -85,6 +86,7 @@ export default function StrutturaDetailScreen() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAmenities, setShowAmenities] = useState(false);
   const [showHours, setShowHours] = useState(false);
+  const strutturaPhone = struttura?.phone || struttura?.phoneNumber;
 
   useFocusEffect(
     React.useCallback(() => {
@@ -242,8 +244,8 @@ export default function StrutturaDetailScreen() {
   };
 
   const handleCall = () => {
-    if (struttura?.phoneNumber) {
-      Linking.openURL(`tel:${struttura.phoneNumber}`);
+    if (strutturaPhone) {
+      Linking.openURL(`tel:${strutturaPhone}`);
     }
   };
 
@@ -482,14 +484,14 @@ export default function StrutturaDetailScreen() {
           </View>
 
           {/* Contact Info */}
-          {(struttura.phoneNumber || struttura.email || struttura.website) && (
+          {(strutturaPhone || struttura.email || struttura.website) && (
             <View style={styles.contactSection}>
               <Text style={styles.sectionTitle}>Contatti</Text>
               
-              {struttura.phoneNumber && (
+              {strutturaPhone && (
                 <Pressable style={styles.contactItem} onPress={handleCall}>
                   <Ionicons name="call" size={18} color="#2196F3" />
-                  <Text style={styles.contactText}>{struttura.phoneNumber}</Text>
+                  <Text style={styles.contactText}>{strutturaPhone}</Text>
                   <Ionicons name="chevron-forward" size={16} color="#2196F3" />
                 </Pressable>
               )}

@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IStruttura extends Document {
   name: string;
   description?: string;
+  phone?: string;
   owner: mongoose.Types.ObjectId;
   isCostSplittingEnabled?: boolean;
   location: {
@@ -25,6 +26,7 @@ const StrutturaSchema = new Schema<IStruttura>(
   {
     name: { type: String, required: true },
     description: String,
+    phone: { type: String, trim: true },
 
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
