@@ -36,13 +36,14 @@ export default function ModificaStrutturaScreen() {
   const { token } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { strutturaId } = route.params;
+  const { strutturaId, scrollTo } = route.params || {};
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -113,6 +114,8 @@ export default function ModificaStrutturaScreen() {
   ].filter((icon) => !predefinedAmenityIconNames.has(icon.name));
   
   const [customAmenityInput, setCustomAmenityInput] = useState("");
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const openingHoursSectionY = React.useRef(0);
 
   const loadStruttura = async () => {
     try {
@@ -126,6 +129,7 @@ export default function ModificaStrutturaScreen() {
 
       setName(data.name || "");
       setDescription(data.description || "");
+      setPhone(data.phone || data.phoneNumber || "");
       setAddress(data.location?.address || "");
       setCity(data.location?.city || "");
       setIsActive(data.isActive !== false);
@@ -290,6 +294,20 @@ export default function ModificaStrutturaScreen() {
   useEffect(() => {
     loadStruttura();
   }, []);
+
+  useEffect(() => {
+    if (loading || scrollTo !== "openingHours") return;
+
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(openingHoursSectionY.current - 12, 0),
+        animated: true,
+      });
+      navigation.setParams({ scrollTo: undefined });
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [loading, scrollTo, navigation]);
 
   // ✅ Ricarica quando torni dalla schermata (senza loop)
   useFocusEffect(
@@ -537,6 +555,7 @@ export default function ModificaStrutturaScreen() {
       const body = {
         name,
         description,
+        phone: phone.trim(),
         location: {
           address: fullAddress,
           city,
@@ -647,6 +666,7 @@ export default function ModificaStrutturaScreen() {
       </View>
 
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.container} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false} 
@@ -799,6 +819,18 @@ export default function ModificaStrutturaScreen() {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Numero di telefono</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="Es: +39 333 1234567"
+              placeholderTextColor="#999"
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Indirizzo</Text>
             <View style={styles.inputWrapper}>
               <TextInput
@@ -871,7 +903,12 @@ export default function ModificaStrutturaScreen() {
         </View>
 
         {/* ORARI */}
-        <View style={styles.card}>
+        <View
+          style={styles.card}
+          onLayout={(event) => {
+            openingHoursSectionY.current = event.nativeEvent.layout.y;
+          }}
+        >
           <View style={styles.cardHeader}>
             <Ionicons name="time" size={20} color="#FF9800" />
             <Text style={styles.cardTitle}>Orari di apertura</Text>
@@ -1191,6 +1228,7 @@ export default function ModificaStrutturaScreen() {
                     button.style === 'destructive' && { backgroundColor: '#F44336' }
                   ]}
                   onPress={() => {
+                    setAlertModal(prev => ({ ...prev, visible: false }));
                     button.onPress?.();
                   }}
                 >

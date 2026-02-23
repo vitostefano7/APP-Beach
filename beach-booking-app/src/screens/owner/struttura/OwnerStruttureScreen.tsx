@@ -112,7 +112,7 @@ function StrutturaCard({ item }: { item: any }) {
 
         <View style={styles.cardInfo}>
           <View style={styles.infoRow}>
-            <Ionicons name="location" size={10} color="#666" />
+              <Ionicons name="location" size={10} color="#2196F3" />
             <Text style={styles.infoText}>
               {item.location?.city || "Città non specificata"}
             </Text>
@@ -120,7 +120,7 @@ function StrutturaCard({ item }: { item: any }) {
 
           {item.location?.address && (
             <View style={styles.infoRow}>
-              <Ionicons name="map" size={10} color="#666" />
+              <Ionicons name="map" size={10} color="#2196F3" />
               <Text style={styles.infoText} numberOfLines={1}>
                 {item.location.address}
               </Text>
@@ -129,7 +129,7 @@ function StrutturaCard({ item }: { item: any }) {
 
           {item.campiCount !== undefined && (
             <View style={styles.infoRow}>
-              <Ionicons name="basketball" size={10} color="#666" />
+              <Ionicons name="basketball" size={10} color="#2196F3" />
               <Text style={styles.infoText}>
                 {item.campiCount}{" "}
                 {item.campiCount === 1 ? "campo" : "campi"}
@@ -268,7 +268,7 @@ export default function OwnerStruttureScreen() {
               <Ionicons
                 name="business-outline"
                 size={42}
-                color="#ddd"
+                color="#2196F3"
               />
               <Text style={styles.emptyTitle}>Nessuna struttura</Text>
               <Text style={styles.emptyText}>

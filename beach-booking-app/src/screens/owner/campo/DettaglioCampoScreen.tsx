@@ -16,6 +16,8 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { formatSportName, getSportCode } from "../../../utils/sportUtils";
+import SportIcon from "../../../components/SportIcon";
 
 import API_URL from "../../../config/api";
 
@@ -24,7 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface Campo {
   _id: string;
   name: string;
-  sport: { name: string; code: string };
+  sport: { name?: string; code?: string } | string;
   surface: string;
   maxPlayers: number;
   indoor: boolean;
@@ -41,13 +43,6 @@ const SPORT_MAP: { [key: string]: string } = {
   volley: "Volley",
 };
 
-const SPORT_ICONS: { [key: string]: keyof typeof Ionicons.glyphMap } = {
-  beach_volley: "football-outline",
-  padel: "tennisball-outline",
-  tennis: "tennisball-outline",
-  volley: "football-outline",
-};
-
 const SPORT_COLORS: { [key: string]: readonly [string, string] } = {
   beach_volley: ["#FF9800", "#FB8C00"],
   padel: ["#2196F3", "#1976D2"],
@@ -61,6 +56,10 @@ const SURFACE_MAP: { [key: string]: string } = {
   grass: "Erba",
   pvc: "PVC",
   cement: "Cemento",
+  synthetic: "Sintetico",
+  parquet: "Parquet",
+  clay: "Terra rossa",
+  tartan: "Tartan",
 };
 
 const SURFACE_ICONS: { [key: string]: keyof typeof Ionicons.glyphMap } = {
@@ -69,6 +68,10 @@ const SURFACE_ICONS: { [key: string]: keyof typeof Ionicons.glyphMap } = {
   grass: "leaf-outline",
   pvc: "layers-outline",
   cement: "grid-outline",
+  synthetic: "layers-outline",
+  parquet: "grid-outline",
+  clay: "ellipse-outline",
+  tartan: "walk-outline",
 };
 
 export default function DettaglioCampoScreen() {
@@ -174,6 +177,27 @@ export default function DettaglioCampoScreen() {
     );
   }
 
+  const sportCode =
+    typeof campo.sport === "string"
+      ? getSportCode(campo.sport)
+      : getSportCode(campo.sport?.code || campo.sport?.name || "");
+
+  const sportLabel =
+    typeof campo.sport === "string"
+      ? formatSportName(campo.sport)
+      : formatSportName(campo.sport?.name || campo.sport?.code || "");
+
+  const surfaceKey = (campo.surface || "")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/hard_court/g, "hardcourt");
+
+  const surfaceLabel =
+    SURFACE_MAP[surfaceKey] ||
+    campo.surface
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* HEADER */}
@@ -238,14 +262,14 @@ export default function DettaglioCampoScreen() {
           <View style={styles.quickStatsRow}>
             <View style={styles.quickStatCard}>
               <LinearGradient
-                colors={SPORT_COLORS[campo.sport.code] || ["#2196F3", "#1976D2"]}
+                colors={SPORT_COLORS[sportCode] || ["#2196F3", "#1976D2"]}
                 style={styles.quickStatGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name={SPORT_ICONS[campo.sport.code] || "football-outline"} size={24} color="white" />
+                <SportIcon sport={sportCode} size={24} color="white" />
               </LinearGradient>
-              <Text style={styles.quickStatValue}>{SPORT_MAP[campo.sport.code]}</Text>
+              <Text style={styles.quickStatValue}>{SPORT_MAP[sportCode] || sportLabel}</Text>
               <Text style={styles.quickStatLabel}>Sport</Text>
             </View>
 
@@ -256,9 +280,9 @@ export default function DettaglioCampoScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name={SURFACE_ICONS[campo.surface] || "ellipse-outline"} size={24} color="white" />
+                <Ionicons name={SURFACE_ICONS[surfaceKey] || "ellipse-outline"} size={24} color="white" />
               </LinearGradient>
-              <Text style={styles.quickStatValue}>{SURFACE_MAP[campo.surface]}</Text>
+              <Text style={styles.quickStatValue}>{surfaceLabel}</Text>
               <Text style={styles.quickStatLabel}>Materiale</Text>
             </View>
           </View>
@@ -554,7 +578,7 @@ export default function DettaglioCampoScreen() {
                 navigation.navigate("ConfiguraPrezziCampo", {
                   campoId: campo._id,
                   campoName: campo.name,
-                  campoSport: campo.sport.code,
+                  campoSport: sportCode,
                 })
               }
             >

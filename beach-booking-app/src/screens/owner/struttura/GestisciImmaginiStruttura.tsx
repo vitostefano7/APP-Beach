@@ -4,9 +4,9 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
   Image,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useEffect } from "react";
@@ -28,6 +28,43 @@ export default function GestisciImmaginiStrutturaScreen() {
   const [uploading, setUploading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [strutturaNome, setStrutturaNome] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon?: string;
+    buttons?: Array<{
+      text: string;
+      style?: "default" | "cancel" | "destructive";
+      onPress?: () => void;
+    }>;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+    buttons: [{ text: "OK" }],
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons?: Array<{
+      text: string;
+      style?: "default" | "cancel" | "destructive";
+      onPress?: () => void;
+    }>,
+    icon?: string
+  ) => {
+    setAlertModal({
+      visible: true,
+      title,
+      message,
+      icon,
+      buttons: buttons || [{ text: "OK" }],
+    });
+  };
 
   useEffect(() => {
     loadImages();
@@ -47,7 +84,7 @@ export default function GestisciImmaginiStrutturaScreen() {
       setStrutturaNome(data.name || "");
     } catch (error) {
       console.error("❌ Errore caricamento immagini:", error);
-      Alert.alert("Errore", "Impossibile caricare le immagini");
+      showAlert("Errore", "Impossibile caricare le immagini", undefined, "alert-circle");
     } finally {
       setLoading(false);
     }
@@ -58,16 +95,18 @@ export default function GestisciImmaginiStrutturaScreen() {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== "granted") {
-        Alert.alert(
+        showAlert(
           "Permesso negato",
-          "Serve il permesso per accedere alla galleria"
+          "Serve il permesso per accedere alla galleria",
+          undefined,
+          "alert-circle"
         );
         return;
       }
 
       const remainingSlots = 10 - images.length;
       if (remainingSlots <= 0) {
-        Alert.alert("Limite raggiunto", "Puoi caricare massimo 10 immagini");
+        showAlert("Limite raggiunto", "Puoi caricare massimo 10 immagini", undefined, "information-circle");
         return;
       }
 
@@ -83,7 +122,7 @@ export default function GestisciImmaginiStrutturaScreen() {
       }
     } catch (error) {
       console.error("❌ Errore selezione immagine:", error);
-      Alert.alert("Errore", "Errore durante la selezione dell'immagine");
+      showAlert("Errore", "Errore durante la selezione dell'immagine", undefined, "alert-circle");
     }
   };
 
@@ -125,18 +164,18 @@ export default function GestisciImmaginiStrutturaScreen() {
       }
 
       console.log("✅ Tutte le immagini caricate con successo");
-      Alert.alert("Successo", `${assets.length} immagine/i caricate!`);
+      showAlert("Successo", `${assets.length} immagine/i caricate!`, undefined, "checkmark-circle");
       await loadImages();
     } catch (error: any) {
       console.error("❌ Errore upload:", error);
-      Alert.alert("Errore", error.message || "Errore durante l'upload");
+      showAlert("Errore", error.message || "Errore durante l'upload", undefined, "alert-circle");
     } finally {
       setUploading(false);
     }
   };
 
   const deleteImage = async (imageUrl: string) => {
-    Alert.alert(
+    showAlert(
       "Elimina immagine",
       "Sei sicuro di voler eliminare questa immagine?",
       [
@@ -162,15 +201,16 @@ export default function GestisciImmaginiStrutturaScreen() {
                 throw new Error("Errore durante l'eliminazione");
               }
 
-              Alert.alert("Successo", "Immagine eliminata");
+              showAlert("Successo", "Immagine eliminata", undefined, "checkmark-circle");
               await loadImages();
             } catch (error) {
               console.error("❌ Errore eliminazione:", error);
-              Alert.alert("Errore", "Impossibile eliminare l'immagine");
+              showAlert("Errore", "Impossibile eliminare l'immagine", undefined, "alert-circle");
             }
           },
         },
-      ]
+      ],
+      "trash"
     );
   };
 
@@ -192,19 +232,29 @@ export default function GestisciImmaginiStrutturaScreen() {
         throw new Error("Errore durante l'impostazione");
       }
 
-      Alert.alert("Successo", "Immagine principale impostata");
+      showAlert("Successo", "Immagine principale impostata", undefined, "checkmark-circle");
       await loadImages();
     } catch (error) {
       console.error("❌ Errore impostazione principale:", error);
-      Alert.alert("Errore", "Impossibile impostare l'immagine principale");
+      showAlert("Errore", "Impossibile impostare l'immagine principale", undefined, "alert-circle");
     }
+  };
+
+  const openImagePreview = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setPreviewVisible(true);
+  };
+
+  const closeImagePreview = () => {
+    setPreviewVisible(false);
+    setSelectedImage(null);
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#9C27B0" />
+          <ActivityIndicator size="large" color="#2196F3" />
           <Text style={styles.loadingText}>Caricamento...</Text>
         </View>
       </SafeAreaView>
@@ -232,7 +282,7 @@ export default function GestisciImmaginiStrutturaScreen() {
       >
         {/* INFO BOX */}
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#9C27B0" />
+          <Ionicons name="information-circle" size={20} color="#2196F3" />
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>Come funziona</Text>
             <Text style={styles.infoText}>
@@ -293,11 +343,16 @@ export default function GestisciImmaginiStrutturaScreen() {
           <View style={styles.imagesGrid}>
             {images.map((img, index) => (
               <View key={index} style={styles.imageCard}>
-                <Image
-                  source={{ uri: resolveImageUrl(img) }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
+                <Pressable
+                  style={styles.imagePreviewButton}
+                  onPress={() => openImagePreview(img)}
+                >
+                  <Image
+                    source={{ uri: resolveImageUrl(img) }}
+                    style={styles.image}
+                    resizeMode="cover"
+                  />
+                </Pressable>
 
                 {/* MAIN BADGE */}
                 {index === 0 && (
@@ -331,6 +386,77 @@ export default function GestisciImmaginiStrutturaScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={previewVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeImagePreview}
+      >
+        <View style={styles.previewOverlay}>
+          <Pressable style={styles.previewBackdrop} onPress={closeImagePreview} />
+
+          <View style={styles.previewContent}>
+            <Pressable style={styles.previewCloseButton} onPress={closeImagePreview}>
+              <Ionicons name="close" size={24} color="white" />
+            </Pressable>
+
+            {selectedImage && (
+              <Image
+                source={{ uri: resolveImageUrl(selectedImage) }}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={alertModal.visible} animationType="fade" transparent>
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertContent}>
+            <View style={styles.alertHeader}>
+              <View style={styles.alertIconContainer}>
+                <Ionicons
+                  name={(alertModal.icon as any) || "information-circle"}
+                  size={32}
+                  color={alertModal.icon === "checkmark-circle" ? "#4CAF50" : alertModal.icon === "trash" ? "#F44336" : "#2196F3"}
+                />
+              </View>
+              <Text style={styles.alertTitle}>{alertModal.title}</Text>
+              <Text style={styles.alertMessage}>{alertModal.message}</Text>
+            </View>
+
+            <View style={styles.alertActions}>
+              {alertModal.buttons?.map((button, index) => (
+                <Pressable
+                  key={index}
+                  style={[
+                    button.style === "cancel"
+                      ? styles.alertCancelButton
+                      : styles.alertConfirmButton,
+                    button.style === "destructive" && styles.alertDestructiveButton,
+                  ]}
+                  onPress={() => {
+                    setAlertModal((prev) => ({ ...prev, visible: false }));
+                    button.onPress?.();
+                  }}
+                >
+                  <Text
+                    style={[
+                      button.style === "cancel"
+                        ? styles.alertCancelText
+                        : styles.alertConfirmText,
+                    ]}
+                  >
+                    {button.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -407,12 +533,12 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "#F3E5F5",
+    backgroundColor: "#EEF6FF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: "#9C27B0",
+    borderLeftColor: "#2196F3",
   },
 
   infoTitle: {
@@ -433,11 +559,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#9C27B0",
+    backgroundColor: "#2196F3",
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
-    shadowColor: "#9C27B0",
+    shadowColor: "#2196F3",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -526,6 +652,11 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
+  imagePreviewButton: {
+    width: "100%",
+    height: "100%",
+  },
+
   // MAIN BADGE
   mainBadge: {
     position: "absolute",
@@ -534,7 +665,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FFB800",
+    backgroundColor: "#2196F3",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
@@ -575,5 +706,113 @@ const styles = StyleSheet.create({
 
   deleteButton: {
     backgroundColor: "rgba(244,67,54,0.9)",
+  },
+
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+  },
+
+  previewBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  previewContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 32,
+  },
+
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  previewCloseButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+
+  alertContent: {
+    width: "100%",
+    backgroundColor: "white",
+    borderRadius: 18,
+    padding: 18,
+  },
+
+  alertHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+
+  alertIconContainer: {
+    marginBottom: 10,
+  },
+
+  alertTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+
+  alertMessage: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  alertActions: {
+    gap: 10,
+  },
+
+  alertConfirmButton: {
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+
+  alertDestructiveButton: {
+    backgroundColor: "#F44336",
+  },
+
+  alertCancelButton: {
+    backgroundColor: "#f2f2f2",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+
+  alertConfirmText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  alertCancelText: {
+    color: "#666",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

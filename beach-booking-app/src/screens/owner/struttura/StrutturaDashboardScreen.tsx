@@ -416,7 +416,12 @@ export default function StrutturaDashboardScreen() {
               </View>
               <Pressable
                 style={styles.editHoursButton}
-                onPress={() => navigation.navigate("ModificaStruttura", { strutturaId })}
+                onPress={() =>
+                  navigation.navigate("ModificaStruttura", {
+                    strutturaId,
+                    scrollTo: "openingHours",
+                  })
+                }
               >
                 <Ionicons name="create-outline" size={13} color="#FF9800" />
                 <Text style={styles.editHoursText}>Modifica</Text>
