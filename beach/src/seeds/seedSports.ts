@@ -89,7 +89,7 @@ export const SPORTS_DATA = [
     allowsIndoor: true,
     allowsOutdoor: true,
     recommendedSurfaces: {
-      indoor: ["pvc", "parquet"],
+      indoor: ["grass", "clay", "cement"],
       outdoor: ["grass", "clay", "cement"],
     },
     allowsPlayerPricing: true, // Piccoli gruppi
@@ -161,8 +161,8 @@ export const SPORTS_DATA = [
     allowsIndoor: true,
     allowsOutdoor: true,
     recommendedSurfaces: {
-      indoor: ["parquet", "cement"],
-      outdoor: ["synthetic", "cement"],
+      indoor: ["synthetic"],
+      outdoor: ["synthetic"],
     },
     allowsPlayerPricing: false,
     scoringSystem: "point-based",
@@ -181,10 +181,11 @@ export const SPORTS_DATA = [
     maxPlayers: 16,
     allowedFormations: ["8v8"],
     requiresEvenPlayers: true,
-    allowsIndoor: false,
+    allowsIndoor: true,
     allowsOutdoor: true,
     recommendedSurfaces: {
-      outdoor: ["synthetic", "grass"],
+      indoor: ["synthetic"],
+      outdoor: ["synthetic"],
     },
     allowsPlayerPricing: false,
     scoringSystem: "point-based",
@@ -203,10 +204,11 @@ export const SPORTS_DATA = [
     maxPlayers: 14,
     allowedFormations: ["7v7"],
     requiresEvenPlayers: true,
-    allowsIndoor: false,
+    allowsIndoor: true,
     allowsOutdoor: true,
     recommendedSurfaces: {
-      outdoor: ["synthetic", "grass"],
+      indoor: ["synthetic"],
+      outdoor: ["synthetic"],
     },
     allowsPlayerPricing: false,
     scoringSystem: "point-based",
@@ -228,8 +230,8 @@ export const SPORTS_DATA = [
     allowsIndoor: true,
     allowsOutdoor: true,
     recommendedSurfaces: {
-      indoor: ["parquet", "pvc"],
-      outdoor: ["cement", "tartan"],
+      indoor: ["pvc"],
+      outdoor: ["cement"],
     },
     allowsPlayerPricing: true, // Per formazioni piccole (2v2, 3v3)
     scoringSystem: "point-based",

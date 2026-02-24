@@ -28,12 +28,10 @@ Padel: uguale a tennis
 
 Superfici:
 volley: al chiuso su pvc, all'esterno cemento
-beach volley: sabbia chiuso e aperto
-beach tennis come beach volley
-calcio: erba vera, erba sintetica, terra
-calcetto, calciotto e calcio a 7 in erba sintetica
+beach volley: sabbia per chiuso e aperto
+beach tennis: sabbia per chiuso e aperto
+calcio: erba vera, erba sintetica, terra ma solo outdoor come ambiente
+calcetto, calciotto e calcio a 7 in erba sintetica sia chiuso che aperto come ambiente
 basket: pvc al chiuso, cemento all'esterno
-Tennis: erba, terra, cemento (aperto e chiuso)
-Padel: erba sintetica (aperto e chiuso)
-Tennis: erba, terra, cemento (allaperto) resina (chiuso)
-Padel: erba sintetica al chiuso e aperto
+Tennis: erba, terra, cemento sia aperto e chiuso
+Padel: erba sintetica sia aperto e chiuso

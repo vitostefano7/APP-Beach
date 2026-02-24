@@ -11,7 +11,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -69,7 +69,22 @@ interface PricingRules {
     enabled: boolean;
     periods: PeriodOverride[];
   };
+  playerCountPricing: {
+    enabled: boolean;
+    prices: PlayerCountPrice[];
+  };
 }
+
+const hasConfiguredDynamicRules = (rules: PricingRules) => {
+  const hasDates =
+    rules.dateOverrides.enabled && rules.dateOverrides.dates.length > 0;
+  const hasPeriods =
+    rules.periodOverrides.enabled && rules.periodOverrides.periods.length > 0;
+  const hasTimeSlots =
+    rules.timeSlotPricing.enabled && rules.timeSlotPricing.slots.length > 0;
+
+  return hasDates || hasPeriods || hasTimeSlots;
+};
 
 const DAYS_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
@@ -102,6 +117,46 @@ export default function ConfiguraPrezziCampoScreen() {
     periodOverrides: { enabled: false, periods: [] },
     playerCountPricing: { enabled: false, prices: [] },
   });
+
+  const hasDynamicRules = hasConfiguredDynamicRules(pricing);
+  const shouldDimBasePrices = pricing.mode === "advanced" && !hasDynamicRules;
+  const effectivePricingMode =
+    pricing.mode === "advanced" && !hasDynamicRules ? "flat" : pricing.mode;
+  const effectiveBasePrices =
+    effectivePricingMode === "flat"
+      ? {
+          oneHour: pricing.flatPrices?.oneHour || 0,
+          oneHourHalf: pricing.flatPrices?.oneHourHalf || 0,
+        }
+      : pricing.basePrices;
+
+  useEffect(() => {
+    if (!hasDynamicRules) {
+      setPricing((prev) => {
+        const flatOneHour = prev.flatPrices?.oneHour || 0;
+        const flatOneHourHalf = prev.flatPrices?.oneHourHalf || 0;
+
+        if (
+          prev.basePrices?.oneHour === flatOneHour &&
+          prev.basePrices?.oneHourHalf === flatOneHourHalf
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          basePrices: {
+            oneHour: flatOneHour,
+            oneHourHalf: flatOneHourHalf,
+          },
+        };
+      });
+    }
+  }, [
+    hasDynamicRules,
+    pricing.flatPrices?.oneHour,
+    pricing.flatPrices?.oneHourHalf,
+  ]);
 
   /* =======================
      LOAD & SAVE
@@ -142,7 +197,8 @@ export default function ConfiguraPrezziCampoScreen() {
 
   const handleSave = async () => {
     const flatOneHour = pricing.flatPrices?.oneHour || 0;
-    const baseOneHour = pricing.basePrices?.oneHour || 0;
+    const effectiveMode = effectivePricingMode;
+    const baseOneHour = effectiveBasePrices?.oneHour || 0;
     
     if (flatOneHour <= 0 || baseOneHour <= 0) {
       Alert.alert("Errore", "I prezzi devono essere maggiori di 0");
@@ -151,13 +207,19 @@ export default function ConfiguraPrezziCampoScreen() {
 
     setSaving(true);
     try {
+      const pricingToSave: PricingRules = {
+        ...pricing,
+        mode: effectiveMode,
+        basePrices: effectiveBasePrices,
+      };
+
       const response = await fetch(`${API_URL}/campi/${campoId}/pricing`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ pricingRules: pricing }),
+        body: JSON.stringify({ pricingRules: pricingToSave }),
       });
 
       if (!response.ok) {
@@ -519,7 +581,7 @@ export default function ConfiguraPrezziCampoScreen() {
   };
 
   const renderSimulation = () => {
-    if (pricing.mode === "flat") {
+    if (effectivePricingMode === "flat") {
       const oneHour = pricing.flatPrices?.oneHour || 20;
       const oneHourHalf = pricing.flatPrices?.oneHourHalf || 28;
       
@@ -599,8 +661,8 @@ export default function ConfiguraPrezziCampoScreen() {
       emoji: "💵",
       title: "Prezzo Base",
       subtitle: "Fallback finale quando nessuna altra regola si applica",
-      oneHour: pricing.basePrices.oneHour,
-      oneHourHalf: pricing.basePrices.oneHourHalf,
+      oneHour: effectiveBasePrices.oneHour,
+      oneHourHalf: effectiveBasePrices.oneHourHalf,
     });
 
     return (
@@ -739,10 +801,12 @@ export default function ConfiguraPrezziCampoScreen() {
         {pricing.mode === "advanced" && (
           <>
             {/* PREZZI BASE */}
-            <View style={styles.card}>
+            <View style={[styles.card, shouldDimBasePrices && styles.cardDimmed]}>
               <Text style={styles.cardTitle}>💵 Prezzi Base</Text>
               <Text style={styles.cardDescription}>
-                Usati quando nessuna regola specifica si applica
+                {shouldDimBasePrices
+                  ? "Disattivati finché non attivi almeno una regola di data/fascia speciale. Valori allineati al Prezzo Fisso"
+                  : "Usati quando nessuna regola specifica si applica"}
               </Text>
 
               <View style={styles.priceRow}>
@@ -751,9 +815,16 @@ export default function ConfiguraPrezziCampoScreen() {
                   <Text style={styles.euroSign}>€</Text>
                   <TextInput
                     style={styles.priceInputField}
-                    value={(pricing.basePrices?.oneHour || 20).toString()}
+                    value={
+                      (
+                        shouldDimBasePrices
+                          ? pricing.flatPrices?.oneHour
+                          : pricing.basePrices?.oneHour
+                      )?.toString() || "20"
+                    }
                     onChangeText={(v) => updateBasePrice("oneHour", v)}
                     keyboardType="decimal-pad"
+                    editable={!shouldDimBasePrices}
                   />
                 </View>
               </View>
@@ -764,9 +835,16 @@ export default function ConfiguraPrezziCampoScreen() {
                   <Text style={styles.euroSign}>€</Text>
                   <TextInput
                     style={styles.priceInputField}
-                    value={(pricing.basePrices?.oneHourHalf || 28).toString()}
+                    value={
+                      (
+                        shouldDimBasePrices
+                          ? pricing.flatPrices?.oneHourHalf
+                          : pricing.basePrices?.oneHourHalf
+                      )?.toString() || "28"
+                    }
                     onChangeText={(v) => updateBasePrice("oneHourHalf", v)}
                     keyboardType="decimal-pad"
+                    editable={!shouldDimBasePrices}
                   />
                 </View>
               </View>
@@ -1287,6 +1365,9 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: "#eee",
+  },
+  cardDimmed: {
+    opacity: 0.6,
   },
   cardHeader: {
     flexDirection: "row",

@@ -9,6 +9,7 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useState, useCallback, useRef } from "react";
@@ -82,6 +83,8 @@ export default function DettaglioCampoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [campo, setCampo] = useState<Campo | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -120,29 +123,30 @@ export default function DettaglioCampoScreen() {
   );
 
   const handleDelete = async () => {
-    Alert.alert(
-      "⚠️ Elimina campo",
-      `Sei sicuro di voler eliminare "${campo?.name}"?\n\nQuesta azione NON può essere annullata.`,
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: "Elimina definitivamente",
-          style: "destructive",
-          onPress: async () => {
-            const response = await fetch(`${API_URL}/campi/${campoId}`, {
-              method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
-            });
+    setShowDeleteModal(true);
+  };
 
-            if (response.ok) {
-              Alert.alert("Successo", "Campo eliminato", [
-                { text: "OK", onPress: () => navigation.goBack() },
-              ]);
-            }
-          },
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    try {
+      setDeleting(true);
+      const response = await fetch(`${API_URL}/campi/${campoId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Impossibile eliminare il campo");
+      }
+
+      setShowDeleteModal(false);
+      Alert.alert("Successo", "Campo eliminato", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch {
+      Alert.alert("Errore", "Impossibile eliminare il campo. Riprova.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -206,7 +210,7 @@ export default function DettaglioCampoScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={22} color="#333" />
+          <Ionicons name="arrow-back" size={22} color="#2196F3" />
         </Pressable>
         <Text style={styles.headerTitle}>{campo.name}</Text>
         <View style={{ width: 40 }} />
@@ -227,31 +231,21 @@ export default function DettaglioCampoScreen() {
         <View style={styles.quickStatsContainer}>
           <View style={styles.quickStatsRow}>
             <View style={styles.quickStatCard}>
-              <LinearGradient
-                colors={["#F44336", "#E53935"]}
-                style={styles.quickStatGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="people-outline" size={24} color="white" />
-              </LinearGradient>
+              <View style={styles.quickStatIconWrap}>
+                <Ionicons name="people-outline" size={24} color="#2196F3" />
+              </View>
               <Text style={styles.quickStatValue}>{campo.maxPlayers}</Text>
               <Text style={styles.quickStatLabel}>Giocatori max</Text>
             </View>
 
             <View style={styles.quickStatCard}>
-              <LinearGradient
-                colors={["#2196F3", "#1976D2"]}
-                style={styles.quickStatGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+              <View style={styles.quickStatIconWrap}>
                 <Ionicons
                   name={campo.indoor ? "home-outline" : "sunny-outline"}
                   size={24}
-                  color="white"
+                  color="#2196F3"
                 />
-              </LinearGradient>
+              </View>
               <Text style={styles.quickStatValue}>
                 {campo.indoor ? "Indoor" : "Outdoor"}
               </Text>
@@ -261,27 +255,17 @@ export default function DettaglioCampoScreen() {
 
           <View style={styles.quickStatsRow}>
             <View style={styles.quickStatCard}>
-              <LinearGradient
-                colors={SPORT_COLORS[sportCode] || ["#2196F3", "#1976D2"]}
-                style={styles.quickStatGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <SportIcon sport={sportCode} size={24} color="white" />
-              </LinearGradient>
+              <View style={styles.quickStatIconWrap}>
+                <SportIcon sport={sportCode} size={24} color="#2196F3" />
+              </View>
               <Text style={styles.quickStatValue}>{SPORT_MAP[sportCode] || sportLabel}</Text>
               <Text style={styles.quickStatLabel}>Sport</Text>
             </View>
 
             <View style={styles.quickStatCard}>
-              <LinearGradient
-                colors={["#FF9800", "#FB8C00"]}
-                style={styles.quickStatGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name={SURFACE_ICONS[surfaceKey] || "ellipse-outline"} size={24} color="white" />
-              </LinearGradient>
+              <View style={styles.quickStatIconWrap}>
+                <Ionicons name={SURFACE_ICONS[surfaceKey] || "ellipse-outline"} size={24} color="#2196F3" />
+              </View>
               <Text style={styles.quickStatValue}>{surfaceLabel}</Text>
               <Text style={styles.quickStatLabel}>Materiale</Text>
             </View>
@@ -294,7 +278,7 @@ export default function DettaglioCampoScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
               <LinearGradient
-                colors={["#FF9800", "#FB8C00"]}
+                colors={["#2196F3", "#1976D2"]}
                 style={styles.sectionIconGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -312,7 +296,7 @@ export default function DettaglioCampoScreen() {
           {campo.pricingRules?.mode === "flat" && (
             <View style={styles.pricingCard}>
               <View style={styles.pricingModeTag}>
-                <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                <Ionicons name="checkmark-circle" size={14} color="#2196F3" />
                 <Text style={styles.pricingModeText}>Tariffa Fissa</Text>
               </View>
               <View style={styles.priceRowsContainer}>
@@ -356,7 +340,7 @@ export default function DettaglioCampoScreen() {
                       (dateOv: any, index: number) => (
                         <View key={index} style={styles.pricingItem}>
                           <View style={styles.pricingItemHeader}>
-                            <Ionicons name="calendar" size={16} color="#F44336" />
+                            <Ionicons name="calendar" size={16} color="#2196F3" />
                             <Text style={styles.pricingItemTitle}>{dateOv.label}</Text>
                             <Text style={styles.pricingItemBadge}>{dateOv.date}</Text>
                           </View>
@@ -433,7 +417,7 @@ export default function DettaglioCampoScreen() {
                         return (
                           <View key={index} style={styles.pricingItem}>
                             <View style={styles.pricingItemHeader}>
-                              <Ionicons name="time" size={16} color="#4CAF50" />
+                              <Ionicons name="time" size={16} color="#2196F3" />
                               <Text style={styles.pricingItemTitle}>
                                 {slot.label}
                               </Text>
@@ -494,7 +478,7 @@ export default function DettaglioCampoScreen() {
           {!campo.pricingRules && (
             <View style={styles.pricingCard}>
               <View style={styles.pricingModeTag}>
-                <Ionicons name="information-circle" size={14} color="#FF9800" />
+                <Ionicons name="information-circle" size={14} color="#2196F3" />
                 <Text style={[styles.pricingModeText, { color: "#FF9800" }]}>Sistema Legacy</Text>
               </View>
               <View style={styles.priceRowsContainer}>
@@ -529,46 +513,28 @@ export default function DettaglioCampoScreen() {
             </View>
           </View>
 
-          {/* CALENDARIO - AZIONE PRINCIPALE */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionCard,
-              styles.actionCardPrimary,
-              pressed && styles.actionCardPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("CampoCalendarioGestione", {
-                campoId: campo._id,
-                campoName: campo.name,
-                strutturaId: campo.struttura,
-              })
-            }
-          >
-            <LinearGradient
-              colors={["#2196F3", "#1976D2"]}
-              style={styles.actionCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.actionCardContent}>
-                <View style={styles.actionCardIconLarge}>
-                  <Ionicons name="calendar" size={28} color="white" />
-                </View>
-                <View style={styles.actionCardTextContainer}>
-                  <Text style={styles.actionCardTitlePrimary}>
-                    Calendario Annuale
-                  </Text>
-                  <Text style={styles.actionCardDescPrimary}>
-                    Gestisci disponibilità e prenotazioni
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.7)" />
-              </View>
-            </LinearGradient>
-          </Pressable>
-
-          {/* ALTRE AZIONI */}
+          {/* AZIONI */}
           <View style={styles.actionGrid}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionGridItem,
+                pressed && styles.actionCardPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("CampoCalendarioGestione", {
+                  campoId: campo._id,
+                  campoName: campo.name,
+                  strutturaId: campo.struttura,
+                })
+              }
+            >
+              <View style={[styles.actionGridIcon, { backgroundColor: "#E3F2FD" }]}>
+                <Ionicons name="calendar" size={22} color="#2196F3" />
+              </View>
+              <Text style={styles.actionGridTitle}>Calendario</Text>
+              <Text style={styles.actionGridDesc}>Disponibilità</Text>
+            </Pressable>
+
             <Pressable
               style={({ pressed }) => [
                 styles.actionGridItem,
@@ -583,7 +549,7 @@ export default function DettaglioCampoScreen() {
               }
             >
               <View style={[styles.actionGridIcon, { backgroundColor: "#E8F5E9" }]}>
-                <Ionicons name="cash-outline" size={22} color="#4CAF50" />
+                <Ionicons name="cash-outline" size={22} color="#2196F3" />
               </View>
               <Text style={styles.actionGridTitle}>Prezzi</Text>
               <Text style={styles.actionGridDesc}>Configura tariffe</Text>
@@ -616,12 +582,54 @@ export default function DettaglioCampoScreen() {
               ]}
               onPress={handleDelete}
             >
-              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+              <Ionicons name="trash-outline" size={18} color="#2196F3" />
               <Text style={styles.dangerButtonText}>Elimina Campo</Text>
             </Pressable>
           </View>
         </View>
       </Animated.ScrollView>
+
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !deleting && setShowDeleteModal(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalCard}>
+            <View style={styles.deleteModalIconWrap}>
+              <Ionicons name="warning-outline" size={28} color="#2196F3" />
+            </View>
+
+            <Text style={styles.deleteModalTitle}>Elimina campo</Text>
+            <Text style={styles.deleteModalText}>
+              Sei sicuro di voler eliminare "{campo?.name}"? Questa azione non può essere successivamente ripristinata.
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <Pressable
+                style={[styles.deleteModalBtn, styles.deleteModalBtnCancel]}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                <Text style={styles.deleteModalBtnCancelText}>Annulla</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.deleteModalBtn, styles.deleteModalBtnDelete, deleting && styles.deleteModalBtnDisabled]}
+                onPress={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.deleteModalBtnDeleteText}>Elimina</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -817,10 +825,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  quickStatGradient: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  quickStatIconWrap: {
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
@@ -1209,5 +1214,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#FF3B30",
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  deleteModalCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#FFE2E0",
+  },
+  deleteModalIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FFF1F0",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  deleteModalText: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  deleteModalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  deleteModalBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteModalBtnCancel: {
+    backgroundColor: "#F3F4F6",
+  },
+  deleteModalBtnDelete: {
+    backgroundColor: "#FF3B30",
+  },
+  deleteModalBtnDisabled: {
+    opacity: 0.7,
+  },
+  deleteModalBtnCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  deleteModalBtnDeleteText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
   },
 });

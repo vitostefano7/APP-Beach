@@ -5,11 +5,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../../context/AuthContext";
+import { useAlert } from "../../../context/AlertContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import API_URL from "../../../config/api";
@@ -51,6 +51,30 @@ const MONTHS_FULL = [
 ];
 
 const DAYS_SHORT = ["D", "L", "M", "M", "G", "V", "S"];
+const WEEK_MAP = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+const IT_TO_EN_DAY_MAP: Record<string, string> = {
+  lunedi: "monday",
+  lunedì: "monday",
+  martedi: "tuesday",
+  martedì: "tuesday",
+  mercoledi: "wednesday",
+  mercoledì: "wednesday",
+  giovedi: "thursday",
+  giovedì: "thursday",
+  venerdi: "friday",
+  venerdì: "friday",
+  sabato: "saturday",
+  domenica: "sunday",
+};
 
 const getMonthStr = (date: Date) => {
   const y = date.getFullYear();
@@ -58,8 +82,91 @@ const getMonthStr = (date: Date) => {
   return `${y}-${m}`;
 };
 
+const normalizeOpeningHours = (openingHours: any): Record<string, any> | null => {
+  if (!openingHours) return null;
+
+  let value = openingHours;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    const normalized: Record<string, any> = {};
+    const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+    value.forEach((entry: any, idx: number) => {
+      if (!entry) return;
+
+      let key: string | null = null;
+      if (entry.day) {
+        const normalizedDay = String(entry.day)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .replace(/\s+/g, "");
+
+        key = IT_TO_EN_DAY_MAP[normalizedDay] ?? (days.includes(normalizedDay) ? normalizedDay : null);
+      } else {
+        key = days[idx] ?? null;
+      }
+
+      if (key) normalized[key] = entry;
+    });
+
+    return Object.keys(normalized).length ? normalized : null;
+  }
+
+  if (typeof value === "object") {
+    const normalized: Record<string, any> = {};
+
+    Object.entries(value).forEach(([rawKey, entry]) => {
+      const normalizedDay = String(rawKey)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/\s+/g, "");
+
+      const key =
+        IT_TO_EN_DAY_MAP[normalizedDay] ??
+        (["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].includes(normalizedDay)
+          ? normalizedDay
+          : null);
+
+      if (key) normalized[key] = entry;
+    });
+
+    return Object.keys(normalized).length ? normalized : null;
+  }
+
+  return null;
+};
+
+const isStructureClosedOnDate = (dateStr: string, openingHours: any): boolean => {
+  const normalized = normalizeOpeningHours(openingHours);
+  if (!normalized) return false;
+
+  const date = new Date(`${dateStr}T12:00:00`);
+  const weekday = WEEK_MAP[date.getDay()];
+  const config = normalized[weekday];
+
+  if (!config) return true;
+  if (typeof config.closed === "boolean") return config.closed;
+  if (typeof config.enabled === "boolean") return !config.enabled;
+  if (Array.isArray(config.slots)) return config.slots.length === 0;
+
+  const hasOpenClose = !!config.open && !!config.close;
+  if (hasOpenClose) return false;
+
+  return false;
+};
+
 export default function CampoCalendarioGestioneScreen() {
   const { token } = useContext(AuthContext);
+  const { showAlert } = useAlert();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { campoId, campoName, strutturaId } = route.params;
@@ -72,6 +179,7 @@ export default function CampoCalendarioGestioneScreen() {
   const [dayBookings, setDayBookings] = useState<Booking[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [datesWithBookings, setDatesWithBookings] = useState<Set<string>>(new Set());
+  const [strutturaOpeningHours, setStrutturaOpeningHours] = useState<any>(null);
 
   /* =====================================================
      LOAD CALENDAR
@@ -97,6 +205,7 @@ export default function CampoCalendarioGestioneScreen() {
         console.log(JSON.stringify(campoData.weeklySchedule, null, 2));
         console.log("🕒 OpeningHours della struttura:");
         console.log(JSON.stringify(campoData.struttura?.openingHours, null, 2));
+        setStrutturaOpeningHours(campoData.struttura?.openingHours ?? null);
 
         // ✅ ENDPOINT CORRETTO: GET /calendar/campo/:id
         const res = await fetch(
@@ -285,14 +394,19 @@ export default function CampoCalendarioGestioneScreen() {
       );
 
       if (updatedDay?.bookingAction === "cancelled") {
-        Alert.alert(
-          "Prenotazione cancellata",
-          "Lo slot è stato disabilitato e la prenotazione è stata cancellata."
-        );
+        showAlert({
+          type: "warning",
+          title: "Prenotazione cancellata",
+          message: "Lo slot è stato disabilitato e la prenotazione è stata cancellata.",
+        });
       }
     } catch (err: any) {
       console.error("❌ Errore toggle slot:", err);
-      Alert.alert("Errore", err.message || "Impossibile aggiornare lo slot");
+      showAlert({
+        type: "error",
+        title: "Errore",
+        message: err.message || "Impossibile aggiornare lo slot",
+      });
     }
   };
 
@@ -303,18 +417,15 @@ export default function CampoCalendarioGestioneScreen() {
 
     // ✅ LOGICA CORRETTA: Alert solo quando DISABILITI uno slot (che potrebbe avere prenotazioni)
     if (!newEnabled && currentEnabled) {
-      Alert.alert(
-        "Conferma",
-        "Disabilitando questo slot, eventuali prenotazioni esistenti verranno cancellate. Continuare?",
-        [
-          { text: "Annulla", style: "cancel" },
-          {
-            text: "Disabilita",
-            style: "destructive",
-            onPress: () => executeToggleSlot(date, time, newEnabled),
-          },
-        ]
-      );
+      showAlert({
+        type: "warning",
+        title: "Conferma",
+        message: "Disabilitando questo slot, eventuali prenotazioni esistenti verranno cancellate. Continuare?",
+        showCancel: true,
+        cancelText: "Annulla",
+        confirmText: "Disabilita",
+        onConfirm: () => executeToggleSlot(date, time, newEnabled),
+      });
     } else {
       // Riabilitare uno slot non causa problemi
       executeToggleSlot(date, time, newEnabled);
@@ -327,7 +438,11 @@ export default function CampoCalendarioGestioneScreen() {
       // Ma NON permettere la selezione di slot con prenotazione
       const booking = dayBookings.find(b => b.startTime === time);
       if (booking) {
-        Alert.alert("Non selezionabile", "Non puoi chiudere uno slot con una prenotazione attiva. Devi prima cancellare la prenotazione.");
+        showAlert({
+          type: "warning",
+          title: "Non selezionabile",
+          message: "Non puoi chiudere uno slot con una prenotazione attiva. Devi prima cancellare la prenotazione.",
+        });
         return;
       }
       
@@ -351,7 +466,11 @@ export default function CampoCalendarioGestioneScreen() {
           navigation.navigate("OwnerDettaglioPrenotazione", { bookingId });
         } else {
           console.warn("Booking senza id:", booking);
-          Alert.alert("Errore", "ID prenotazione non disponibile");
+          showAlert({
+            type: "error",
+            title: "Errore",
+            message: "ID prenotazione non disponibile",
+          });
         }
       } else if (!slotEnabled) {
         // Se è inattivo ma non c'è prenotazione, mostra info
@@ -390,7 +509,11 @@ export default function CampoCalendarioGestioneScreen() {
 
   const toggleSelectedSlots = async () => {
     if (selectedSlots.size === 0) {
-      Alert.alert("Attenzione", "Seleziona almeno uno slot");
+      showAlert({
+        type: "warning",
+        title: "Attenzione",
+        message: "Seleziona almeno uno slot",
+      });
       return;
     }
 
@@ -402,152 +525,185 @@ export default function CampoCalendarioGestioneScreen() {
     const actionPast = willClose ? "chiusi" : "aperti";
     const actionIcon = willClose ? "🔒" : "🔓";
 
-    Alert.alert(
-      willClose ? "Conferma Chiusura" : "Conferma Apertura",
-      willClose
+    showAlert({
+      type: willClose ? "warning" : "info",
+      title: willClose ? "Conferma Chiusura" : "Conferma Apertura",
+      message: willClose
         ? `Vuoi chiudere ${selectedSlots.size} slot selezionati?\n\nLe eventuali prenotazioni esistenti verranno cancellate.`
         : `Vuoi aprire ${selectedSlots.size} slot selezionati?`,
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: willClose ? "Chiudi" : "Apri",
-          style: willClose ? "destructive" : "default",
-          onPress: async () => {
+      showCancel: true,
+      cancelText: "Annulla",
+      confirmText: willClose ? "Chiudi" : "Apri",
+      onConfirm: async () => {
+        try {
+          console.log(`${actionIcon} ${action.charAt(0).toUpperCase() + action.slice(1)}`, selectedSlots.size, "slot selezionati");
+          
+          let success = 0;
+          let failed = 0;
+          
+          for (const slotKey of Array.from(selectedSlots)) {
             try {
-              console.log(`${actionIcon} ${action.charAt(0).toUpperCase() + action.slice(1)}`, selectedSlots.size, "slot selezionati");
-              
-              let success = 0;
-              let failed = 0;
-              
-              for (const slotKey of Array.from(selectedSlots)) {
-                try {
-                  const [date, time] = slotKey.split("|");
-                  console.log(`  - ${action} slot:`, date, time);
-                  await executeToggleSlot(date, time, newEnabledState);
-                  success++;
-                } catch (error) {
-                  console.error("  ❌ Errore slot:", slotKey, error);
-                  failed++;
-                }
-              }
-              
-              console.log(`✅ Risultato: ${success} ${actionPast}, ${failed} falliti`);
-              
-              setSelectedSlots(new Set());
-              
-              if (failed > 0) {
-                Alert.alert("Completato con errori", `${success} slot ${actionPast}, ${failed} falliti`);
-              } else {
-                Alert.alert("✅ Successo", `${success} slot ${actionPast} con successo`);
-              }
-            } catch (err) {
-              console.error("❌ Errore generale:", err);
-              Alert.alert("Errore", `Impossibile ${action} alcuni slot`);
+              const [date, time] = slotKey.split("|");
+              console.log(`  - ${action} slot:`, date, time);
+              await executeToggleSlot(date, time, newEnabledState);
+              success++;
+            } catch (error) {
+              console.error("  ❌ Errore slot:", slotKey, error);
+              failed++;
             }
-          },
-        },
-      ]
-    );
+          }
+          
+          console.log(`✅ Risultato: ${success} ${actionPast}, ${failed} falliti`);
+          
+          setSelectedSlots(new Set());
+          
+          if (failed > 0) {
+            showAlert({
+              type: "warning",
+              title: "Completato con errori",
+              message: `${success} slot ${actionPast}, ${failed} falliti`,
+            });
+          } else {
+            showAlert({
+              type: "success",
+              title: "Successo",
+              message: `${success} slot ${actionPast} con successo`,
+            });
+          }
+        } catch (err) {
+          console.error("❌ Errore generale:", err);
+          showAlert({
+            type: "error",
+            title: "Errore",
+            message: `Impossibile ${action} alcuni slot`,
+          });
+        }
+      },
+    });
   };
 
   const closeDay = async (date: string) => {
     if (!editMode) return;
 
-    Alert.alert(
-      "Chiudi giornata",
-      `Chiudendo questa giornata:\n• Tutti gli slot saranno disabilitati\n• Le prenotazioni esistenti verranno cancellate\n\nContinuare?`,
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: "Chiudi giornata",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              console.log("🔒 Chiudo giornata:", date);
-              
-              // ✅ ENDPOINT CORRETTO: DELETE /calendar/campo/:campoId/date/:date
-              const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}`;
-              console.log("📡 Endpoint:", endpoint);
+    showAlert({
+      type: "warning",
+      title: "Chiudi giornata",
+      message: `Chiudendo questa giornata:\n• Tutti gli slot saranno disabilitati\n• Le prenotazioni esistenti verranno cancellate\n\nContinuare?`,
+      showCancel: true,
+      cancelText: "Annulla",
+      confirmText: "Chiudi giornata",
+      onConfirm: async () => {
+        try {
+          console.log("🔒 Chiudo giornata:", date);
+          
+          // ✅ ENDPOINT CORRETTO: DELETE /calendar/campo/:campoId/date/:date
+          const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}`;
+          console.log("📡 Endpoint:", endpoint);
 
-              const res = await fetch(endpoint, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
+          const res = await fetch(endpoint, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-              if (!res.ok) {
-                const errorText = await res.text();
-                console.error("❌ Response:", res.status, errorText);
-                throw new Error(`HTTP ${res.status}: ${errorText}`);
-              }
-              
-              const result = await res.json();
-              const updatedDay = result.calendarDay ?? result;
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("❌ Response:", res.status, errorText);
+            throw new Error(`HTTP ${res.status}: ${errorText}`);
+          }
+          
+          const result = await res.json();
+          const updatedDay = result.calendarDay ?? result;
 
-              setCalendarDays((prev) =>
-                prev.map((day) => (day.date === date ? updatedDay : day))
-              );
+          setCalendarDays((prev) =>
+            prev.map((day) => (day.date === date ? updatedDay : day))
+          );
 
-              const cancelled = result.cancelledBookings ?? 0;
-              const msg =
-                cancelled > 0
-                  ? `Giornata chiusa. ${cancelled} prenotazioni cancellate.`
-                  : "Giornata chiusa con successo";
+          const cancelled = result.cancelledBookings ?? 0;
+          const msg =
+            cancelled > 0
+              ? `Giornata chiusa. ${cancelled} prenotazioni cancellate.`
+              : "Giornata chiusa con successo";
 
-              Alert.alert("Successo", msg);
-            } catch (err: any) {
-              console.error("❌ Errore chiusura:", err);
-              Alert.alert("Errore", err.message || "Impossibile chiudere la giornata");
-            }
-          },
-        },
-      ]
-    );
+          showAlert({
+            type: "success",
+            title: "Successo",
+            message: msg,
+          });
+        } catch (err: any) {
+          console.error("❌ Errore chiusura:", err);
+          showAlert({
+            type: "error",
+            title: "Errore",
+            message: err.message || "Impossibile chiudere la giornata",
+          });
+        }
+      },
+    });
   };
 
   const reopenDay = async (date: string) => {
     if (!editMode) return;
 
-    Alert.alert(
-      "Riapri giornata",
-      "Vuoi riaprire questa giornata? Verranno creati gli slot di default.",
-      [
-        { text: "Annulla", style: "cancel" },
-        {
-          text: "Riapri",
-          onPress: async () => {
-            try {
-              console.log("🔓 Riapro giornata:", date);
-              
-              // ✅ ENDPOINT CORRETTO: POST /calendar/campo/:campoId/date/:date/reopen
-              const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}/reopen`;
-              console.log("📡 Endpoint:", endpoint);
+    if (isStructureClosedOnDate(date, strutturaOpeningHours)) {
+      const weekdayLabel = new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
+        weekday: "long",
+      });
 
-              const res = await fetch(endpoint, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-              });
+      showAlert({
+        type: "warning",
+        title: "Struttura chiusa",
+        message: `Non puoi riaprire questa giornata: la struttura è chiusa il ${weekdayLabel}.`,
+      });
+      return;
+    }
 
-              if (!res.ok) {
-                const errorText = await res.text();
-                console.error("❌ Response:", res.status, errorText);
-                throw new Error(`HTTP ${res.status}: ${errorText}`);
-              }
-              
-              const updatedDay = await res.json();
+    showAlert({
+      type: "info",
+      title: "Riapri giornata",
+      message: "Vuoi riaprire questa giornata? Verranno creati gli slot di default.",
+      showCancel: true,
+      cancelText: "Annulla",
+      confirmText: "Riapri",
+      onConfirm: async () => {
+        try {
+          console.log("🔓 Riapro giornata:", date);
+          
+          // ✅ ENDPOINT CORRETTO: POST /calendar/campo/:campoId/date/:date/reopen
+          const endpoint = `${API_URL}/calendar/campo/${campoId}/date/${date}/reopen`;
+          console.log("📡 Endpoint:", endpoint);
 
-              setCalendarDays((prev) =>
-                prev.map((day) => (day.date === date ? updatedDay : day))
-              );
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-              Alert.alert("Successo", "Giornata riaperta");
-            } catch (err: any) {
-              console.error("❌ Errore riapertura:", err);
-              Alert.alert("Errore", err.message || "Impossibile riaprire la giornata");
-            }
-          },
-        },
-      ]
-    );
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("❌ Response:", res.status, errorText);
+            throw new Error(`HTTP ${res.status}: ${errorText}`);
+          }
+          
+          const updatedDay = await res.json();
+
+          setCalendarDays((prev) =>
+            prev.map((day) => (day.date === date ? updatedDay : day))
+          );
+
+          showAlert({
+            type: "success",
+            title: "Successo",
+            message: "Giornata riaperta",
+          });
+        } catch (err: any) {
+          console.error("❌ Errore riapertura:", err);
+          showAlert({
+            type: "error",
+            title: "Errore",
+            message: err.message || "Impossibile riaprire la giornata",
+          });
+        }
+      },
+    });
   };
 
   const selectedDayData = selectedDate
@@ -557,32 +713,37 @@ export default function CampoCalendarioGestioneScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <View style={styles.headerCenter}>
+        <View style={styles.headerCenter} pointerEvents="none">
           <Text style={styles.headerTitle}>{campoName}</Text>
           <Text style={styles.headerSubtitle}>Calendario Annuale</Text>
         </View>
-        {editMode && selectedSlots.size > 0 ? (
-          <Pressable
-            onPress={toggleSelectedSlots}
-            style={styles.closeSlotButton}
-          >
-            <Text style={styles.closeSlotsText}>
-              {getSelectedSlotsState() === "closed" ? "🔓 Apri" : "🔒 Chiudi"} ({selectedSlots.size})
-            </Text>
-          </Pressable>
-        ) : (
-          <Pressable onPress={() => {
-            setEditMode(!editMode);
-            setSelectedSlots(new Set());
-          }}>
-            <Text style={[styles.editBtn, editMode && styles.editBtnActive]}>
-              {editMode ? "Fine" : "Modifica"}
-            </Text>
-          </Pressable>
-        )}
+        <View style={styles.headerRight}>
+          {editMode && selectedSlots.size > 0 ? (
+            <Pressable
+              onPress={toggleSelectedSlots}
+              style={styles.closeSlotButton}
+            >
+              <Text style={styles.closeSlotsText}>
+                {getSelectedSlotsState() === "closed" ? "🔓 Apri" : "🔒 Chiudi"} ({selectedSlots.size})
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setEditMode(!editMode);
+                setSelectedSlots(new Set());
+              }}
+              style={[styles.editButton, editMode && styles.editButtonActive]}
+            >
+              <Text style={[styles.editBtn, editMode && styles.editBtnActive]}>
+                {editMode ? "Fine" : "Modifica"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView style={styles.container}>
@@ -857,8 +1018,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 16,
     backgroundColor: "white",
-    justifyContent: "space-between",
     alignItems: "center",
+    position: "relative",
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     shadowColor: "#000",
@@ -876,7 +1037,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   back: { fontSize: 20, fontWeight: "800" },
-  headerCenter: { flex: 1, alignItems: "center" },
+  headerCenter: {
+    position: "absolute",
+    left: 72,
+    right: 72,
+    alignItems: "center",
+  },
+  headerRight: {
+    marginLeft: "auto",
+    alignItems: "flex-end",
+  },
   headerTitle: { fontSize: 17, fontWeight: "800", color: "#1a1a1a" },
   headerSubtitle: { fontSize: 12, color: "#666", marginTop: 2 },
   editButton: {

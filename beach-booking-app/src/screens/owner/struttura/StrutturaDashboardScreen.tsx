@@ -47,6 +47,11 @@ interface Campo {
   pricePerHour: number;
   isActive: boolean;
   indoor: boolean;
+  pricingRules?: {
+    mode?: "flat" | "advanced";
+    flatPrices?: { oneHour?: number; oneHourHalf?: number };
+    basePrices?: { oneHour?: number; oneHourHalf?: number };
+  };
 }
 
 interface Booking {
@@ -228,6 +233,82 @@ export default function StrutturaDashboardScreen() {
     navigation.navigate("OwnerStatistics", {
       strutturaId,
     });
+  };
+
+  const renderSportIcon = (sportCode: string, size = 18, color = "#2196F3") => {
+    const icon = sportIcons[sportCode];
+    if (!icon) return <Ionicons name="help-circle" size={size} color={color} />;
+    if (icon.library === "FontAwesome5") {
+      return <FontAwesome5 name={icon.name} size={size} color={color} />;
+    }
+    if (icon.library === "FontAwesome6") {
+      return <FontAwesome6 name={icon.name} size={size} color={color} />;
+    }
+    if (icon.library === "Ionicons") {
+      return <Ionicons name={icon.name as any} size={size} color={color} />;
+    }
+    return <Ionicons name="help-circle" size={size} color={color} />;
+  };
+
+  const normalizeSurfaceName = (surface?: string) => {
+    if (!surface) return "N/A";
+
+    const normalizedKey = surface
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+    const surfaceTranslations: Record<string, string> = {
+      "synthetic grass": "Erba sintetica",
+      "artificial grass": "Erba sintetica",
+      "artificial turf": "Erba sintetica",
+      "synthetic turf": "Erba sintetica",
+      "grass": "Erba naturale",
+      "natural grass": "Erba naturale",
+      "clay": "Terra rossa",
+      "red clay": "Terra rossa",
+      "hard": "Cemento",
+      "hard court": "Cemento",
+      "concrete": "Cemento",
+      "cement": "Cemento",
+      "sand": "Sabbia",
+      "beach": "Sabbia",
+      "parquet": "Parquet",
+      "wood": "Legno",
+      "resin": "Resina",
+      "rubber": "Gomma",
+      "acrylic": "Acrilico",
+      "carpet": "Moquette",
+      "pvc": "PVC",
+      "erba sintetica": "Erba sintetica",
+      "erba naturale": "Erba naturale",
+      "terra rossa": "Terra rossa",
+      "cemento": "Cemento",
+      "sabbia": "Sabbia",
+      "resina": "Resina",
+      "gomma": "Gomma",
+    };
+
+    if (surfaceTranslations[normalizedKey]) {
+      return surfaceTranslations[normalizedKey];
+    }
+
+    return normalizedKey.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+
+  const getCampoCardPrice = (campo: Campo) => {
+    const mode = campo.pricingRules?.mode;
+
+    if (mode === "flat") {
+      return campo.pricingRules?.flatPrices?.oneHour ?? campo.pricePerHour;
+    }
+
+    if (mode === "advanced") {
+      return campo.pricingRules?.basePrices?.oneHour ?? campo.pricePerHour;
+    }
+
+    return campo.pricePerHour;
   };
 
   if (loading) {
@@ -530,27 +611,29 @@ export default function StrutturaDashboardScreen() {
               <View key={campo._id} style={styles.campoCard}>
                 <View style={styles.campoHeader}>
                   <View style={styles.sportIcon}>
-                    {(() => {
-                      const icon = sportIcons[campo.sport.code];
-                      if (!icon) return <Ionicons name="help-circle" size={18} color="#2196F3" />;
-                      if (icon.library === 'FontAwesome5') return <FontAwesome5 name={icon.name} size={18} color="#2196F3" />;
-                      if (icon.library === 'FontAwesome6') return <FontAwesome6 name={icon.name} size={18} color="#2196F3" />;
-                      if (icon.library === 'Ionicons') return <Ionicons name={icon.name as any} size={18} color="#2196F3" />;
-                      return <Ionicons name="help-circle" size={18} color="#2196F3" />;
-                    })()}
+                    {renderSportIcon(campo.sport.code, 18, "#2196F3")}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.campoName}>{campo.name}</Text>
                     <View style={styles.campoMeta}>
-                      <Text style={styles.sportBadge}>
-                        {campo.sport.name}
-                      </Text>
-                      {campo.indoor && (
-                        <View style={styles.indoorBadge}>
-                          <Ionicons name="business" size={9} color="#666" />
-                          <Text style={styles.indoorText}>Indoor</Text>
-                        </View>
-                      )}
+                      <View style={styles.sportBadgeRow}>
+                        {renderSportIcon(campo.sport.code, 10, "#2196F3")}
+                        <Text style={styles.sportBadge}>{campo.sport.name}</Text>
+                      </View>
+                      <View style={styles.sportBadgeRow}>
+                        <Ionicons name="layers-outline" size={10} color="#2196F3" />
+                        <Text style={styles.sportBadge}>{normalizeSurfaceName(campo.surface)}</Text>
+                      </View>
+                      <View style={styles.indoorBadge}>
+                        <Ionicons
+                          name={campo.indoor ? "business" : "sunny-outline"}
+                          size={9}
+                          color="#2196F3"
+                        />
+                        <Text style={styles.indoorText}>
+                          {campo.indoor ? "Indoor" : "Outdoor"}
+                        </Text>
+                      </View>
                       <View style={[styles.statusIndicator, campo.isActive && styles.statusIndicatorActive]}>
                         <View style={[styles.statusDotSmall, campo.isActive && styles.statusDotSmallActive]} />
                         <Text style={[styles.statusTextSmall, campo.isActive && styles.statusTextSmallActive]}>
@@ -562,10 +645,6 @@ export default function StrutturaDashboardScreen() {
                 </View>
 
                 <View style={styles.campoFooter}>
-                  <View style={styles.priceContainer}>
-                    <Text style={styles.priceValue}>€{campo.pricePerHour}</Text>
-                    <Text style={styles.priceLabel}>/ora</Text>
-                  </View>
                   <Pressable
                     style={styles.detailsButton}
                     onPress={() => navigation.navigate("DettaglioCampo", { campoId: campo._id })}
@@ -978,6 +1057,11 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "600",
   },
+  sportBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   indoorBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1022,23 +1106,8 @@ const styles = StyleSheet.create({
   },
   campoFooter: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 2,
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#4CAF50",
-  },
-  priceLabel: {
-    fontSize: 11,
-    color: "#999",
-    fontWeight: "500",
   },
   detailsButton: {
     flexDirection: "row",
