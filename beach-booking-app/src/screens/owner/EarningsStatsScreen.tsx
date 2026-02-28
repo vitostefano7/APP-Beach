@@ -885,10 +885,10 @@ export default function EarningsStatsScreen() {
               <Text style={styles.summaryTileLabel}>Incassi</Text>
             </View>
             <Text style={[styles.summaryTileValue, { color: "#4CAF50" }]}>
-              €{periodFinancialStats.netIncome.toFixed(2)}
+              € {periodFinancialStats.netIncome.toFixed(2)}
             </Text>
             <Text style={styles.summaryTileSubtext}>
-              Netti (lordi €{periodFinancialStats.grossIncome.toFixed(2)} - rimborsi)
+              Netti (lordi € {periodFinancialStats.grossIncome.toFixed(2)} - rimborsi)
             </Text>
           </View>
 
@@ -898,7 +898,7 @@ export default function EarningsStatsScreen() {
               <Text style={styles.summaryTileLabel}>Rimborsi</Text>
             </View>
             <Text style={[styles.summaryTileValue, { color: "#F44336" }]}>
-              €{periodFinancialStats.refunds.toFixed(2)}
+              € {periodFinancialStats.refunds.toFixed(2)}
             </Text>
             <Text style={styles.summaryTileSubtext}>
               {periodFinancialStats.refundCount} rimborsi nel periodo
@@ -907,11 +907,16 @@ export default function EarningsStatsScreen() {
         </View>
 
         {/* Grafici Section */}
-        <Pressable
-          style={styles.section}
-          onPress={() => setShowCharts(!showCharts)}
-        >
-          <View style={styles.sectionHeader}>
+        <View style={styles.accordionCard}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.accordionHeader,
+              showCharts && styles.accordionHeaderExpanded,
+              pressed && { opacity: 0.9 },
+            ]}
+            onPress={() => setShowCharts((prev) => !prev)}
+            hitSlop={6}
+          >
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="bar-chart" size={20} color="#2196F3" />
               <Text style={styles.sectionTitle}>Grafici e Statistiche</Text>
@@ -921,11 +926,10 @@ export default function EarningsStatsScreen() {
               size={20}
               color="#666"
             />
-          </View>
-        </Pressable>
+          </Pressable>
 
-        {showCharts && (
-          <>
+          {showCharts && (
+            <View style={styles.accordionContent}>
             {/* Grafico Andamento Settimanale */}
             {weeklyData.labels.length > 0 && (
               <View style={styles.chartSectionLikeOwnerStats}>
@@ -1045,8 +1049,9 @@ export default function EarningsStatsScreen() {
                 </View>
               </View>
             )}
-          </>
-        )}
+            </View>
+          )}
+        </View>
 
         {/* Filters per Tipo */}
         <View style={styles.filtersSection}>
@@ -1176,37 +1181,6 @@ export default function EarningsStatsScreen() {
           </View>
         )}
 
-        {/* Active Filters Display */}
-        {(selectedStruttura || filter !== "all") && (
-          <View style={styles.activeFilters}>
-            <Text style={styles.activeFiltersLabel}>Filtri attivi:</Text>
-            <View style={styles.activeFiltersChips}>
-              {selectedStruttura && (
-                <Pressable
-                  style={styles.filterChip}
-                  onPress={() => setSelectedStruttura(null)}
-                >
-                  <Text style={styles.filterChipText}>
-                    {struttureStats.find((s) => s.id === selectedStruttura)?.name}
-                  </Text>
-                  <Ionicons name="close-circle" size={16} color="#2196F3" />
-                </Pressable>
-              )}
-              {filter !== "all" && (
-                <Pressable
-                  style={styles.filterChip}
-                  onPress={() => setFilter("all")}
-                >
-                  <Text style={styles.filterChipText}>
-                    {filter === "booking" ? "Guadagni" : "Rimborsi"}
-                  </Text>
-                  <Ionicons name="close-circle" size={16} color="#2196F3" />
-                </Pressable>
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Filtered Summary */}
         {(filter !== "all" || selectedStruttura) && (
           <View style={styles.filteredSummary}>
@@ -1226,11 +1200,16 @@ export default function EarningsStatsScreen() {
         )}
 
         {/* Transactions List */}
-        <Pressable
-          style={styles.section}
-          onPress={() => setShowTransactions(!showTransactions)}
-        >
-          <View style={styles.sectionHeader}>
+        <View style={styles.accordionCard}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.accordionHeader,
+              showTransactions && styles.accordionHeaderExpanded,
+              pressed && { opacity: 0.9 },
+            ]}
+            onPress={() => setShowTransactions((prev) => !prev)}
+            hitSlop={6}
+          >
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="list" size={20} color="#2196F3" />
               <Text style={styles.sectionTitle}>Storico Transazioni</Text>
@@ -1240,11 +1219,11 @@ export default function EarningsStatsScreen() {
               size={20}
               color="#666"
             />
-          </View>
-        </Pressable>
+          </Pressable>
 
-        {showTransactions && (
-          <View style={styles.transactionsContainer}>
+          {showTransactions && (
+            <View style={styles.accordionContent}>
+              <View style={styles.transactionsContainer}>
             {filteredEarnings.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={64} color="#ccc" />
@@ -1321,8 +1300,10 @@ export default function EarningsStatsScreen() {
                 </View>
               ))
             )}
+              </View>
+            </View>
+          )}
           </View>
-        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1537,13 +1518,34 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  sectionHeader: {
+  accordionCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: "white",
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  accordionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "white",
     padding: 16,
-    borderRadius: 12,
+  },
+
+  accordionHeaderExpanded: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+
+  accordionContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 
   sectionHeaderLeft: {
@@ -1560,15 +1562,9 @@ const styles = StyleSheet.create({
 
   chartCard: {
     backgroundColor: "white",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 12,
+    padding: 0,
     borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
 
   chartTitle: {
@@ -1584,9 +1580,8 @@ const styles = StyleSheet.create({
   },
 
   chartSectionLikeOwnerStats: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 8,
   },
 
   chartTitleLikeOwnerStats: {
@@ -1606,14 +1601,10 @@ const styles = StyleSheet.create({
   giftedChartContainerLikeOwnerStats: {
     backgroundColor: "white",
     borderRadius: 16,
-    marginVertical: 8,
+    marginTop: 8,
+    marginBottom: 12,
     paddingVertical: 20,
     paddingHorizontal: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
     overflow: "hidden",
   },
 
@@ -1844,43 +1835,6 @@ const styles = StyleSheet.create({
     color: "white",
   },
 
-  activeFilters: {
-    backgroundColor: "#E3F2FD",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-  },
-
-  activeFiltersLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#1976D2",
-    marginBottom: 8,
-  },
-
-  activeFiltersChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#2196F3",
-  },
-
   filteredSummary: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1909,7 +1863,7 @@ const styles = StyleSheet.create({
   },
 
   transactionsContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
   },
 
   transactionCard: {

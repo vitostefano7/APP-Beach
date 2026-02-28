@@ -405,16 +405,17 @@ function AdvancedFiltersModal({
             </Pressable>
 
             <Text style={styles.sectionTitle}>Orario</Text>
-            <View style={styles.timeSlots}>
+            <View style={[styles.timeSlots, styles.timeSlotsHorizontal]}>
               {[
-                { slot: "mattina", label: "Mattina" },
-                { slot: "pomeriggio", label: "Pomeriggio" },
-                { slot: "sera", label: "Sera" },
+                { slot: "mattina", label: "Mattina 6-12" },
+                { slot: "pomeriggio", label: "Pomeriggio 12-18" },
+                { slot: "sera", label: "Sera 18-24" },
               ].map(({ slot, label }) => (
                 <Pressable
                   key={slot}
                   style={[
                     styles.timeSlot,
+                    styles.timeSlotCompact,
                     tempFilters.timeSlot === slot && styles.timeSlotActive,
                   ]}
                   onPress={() => setTempFilters((prev) => ({
@@ -424,12 +425,13 @@ function AdvancedFiltersModal({
                 >
                   <Ionicons
                     name="time-outline"
-                    size={20}
+                    size={16}
                     color={tempFilters.timeSlot === slot ? "white" : "#2979ff"}
                   />
                   <Text
                     style={[
                       styles.timeSlotText,
+                      styles.timeSlotTextCompact,
                       tempFilters.timeSlot === slot &&
                         styles.timeSlotTextActive,
                     ]}
@@ -688,6 +690,15 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
   
   const [showLocationPermissionModal, setShowLocationPermissionModal] = useState(false);
 
+  const normalizeTimeSlot = (slot: string | null) => {
+    if (!slot) return null;
+    const normalized = slot.trim().toLowerCase();
+    if (normalized === 'mattina') return 'mattina';
+    if (normalized === 'pomeriggio') return 'pomeriggio';
+    if (normalized === 'sera') return 'sera';
+    return null;
+  };
+
   // ✅ Stati per logica città migliorata
   const [lastVisitedCity, setLastVisitedCity] = useState<string | null>(null);
   const [playHistory, setPlayHistory] = useState<Record<string, number>>({});
@@ -902,7 +913,10 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         }
       }
       if (filters.timeSlot) {
-        params.append('timeSlot', filters.timeSlot);
+        const normalizedTimeSlot = normalizeTimeSlot(filters.timeSlot);
+        if (normalizedTimeSlot) {
+          params.append('timeSlot', normalizedTimeSlot);
+        }
       }
       
       // 🌍 Filtri geografici: priorità GPS > città filtro > città preferita > città suggerita
@@ -1669,7 +1683,7 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
           >
             <View style={styles.favoritesHeaderLeft}>
               <Ionicons name="heart" size={18} color="#FFB800" />
-              <Text style={styles.favoritesTitle}>Your favorites</Text>
+              <Text style={styles.favoritesTitle}>I tuoi preferiti</Text>
               <View style={styles.favoritesCount}>
                 <Text style={styles.favoritesCountText}>
                   {favoriteStrutture.length}

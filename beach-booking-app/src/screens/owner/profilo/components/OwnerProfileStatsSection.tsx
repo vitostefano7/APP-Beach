@@ -9,6 +9,23 @@ interface OwnerStatsView {
   incassoMese: number;
   tassoOccupazione: number;
   nuoviClienti: number;
+  businessPeriodStats: {
+    oggi: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiNuovi: number;
+    };
+    settimana: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiNuovi: number;
+    };
+    mese: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiNuovi: number;
+    };
+  };
 }
 
 interface OwnerProfileStatsSectionProps {
@@ -66,22 +83,63 @@ export function OwnerProfileStatsSection({
         </Pressable>
       </View>
 
-      <View style={styles.businessStatsCard}>
-        <View style={styles.businessStat}>
-          <Ionicons name="calendar" size={28} color="#4CAF50" />
-          <Text style={styles.businessStatLabel}>Prenotazioni:</Text>
-          <Text style={styles.businessStatValue}>{stats.prenotazioni}</Text>
-        </View>
-        <View style={styles.businessStat}>
-          <Ionicons name="trending-up" size={28} color="#FF9800" />
-          <Text style={styles.businessStatLabel}>Tasso Occupazione:</Text>
-          <Text style={styles.businessStatValue}>{stats.tassoOccupazione}%</Text>
-        </View>
-        <View style={[styles.businessStat, styles.lastBusinessStat]}>
-          <Ionicons name="people" size={28} color="#9C27B0" />
-          <Text style={styles.businessStatLabel}>Clienti Unici:</Text>
-          <Text style={styles.businessStatValue}>{stats.nuoviClienti}</Text>
-        </View>
+      <View style={styles.businessGrid}>
+        <Pressable style={styles.businessPeriodCard} onPress={onOpenBusinessStats}>
+          <View style={styles.earningsPeriodHeader}>
+            <Ionicons name="calendar-outline" size={24} color="#4CAF50" />
+            <Text style={styles.earningsPeriodLabel}>Oggi</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Prenotazioni</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.oggi.prenotazioni}</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Tasso</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.oggi.tassoOccupazione}%</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.oggi.clientiNuovi}</Text>
+          </View>
+        </Pressable>
+
+        <Pressable style={styles.businessPeriodCard} onPress={onOpenBusinessStats}>
+          <View style={styles.earningsPeriodHeader}>
+            <Ionicons name="calendar" size={24} color="#2196F3" />
+            <Text style={styles.earningsPeriodLabel}>Settimana</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Prenotazioni</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.settimana.prenotazioni}</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Tasso</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.settimana.tassoOccupazione}%</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.settimana.clientiNuovi}</Text>
+          </View>
+        </Pressable>
+
+        <Pressable style={styles.businessPeriodCard} onPress={onOpenBusinessStats}>
+          <View style={styles.earningsPeriodHeader}>
+            <Ionicons name="stats-chart" size={24} color="#FF9800" />
+            <Text style={styles.earningsPeriodLabel}>Mese</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Prenotazioni</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.mese.prenotazioni}</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Tasso</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.mese.tassoOccupazione}%</Text>
+          </View>
+          <View style={styles.businessMetricRow}>
+            <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
+            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.mese.clientiNuovi}</Text>
+          </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -145,33 +203,35 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1a1a1a",
   },
-  businessStatsCard: {
+  businessGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  businessPeriodCard: {
+    flex: 1,
     backgroundColor: "white",
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
-  businessStat: {
+  businessMetricRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginTop: 8,
   },
-  lastBusinessStat: {
-    marginBottom: 0,
-  },
-  businessStatLabel: {
-    fontSize: 12,
+  businessMetricLabel: {
+    fontSize: 10,
     color: "#666",
-    marginLeft: 10,
-    flex: 1,
+    fontWeight: "600",
   },
-  businessStatValue: {
-    fontSize: 15,
-    fontWeight: "700",
+  businessMetricValue: {
+    fontSize: 13,
     color: "#1a1a1a",
+    fontWeight: "800",
   },
 });

@@ -61,6 +61,26 @@ interface OwnerStatsCalculated {
   rimborsiMese: number;
   tassoOccupazione: number;
   nuoviClienti: number;
+  businessPeriodStats: {
+    oggi: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiUnici: number;
+      clientiNuovi: number;
+    };
+    settimana: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiUnici: number;
+      clientiNuovi: number;
+    };
+    mese: {
+      prenotazioni: number;
+      tassoOccupazione: number;
+      clientiUnici: number;
+      clientiNuovi: number;
+    };
+  };
 }
 
 /**
@@ -219,6 +239,76 @@ export const useOwnerStats = (
         .map((b) => b.user!._id)
     ).size;
 
+    const getBookingDurationHours = (booking: Booking): number => {
+      let duration = Number(booking.duration);
+
+      if (Number.isFinite(duration) && duration > 0) {
+        return duration;
+      }
+
+      try {
+        const start = booking.startTime || booking.slotStart;
+        const end = booking.endTime || booking.slotEnd;
+        if (start && end) {
+          const [startH, startM] = start.split(":").map(Number);
+          const [endH, endM] = end.split(":").map(Number);
+          const calc = (endH + endM / 60) - (startH + startM / 60);
+          if (calc > 0) return calc;
+        }
+      } catch {
+        return 1;
+      }
+
+      return 1;
+    };
+
+    const getUniqueClientsCount = (items: Booking[]) =>
+      new Set(items.filter((b) => b.user?._id).map((b) => b.user!._id)).size;
+
+    const extractId = (value: any): string | undefined => {
+      if (!value) return undefined;
+      if (typeof value === "string") return value;
+      if (typeof value === "object") {
+        if (typeof value._id === "string") return value._id;
+        if (typeof value.id === "string") return value.id;
+      }
+      return undefined;
+    };
+
+    const getBookingStrutturaId = (booking: Booking): string | undefined => {
+      const bookingCampo = booking.campo as any;
+      return extractId(bookingCampo?.struttura) ?? extractId((booking as any).struttura);
+    };
+
+    const firstConfirmedByStrutturaUser = new Map<string, Date>();
+
+    confirmedBookings.forEach((booking) => {
+      const userId = booking.user?._id;
+      const bookingDate = parseBookingDate(booking);
+
+      if (!userId || !bookingDate) return;
+
+      const strutturaId = getBookingStrutturaId(booking) || "unknown";
+      const scopeKey = `${strutturaId}::${userId}`;
+      const existingDate = firstConfirmedByStrutturaUser.get(scopeKey);
+
+      if (!existingDate || bookingDate < existingDate) {
+        firstConfirmedByStrutturaUser.set(scopeKey, bookingDate);
+      }
+    });
+
+    const getNewClientsCountInRange = (from: Date, toExclusive: Date): number => {
+      let count = 0;
+
+      firstConfirmedByStrutturaUser.forEach((firstBookingDate) => {
+        if (firstBookingDate >= from && firstBookingDate < toExclusive) {
+          count += 1;
+        }
+      });
+
+      return count;
+    };
+
     /* =======================
        TASSO OCCUPAZIONE MENSILE
        
@@ -288,12 +378,56 @@ export const useOwnerStats = (
       console.log(`  ⏰ Campo "${campo.name}" (struttura: ${campo.struttura}): ${weeklyHours.toFixed(1)} ore settimanali disponibili`);
       return total + weeklyHours;
     }, 0);
+
+    const confirmedBookingsOggi = bookingsOggi.filter((b) => b.status === "confirmed");
+    const confirmedBookingsSettimana = bookingsSettimana.filter((b) => b.status === "confirmed");
+    const confirmedBookingsMese = bookingsMese.filter((b) => b.status === "confirmed");
+
+    const orePrenotateOggi = confirmedBookingsOggi.reduce(
+      (sum, booking) => sum + getBookingDurationHours(booking),
+      0
+    );
+    const orePrenotateSettimana = confirmedBookingsSettimana.reduce(
+      (sum, booking) => sum + getBookingDurationHours(booking),
+      0
+    );
+    const orePrenotateMesePeriodo = confirmedBookingsMese.reduce(
+      (sum, booking) => sum + getBookingDurationHours(booking),
+      0
+    );
     
     // Calcola ore mensili: ore settimanali × 4.33 (media settimane al mese)
     const oreDisponibiliMese = oreDisponibiliSettimana * 4.33;
+    const oreDisponibiliGiorno = oreDisponibiliSettimana / 7;
     
     console.log(`✅ Ore disponibili settimanali TOTALI: ${oreDisponibiliSettimana.toFixed(1)} ore`);
     console.log(`✅ Ore disponibili mensili TOTALI: ${oreDisponibiliMese.toFixed(1)} ore`);
+
+    const calculateOccupancy = (bookedHours: number, availableHours: number): number => {
+      if (availableHours <= 0) return 0;
+      return Math.min(100, Math.round((bookedHours / availableHours) * 100));
+    };
+
+    const businessPeriodStats = {
+      oggi: {
+        prenotazioni: bookingsOggi.length,
+        tassoOccupazione: calculateOccupancy(orePrenotateOggi, oreDisponibiliGiorno),
+        clientiUnici: getUniqueClientsCount(bookingsOggi),
+        clientiNuovi: getNewClientsCountInRange(today, tomorrow),
+      },
+      settimana: {
+        prenotazioni: bookingsSettimana.length,
+        tassoOccupazione: calculateOccupancy(orePrenotateSettimana, oreDisponibiliSettimana),
+        clientiUnici: getUniqueClientsCount(bookingsSettimana),
+        clientiNuovi: getNewClientsCountInRange(weekAgo, tomorrow),
+      },
+      mese: {
+        prenotazioni: bookingsMese.length,
+        tassoOccupazione: calculateOccupancy(orePrenotateMesePeriodo, oreDisponibiliMese),
+        clientiUnici: getUniqueClientsCount(bookingsMese),
+        clientiNuovi: getNewClientsCountInRange(monthAgo, tomorrow),
+      },
+    };
     
     // Ore effettivamente prenotate nell'ultimo mese (solo confermate E CONCLUSE)
     const bookingsLastMonth = confirmedBookings.filter((b) => {
@@ -351,6 +485,7 @@ export const useOwnerStats = (
       rimborsiMese,
       tassoOccupazione,
       nuoviClienti,
+      businessPeriodStats,
     };
 
     console.log('💰 Riepilogo Statistiche:');

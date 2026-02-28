@@ -34,7 +34,7 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
  * 📌 GET /strutture
  * Tutte le strutture pubbliche (PLAYER) - CON SPORTS AGGREGATI
  * Query params: 
- *   - date (YYYY-MM-DD), timeSlot (Mattina|Pomeriggio|Sera)
+ *   - date (YYYY-MM-DD), timeSlot (mattina|pomeriggio|sera)
  *   - city (string): filtra per città
  *   - lat, lng, radius (number): filtra per coordinate geografiche e raggio in km
  */
@@ -91,21 +91,24 @@ export const getStrutture = async (req: Request, res: Response) => {
     // Se sono specificati date e timeSlot, filtra per disponibilità
     if (date && timeSlot) {
       const dateStr = date as string;
-      const timeSlotStr = timeSlot as string;
+      const normalizedTimeSlot = String(timeSlot).trim().toLowerCase();
       
       // Determina l'intervallo orario basato sul timeSlot
       let startHour: number, endHour: number;
-      if (timeSlotStr === "Mattina (6:00 - 12:00)") {
+      if (normalizedTimeSlot === "mattina" || normalizedTimeSlot === "mattina (6:00 - 12:00)") {
         startHour = 6;
         endHour = 12;
-      } else if (timeSlotStr === "Pomeriggio (12:00 - 18:00)") {
+      } else if (normalizedTimeSlot === "pomeriggio" || normalizedTimeSlot === "pomeriggio (12:00 - 18:00)") {
         startHour = 12;
         endHour = 18;
-      } else if (timeSlotStr === "Sera (18:00 - 24:00)") {
+      } else if (normalizedTimeSlot === "sera" || normalizedTimeSlot === "sera (18:00 - 24:00)") {
         startHour = 18;
         endHour = 24;
       } else {
-        return res.status(400).json({ message: "TimeSlot non valido" });
+        return res.status(400).json({
+          message: "TimeSlot non valido",
+          acceptedValues: ["mattina", "pomeriggio", "sera"],
+        });
       }
 
       // Verifica che la data/orario sia nel futuro

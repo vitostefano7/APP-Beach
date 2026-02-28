@@ -1330,6 +1330,11 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
 
+  timeSlotsHorizontal: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   timeSlot: {
     flexDirection: "row",
     alignItems: "center",
@@ -1347,6 +1352,13 @@ export const styles = StyleSheet.create({
     elevation: 1,
   },
 
+  timeSlotCompact: {
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+
   timeSlotActive: {
     backgroundColor: "#2979ff",
     borderColor: "#2979ff",
@@ -1361,6 +1373,10 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#1A1A1A",
+  },
+
+  timeSlotTextCompact: {
+    fontSize: 13,
   },
 
   timeSlotTextActive: {

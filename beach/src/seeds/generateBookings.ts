@@ -2,6 +2,7 @@
 
 import Booking from "../models/Booking";
 import CampoCalendarDay from "../models/campoCalendarDay";
+import User from "../models/User";
 import { randomInt, randomElement } from "./config";
 import path from "path";
 import os from "os";
@@ -53,6 +54,59 @@ function formatDate(date: Date) {
   return date.toISOString().split("T")[0];
 }
 
+function getOwnerCancelledRatio() {
+  const defaultRatio = 0.2;
+  const raw = Number(process.env.SEED_OWNER_CANCELLED_RATIO ?? defaultRatio.toString());
+  if (!Number.isFinite(raw)) return defaultRatio;
+  if (raw < 0) return 0;
+  if (raw > 1) return 1;
+  return raw;
+}
+
+function applyOwnerCancelledRefunds(bookings: any[], ratio: number) {
+  if (!bookings.length || ratio <= 0) {
+    return 0;
+  }
+
+  const targetCancelled = Math.min(
+    bookings.length,
+    Math.max(1, Math.round(bookings.length * ratio))
+  );
+
+  const indexes = bookings.map((_, index) => index);
+  for (let i = indexes.length - 1; i > 0; i--) {
+    const j = randomInt(0, i);
+    [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
+  }
+
+  let cancelledCount = 0;
+
+  for (let i = 0; i < indexes.length && cancelledCount < targetCancelled; i++) {
+    const booking = bookings[indexes[i]];
+    if (!booking) continue;
+
+    const refundAmountRaw = Number(booking.ownerEarnings ?? booking.price ?? 0);
+    const refundAmount = Number.isFinite(refundAmountRaw) ? Math.max(0, refundAmountRaw) : 0;
+
+    booking.status = "cancelled";
+    booking.cancelledBy = "owner";
+    booking.cancelledReason = "Chiusura straordinaria struttura (seed)";
+    booking.payments = [
+      {
+        user: booking.user,
+        amount: refundAmount,
+        method: "card",
+        status: "refunded",
+        createdAt: new Date(),
+      },
+    ];
+
+    cancelledCount += 1;
+  }
+
+  return cancelledCount;
+}
+
 // Helper per creare una prenotazione
 function createBooking(
   player: any,
@@ -96,6 +150,7 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
   const today = new Date();
   const seedScaleRaw = Number(process.env.SEED_SCALE ?? "1");
   const seedScale = Number.isFinite(seedScaleRaw) && seedScaleRaw > 0 ? seedScaleRaw : 1;
+  const ownerCancelledRatio = getOwnerCancelledRatio();
   const pastBookingsPerSport = Math.max(1, Math.round(15 * seedScale));
   const extraPastBookings = Math.max(0, Math.round(30 * seedScale));
   const todayBookings = Math.max(1, Math.round(6 * seedScale));
@@ -103,6 +158,14 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
 
   if (seedScale !== 1) {
     console.log(`⚙️ SEED_SCALE attivo: ${seedScale}`);
+  }
+
+  console.log(`💸 Quota cancellazioni owner con rimborso: ${(ownerCancelledRatio * 100).toFixed(1)}%`);
+
+  const strutturaOwnerById = new Map<string, string>();
+  for (const struttura of strutture) {
+    if (!struttura?._id || !struttura?.owner) continue;
+    strutturaOwnerById.set(struttura._id.toString(), struttura.owner.toString());
   }
 
   // Popola lo sport per tutti i campi per poter filtrare
@@ -322,6 +385,9 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       bookings.push(...playerBookings);
     }
   }
+
+  const seededOwnerCancelledCount = applyOwnerCancelledRefunds(bookings, ownerCancelledRatio);
+  console.log(`🚫 Booking cancellate dall'owner (seed): ${seededOwnerCancelledCount}`);
   console.timeEnd("⏱️ Booking generation compute");
 
   console.time("⏱️ Booking insertMany");
@@ -346,8 +412,88 @@ export async function generateBookings(players: any[], campi: any[], strutture: 
       );
     }
   }
+
+  // Aggiorna ledger owner (booking + refund)
+  console.time("⏱️ Owner earnings ledger update");
+  const ownerLedgerUpdates = new Map<
+    string,
+    { entries: Array<{ type: "booking" | "refund"; amount: number; booking: any; description: string; createdAt: Date }>; totalDelta: number }
+  >();
+
+  for (const booking of savedBookings) {
+    const strutturaId = booking?.struttura?.toString?.();
+    if (!strutturaId) continue;
+
+    const ownerId = strutturaOwnerById.get(strutturaId);
+    if (!ownerId) continue;
+
+    const rawAmount = Number(booking.ownerEarnings ?? 0);
+    if (!Number.isFinite(rawAmount) || rawAmount <= 0) continue;
+
+    const createdAt = booking.createdAt ? new Date(booking.createdAt) : new Date();
+
+    if (!ownerLedgerUpdates.has(ownerId)) {
+      ownerLedgerUpdates.set(ownerId, { entries: [], totalDelta: 0 });
+    }
+
+    const bucket = ownerLedgerUpdates.get(ownerId)!;
+
+    if (booking.status === "confirmed") {
+      bucket.entries.push({
+        type: "booking",
+        amount: rawAmount,
+        booking: booking._id,
+        description: "Guadagno prenotazione seed",
+        createdAt,
+      });
+      bucket.totalDelta += rawAmount;
+      continue;
+    }
+
+    const hasRefund = Array.isArray(booking.payments)
+      ? booking.payments.some((payment: any) => payment?.status === "refunded")
+      : false;
+
+    if (booking.status === "cancelled" && booking.cancelledBy === "owner" && hasRefund) {
+      bucket.entries.push({
+        type: "refund",
+        amount: -rawAmount,
+        booking: booking._id,
+        description: "Rimborso owner cancellation seed",
+        createdAt,
+      });
+      bucket.totalDelta -= rawAmount;
+    }
+  }
+
+  const ownerBulkOps: any[] = Array.from(ownerLedgerUpdates.entries())
+    .filter(([, payload]) => payload.entries.length > 0)
+    .map(([ownerId, payload]) => ({
+      updateOne: {
+        filter: { _id: ownerId },
+        update: {
+          $push: { earnings: { $each: payload.entries } },
+          $inc: { totalEarnings: payload.totalDelta },
+        },
+      },
+    }));
+
+  if (ownerBulkOps.length > 0) {
+    await User.bulkWrite(ownerBulkOps, { ordered: false });
+  }
+  console.timeEnd("⏱️ Owner earnings ledger update");
+
+  const savedCancelledByOwner = savedBookings.filter(
+    (booking: any) => booking.status === "cancelled" && booking.cancelledBy === "owner"
+  ).length;
+  const savedRefunded = savedBookings.filter(
+    (booking: any) =>
+      Array.isArray(booking.payments) && booking.payments.some((payment: any) => payment?.status === "refunded")
+  ).length;
   
   console.log(`✅ Create ${savedBookings.length} prenotazioni`);
+  console.log(`   - ${savedCancelledByOwner} cancellate dall'owner`);
+  console.log(`   - ${savedRefunded} con rimborso registrato`);
   console.log(`   - ${players.length} giocatori`);
   console.log(`   - Media ${(savedBookings.length / players.length).toFixed(1)} prenotazioni per giocatore`);
   console.log(`📊 Distribuzione per sport:`);
