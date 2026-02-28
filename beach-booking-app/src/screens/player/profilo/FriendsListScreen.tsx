@@ -25,6 +25,7 @@ type FriendItem = {
     username: string;
     avatarUrl?: string;
     profilePrivacy?: 'public' | 'private';
+    isPrivate?: boolean;
   };
   friendshipId: string;
   friendsSince?: string;
@@ -164,6 +165,7 @@ export default function FriendsListScreen() {
 
   const renderItem = ({ item }: { item: FriendItem }) => {
     const isFollowing = followingIds.has(item.user._id);
+    const isPrivateProfile = item.user.profilePrivacy === 'private' || item.user.isPrivate === true;
 
     return (
       <Pressable
@@ -186,7 +188,7 @@ export default function FriendsListScreen() {
             <Text style={styles.friendName}>
               {item.user.name} {item.user.surname || ''}
             </Text>
-            {item.user.profilePrivacy === 'private' && (
+            {isPrivateProfile && (
               <Ionicons name="lock-closed" size={14} color="#666" style={styles.privateIcon} />
             )}
           </View>

@@ -666,6 +666,18 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
       const bookingType = numPeople ? "public" : "private";
       const paymentMode = bookingType === "public" ? "split" : "full";
       const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
+      const splitInitialPayment = unitPrice ? Math.min(totalPrice, unitPrice) : Math.max(1, Math.round(totalPrice / 2));
+      const payments = paymentMode === "split"
+        ? [
+            {
+              user: user._id,
+              amount: splitInitialPayment,
+              method: "card",
+              status: "completed",
+              createdAt: new Date(),
+            },
+          ]
+        : [];
       
       extraBookings.push({
         user: user._id,
@@ -678,7 +690,7 @@ export async function generateMatches(players: any[], campi: any[], savedBooking
         price: totalPrice,
         numberOfPeople: numPeople,
         unitPrice: unitPrice,
-        payments: [],
+        payments,
         status: "confirmed",
         bookingType,
         paymentMode,

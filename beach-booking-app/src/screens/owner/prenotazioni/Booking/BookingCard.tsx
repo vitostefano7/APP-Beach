@@ -30,6 +30,13 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
 
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat("it-IT", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   if (!item) {
     console.log("⚠️ BookingCard: item is null/undefined");
     return null;
@@ -47,6 +54,7 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
   const matchBadgeInfo = getMatchBadgeInfo(item);
   const matchStatus = getMatchStatus(item);
   const needsScore = matchStatus === "not_completed" && isMatchPassed(item);
+  const paymentLabel = getPaymentModeLabel(item.paymentMode);
   const matchVisibilityLabel = `Partita: ${item.match?.isPublic ? "Pubblica" : "Privata"}`;
 
   const match = item.match;
@@ -56,6 +64,80 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
   const teamsComplete = teamAConfirmed === maxPlayersPerTeam && teamBConfirmed === maxPlayersPerTeam;
 
   const canOwnerInsert = needsScore && user?.role === "owner" && teamsComplete;
+
+  const confirmedPlayerIds = new Set(
+    (item.match?.players || [])
+      .filter((player) => player.status === "confirmed")
+      .map((player) => {
+        const playerUser = player.user as any;
+        return typeof playerUser === "string" ? playerUser : playerUser?._id || playerUser?.id;
+      })
+      .filter(Boolean)
+      .map((id) => String(id))
+  );
+
+  const getPaymentUserId = (payment: NonNullable<Booking["payments"]>[number]) => {
+    const paymentUser = payment.user as any;
+    return typeof paymentUser === "string" ? paymentUser : paymentUser?._id || paymentUser?.id;
+  };
+
+  const completedPayments = (item.payments || []).filter((payment) => payment?.status === "completed");
+  const refundedPayments = (item.payments || []).filter((payment) => payment?.status === "refunded");
+
+  const paidByConfirmed = completedPayments.reduce((sum, payment) => {
+    if (!confirmedPlayerIds.size) {
+      return sum + (payment.amount || 0);
+    }
+    const paymentUserId = getPaymentUserId(payment);
+    if (paymentUserId && confirmedPlayerIds.has(String(paymentUserId))) {
+      return sum + (payment.amount || 0);
+    }
+    return sum;
+  }, 0);
+
+  const refundedByConfirmed = refundedPayments.reduce((sum, payment) => {
+    if (!confirmedPlayerIds.size) {
+      return sum + (payment.amount || 0);
+    }
+    const paymentUserId = getPaymentUserId(payment);
+    if (paymentUserId && confirmedPlayerIds.has(String(paymentUserId))) {
+      return sum + (payment.amount || 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalPrice = Number(item.price || 0);
+  const paidByConfirmedNet = Math.max(0, Number((paidByConfirmed - refundedByConfirmed).toFixed(2)));
+  const paidAmount = paidByConfirmedNet;
+
+  if (__DEV__ && item.paymentMode === "split") {
+    console.log("💳 [OwnerBookingCard][split-debug]", {
+      bookingId: item._id,
+      confirmedPlayerIds: Array.from(confirmedPlayerIds),
+      completedPayments: completedPayments.map((payment) => ({
+        userId: String(getPaymentUserId(payment) || ""),
+        amount: Number(payment.amount || 0),
+        status: payment.status,
+      })),
+      refundedPayments: refundedPayments.map((payment) => ({
+        userId: String(getPaymentUserId(payment) || ""),
+        amount: Number(payment.amount || 0),
+        status: payment.status,
+      })),
+      paidByConfirmed,
+      refundedByConfirmed,
+      paidByConfirmedNet,
+      totalPrice,
+    });
+  }
+
+  const hasPartialSplitPayment =
+    item.paymentMode === "split" && paidAmount < totalPrice && totalPrice > 0;
+
+  const priceLabel = hasPartialSplitPayment ? "Pagato / Totale" : "Prezzo";
+  const priceValue = hasPartialSplitPayment
+    ? `€${formatPrice(paidAmount)} / €${formatPrice(totalPrice)}`
+    : `€${formatPrice(totalPrice)}`;
 
   if (!item._id) {
     console.log("⚠️ Invalid booking item, skipping render");
@@ -71,8 +153,14 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
         <View style={styles.dateContainer}>
           <Text style={styles.dateText}>{formatDate(item.date)}</Text>
           <Text style={styles.timeText}>{item.startTime} - {item.endTime}</Text>
-          <Text style={styles.paymentModeText}>{getPaymentModeLabel(item.paymentMode)}</Text>
-          <Text style={styles.paymentModeText}>{matchVisibilityLabel}</Text>
+          <View style={styles.metaLabelsRow}>
+            <View style={styles.metaLabelPill}>
+              <Text style={styles.metaLabelText}>{paymentLabel}</Text>
+            </View>
+            <View style={styles.metaLabelPill}>
+              <Text style={styles.metaLabelText}>{matchVisibilityLabel}</Text>
+            </View>
+          </View>
         </View>
         <View style={styles.statusBadgeContainer}>
           {isCancelled ? (
@@ -141,14 +229,14 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
         </View>
 
         <View style={styles.infoRowSub}>
-          <Ionicons name="location-outline" size={16} color="#888" />
+          <Ionicons name="location-outline" size={16} color="#2196F3" />
           <Text style={styles.locationText}>
             {item.campo?.struttura?.name || "Struttura"} • {item.campo?.name || "Campo"}
           </Text>
         </View>
 
         <View style={styles.infoRowSub}>
-          <SportIcon sport={item.campo?.sport?.code || "beach_volley"} size={16} color="#888" />
+          <SportIcon sport={item.campo?.sport?.code || "beach_volley"} size={16} color="#2196F3" />
           <Text style={styles.locationText}>{item.campo?.sport?.name || formatSportName(item.campo?.sport?.code)}</Text>
         </View>
       </View>
@@ -173,8 +261,8 @@ export function BookingCard({ item, onPress }: BookingCardProps) {
 
       <View style={styles.cardFooterBlue}>
         <View style={styles.priceContainerBlue}>
-          <Text style={styles.priceLabelBlue}>Prezzo</Text>
-          <Text style={styles.priceValueBlue}>€{item.price}</Text>
+          <Text style={styles.priceLabelBlue}>{priceLabel}</Text>
+          <Text style={styles.priceValueBlue}>{priceValue}</Text>
         </View>
         <View style={styles.actionButtonBlue}>
           <Text style={styles.actionButtonTextBlue}>Vedi dettagli</Text>

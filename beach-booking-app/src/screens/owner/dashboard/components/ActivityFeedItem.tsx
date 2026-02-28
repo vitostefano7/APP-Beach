@@ -4,7 +4,7 @@ import React from "react";
 import { styles } from "../styles/OwnerDashboardScreen.styles";
 
 interface Activity {
-  type: "new_booking" | "cancellation" | "payment";
+  type: "new_booking" | "cancellation" | "cancellation_refund";
   booking: {
     _id: string;
     userName: string;
@@ -37,8 +37,8 @@ export default function ActivityFeedItem({
         return { name: "checkmark-circle", color: "#4CAF50", bg: "#E8F5E9" };
       case "cancellation":
         return { name: "close-circle", color: "#F44336", bg: "#FFEBEE" };
-      case "payment":
-        return { name: "cash", color: "#9C27B0", bg: "#F3E5F5" };
+      case "cancellation_refund":
+        return { name: "arrow-undo-circle", color: "#9C27B0", bg: "#F3E5F5" };
       default:
         return { name: "information-circle", color: "#2196F3", bg: "#E3F2FD" };
     }
@@ -54,8 +54,8 @@ export default function ActivityFeedItem({
         return `${fullName} ha prenotato ${activity.booking.campo.name}`;
       case "cancellation":
         return `${fullName} ha cancellato la prenotazione`;
-      case "payment":
-        return `Pagamento ricevuto da ${fullName}`;
+      case "cancellation_refund":
+        return `${fullName} ha cancellato la prenotazione con rimborso`;
       default:
         return "Nuova attività";
     }
@@ -107,7 +107,9 @@ export default function ActivityFeedItem({
         <Text style={styles.activityTime}>{getRelativeTime()}</Text>
         {activity.type !== "cancellation" && (
           <Text style={styles.activityPrice}>
-            €{activity.booking.totalPrice.toFixed(2)}
+            {activity.type === "cancellation_refund" ? "Rimborsati " : "€"}
+            {activity.type === "cancellation_refund" ? "€" : ""}
+            {activity.booking.totalPrice.toFixed(2)}
           </Text>
         )}
       </View>

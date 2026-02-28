@@ -233,12 +233,39 @@ export const updateMe = async (
       updateFields.profilePrivacy = req.body.profilePrivacy;
     }
 
+    const currentUser = await User.findById(userId).select("profilePrivacy");
+
     console.log('💾 [updateMe] Aggiornamento utente');
     const user = await User.findByIdAndUpdate(
       userId,
       updateFields,
       { new: true }
     ).select("-password");
+
+    const switchedFromPrivateToPublic =
+      currentUser?.profilePrivacy === "private" && user?.profilePrivacy === "public";
+
+    if (switchedFromPrivateToPublic) {
+      const acceptedAt = new Date();
+      const result = await Friendship.updateMany(
+        {
+          recipient: userId,
+          status: "pending",
+        },
+        {
+          $set: {
+            status: "accepted",
+            acceptedAt,
+          },
+        }
+      );
+
+      console.log('✅ [updateMe] Auto-accepted pending requests after privacy switch', {
+        userId,
+        matched: result.matchedCount,
+        modified: result.modifiedCount,
+      });
+    }
 
     console.log('✅ [updateMe] Utente aggiornato');
     res.json(user);

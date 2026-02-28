@@ -34,6 +34,7 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
   const friendName = friendData.name || "Utente";
   const friendSurname = friendData.surname || "";
   const avatarUrl = friendData.avatarUrl;
+  const isPrivateProfile = friendData.profilePrivacy === 'private' || friendData.isPrivate === true;
   
   // Estrai metriche
   const matchCount = friend.reason?.details?.matchCount || 0;
@@ -75,6 +76,9 @@ export const SuggestedFriendCard: React.FC<SuggestedFriendCardProps> = ({
             {friendName}
             {friendSurname ? ` ${friendSurname}` : ""}
           </Text>
+          {isPrivateProfile && (
+            <Ionicons name="lock-closed" size={14} color="#666" />
+          )}
         </View>
         
         {username && (

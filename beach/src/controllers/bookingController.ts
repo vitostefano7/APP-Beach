@@ -365,6 +365,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     const ownerEarnings = priceResult.totalPrice;
 
     console.log("✅ Creando prenotazione nel database...");
+    // TODO: rivedere la gestione pagamenti split.
+    // Oggi la prenotazione nasce con payments vuoto e i versamenti arrivano solo da POST /bookings/:id/payments.
+    // In futuro valutare una strategia unica (es. quota iniziale automatica e coerenza completa nei riepiloghi owner).
     // ✅ Crea booking
     const booking = await Booking.create({
       bookingType,
@@ -1103,6 +1106,8 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     (booking as any).cancelledBy = "user";
     await booking.save();
 
+    let ownerRefundDeducted = 0;
+
     // 💰 Gestione rimborsi fittizi e deduzione guadagni owner
     try {
       const bookingPopulated = await Booking.findById(id).populate('campo');
@@ -1132,6 +1137,7 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
               ownerUser.totalEarnings = (ownerUser.totalEarnings || 0) - ownerEarnings;
 
               await ownerUser.save();
+              ownerRefundDeducted = ownerEarnings;
               console.log(`💰 Rimborso di €${ownerEarnings} dedotto dall'owner ${ownerId}`);
 
               // Marca tutti i pagamenti come "refunded"
@@ -1141,17 +1147,6 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
                 }
               });
               await booking.save();
-
-              // Invia notifica rimborso all'owner
-              await createNotification(
-                new mongoose.Types.ObjectId(ownerId),
-                new mongoose.Types.ObjectId(req.user!.id),
-                "booking_cancelled",
-                "Prenotazione cancellata - Rimborso elaborato",
-                `Prenotazione ${campo.name} cancellata. Rimborso di €${ownerEarnings} dedotto dai tuoi guadagni.`,
-                new mongoose.Types.ObjectId(booking._id),
-                "Booking"
-              );
             }
           }
         }
@@ -1159,6 +1154,86 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     } catch (refundError) {
       console.error("❌ Errore gestione rimborso:", refundError);
       // Non fallire la cancellazione per un errore di rimborso
+    }
+
+    // 🔔 Notifica cancellazione a partecipanti confermati (con team) e owner struttura
+    try {
+      const bookingForNotifications = await Booking.findById(id)
+        .populate({
+          path: "campo",
+          select: "name struttura",
+          populate: {
+            path: "struttura",
+            select: "name owner",
+          },
+        })
+        .populate({
+          path: "match",
+          select: "players",
+        });
+
+      if (bookingForNotifications) {
+        const matchDoc = (bookingForNotifications as any).match;
+        const campoDoc = (bookingForNotifications as any).campo;
+        const strutturaDoc = campoDoc?.struttura;
+
+        const recipientIds = new Set<string>();
+
+        if (Array.isArray(matchDoc?.players)) {
+          for (const player of matchDoc.players) {
+            const hasValidTeam = player?.team === "A" || player?.team === "B";
+            if (player?.status === "confirmed" && hasValidTeam && player?.user) {
+              recipientIds.add(player.user.toString());
+            }
+          }
+        }
+
+        const ownerId = strutturaDoc?.owner?.toString?.();
+        if (ownerId) {
+          recipientIds.add(ownerId);
+        }
+
+        // Non notificare chi ha annullato
+        recipientIds.delete(req.user!.id);
+
+        const senderId = new mongoose.Types.ObjectId(req.user!.id);
+        const bookingObjectId = new mongoose.Types.ObjectId(booking._id);
+        const strutturaName = strutturaDoc?.name || "la struttura";
+        const campoName = campoDoc?.name || "il campo";
+        const bookingDate = (booking as any).date;
+        const bookingTime = (booking as any).startTime;
+
+        const notificationPromises = Array.from(recipientIds).map((recipientId) => {
+          const isOwnerRecipient = ownerId && recipientId === ownerId;
+
+          const title = isOwnerRecipient
+            ? "Prenotazione cancellata"
+            : "Partita annullata";
+
+          const message = isOwnerRecipient
+            ? ownerRefundDeducted > 0
+              ? `La prenotazione di ${campoName} del ${bookingDate} alle ${bookingTime} è stata cancellata. Rimborso di €${ownerRefundDeducted} dedotto dai tuoi guadagni.`
+              : `La prenotazione di ${campoName} del ${bookingDate} alle ${bookingTime} presso ${strutturaName} è stata cancellata.`
+            : `La partita del ${bookingDate} alle ${bookingTime} presso ${strutturaName} è stata annullata.`;
+
+          return createNotification(
+            new mongoose.Types.ObjectId(recipientId),
+            senderId,
+            "booking_cancelled",
+            title,
+            message,
+            bookingObjectId,
+            "Booking"
+          );
+        });
+
+        const notificationResults = await Promise.allSettled(notificationPromises);
+        const sentCount = notificationResults.filter((r) => r.status === "fulfilled").length;
+        console.log(`✅ Notifiche cancellazione inviate: ${sentCount}/${notificationPromises.length}`);
+      }
+    } catch (notifyError) {
+      console.error("⚠️ Errore invio notifiche cancellazione:", notifyError);
+      // Non fallire la cancellazione per un errore di notifica
     }
 
     console.log("🔓 Riabilitando slot nel calendario...");

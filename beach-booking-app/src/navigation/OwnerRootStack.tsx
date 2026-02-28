@@ -22,6 +22,7 @@ import OwnerCercaAmiciScreen from "../screens/owner/Community/OwnerCercaAmiciScr
 import UserProfileScreen from "../screens/player/profilo/UserProfileScreen";
 import StrutturaDetailScreen from "../screens/player/struttura/StrutturaDetailScreen";
 import OwnerNotificheScreen from "../screens/owner/dashboard/OwnerNotificheScreen";
+import OwnerAllActivitiesScreen from "../screens/owner/dashboard/OwnerAllActivitiesScreen";
 import EarningsStatsScreen from "../screens/owner/EarningsStatsScreen";
 import OwnerStatisticsScreen from "../screens/owner/profilo/OwnerStatisticsScreen";
 import FieldDetailsScreen from "../screens/player/struttura/FieldDetailsScreen/FieldDetailsScreen";
@@ -37,6 +38,7 @@ export type OwnerRootStackParamList = {
   ModificaCampo: { campoId: string };
   OwnerCercaAmiciScreen: undefined;
   OwnerNotifiche: undefined;
+  OwnerAllActivities: undefined;
   OwnerStatistics: { strutturaId?: string } | undefined;
   ProfiloUtente: { userId: string };
   EarningsStats: {
@@ -62,6 +64,10 @@ export default function OwnerRootStack() {
       <Stack.Screen
         name="OwnerNotifiche"
         component={OwnerNotificheScreen}
+      />
+      <Stack.Screen
+        name="OwnerAllActivities"
+        component={OwnerAllActivitiesScreen}
       />
       <Stack.Screen
         name="OwnerStatistics"

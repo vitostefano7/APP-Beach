@@ -17,6 +17,7 @@ interface SuggestedUser {
     username: string;
     avatarUrl?: string;
     preferredSports?: string[];
+    profilePrivacy?: "public" | "private";
   };
   reason: {
     type: "match_together" | "mutual_friends" | "same_venue";
@@ -949,7 +950,7 @@ export const friendshipController = {
 
       const users = await User.find(
         { _id: { $in: opponentIds } },
-        "name surname username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports profilePrivacy"
       );
 
       // Crea suggerimenti
@@ -982,6 +983,7 @@ export const friendshipController = {
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
+            profilePrivacy: user.profilePrivacy,
           },
           reason: {
             type: "match_together",
@@ -1090,7 +1092,7 @@ export const friendshipController = {
       const userIds = potentialFriends.map(pf => pf._id);
       const users = await User.find(
         { _id: { $in: userIds } },
-        "name surname username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports profilePrivacy"
       );
 
       const userMap = new Map(users.map(user => [user._id.toString(), user]));
@@ -1113,6 +1115,7 @@ export const friendshipController = {
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
+            profilePrivacy: user.profilePrivacy,
           },
           reason: {
             type: "mutual_friends",
@@ -1232,7 +1235,7 @@ export const friendshipController = {
       const userIds = otherUsersBookings.map(booking => booking.userId);
       const users = await User.find(
         { _id: { $in: userIds } },
-        "name surname username avatarUrl preferredSports"
+        "name surname username avatarUrl preferredSports profilePrivacy"
       );
 
       const strutturaDetails = await Struttura.find(
@@ -1278,6 +1281,7 @@ export const friendshipController = {
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports?.map((id: mongoose.Types.ObjectId) => id.toString()),
+            profilePrivacy: user.profilePrivacy,
           },
           reason: {
             type: "same_venue",
@@ -1392,6 +1396,7 @@ export const friendshipController = {
             username: 1,
             avatarUrl: 1,
             preferredSports: 1,
+            profilePrivacy: 1,
             matchCount: 1,
             followerCount: 1,
             // Calcola uno score VIP basato su match e follower
@@ -1427,6 +1432,7 @@ export const friendshipController = {
             username: user.username,
             avatarUrl: user.avatarUrl,
             preferredSports: user.preferredSports,
+            profilePrivacy: user.profilePrivacy,
           },
           reason: {
             type: "match_together", // Usiamo questo tipo per indicare utenti popolari

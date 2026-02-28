@@ -40,6 +40,10 @@ type Booking = {
   endTime: string;
   totalPrice: number;
   status: string;
+  payments?: Array<{
+    amount: number;
+    status: string;
+  }>;
   userName: string;
   userSurname?: string;
   userPhone?: string;
@@ -53,10 +57,11 @@ type Booking = {
     name: string;
   };
   createdAt: string;
+  updatedAt?: string;
 };
 
 type Activity = {
-  type: "new_booking" | "cancellation" | "payment";
+  type: "new_booking" | "cancellation" | "cancellation_refund";
   booking: Booking;
   timestamp: string;
 };
@@ -70,12 +75,18 @@ type Match = {
     endTime: string;
     campo: {
       name: string;
-      sport: string;
+      sport: string | { _id: string; name: string };
+      struttura: {
+        _id: string;
+        name: string;
+      };
     };
-    struttura: {
-      _id: string;
-      name: string;
-    };
+  };
+  createdBy: {
+    _id: string;
+    name: string;
+    surname: string;
+    avatarUrl?: string;
   };
   players: Array<{
     user: {
@@ -202,24 +213,84 @@ export default function OwnerDashboardScreen() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/owner/bookings`, {
+      const res = await fetch(`${API_URL}/bookings/owner`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
-        
-        // Prendi ultime 10 prenotazioni ordinate per data creazione
+
         const activities: Activity[] = data
-          .sort((a: Booking, b: Booking) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          .map((rawBooking: any): Activity | null => {
+            const strutturaId =
+              typeof rawBooking?.struttura === "object"
+                ? rawBooking.struttura?._id
+                : rawBooking?.struttura;
+
+            const normalizedBooking: Booking = {
+              _id: rawBooking?._id,
+              date: rawBooking?.date,
+              startTime: rawBooking?.startTime,
+              endTime: rawBooking?.endTime,
+              totalPrice: rawBooking?.totalPrice ?? rawBooking?.price ?? 0,
+              status: rawBooking?.status,
+              payments: Array.isArray(rawBooking?.payments) ? rawBooking.payments : [],
+              userName: rawBooking?.user?.name || "Utente",
+              userSurname: rawBooking?.user?.surname,
+              userPhone: rawBooking?.user?.phone,
+              campo: {
+                _id:
+                  typeof rawBooking?.campo === "object"
+                    ? rawBooking.campo?._id
+                    : rawBooking?.campo,
+                name: rawBooking?.campo?.name || "Campo",
+                sport: rawBooking?.campo?.sport || "",
+              },
+              struttura: {
+                _id: rawBooking?.campo?.struttura?._id || strutturaId || "",
+                name: rawBooking?.campo?.struttura?.name || "Struttura",
+              },
+              createdAt: rawBooking?.createdAt,
+              updatedAt: rawBooking?.updatedAt,
+            };
+
+            if (!normalizedBooking._id || !normalizedBooking.createdAt) {
+              return null;
+            }
+
+            const refundedAmount = (normalizedBooking.payments || [])
+              .filter((payment) => payment?.status === "refunded")
+              .reduce((sum, payment) => sum + (payment?.amount || 0), 0);
+
+            const hasRefund = refundedAmount > 0;
+
+            const activityType: Activity["type"] =
+              normalizedBooking.status === "cancelled"
+                ? hasRefund
+                  ? "cancellation_refund"
+                  : "cancellation"
+                : "new_booking";
+
+            const activityBooking: Booking = {
+              ...normalizedBooking,
+              totalPrice:
+                activityType === "cancellation_refund"
+                  ? refundedAmount
+                  : normalizedBooking.totalPrice,
+            };
+
+            return {
+              type: activityType,
+              booking: activityBooking,
+              timestamp: normalizedBooking.updatedAt || normalizedBooking.createdAt,
+            };
+          })
+          .filter((activity: Activity | null): activity is Activity => Boolean(activity))
+          .sort((a: Activity, b: Activity) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           )
           .slice(0, 10)
-          .map((booking: Booking) => ({
-            type: booking.status === "cancelled" ? "cancellation" : "new_booking",
-            booking,
-            timestamp: booking.createdAt,
-          }));
+;
 
         setRecentActivities(activities);
       } else {
@@ -339,6 +410,10 @@ export default function OwnerDashboardScreen() {
     navigation.navigate("OwnerNotifiche");
   }, [navigation]);
 
+  const handleViewAllActivities = useCallback(() => {
+    navigation.navigate("OwnerAllActivities");
+  }, [navigation]);
+
   const handleStatsPress = useCallback((type: string) => {
     if (type === "bookings") {
       navigation.navigate("OwnerBookings");
@@ -371,10 +446,12 @@ export default function OwnerDashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#2196F3"
-            colors={["#2196F3"]}
+            {...({
+              refreshing,
+              onRefresh,
+              tintColor: "#2196F3",
+              colors: ["#2196F3"],
+            } as any)}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -508,6 +585,13 @@ export default function OwnerDashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Attività Recenti</Text>
+              <Pressable
+                onPress={handleViewAllActivities}
+                style={styles.sectionLink}
+              >
+                <Text style={styles.sectionLinkText}>Vedi tutte</Text>
+                <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+              </Pressable>
             </View>
 
             {recentActivities.slice(0, 5).map((activity, index) => (

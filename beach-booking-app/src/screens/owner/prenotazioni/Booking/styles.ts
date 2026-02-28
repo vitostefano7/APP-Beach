@@ -237,8 +237,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
+    borderWidth: 0,
     overflow: "hidden",
   },
   ongoingCard: {
@@ -282,6 +281,23 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#757575",
     marginTop: 2,
+  },
+  metaLabelsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 6,
+  },
+  metaLabelPill: {
+    backgroundColor: "#E3F2FD",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaLabelText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#1976D2",
   },
   statusBadgeContainer: {
     marginLeft: 12,
@@ -435,8 +451,6 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: "#2196F3",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
   },
   priceContainerBlue: {
     gap: 2,

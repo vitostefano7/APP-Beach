@@ -106,7 +106,7 @@ export const styles = StyleSheet.create({
   },
 
   sportChipsContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingVertical: 8,
     gap: 8,
   },
@@ -1355,8 +1355,9 @@ export const styles = StyleSheet.create({
   timeSlotCompact: {
     gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 12,
+    alignSelf: "flex-start",
   },
 
   timeSlotActive: {

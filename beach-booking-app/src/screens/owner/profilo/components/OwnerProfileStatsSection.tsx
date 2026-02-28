@@ -30,12 +30,14 @@ interface OwnerStatsView {
 
 interface OwnerProfileStatsSectionProps {
   stats: OwnerStatsView;
+  businessStatsLoading?: boolean;
   onOpenEarnings: (value: number) => void;
   onOpenBusinessStats: () => void;
 }
 
 export function OwnerProfileStatsSection({
   stats,
+  businessStatsLoading = false,
   onOpenEarnings,
   onOpenBusinessStats,
 }: OwnerProfileStatsSectionProps) {
@@ -83,6 +85,8 @@ export function OwnerProfileStatsSection({
         </Pressable>
       </View>
 
+      {businessStatsLoading && <Text style={styles.loadingHint}>Aggiornamento statistiche business...</Text>}
+
       <View style={styles.businessGrid}>
         <Pressable style={styles.businessPeriodCard} onPress={onOpenBusinessStats}>
           <View style={styles.earningsPeriodHeader}>
@@ -95,11 +99,15 @@ export function OwnerProfileStatsSection({
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Tasso</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.oggi.tassoOccupazione}%</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : `${stats.businessPeriodStats.oggi.tassoOccupazione}%`}
+            </Text>
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.oggi.clientiNuovi}</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : stats.businessPeriodStats.oggi.clientiNuovi}
+            </Text>
           </View>
         </Pressable>
 
@@ -114,11 +122,15 @@ export function OwnerProfileStatsSection({
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Tasso</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.settimana.tassoOccupazione}%</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : `${stats.businessPeriodStats.settimana.tassoOccupazione}%`}
+            </Text>
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.settimana.clientiNuovi}</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : stats.businessPeriodStats.settimana.clientiNuovi}
+            </Text>
           </View>
         </Pressable>
 
@@ -133,11 +145,15 @@ export function OwnerProfileStatsSection({
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Tasso</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.mese.tassoOccupazione}%</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : `${stats.businessPeriodStats.mese.tassoOccupazione}%`}
+            </Text>
           </View>
           <View style={styles.businessMetricRow}>
             <Text style={styles.businessMetricLabel}>Clienti nuovi</Text>
-            <Text style={styles.businessMetricValue}>{stats.businessPeriodStats.mese.clientiNuovi}</Text>
+            <Text style={styles.businessMetricValue}>
+              {businessStatsLoading ? "—" : stats.businessPeriodStats.mese.clientiNuovi}
+            </Text>
           </View>
         </Pressable>
       </View>
@@ -170,6 +186,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#2196F3",
+  },
+  loadingHint: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 10,
+    fontWeight: "600",
   },
   earningsGrid: {
     flexDirection: "row",

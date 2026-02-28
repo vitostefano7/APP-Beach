@@ -28,6 +28,7 @@ import {
 import styles from "./TuttiInviti.styles";
 
 const CACHE_KEY = (filter: string) => `tuttiInviti_cache_${filter}`;
+const COUNTS_CACHE_KEY = "tuttiInviti_counts_cache";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minuti
 const PAGE_SIZE = 10;
 const DEBUG_CACHE = false;
@@ -74,6 +75,7 @@ export default function TuttiInvitiScreen() {
   const [filter, setFilter] = useState<FilterType>(initialFilter);
   const [cacheAge, setCacheAge] = useState<Date | null>(null);
   const [counts, setCounts] = useState({ all: 0, pending: 0, confirmed: 0, declined: 0, expired: 0 });
+  const [countsInitialized, setCountsInitialized] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,6 +92,17 @@ const loadAllMatches = async (
   forceNetwork = false
 ) => {
   try {
+    if (!countsInitialized && !forceNetwork) {
+      const cachedCounts = await getCachedEntry<typeof counts>(COUNTS_CACHE_KEY, CACHE_TTL_MS);
+      if (cachedCounts?.data) {
+        setCounts(cachedCounts.data);
+        setCountsInitialized(true);
+        if (DEBUG_CACHE) {
+          console.log("[Cache][counts] ✅ HIT");
+        }
+      }
+    }
+
     if (reset && page === 1 && !forceNetwork) {
       const cached = await getCachedEntry<{ data: any[]; counts: any; hasMore: boolean }>(
         CACHE_KEY(activeFilter),
@@ -98,7 +111,11 @@ const loadAllMatches = async (
       if (cached) {
         const age = Date.now() - cached.ts;
         setInvites(cached.data.data || []);
-        if (cached.data.counts) setCounts(cached.data.counts);
+        if (!countsInitialized && cached.data.counts) {
+          setCounts(cached.data.counts);
+          setCountsInitialized(true);
+          await setCachedData(COUNTS_CACHE_KEY, cached.data.counts);
+        }
         setHasMore(Boolean(cached.data.hasMore));
         setCurrentPage(1);
         setCacheAge(new Date(cached.ts));
@@ -134,7 +151,13 @@ const loadAllMatches = async (
       setInvites(merged);
       setHasMore(more);
       setCurrentPage(page);
-      if (serverCounts) setCounts(serverCounts);
+
+      const shouldUpdateCounts = forceNetwork || !countsInitialized;
+      if (serverCounts && shouldUpdateCounts) {
+        setCounts(serverCounts);
+        setCountsInitialized(true);
+        await setCachedData(COUNTS_CACHE_KEY, serverCounts);
+      }
 
       if (reset) {
         await setCachedData(CACHE_KEY(activeFilter), { data: merged, counts: serverCounts, hasMore: more });
@@ -173,8 +196,8 @@ const loadAllMatches = async (
   };
 
   const handleFilterChange = (f: FilterType) => {
+    if (f === filter) return;
     setFilter(f);
-    setInvites([]);
     setCurrentPage(1);
     loadAllMatches(1, true, f, false);
   };
@@ -605,8 +628,11 @@ const loadAllMatches = async (
 
       await Promise.all([
         removeCachedByPrefix("tuttiInviti_cache_"),
+        removeCachedData(COUNTS_CACHE_KEY),
         removeCachedData("pendingInvitesCount"),
       ]);
+
+      setCountsInitialized(false);
 
       await loadAllMatches(1, true, filter);
       

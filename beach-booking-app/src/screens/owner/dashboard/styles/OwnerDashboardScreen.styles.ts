@@ -516,7 +516,7 @@ export const styles = StyleSheet.create({
   activityPrice: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#9C27B0",
+    color: "#2196F3",
   },
 
   /* =========================

@@ -45,6 +45,18 @@ function createBooking(playerId: string, campo: CampoSeed, date: Date, numPeople
   const paymentMode = bookingType === "public" ? "split" : "full";
   const totalPrice = randomInt(30, 50);
   const unitPrice = numPeople ? Math.round(totalPrice / numPeople) : undefined;
+  const splitInitialPayment = unitPrice ? Math.min(totalPrice, unitPrice) : Math.max(1, Math.round(totalPrice / 2));
+  const payments = paymentMode === "split"
+    ? [
+        {
+          user: playerId,
+          amount: splitInitialPayment,
+          method: "card",
+          status: "completed",
+          createdAt: new Date(),
+        },
+      ]
+    : [];
 
   return {
     user: playerId,
@@ -57,7 +69,7 @@ function createBooking(playerId: string, campo: CampoSeed, date: Date, numPeople
     price: totalPrice,
     numberOfPeople: numPeople,
     unitPrice,
-    payments: [],
+    payments,
     status: "confirmed",
     bookingType,
     paymentMode,

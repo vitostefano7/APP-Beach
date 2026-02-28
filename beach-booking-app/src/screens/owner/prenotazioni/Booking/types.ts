@@ -25,6 +25,11 @@ export interface Booking {
   startTime: string;
   endTime: string;
   price: number;
+  payments?: Array<{
+    user: string | { _id: string };
+    amount: number;
+    status: "pending" | "completed" | "failed" | "refunded";
+  }>;
   paymentMode?: "full" | "split";
   status: "confirmed" | "cancelled";
   hasMatch?: boolean;

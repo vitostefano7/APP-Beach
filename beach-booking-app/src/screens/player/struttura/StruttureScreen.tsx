@@ -405,7 +405,7 @@ function AdvancedFiltersModal({
             </Pressable>
 
             <Text style={styles.sectionTitle}>Orario</Text>
-            <View style={[styles.timeSlots, styles.timeSlotsHorizontal]}>
+            <View style={styles.timeSlots}>
               {[
                 { slot: "mattina", label: "Mattina 6-12" },
                 { slot: "pomeriggio", label: "Pomeriggio 12-18" },

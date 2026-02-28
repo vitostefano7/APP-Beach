@@ -26,7 +26,16 @@ export default function OwnerProfileScreen() {
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
 
-  const { strutture, bookings, campi, loading, error, fetchProfile } = useOwnerProfile(token);
+  const {
+    strutture,
+    bookings,
+    campi,
+    loading,
+    statsLoading,
+    error,
+    fetchProfile,
+    hydrateFromCache,
+  } = useOwnerProfile(token);
   const stats = useOwnerStats(bookings, strutture, campi);
 
   const {
@@ -50,16 +59,29 @@ export default function OwnerProfileScreen() {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const isOffline = useNetworkStatus();
 
-  const fetchAndSyncProfile = useCallback(async () => {
-    const fetchedUser = await fetchProfile();
+  const fetchAndSyncProfile = useCallback(async (options?: { skipLoading?: boolean }) => {
+    const fetchedUser = await fetchProfile(options);
     if (fetchedUser) {
       setProfileUser(fetchedUser);
     }
   }, [fetchProfile]);
 
+  const bootstrapProfile = useCallback(async () => {
+    try {
+      const cachedUser = await hydrateFromCache();
+      if (cachedUser) {
+        setProfileUser(cachedUser);
+      }
+
+      await fetchAndSyncProfile({ skipLoading: !!cachedUser });
+    } catch (err) {
+      console.error("Errore bootstrap profilo owner:", err);
+    }
+  }, [fetchAndSyncProfile, hydrateFromCache]);
+
   useEffect(() => {
-    fetchAndSyncProfile();
-  }, [fetchAndSyncProfile]);
+    bootstrapProfile();
+  }, [bootstrapProfile]);
 
   const onRefresh = useCallback(async () => {
     if (isOffline) {
@@ -221,6 +243,7 @@ export default function OwnerProfileScreen() {
 
         <OwnerProfileStatsSection
           stats={stats}
+          businessStatsLoading={statsLoading}
           onOpenEarnings={(totalEarnings: number) =>
             navigation.navigate("EarningsStats", { earnings: { totalEarnings, earnings: [] } })
           }
