@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import SportIcon from "../../../components/SportIcon";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
@@ -1629,14 +1629,16 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
         )}
 
         <View style={styles.tagsRow}>
-          {item.sports?.slice(0, 2).map((sport, idx) => (
+          {item.sports?.slice(0, 3).map((sport, idx) => (
             <View key={idx} style={[styles.sportTag, { flexDirection: 'row', alignItems: 'center' }]}>
-              <FontAwesome5 name="volleyball-ball" size={12} color="#666" style={{ marginRight: 5 }} />
+              <View style={{ marginRight: 5 }}>
+                <SportIcon sport={sport} size={12} color="#2979ff" />
+              </View>
               <Text style={styles.sportTagText}>{sport}</Text>
             </View>
           ))}
-          {item.sports && item.sports.length > 2 && (
-            <Text style={styles.moreText}>+{item.sports.length - 2}</Text>
+          {item.sports && item.sports.length > 3 && (
+            <Text style={styles.moreText}>+{item.sports.length - 3}</Text>
           )}
         </View>
 
@@ -2211,13 +2213,16 @@ export default function StruttureScreen({ isTabMode = false }: { isTabMode?: boo
                     {/* Sport tags (same as list view) */}
                     {selectedMarker.sports && selectedMarker.sports.length > 0 && (
                       <View style={styles.tagsRow}>
-                        {selectedMarker.sports.slice(0, 2).map((sport, idx) => (
-                          <View key={idx} style={styles.sportTag}>
+                        {selectedMarker.sports.slice(0, 3).map((sport, idx) => (
+                          <View key={idx} style={[styles.sportTag, { flexDirection: 'row', alignItems: 'center' }]}>
+                            <View style={{ marginRight: 5 }}>
+                              <SportIcon sport={sport} size={12} color="#2979ff" />
+                            </View>
                             <Text style={styles.sportTagText}>{sport}</Text>
                           </View>
                         ))}
-                        {selectedMarker.sports.length > 2 && (
-                          <Text style={styles.moreText}>+{selectedMarker.sports.length - 2}</Text>
+                        {selectedMarker.sports.length > 3 && (
+                          <Text style={styles.moreText}>+{selectedMarker.sports.length - 3}</Text>
                         )}
                       </View>
                     )}

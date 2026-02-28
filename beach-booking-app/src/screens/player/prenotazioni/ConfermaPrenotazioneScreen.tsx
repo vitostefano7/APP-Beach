@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert,
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,26 +13,11 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useAlert } from "../../../context/AlertContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from '@react-navigation/native';
-import React from 'react';
+import SportIcon from "../../../components/SportIcon";
 
 import API_URL from "../../../config/api";
 import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../utils/matchSportRules";
-
-const SPORT_CODE_TO_RULE: Record<string, any> = {
-  beach_volley: "Beach Volley",
-  beach_volleyball: "Beach Volley",
-  volley: "Volley",
-  volleyball: "Volley",
-  beach_tennis: "Beach Tennis",
-  tennis: "Tennis",
-  padel: "Padel",
-  calcio: "Calcio",
-  calcetto: "Calcetto",
-  calciotto: "Calciotto",
-  calcio_a_7: "Calcio a 7",
-  basket: "Basket",
-};
+import { formatSportName, getSportCode } from "../../../utils/sportUtils";
 
 export default function ConfermaPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
@@ -54,10 +38,11 @@ export default function ConfermaPrenotazioneScreen() {
     struttura,
   } = route.params;
 
-  // Normalizza lo sport ("Beach Volley" -> "beach_volley")
-  const sport = rawSport.replace(/ /g, "_");
+  // Normalizza lo sport usando la utility condivisa
+  const sport = getSportCode(rawSport || "");
+  const normalizedSportLabel = formatSportName(rawSport || sport);
   const canSplitCosts = struttura?.isCostSplittingEnabled === true;
-  const sportRuleKey = SPORT_CODE_TO_RULE[sport] || null;
+  const sportRuleKey = normalizedSportLabel as Parameters<typeof getMaxPlayersRulesForSport>[0];
 
   const [loading, setLoading] = useState(false);
   const [bookingType, setBookingType] = useState<"public" | "private">("public");
@@ -69,7 +54,7 @@ export default function ConfermaPrenotazioneScreen() {
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Determina le opzioni disponibili per lo sport
-  const sportRules = sportRuleKey ? getMaxPlayersRulesForSport(sportRuleKey) : null;
+  const sportRules = getMaxPlayersRulesForSport(sportRuleKey);
   const campoMaxPlayers = Number(campo?.maxPlayers) || null;
   const availablePlayerOptions = (sportRules?.allowedValues || [])
     .filter((players: number) => !campoMaxPlayers || players <= campoMaxPlayers)
@@ -297,7 +282,7 @@ export default function ConfermaPrenotazioneScreen() {
 
           {!canSplitCosts && (
              <Text style={{ fontSize: 11, color: '#999', fontStyle: 'italic', marginTop: 4 }}>
-                La struttura non permette lo split payment
+                La struttura non permette di splittare il pagamento tra i giocatori
              </Text>
           )}
 
@@ -421,7 +406,7 @@ export default function ConfermaPrenotazioneScreen() {
                           styles.maxPlayersPrice,
                           isSelected && styles.maxPlayersPriceSelected,
                         ]}>
-                          €{pricePerPlayer}/gioc.
+                          €{pricePerPlayer}/giocatore
                         </Text>
                       )}
                     </View>
@@ -445,7 +430,7 @@ export default function ConfermaPrenotazioneScreen() {
           </View>
 
           <View style={styles.detailRow}>
-            <Ionicons name="tennisball" size={20} color="#f59e0b" />
+            <SportIcon sport={sport} size={20} color="#f59e0b" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Campo</Text>
               <Text style={styles.detailValue}>{campoName}</Text>
@@ -456,7 +441,7 @@ export default function ConfermaPrenotazioneScreen() {
             <Ionicons name="trophy" size={20} color="#eab308" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Sport</Text>
-              <Text style={styles.detailValue}>{sport}</Text>
+              <Text style={styles.detailValue}>{normalizedSportLabel}</Text>
             </View>
           </View>
         </View>

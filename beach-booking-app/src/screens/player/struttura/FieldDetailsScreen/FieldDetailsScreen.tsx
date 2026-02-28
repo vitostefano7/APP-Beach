@@ -148,6 +148,7 @@ export default function FieldDetailsScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { token, user } = useContext(AuthContext);
+  const currentUserId = (user as any)?._id || (user as any)?.id || "";
   const { showAlert } = useAlert();
 
   // Support receiving either a full `struttura` object or just a `strutturaId` in params
@@ -278,8 +279,8 @@ export default function FieldDetailsScreen() {
               console.log('Scrolling to targetY:', targetY);
               scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
             },
-            (error) => {
-              console.log('measureLayout error:', error);
+            () => {
+              console.log('measureLayout error');
             }
           );
         }, 150);
@@ -530,9 +531,9 @@ export default function FieldDetailsScreen() {
       if (res.ok) {
         setPosts(prev => prev.map(p => 
           p._id === postId 
-            ? { ...p, likes: p.likes?.includes(user?._id || '') 
-                ? p.likes.filter(id => id !== user?._id) 
-                : [...(p.likes || []), user?._id || ''] 
+            ? { ...p, likes: p.likes?.includes(currentUserId)
+                ? p.likes.filter((id: string) => id !== currentUserId)
+                : [...(p.likes || []), currentUserId]
               } 
             : p
         ));
@@ -687,9 +688,13 @@ export default function FieldDetailsScreen() {
         ref={scrollViewRef}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#2196F3"]}
+            {...({
+              refreshing,
+              onRefresh: () => {
+                void onRefresh();
+              },
+              colors: ["#2196F3"],
+            } as any)}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -721,7 +726,7 @@ export default function FieldDetailsScreen() {
               >
                 <Image
                   source={{ uri: img }}
-                  style={styles.galleryImage}
+                  style={styles.galleryImage as any}
                   resizeMode="cover"
                 />
               </Pressable>
@@ -1175,7 +1180,8 @@ export default function FieldDetailsScreen() {
 
             // Helpers for split pricing (used in duration cards, slot labels and button)
             const isVolleyCampo = campo.sport.code === "beach_volley" || campo.sport.code === "volley";
-            const canSplitCampo = struttura?.isCostSplittingEnabled === true;
+            const splitFlag = (struttura as any)?.isCostSplittingEnabled;
+            const canSplitCampo = splitFlag === true || splitFlag === 1 || splitFlag === "true";
             const playerPricingCampo = (campo as any).pricingRules?.playerCountPricing;
             const getUnitPrice = (count: number, dur: number) => {
               if (!playerPricingCampo || !playerPricingCampo.prices) return null;
@@ -2073,23 +2079,39 @@ export default function FieldDetailsScreen() {
                                                   </Text>
                                                 </View>
                                               </View>
-                                              <Text
-                                                style={styles.prenotaBtnPrice}
-                                              >
-                                                {(() => {
-                                                  const total = calculatePrice(
-                                                    campo,
-                                                    selectedDuration[campo._id],
-                                                    selectedDateStr,
-                                                    selectedSlot[campo._id]
-                                                  );
-                                                  if (isVolleyCampo && canSplitCampo && playerPricingCampo?.enabled) {
-                                                    const unit = getUnitPrice(4, selectedDuration[campo._id]);
-                                                    if (unit != null) return `€${unit.toFixed(2)} / gioc.`;
+                                              {(() => {
+                                                const total = calculatePrice(
+                                                  campo,
+                                                  selectedDuration[campo._id],
+                                                  selectedDateStr,
+                                                  selectedSlot[campo._id]
+                                                );
+
+                                                const minPlayersSport = Math.max(
+                                                  Number(campo?.sport?.minPlayers) || 2,
+                                                  2
+                                                );
+                                                const minPerPerson = total / minPlayersSport;
+
+                                                let mainPriceLabel = `€${total.toFixed(2)}`;
+                                                if (isVolleyCampo && canSplitCampo && playerPricingCampo?.enabled) {
+                                                  const unit = getUnitPrice(4, selectedDuration[campo._id]);
+                                                  if (unit != null) {
+                                                    mainPriceLabel = `€${unit.toFixed(2)} / gioc.`;
                                                   }
-                                                  return `€${total.toFixed(2)}`;
-                                                })()}
-                                              </Text>
+                                                }
+
+                                                return (
+                                                  <View style={{ alignItems: "flex-end" }}>
+                                                    <Text style={styles.prenotaBtnPrice}>{mainPriceLabel}</Text>
+                                                    {canSplitCampo && (
+                                                      <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600", marginTop: 2 }}>
+                                                        €{minPerPerson.toFixed(2)} / {minPlayersSport} gioc. min
+                                                      </Text>
+                                                    )}
+                                                  </View>
+                                                );
+                                              })()}
                                             </Pressable>
                                           )}
                                         </>
@@ -2172,7 +2194,7 @@ export default function FieldDetailsScreen() {
                 <PostCard
                   key={post._id}
                   post={post}
-                  currentUserId={user?._id}
+                  currentUserId={currentUserId}
                   token={token}
                   onLike={handleLikePost}
                   onShare={handleSharePost}
@@ -2180,7 +2202,7 @@ export default function FieldDetailsScreen() {
                   onEditPost={handleEditPost}
                   activeEditPostId={editingPostId}
                   onSetActiveEditPostId={setEditingPostId}
-                  isLiked={post.likes?.includes(user?._id || '')}
+                  isLiked={post.likes?.includes(currentUserId)}
                   strutturaId={struttura._id}
                   onAuthorPress={(authorId, isStructure) => {
                     if (isStructure) {

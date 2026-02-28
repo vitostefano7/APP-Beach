@@ -669,14 +669,20 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   durationCardPrice: {
-    flexDirection: "row",
-    alignItems: "baseline",
+    flexDirection: "column",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
   durationCardPriceAmount: {
     fontSize: 17,
     fontWeight: "700",
     color: "#4CAF50",
+  },
+  durationCardPriceSecondary: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginTop: 2,
+    fontWeight: "600",
   },
   durationCardPriceLabel: {
     fontSize: 12,
