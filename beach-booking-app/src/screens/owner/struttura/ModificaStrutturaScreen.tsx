@@ -724,7 +724,7 @@ export default function ModificaStrutturaScreen() {
         {/* 📸 SEZIONE IMMAGINI */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="images" size={20} color="#9C27B0" />
+            <Ionicons name="images" size={20} color="#2196F3" />
             <Text style={styles.cardTitle}>Immagini ({images.length}/10)</Text>
           </View>
 
@@ -736,7 +736,7 @@ export default function ModificaStrutturaScreen() {
               })}
             >
               <View style={styles.emptyImagesIconContainer}>
-                <Ionicons name="images-outline" size={40} color="#9C27B0" />
+                <Ionicons name="images-outline" size={40} color="#2196F3" />
               </View>
               <Text style={styles.emptyImagesTitle}>Nessuna foto</Text>
               <Text style={styles.emptyImagesSubtitle}>
@@ -778,10 +778,10 @@ export default function ModificaStrutturaScreen() {
                 })}
               >
                 <View style={styles.manageImagesIconContainer}>
-                  <Ionicons name="create" size={16} color="#9C27B0" />
+                  <Ionicons name="create" size={16} color="#2196F3" />
                 </View>
                 <Text style={styles.manageImagesText}>Gestisci immagini</Text>
-                <Ionicons name="arrow-forward" size={16} color="#9C27B0" />
+                <Ionicons name="arrow-forward" size={16} color="#2196F3" />
               </Pressable>
             </>
           )}

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
@@ -103,6 +103,8 @@ export default function AggiungiCampoScreen() {
   });
 
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [isPricingConfigured, setIsPricingConfigured] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   /* =======================
      CARICAMENTO SPORT DAL BACKEND
@@ -244,10 +246,62 @@ export default function AggiungiCampoScreen() {
     }));
   };
 
+  const validatePricing = (): string | null => {
+    const isPositivePrice = (value: number) => Number.isFinite(value) && value > 0;
+
+    if (pricing.mode === "flat") {
+      if (!isPositivePrice(pricing.flatPrices.oneHour) || !isPositivePrice(pricing.flatPrices.oneHourHalf)) {
+        return "Inserisci prezzi validi (> 0) per 1 ora e 1.5 ore";
+      }
+      return null;
+    }
+
+    if (!isPositivePrice(pricing.basePrices.oneHour) || !isPositivePrice(pricing.basePrices.oneHourHalf)) {
+      return "Inserisci prezzi base validi (> 0) per 1 ora e 1.5 ore";
+    }
+
+    if (pricing.timeSlotPricing.enabled) {
+      if (pricing.timeSlotPricing.slots.length === 0) {
+        return "Aggiungi almeno una fascia oraria o disattiva le fasce";
+      }
+
+      const hasInvalidSlot = pricing.timeSlotPricing.slots.some((slot) => {
+        return (
+          !slot.label.trim() ||
+          !slot.start.trim() ||
+          !slot.end.trim() ||
+          !isPositivePrice(slot.prices.oneHour) ||
+          !isPositivePrice(slot.prices.oneHourHalf)
+        );
+      });
+
+      if (hasInvalidSlot) {
+        return "Completa tutte le fasce orarie con orari, nome e prezzi validi (> 0)";
+      }
+    }
+
+    return null;
+  };
+
+  const handleSavePricing = () => {
+    const pricingError = validatePricing();
+    if (pricingError) {
+      showAlert({ type: "error", title: "Prezzi non validi", message: pricingError });
+      return;
+    }
+
+    setIsPricingConfigured(true);
+    setShowPricingModal(false);
+  };
+
   /* =======================
      CREATE CAMPO
   ======================= */
-  const handleCreate = async (options?: { navigateToPricing?: boolean }) => {
+  const handleCreate = async () => {
+    if (isSubmittingRef.current || loading) {
+      return;
+    }
+
     if (loadingSports) {
       showAlert({ type: 'info', title: 'Attendi', message: 'Caricamento sport in corso' });
       return;
@@ -277,6 +331,21 @@ export default function AggiungiCampoScreen() {
       return;
     }
 
+    if (!isPricingConfigured) {
+      showAlert({
+        type: 'error',
+        title: 'Prezzi mancanti',
+        message: 'Configura e salva i prezzi prima di confermare la creazione del campo',
+      });
+      return;
+    }
+
+    const pricingValidationError = validatePricing();
+    if (pricingValidationError) {
+      showAlert({ type: 'error', title: 'Prezzi non validi', message: pricingValidationError });
+      return;
+    }
+
     const campoData = {
       name,
       sport: selectedSportData._id,
@@ -288,6 +357,7 @@ export default function AggiungiCampoScreen() {
     };
 
     setLoading(true);
+    isSubmittingRef.current = true;
 
     try {
       const response = await fetch(`${API_URL}/campi`, {
@@ -310,27 +380,6 @@ export default function AggiungiCampoScreen() {
       }
 
       if (response.ok) {
-        const createdCampo = Array.isArray(result?.campi) ? result.campi[0] : null;
-        const createdCampoId = createdCampo?._id;
-
-        if (options?.navigateToPricing) {
-          if (!createdCampoId) {
-            showAlert({
-              type: 'error',
-              title: 'Errore',
-              message: 'Campo creato ma ID non disponibile per configurare i prezzi',
-            });
-            return;
-          }
-
-          navigation.navigate("ConfiguraPrezziCampo", {
-            campoId: createdCampoId,
-            campoName: name.trim() || "Nuovo Campo",
-            campoSport: selectedSportData?.code || sport,
-          });
-          return;
-        }
-
         showAlert({
           type: 'success',
           title: 'Successo',
@@ -345,6 +394,7 @@ export default function AggiungiCampoScreen() {
       console.error(error);
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -403,15 +453,6 @@ export default function AggiungiCampoScreen() {
   const availableSurfaces = getAvailableSurfaces(selectedSportData, indoor);
   const canChooseSurface = availableSurfaces.length > 1;
 
-  const getPricingLabel = () => {
-    if (pricing.mode === "flat") {
-      return `€${pricing.flatPrices.oneHour}/h`;
-    }
-    const hasSlots = pricing.timeSlotPricing.enabled && 
-                    pricing.timeSlotPricing.slots.length > 0;
-    return hasSlots ? "Prezzi dinamici" : `€${pricing.basePrices.oneHour}/h`;
-  };
-
   /* =======================
      PRICING MODAL
   ======================= */
@@ -423,7 +464,7 @@ export default function AggiungiCampoScreen() {
             <Ionicons name="close" size={28} color="#333" />
           </Pressable>
           <Text style={styles.modalHeaderTitle}>Configura Prezzi</Text>
-          <Pressable onPress={() => setShowPricingModal(false)} style={styles.saveModalButton}>
+          <Pressable onPress={handleSavePricing} style={styles.saveModalButton}>
             <Text style={styles.saveModalButtonText}>Salva</Text>
           </Pressable>
         </View>
@@ -776,23 +817,34 @@ export default function AggiungiCampoScreen() {
           </View>
         </View>
 
-        <Pressable style={styles.pricingButton} onPress={() => handleCreate({ navigateToPricing: true })}>
-          <View style={styles.pricingButtonLeft}>
-            <Ionicons name="cash-outline" size={20} color="#2196F3" />
-            <View>
-              <Text style={styles.pricingButtonTitle}>Configura Prezzi</Text>
-              <Text style={styles.pricingButtonSubtitle}>{getPricingLabel()}</Text>
-            </View>
+        <Pressable
+          style={[styles.configurePricingButton, loading && styles.configurePricingButtonDisabled]}
+          onPress={() => {
+            setIsPricingConfigured(false);
+            setShowPricingModal(true);
+          }}
+          disabled={loading}
+        >
+          <View style={styles.configurePricingButtonContent}>
+            <Ionicons name="cash-outline" size={18} color="#1976D2" />
+            <Text style={styles.configurePricingButtonText}>
+              {loading ? "Attendere..." : "Step successivo: Configura Prezzi"}
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#1976D2" />
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
         </Pressable>
 
         <Pressable
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          style={[styles.confirmCreateButton, loading && styles.confirmCreateButtonDisabled]}
           onPress={() => handleCreate()}
           disabled={loading}
         >
-          <Text style={styles.createButtonText}>{loading ? "Aggiunta in corso..." : "Aggiungi campo"}</Text>
+          <View style={styles.confirmCreateButtonContent}>
+            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+            <Text style={styles.confirmCreateButtonText}>
+              {loading ? "Aggiunta in corso..." : "Conferma e chiudi"}
+            </Text>
+          </View>
         </Pressable>
 
         <View style={{ height: 40 }} />
@@ -848,6 +900,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAF4FF",
     padding: 14,
     borderRadius: 18,
+    marginTop: 12,
     marginBottom: 20,
     elevation: 2,
   },
@@ -1086,50 +1139,56 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#2E7D32",
   },
-  pricingButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  configurePricingButton: {
+    backgroundColor: "#EAF4FF",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+    minHeight: 48,
+    paddingHorizontal: 18,
+    borderRadius: 14,
     alignItems: "center",
-    backgroundColor: "white",
-    padding: 14,
-    borderRadius: 18,
+    justifyContent: "center",
     marginBottom: 20,
-    elevation: 3,
+    elevation: 4,
   },
-  pricingButtonLeft: {
+  configurePricingButtonDisabled: {
+    opacity: 0.5,
+  },
+  configurePricingButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    flex: 1,
+    justifyContent: "center",
+    gap: 8,
   },
-  pricingButtonTitle: {
+  configurePricingButtonText: {
+    color: "#1976D2",
     fontSize: 14,
     fontWeight: "700",
-    color: "#1a1a1a",
   },
-  pricingButtonSubtitle: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 2,
-  },
-  createButton: {
+  confirmCreateButton: {
     backgroundColor: "#2196F3",
     minHeight: 48,
     paddingHorizontal: 18,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 20,
     elevation: 4,
   },
-  createButtonDisabled: {
+  confirmCreateButtonDisabled: {
     opacity: 0.5,
   },
-  createButtonText: {
-    color: "white",
+  confirmCreateButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  confirmCreateButtonText: {
+    color: "#fff",
     fontSize: 15,
     fontWeight: "700",
   },
-
   // MODAL STYLES
   modalSafe: {
     flex: 1,

@@ -17,7 +17,11 @@ import API_URL from "../../../config/api";
 import { useOwnerDashboardStats } from "../../../hooks/useOwnerDashboardStats";
 import FilterModal from "../../../components/FilterModal";
 import SportIcon from "../../../components/SportIcon";
-import { Avatar } from "../../../components/Avatar";
+import { OwnerStatsHeader } from "./components/OwnerStatsHeader";
+import { OwnerStatsFilters } from "./components/OwnerStatsFilters";
+import { OwnerStatsSummaryCards } from "./components/OwnerStatsSummaryCards";
+import { OwnerStatsTopHoursSection } from "./components/OwnerStatsTopHoursSection";
+import { OwnerStatsTopUsersSection } from "./components/OwnerStatsTopUsersSection";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -180,17 +184,7 @@ export default function OwnerStatisticsScreen() {
   }, [durationFilter]);
 
   // Filtra strutture e campi in base ai filtri selezionati
-  const {
-    filteredStrutture,
-    filteredCampi,
-    periodFilteredBookings,
-    hourlyStats,
-    weeklyStats,
-    topHours: _hookTopHours,
-    topUsersBySlot: _hookTopUsersBySlot,
-    struttureStats,
-    ownerStats: stats,
-  } = useOwnerDashboardStats({
+  const dashboardStats = useOwnerDashboardStats({
     bookings,
     strutture,
     campi,
@@ -200,6 +194,33 @@ export default function OwnerStatisticsScreen() {
     durationFilter,
     selectedSport,
   });
+
+  const filteredStrutture = Array.isArray(dashboardStats?.filteredStrutture)
+    ? dashboardStats.filteredStrutture
+    : [];
+  const filteredCampi = Array.isArray(dashboardStats?.filteredCampi)
+    ? dashboardStats.filteredCampi
+    : [];
+  const periodFilteredBookings = Array.isArray(dashboardStats?.periodFilteredBookings)
+    ? dashboardStats.periodFilteredBookings
+    : [];
+  const hourlyStats = Array.isArray(dashboardStats?.hourlyStats)
+    ? dashboardStats.hourlyStats
+    : [];
+  const weeklyStats = {
+    labels: Array.isArray(dashboardStats?.weeklyStats?.labels)
+      ? dashboardStats.weeklyStats.labels
+      : [],
+    data: Array.isArray(dashboardStats?.weeklyStats?.data)
+      ? dashboardStats.weeklyStats.data
+      : [],
+  };
+  const struttureStats = Array.isArray(dashboardStats?.struttureStats)
+    ? dashboardStats.struttureStats
+    : [];
+  const stats = dashboardStats?.ownerStats || {
+    tassoOccupazione: 0,
+  };
 
 
   const selectedUserLabel = useMemo(() => {
@@ -528,134 +549,32 @@ export default function OwnerStatisticsScreen() {
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
       >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2196F3" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Statistiche Dettagliate</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <OwnerStatsHeader onBack={() => navigation.goBack()} />
 
-        {/* FILTRI */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Filtri</Text>
-          <View style={styles.singleFiltersRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.singleFilterChip,
-                selectedStruttura !== "all" && styles.filterChipActive,
-                pressed && { opacity: 0.85 },
-              ]}
-              onPress={() => {
-                setActiveFilterType("struttura");
-                setFilterModalVisible(true);
-              }}
-            >
-              <View style={styles.singleFilterChipLeft}>
-                <Ionicons name="business-outline" size={16} color={selectedStruttura !== "all" ? "white" : "#2196F3"} />
-                <Text style={[styles.singleFilterChipText, selectedStruttura !== "all" && styles.filterChipTextActive]}>Struttura: {selectedStrutturaLabel}</Text>
-              </View>
-              <Ionicons name="chevron-down" size={18} color={selectedStruttura !== "all" ? "white" : "#2196F3"} />
-            </Pressable>
+        <OwnerStatsFilters
+          selectedStruttura={selectedStruttura}
+          selectedUser={selectedUser}
+          selectedSport={selectedSport}
+          selectedPeriodDays={selectedPeriodDays}
+          selectedStrutturaLabel={selectedStrutturaLabel}
+          selectedUserLabel={selectedUserLabel}
+          selectedSportLabel={selectedSportLabel}
+          selectedPeriodLabel={selectedPeriodLabel}
+          availableSports={availableSports}
+          onOpenFilter={(type) => {
+            setActiveFilterType(type);
+            setFilterModalVisible(true);
+          }}
+        />
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.singleFilterChip,
-                selectedUser !== "all" && styles.filterChipActive,
-                pressed && { opacity: 0.85 },
-              ]}
-              onPress={() => {
-                setActiveFilterType("cliente");
-                setFilterModalVisible(true);
-              }}
-            >
-              <View style={styles.singleFilterChipLeft}>
-                <Ionicons name="person-outline" size={16} color={selectedUser !== "all" ? "white" : "#2196F3"} />
-                <Text style={[styles.singleFilterChipText, selectedUser !== "all" && styles.filterChipTextActive]}>Cliente: {selectedUserLabel}</Text>
-              </View>
-              <Ionicons name="chevron-down" size={18} color={selectedUser !== "all" ? "white" : "#2196F3"} />
-            </Pressable>
-
-            {availableSports.length > 0 && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.singleFilterChip,
-                  selectedSport !== "all" && styles.filterChipActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-                onPress={() => {
-                  setActiveFilterType("sport");
-                  setFilterModalVisible(true);
-                }}
-              >
-                <View style={styles.singleFilterChipLeft}>
-                  <SportIcon sport={selectedSport === "all" ? undefined : selectedSport} size={16} color={selectedSport !== "all" ? "white" : "#2196F3"} />
-                  <Text style={[styles.singleFilterChipText, selectedSport !== "all" && styles.filterChipTextActive]}>Sport: {selectedSportLabel}</Text>
-                </View>
-                <Ionicons name="chevron-down" size={18} color={selectedSport !== "all" ? "white" : "#2196F3"} />
-              </Pressable>
-            )}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.singleFilterChip,
-                selectedPeriodDays !== 30 && styles.filterChipActive,
-                pressed && { opacity: 0.85 },
-              ]}
-              onPress={() => {
-                setActiveFilterType("periodo");
-                setFilterModalVisible(true);
-              }}
-            >
-              <View style={styles.singleFilterChipLeft}>
-                <Ionicons name="calendar-outline" size={16} color={selectedPeriodDays !== 30 ? "white" : "#2196F3"} />
-                <Text style={[styles.singleFilterChipText, selectedPeriodDays !== 30 && styles.filterChipTextActive]}>Periodo: {selectedPeriodLabel}</Text>
-              </View>
-              <Ionicons name="chevron-down" size={18} color={selectedPeriodDays !== 30 ? "white" : "#2196F3"} />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* STATISTICHE TOTALI */}
-        <View style={styles.statsCards}>
-          <View style={styles.statCard}>
-            <Ionicons name="calendar" size={28} color="#2196F3" />
-            <Text style={styles.statValue}>
-              <Text style={{ fontSize: 22 }}>
-                {completedDurationFilteredBookings}
-              </Text>
-              <Text style={{ fontSize: 14, color: "#999", fontWeight: "700" }}>
-                /{durationFilteredPeriodBookings.length}
-              </Text>
-            </Text>
-            <Text style={styles.statLabel}>Concluse / Totali</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={28} color="#4CAF50" />
-            <Text style={styles.statValue}>
-              <Text style={{ fontSize: 22 }}>{topHours[0]?.count || 0}</Text>
-              <Text style={{ fontSize: 13, color: "#999", fontWeight: "700" }}>
-                {topHours[0]?.count > 0
-                  ? ` / ${formatSlotTime(topHours[0].hour)}`
-                  : ""}
-              </Text>
-            </Text>
-            <Text style={styles.statLabel}>Max Prenotazioni / Orario</Text>
-          </View>
-
-          {selectedUser === "all" && (
-            <View style={styles.statCard}>
-              <Ionicons name="pie-chart" size={28} color="#FF9800" />
-              <Text style={styles.statValue}>{stats.tassoOccupazione}%</Text>
-              <Text style={styles.statLabel}>Occupazione</Text>
-            </View>
-          )}
-        </View>
+        <OwnerStatsSummaryCards
+          completedBookings={completedDurationFilteredBookings}
+          totalBookings={durationFilteredPeriodBookings.length}
+          topHour={topHours[0]}
+          tassoOccupazione={stats.tassoOccupazione}
+          showOccupancy={selectedUser === "all"}
+          formatSlotTime={formatSlotTime}
+        />
 
 
 
@@ -871,7 +790,7 @@ export default function OwnerStatisticsScreen() {
               <View style={styles.giftedChartContainer}>
                 {sportBookingsStats.map((item) => {
                   const ratio = maxSportBookings > 0 ? item.count / maxSportBookings : 0;
-                  const barWidth = `${Math.max(8, Math.round(ratio * 100))}%`;
+                  const barWidth = `${Math.max(8, Math.round(ratio * 100))}%` as `${number}%`;
 
                   return (
                     <View key={item.sport} style={styles.sportRow}>
@@ -897,151 +816,34 @@ export default function OwnerStatisticsScreen() {
           </View>
         )}
 
-        {/* TOP 5 ORE */}
-        <View style={styles.topSection}>
-          <View style={styles.topTitleRow}>
-            <Text style={styles.topTitle}>Top 5 Fasce Orarie</Text>
-            <View style={styles.slotToggle}>
-              <Pressable
-                style={[styles.slotToggleBtn, topDurationFilter === 1 && styles.slotToggleBtnActive]}
-                onPress={() => setTopDurationFilter(1)}
-              >
-                <Text style={[styles.slotToggleBtnText, topDurationFilter === 1 && styles.slotToggleBtnTextActive]}>1h</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.slotToggleBtn, topDurationFilter === 1.5 && styles.slotToggleBtnActive]}
-                onPress={() => setTopDurationFilter(1.5)}
-              >
-                <Text style={[styles.slotToggleBtnText, topDurationFilter === 1.5 && styles.slotToggleBtnTextActive]}>1.5h</Text>
-              </Pressable>
-            </View>
-          </View>
-          {topHours.map((item, index) => {
-            const key = item.hour.toString();
-            const isOpen = !!expandedSlots[key];
-            const usersForSlot = (topUsersBySlot && topUsersBySlot[item.hour]) || [];
-            return (
-              <View key={key}>
-                <Pressable
-                  onPress={() => setExpandedSlots((s) => ({ ...s, [key]: !s[key] }))}
-                  style={({ pressed }) => [styles.topItem, isOpen && styles.topItemOpen, pressed && { opacity: 0.9 }]}
-                >
-                  <View style={styles.topRank}>
-                    <Text style={styles.topRankText}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.topHour}>
-                    {formatSlotTime(item.hour)} - {formatSlotTime(item.hour + selectedDurationHours)}
-                  </Text>
-                  <Text style={styles.topCount}>{item.count} prenotazioni</Text>
-                </Pressable>
+        <OwnerStatsTopHoursSection
+          topHours={topHours}
+          topUsersBySlot={topUsersBySlot}
+          users={users}
+          expandedSlots={expandedSlots}
+          selectedDurationHours={selectedDurationHours}
+          topDurationFilter={topDurationFilter}
+          onSetTopDurationFilter={setTopDurationFilter}
+          onToggleSlot={(slotKey) =>
+            setExpandedSlots((prev) => ({ ...prev, [slotKey]: !prev[slotKey] }))
+          }
+          onOpenUserProfile={(userId) => {
+            if (userId && userId !== "unknown") {
+              navigation.navigate("ProfiloUtente", { userId });
+            }
+          }}
+          formatSlotTime={formatSlotTime}
+        />
 
-                {isOpen && (
-                  <View style={styles.expandedPanel}>
-                    {usersForSlot.length > 0 ? (
-                      usersForSlot.map((u) => {
-                        const userObj = users.find((x) => x._id === u.userId);
-                        const avatarUrl = userObj?.avatarUrl || undefined;
-                        const displayName = userObj ? `${userObj.name}${userObj.surname ? ' ' + userObj.surname : ''}` : u.name;
-
-                        return (
-                          <Pressable
-                            key={u.userId}
-                            style={styles.expandedUserRow}
-                            onPress={() => {
-                              if (u.userId && u.userId !== 'unknown') navigation.navigate('ProfiloUtente', { userId: u.userId });
-                            }}
-                          >
-                            <Avatar
-                              name={userObj?.name || displayName}
-                              surname={userObj?.surname}
-                              avatarUrl={avatarUrl}
-                              size={36}
-                            />
-
-                            <Text style={styles.expandedUserName} numberOfLines={1}>{displayName}</Text>
-                            <Text style={styles.expandedUserCount}>{u.count} pren.</Text>
-                          </Pressable>
-                        );
-                      })
-                    ) : (
-                      <Text style={styles.expandedEmpty}>Nessun utente</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.topSection}>
-          <Text style={styles.topTitle}>Top 5 Utenti</Text>
-          <View style={{ height: 12 }} />
-          {topUsers.length > 0 ? (
-            topUsers.map((item, index) => {
-              const userObj = users.find((u) => u._id === item.id);
-              const displayName = userObj
-                ? `${userObj.name}${userObj.surname ? ` ${userObj.surname}` : ""}`
-                : item.fullName;
-              const isOpen = !!expandedTopUsers[item.id];
-              const topSports = topUserSportsByUser[item.id] || [];
-
-              return (
-                <View key={item.id}>
-                  <Pressable
-                    onPress={() => setExpandedTopUsers((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-                    style={({ pressed }) => [styles.topItem, isOpen && styles.topItemOpen, pressed && { opacity: 0.9 }]}
-                  >
-                    <View style={styles.topRank}>
-                      <Text style={styles.topRankText}>{index + 1}</Text>
-                    </View>
-                    <Avatar
-                      name={userObj?.name || displayName}
-                      surname={userObj?.surname}
-                      avatarUrl={userObj?.avatarUrl}
-                      size={32}
-                    />
-                    <Text style={styles.topUserName} numberOfLines={1}>
-                      {displayName}
-                    </Text>
-                    <View style={styles.topItemRightMeta}>
-                      <Text style={styles.topCount}>{item.count} prenotazioni</Text>
-                      <Ionicons
-                        name={isOpen ? "chevron-up" : "chevron-down"}
-                        size={18}
-                        color="#888"
-                      />
-                    </View>
-                  </Pressable>
-
-                  {isOpen && (
-                    <View style={styles.expandedPanel}>
-                      {topSports.length > 0 ? (
-                        topSports.map((sportItem) => (
-                          <View key={`${item.id}-${sportItem.sport}`} style={styles.expandedSportRow}>
-                            <View style={styles.expandedSportLeft}>
-                              <SportIcon sport={sportItem.sport} size={16} color="#2196F3" />
-                              <Text style={styles.expandedSportName} numberOfLines={1}>
-                                {sportItem.sport}
-                              </Text>
-                            </View>
-                            <Text style={styles.expandedSportCount}>{sportItem.count} pren.</Text>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={styles.expandedEmpty}>Nessun dato sport disponibile</Text>
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyChart}>
-              <Ionicons name="people-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyChartText}>Nessun dato disponibile</Text>
-            </View>
-          )}
-        </View>
+        <OwnerStatsTopUsersSection
+          topUsers={topUsers}
+          users={users}
+          expandedTopUsers={expandedTopUsers}
+          topUserSportsByUser={topUserSportsByUser}
+          onToggleUser={(userId) =>
+            setExpandedTopUsers((prev) => ({ ...prev, [userId]: !prev[userId] }))
+          }
+        />
 
         <View style={{ height: 40 }} />
       </ScrollView>

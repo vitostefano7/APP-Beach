@@ -45,6 +45,7 @@ interface Campo {
 interface DaySchedule {
   open: string;   // es. "09:00"
   close: string;  // es. "21:00"
+  enabled?: boolean;
   closed?: boolean;
 }
 
@@ -55,6 +56,9 @@ interface OwnerStatsCalculated {
   incassoOggi: number;
   incassoSettimana: number;
   incassoMese: number;
+  rimborsiOggi: number;
+  rimborsiSettimana: number;
+  rimborsiMese: number;
   tassoOccupazione: number;
   nuoviClienti: number;
 }
@@ -84,6 +88,69 @@ export const useOwnerStats = (
 ): OwnerStatsCalculated => {
   return useMemo(() => {
     console.log('\n📈 ========== CALCOLO STATISTICHE OWNER ==========');
+
+    const parseBookingDate = (booking: Booking): Date | null => {
+      const rawDate = booking.date || booking.startDate || booking.bookingDate || booking.createdAt;
+      if (!rawDate) return null;
+
+      if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+        const [year, month, day] = rawDate.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      }
+
+      const parsed = new Date(rawDate);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const getBookingAmount = (booking: Booking): number => Number(booking.ownerEarnings ?? booking.price ?? 0) || 0;
+
+    const getRefundAmount = (booking: Booking): number => {
+      if (typeof booking.refundAmount === "number") {
+        return Math.max(0, booking.refundAmount);
+      }
+
+      return getBookingAmount(booking);
+    };
+
+    const isRefundedBooking = (booking: Booking): boolean => {
+      const status = String(booking.status || "").toLowerCase();
+      const payments = Array.isArray(booking.payments) ? booking.payments : [];
+      const hasRefundedPayment = payments.some((payment: any) => {
+        const paymentStatus = String(payment?.status || "").toLowerCase();
+        return paymentStatus === "refunded" || paymentStatus === "partial_refunded";
+      });
+
+      return (
+        status === "cancelled" ||
+        status === "canceled" ||
+        hasRefundedPayment ||
+        booking.refundedAt != null ||
+        booking.refundAmount != null
+      );
+    };
+
+    const aggregateRevenue = (items: Booking[]) => {
+      let revenueLorda = 0;
+      let rimborsi = 0;
+
+      for (const booking of items) {
+        const status = String(booking.status || "").toLowerCase();
+
+        if (status !== "cancelled" && status !== "canceled") {
+          revenueLorda += getBookingAmount(booking);
+        }
+
+        if (isRefundedBooking(booking)) {
+          rimborsi += getRefundAmount(booking);
+        }
+      }
+
+      return {
+        revenueLorda,
+        rimborsi,
+        revenueNetta: revenueLorda - rimborsi,
+      };
+    };
     
     // Filtra solo prenotazioni confermate
     const confirmedBookings = bookings.filter((b) => b.status === "confirmed");
@@ -94,13 +161,22 @@ export const useOwnerStats = (
     console.log(`⚽ Campi: ${campi.length}\n`);
     
     // Calcola incasso totale
-    const incassoTotale = confirmedBookings.reduce((sum, b) => sum + (b.price || 0), 0);
-
-    // Definisci periodi temporali
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const allBookingsUntilToday = bookings.filter((booking) => {
+      const bookingDate = parseBookingDate(booking);
+      return !!bookingDate && bookingDate < tomorrow;
+    });
+
+    const totaleRevenue = aggregateRevenue(allBookingsUntilToday);
+    const incassoTotale = totaleRevenue.revenueNetta;
+
+    // Definisci periodi temporali
     const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    weekAgo.setDate(weekAgo.getDate() - 6);
     const monthAgo = new Date(today);
     monthAgo.setMonth(monthAgo.getMonth() - 1);
     
@@ -108,26 +184,33 @@ export const useOwnerStats = (
     console.log(`📅 Periodo riferimento mese: da ${monthAgo.toLocaleDateString()} ad oggi`);
 
     // Calcola incassi per periodo (usa date della prenotazione)
-    const incassoOggi = confirmedBookings
-      .filter((b) => {
-        const bookingDate = new Date(b.date || b.startDate || b.bookingDate || b.createdAt);
-        return bookingDate >= today;
-      })
-      .reduce((sum, b) => sum + (b.price || 0), 0);
+    const isDateInRange = (date: Date, from: Date, toExclusive: Date) => date >= from && date < toExclusive;
 
-    const incassoSettimana = confirmedBookings
-      .filter((b) => {
-        const bookingDate = new Date(b.date || b.startDate || b.bookingDate || b.createdAt);
-        return bookingDate >= weekAgo;
-      })
-      .reduce((sum, b) => sum + (b.price || 0), 0);
+    const bookingsOggi = bookings.filter((booking) => {
+      const bookingDate = parseBookingDate(booking);
+      return !!bookingDate && isDateInRange(bookingDate, today, tomorrow);
+    });
 
-    const incassoMese = confirmedBookings
-      .filter((b) => {
-        const bookingDate = new Date(b.date || b.startDate || b.bookingDate || b.createdAt);
-        return bookingDate >= monthAgo;
-      })
-      .reduce((sum, b) => sum + (b.price || 0), 0);
+    const bookingsSettimana = bookings.filter((booking) => {
+      const bookingDate = parseBookingDate(booking);
+      return !!bookingDate && isDateInRange(bookingDate, weekAgo, tomorrow);
+    });
+
+    const bookingsMese = bookings.filter((booking) => {
+      const bookingDate = parseBookingDate(booking);
+      return !!bookingDate && isDateInRange(bookingDate, monthAgo, tomorrow);
+    });
+
+    const revenueOggi = aggregateRevenue(bookingsOggi);
+    const revenueSettimana = aggregateRevenue(bookingsSettimana);
+    const revenueMese = aggregateRevenue(bookingsMese);
+
+    const incassoOggi = revenueOggi.revenueNetta;
+    const incassoSettimana = revenueSettimana.revenueNetta;
+    const incassoMese = revenueMese.revenueNetta;
+    const rimborsiOggi = revenueOggi.rimborsi;
+    const rimborsiSettimana = revenueSettimana.rimborsi;
+    const rimborsiMese = revenueMese.rimborsi;
 
     // Calcola clienti unici
     const nuoviClienti = new Set(
@@ -170,7 +253,7 @@ export const useOwnerStats = (
       let weeklyHours = 0;
 
       for (const day of days) {
-        const schedule = campo.weeklySchedule[day as keyof typeof campo.weeklySchedule];
+        const schedule: any = campo.weeklySchedule[day as keyof typeof campo.weeklySchedule];
         
         // Controlla se enabled è false o closed è true - in quel caso il giorno è CHIUSO
         const isEnabled = schedule?.enabled !== false;
@@ -214,7 +297,8 @@ export const useOwnerStats = (
     
     // Ore effettivamente prenotate nell'ultimo mese (solo confermate E CONCLUSE)
     const bookingsLastMonth = confirmedBookings.filter((b) => {
-      const bookingDate = new Date(b.date || b.startDate || b.bookingDate || b.createdAt);
+      const bookingDate = parseBookingDate(b);
+      if (!bookingDate) return false;
       // IMPORTANTE: solo prenotazioni CONCLUSE (tra monthAgo e ieri, esclude oggi)
       return bookingDate >= monthAgo && bookingDate < today;
     });
@@ -262,6 +346,9 @@ export const useOwnerStats = (
       incassoOggi,
       incassoSettimana,
       incassoMese,
+      rimborsiOggi,
+      rimborsiSettimana,
+      rimborsiMese,
       tassoOccupazione,
       nuoviClienti,
     };
@@ -273,6 +360,10 @@ export const useOwnerStats = (
     console.log(`  • Incasso Oggi: €${stats.incassoOggi.toFixed(2)}`);
     console.log(`  • Incasso Settimana: €${stats.incassoSettimana.toFixed(2)}`);
     console.log(`  • Incasso Mese: €${stats.incassoMese.toFixed(2)}`);
+    console.log(`  • Rimborsi Oggi: €${stats.rimborsiOggi.toFixed(2)}`);
+    console.log(`  • Rimborsi Settimana: €${stats.rimborsiSettimana.toFixed(2)}`);
+    console.log(`  • Rimborsi Mese: €${stats.rimborsiMese.toFixed(2)}`);
+    console.log(`  • Rimborsi Totali: €${totaleRevenue.rimborsi.toFixed(2)}`);
     console.log(`  • Tasso Occupazione: ${stats.tassoOccupazione}%`);
     console.log(`  • Nuovi Clienti: ${stats.nuoviClienti}`);
     console.log('================================================\n');

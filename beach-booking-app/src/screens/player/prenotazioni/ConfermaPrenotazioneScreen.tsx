@@ -20,6 +20,21 @@ import React from 'react';
 import API_URL from "../../../config/api";
 import { getMaxPlayersRulesForSport, getTeamFormationLabel } from "../../../utils/matchSportRules";
 
+const SPORT_CODE_TO_RULE: Record<string, any> = {
+  beach_volley: "Beach Volley",
+  beach_volleyball: "Beach Volley",
+  volley: "Volley",
+  volleyball: "Volley",
+  beach_tennis: "Beach Tennis",
+  tennis: "Tennis",
+  padel: "Padel",
+  calcio: "Calcio",
+  calcetto: "Calcetto",
+  calciotto: "Calciotto",
+  calcio_a_7: "Calcio a 7",
+  basket: "Basket",
+};
+
 export default function ConfermaPrenotazioneScreen() {
   const { token } = useContext(AuthContext);
   const { showAlert } = useAlert();
@@ -29,6 +44,7 @@ export default function ConfermaPrenotazioneScreen() {
   const {
     campoId,
     campoName,
+    campo,
     strutturaName,
     sport: rawSport,
     date,
@@ -40,42 +56,47 @@ export default function ConfermaPrenotazioneScreen() {
 
   // Normalizza lo sport ("Beach Volley" -> "beach_volley")
   const sport = rawSport.replace(/ /g, "_");
+  const canSplitCosts = struttura?.isCostSplittingEnabled === true;
+  const sportRuleKey = SPORT_CODE_TO_RULE[sport] || null;
 
   const [loading, setLoading] = useState(false);
   const [bookingType, setBookingType] = useState<"public" | "private">("public");
   const [paymentMode, setPaymentMode] = useState<"full" | "split">(() => {
-    // Per entrambi gli sport, se la struttura permette split, default a split
-    return (struttura?.isCostSplittingEnabled === true) ? "split" : "full";
+    return canSplitCosts ? "split" : "full";
   });
   const [maxPlayers, setMaxPlayers] = useState<number | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Determina le opzioni disponibili per lo sport
-  const sportRules = sport === "beach_volley" || sport === "volley" 
-    ? getMaxPlayersRulesForSport(sport === "beach_volley" ? "Beach Volley" : sport as "volley")
-    : null;
+  const sportRules = sportRuleKey ? getMaxPlayersRulesForSport(sportRuleKey) : null;
+  const campoMaxPlayers = Number(campo?.maxPlayers) || null;
+  const availablePlayerOptions = (sportRules?.allowedValues || [])
+    .filter((players: number) => !campoMaxPlayers || players <= campoMaxPlayers)
+    .sort((a: number, b: number) => a - b);
+  const fallbackOptions = campoMaxPlayers && campoMaxPlayers >= 2 ? [campoMaxPlayers] : [];
+  const selectablePlayerOptions = availablePlayerOptions.length > 0 ? availablePlayerOptions : fallbackOptions;
 
   // DEBUG
   console.log("🔍 ConfermaPrenotazione DEBUG:");
   console.log("  rawSport:", rawSport);
   console.log("  sport (normalized):", sport);
+  console.log("  sportRuleKey:", sportRuleKey);
   console.log("  sportRules:", sportRules);
+  console.log("  selectablePlayerOptions:", selectablePlayerOptions);
   console.log("  maxPlayers:", maxPlayers);
+  console.log("  campo:", campo);
   console.log("  struttura:", struttura);
   console.log("  canSplitCosts:", canSplitCosts);
 
   // Imposta il default al primo caricamento
   useEffect(() => {
-    if (maxPlayers === null && sportRules) {
-      const defaultValue = sportRules.fixed || sportRules.allowedValues[sportRules.allowedValues.length - 1];
+    if (maxPlayers === null && selectablePlayerOptions.length > 0) {
+      const defaultValue = selectablePlayerOptions[selectablePlayerOptions.length - 1];
       console.log("⚙️ Setting default maxPlayers:", defaultValue);
       setMaxPlayers(defaultValue);
     }
-  }, [sportRules]);
-
-  // Se la struttura non permette lo split dei costi, le partite pubbliche non sono disponibili
-  const canSplitCosts = struttura?.isCostSplittingEnabled === true;
+  }, [maxPlayers, selectablePlayerOptions]);
 
   // Se la struttura non permette split, forziamo il tipo "private"
   useEffect(() => {
@@ -86,7 +107,7 @@ export default function ConfermaPrenotazioneScreen() {
     if (!canSplitCosts && paymentMode === "split") {
       setPaymentMode("full");
     }
-  }, [canSplitCosts]);
+  }, [canSplitCosts, bookingType, paymentMode]);
 
   // Forza il pagamento "split" per partite pubbliche
   useEffect(() => {
@@ -128,12 +149,50 @@ export default function ConfermaPrenotazioneScreen() {
   };
 
   // Split/payment helpers
-  const isVolley = sport === "volley";
-  const isBeachVolley = sport === "beach_volley";
-  const splitCount = isVolley ? 10 : (isBeachVolley ? maxPlayers : null);
+  const fallbackPeopleFromSportRules = selectablePlayerOptions[selectablePlayerOptions.length - 1] ?? null;
+  const defaultPeopleFromCampo = campo?.maxPlayers ?? fallbackPeopleFromSportRules;
+  const selectedNumberOfPeople = maxPlayers ?? defaultPeopleFromCampo;
+  const splitCount = selectedNumberOfPeople;
   const isSplitSelected = paymentMode === "split" && canSplitCosts;
   const numericPrice = Number(price) || 0;
   const unitPrice = isSplitSelected && splitCount ? numericPrice / splitCount : null;
+  const hasUnitPrice = typeof unitPrice === "number" && !Number.isNaN(unitPrice);
+  const displayedAmount = hasUnitPrice ? `€${unitPrice.toFixed(2)}` : `€${numericPrice.toFixed(2)}`;
+
+  useEffect(() => {
+    if (isSplitSelected && (unitPrice === null || Number.isNaN(unitPrice))) {
+      console.log("⚠️ Prezzo per persona non calcolabile", {
+        rawPrice: price,
+        numericPrice,
+        sport,
+        bookingType,
+        paymentMode,
+        canSplitCosts,
+        defaultPeopleFromCampo,
+        fallbackPeopleFromSportRules,
+        selectablePlayerOptions,
+        selectedNumberOfPeople,
+        splitCount,
+        maxPlayers,
+        isSplitSelected,
+      });
+    }
+  }, [
+    isSplitSelected,
+    unitPrice,
+    price,
+    numericPrice,
+    sport,
+    bookingType,
+    paymentMode,
+    canSplitCosts,
+    defaultPeopleFromCampo,
+    fallbackPeopleFromSportRules,
+    selectablePlayerOptions,
+    selectedNumberOfPeople,
+    splitCount,
+    maxPlayers,
+  ]);
 
   const handleConfirm = async () => {
     try {
@@ -153,13 +212,8 @@ export default function ConfermaPrenotazioneScreen() {
           duration, // "1h" o "1.5h"
           bookingType,
           paymentMode,
-          // beach_volley: sempre invia maxPlayers scelto; volley: 10 se split, altrimenti 10 di default
-          numberOfPeople:
-            sport === "beach_volley"
-              ? maxPlayers || undefined
-              : sport === "volley"
-              ? 10
-              : maxPlayers || undefined,
+          // numberOfPeople è guidato dal campo (maxPlayers) o dalla selezione utente (beach volley)
+          numberOfPeople: selectedNumberOfPeople || undefined,
         }),
       });
 
@@ -190,16 +244,14 @@ export default function ConfermaPrenotazioneScreen() {
           <Text style={styles.cardTitle}>💰 Pagamento</Text>
           <View>
              <Text style={styles.totalValue}>
-              {isSplitSelected && unitPrice
-                ? `€${unitPrice.toFixed(2)}`
-                : `€${numericPrice.toFixed(2)}`}
+              {displayedAmount}
             </Text>
              <Text style={[styles.detailLabel, {textAlign: 'right'}]}>TOTALE</Text>
           </View>
         </View>
 
-          {/* Opzione intero / diviso per sport che supportano split */}
-          {(sport === "volley" || sport === "beach_volley") && bookingType === 'private' && canSplitCosts && (
+          {/* Opzione intero / diviso guidata dalla struttura */}
+          {bookingType === 'private' && canSplitCosts && (
             <View style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}> 
                 <Pressable
@@ -236,10 +288,10 @@ export default function ConfermaPrenotazioneScreen() {
 
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>
-              {isSplitSelected ? "Prezzo (per giocatore)" : "Prezzo partita"}
+              {isSplitSelected && hasUnitPrice ? "Prezzo (per giocatore)" : "Prezzo partita"}
             </Text>
             <Text style={styles.priceValue}>
-              {isSplitSelected ? `€${unitPrice?.toFixed(2)}` : `€${price}`}
+              {displayedAmount}
             </Text>
           </View>
 
@@ -324,14 +376,13 @@ export default function ConfermaPrenotazioneScreen() {
           </View>
         </View>
 
-        {/* NUMERO GIOCATORI - MOVED HERE */}
-        {sport === "beach_volley" && sportRules && (
+        {/* FORMATO PARTITA / NUMERO GIOCATORI */}
+        {canSplitCosts && selectablePlayerOptions.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>👥 Numero Giocatori *</Text>
-            {/* REMOVED SUBTITLE TO SAVE SPACE AND CLEAN UP */}
+            <Text style={styles.cardTitle}>👥 Formato Partita ({Math.floor((maxPlayers || selectablePlayerOptions[0]) / 2)}v{Math.floor((maxPlayers || selectablePlayerOptions[0]) / 2)})</Text>
             
             <View style={styles.maxPlayersContainer}>
-              {sportRules.allowedValues.map((players) => {
+              {selectablePlayerOptions.map((players) => {
                 const formation = getTeamFormationLabel(players);
                 const isSelected = maxPlayers === players;
                 const pricePerPlayer = canSplitCosts ? (numericPrice / players).toFixed(2) : null;

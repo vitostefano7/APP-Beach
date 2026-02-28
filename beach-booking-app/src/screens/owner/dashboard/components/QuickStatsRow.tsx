@@ -7,8 +7,8 @@ interface QuickStatsRowProps {
   activeStrutture: number;
   totalStrutture: number;
   todayBookings: number;
-  ongoingBookings: number;
-  monthRevenue: number;
+  ongoingBookings?: number;
+  dailyRevenue: number;
   onStatsPress: (type: "strutture" | "bookings" | "revenue") => void;
 }
 
@@ -16,8 +16,8 @@ export default function QuickStatsRow({
   activeStrutture,
   totalStrutture,
   todayBookings,
-  ongoingBookings,
-  monthRevenue,
+  ongoingBookings = 0,
+  dailyRevenue,
   onStatsPress,
 }: QuickStatsRowProps) {
   return (
@@ -69,8 +69,8 @@ export default function QuickStatsRow({
           <Ionicons name="cash" size={20} color="#9C27B0" />
         </View>
         <View style={styles.statContent}>
-          <Text style={styles.statValue}>€{monthRevenue.toFixed(0)}</Text>
-          <Text style={styles.statLabel}>Mese</Text>
+          <Text style={styles.statValue}>€{dailyRevenue.toFixed(0)}</Text>
+          <Text style={styles.statLabel}>Oggi</Text>
         </View>
       </Pressable>
     </View>

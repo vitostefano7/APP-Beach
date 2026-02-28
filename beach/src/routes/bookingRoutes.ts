@@ -8,6 +8,7 @@ import {
   cancelBooking,
   getOwnerBookings,
    getOwnerBookingsPaginated,
+   getOwnerDailyRevenue,
   getBookingsByCampo,
   getOwnerBookingById,
   cancelOwnerBooking,
@@ -62,6 +63,12 @@ router.get("/owner", requireAuth, ownerOnly, getOwnerBookings);
  * GET /bookings/owner/paginated?page=1&limit=10&timeFilter=all|upcoming|past|ongoing
  */
 router.get("/owner/paginated", requireAuth, ownerOnly, getOwnerBookingsPaginated);
+
+/**
+ * Revenue giornaliera owner
+ * GET /bookings/owner/revenue/daily?from=YYYY-MM-DD&to=YYYY-MM-DD&strutturaId=<id>
+ */
+router.get("/owner/revenue/daily", requireAuth, ownerOnly, getOwnerDailyRevenue);
 
 /**
  * Singola prenotazione owner

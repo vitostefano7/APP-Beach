@@ -2,9 +2,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
   Platform,
   Animated,
@@ -85,8 +83,37 @@ export default function DettaglioCampoScreen() {
   const [campo, setCampo] = useState<Campo | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const showCustomAlert = (
+    title: string,
+    message: string,
+    onConfirm?: () => void
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      onConfirm,
+    });
+  };
+
+  const closeCustomAlert = () => {
+    const callback = customAlert.onConfirm;
+    setCustomAlert({ visible: false, title: "", message: "" });
+    callback?.();
+  };
 
   const loadCampo = useCallback(async () => {
     try {
@@ -107,9 +134,9 @@ export default function DettaglioCampoScreen() {
         useNativeDriver: true,
       }).start();
     } catch (error) {
-      Alert.alert("Errore", "Impossibile caricare il campo", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      showCustomAlert("Errore", "Impossibile caricare il campo", () =>
+        navigation.goBack()
+      );
     } finally {
       setLoading(false);
     }
@@ -139,11 +166,11 @@ export default function DettaglioCampoScreen() {
       }
 
       setShowDeleteModal(false);
-      Alert.alert("Successo", "Campo eliminato", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      showCustomAlert("Successo", "Campo eliminato", () =>
+        navigation.goBack()
+      );
     } catch {
-      Alert.alert("Errore", "Impossibile eliminare il campo. Riprova.");
+      showCustomAlert("Errore", "Impossibile eliminare il campo. Riprova.");
     } finally {
       setDeleting(false);
     }
@@ -627,6 +654,32 @@ export default function DettaglioCampoScreen() {
                 )}
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={customAlert.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCustomAlert}
+      >
+        <View style={styles.customAlertOverlay}>
+          <View style={styles.customAlertCard}>
+            <View style={styles.customAlertIconWrap}>
+              <Ionicons
+                name={customAlert.title === "Successo" ? "checkmark-circle-outline" : "alert-circle-outline"}
+                size={28}
+                color="#2196F3"
+              />
+            </View>
+
+            <Text style={styles.customAlertTitle}>{customAlert.title}</Text>
+            <Text style={styles.customAlertText}>{customAlert.message}</Text>
+
+            <Pressable style={styles.customAlertButton} onPress={closeCustomAlert}>
+              <Text style={styles.customAlertButtonText}>OK</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -1278,6 +1331,55 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   deleteModalBtnDeleteText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
+  },
+  customAlertOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  customAlertCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E8ECF4",
+  },
+  customAlertIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#EEF6FF",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  customAlertTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  customAlertText: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  customAlertButton: {
+    backgroundColor: "#2196F3",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customAlertButtonText: {
     fontSize: 14,
     fontWeight: "700",
     color: "white",

@@ -4,6 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 type AlertType = 'info' | 'success' | 'warning' | 'error';
 
+interface AlertButton {
+  text: string;
+  onPress?: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
 interface AlertOptions {
   title: string;
   message: string;
@@ -17,6 +23,7 @@ interface AlertOptions {
   disableBackdropClose?: boolean;
   autoCloseMs?: number;
   onAutoClose?: () => void;
+  buttons?: AlertButton[];
 }
 
 interface AlertContextType {
@@ -145,6 +152,13 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     hideAlert();
   };
 
+  const handleCustomButtonPress = (button: AlertButton) => {
+    if (button.onPress) {
+      button.onPress();
+    }
+    hideAlert();
+  };
+
   const getIconAndColor = () => {
     switch (alertOptions.type) {
       case 'success':
@@ -168,7 +182,7 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         transparent
         animationType="none"
         onRequestClose={
-          alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons
+          alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons || (alertOptions.buttons?.length || 0) > 0
             ? () => {}
             : hideAlert
         }
@@ -184,11 +198,10 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           <Pressable 
             style={StyleSheet.absoluteFill}
             onPress={
-              alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons
+              alertOptions.showCancel || alertOptions.disableBackdropClose || alertOptions.hideButtons || (alertOptions.buttons?.length || 0) > 0
                 ? undefined
                 : hideAlert
             }
-            activeOpacity={1}
           />
           <Animated.View 
             style={[
@@ -214,31 +227,63 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
               {!alertOptions.hideButtons && (
                 <View style={styles.buttonContainer}>
-                  {alertOptions.showCancel && (
-                    <Pressable
-                      style={[styles.button, styles.cancelButton]}
-                      onPress={handleCancel}
-                      android_ripple={{ color: '#e0e0e0' }}
-                    >
-                      <Text style={styles.cancelButtonText}>
-                        {alertOptions.cancelText || 'Annulla'}
-                      </Text>
-                    </Pressable>
+                  {(alertOptions.buttons?.length || 0) > 0 ? (
+                    alertOptions.buttons!.map((button, index) => {
+                      const isCancel = button.style === 'cancel';
+                      const isDestructive = button.style === 'destructive';
+
+                      return (
+                        <Pressable
+                          key={`${button.text}-${index}`}
+                          style={[
+                            styles.button,
+                            isCancel
+                              ? styles.cancelButton
+                              : styles.confirmButton,
+                            isDestructive && styles.destructiveButton,
+                          ]}
+                          onPress={() => handleCustomButtonPress(button)}
+                          android_ripple={{ color: isCancel ? '#e0e0e0' : 'rgba(255,255,255,0.3)' }}
+                        >
+                          <Text
+                            style={[
+                              isCancel ? styles.cancelButtonText : styles.confirmButtonText,
+                            ]}
+                          >
+                            {button.text}
+                          </Text>
+                        </Pressable>
+                      );
+                    })
+                  ) : (
+                    <>
+                      {alertOptions.showCancel && (
+                        <Pressable
+                          style={[styles.button, styles.cancelButton]}
+                          onPress={handleCancel}
+                          android_ripple={{ color: '#e0e0e0' }}
+                        >
+                          <Text style={styles.cancelButtonText}>
+                            {alertOptions.cancelText || 'Annulla'}
+                          </Text>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        style={[
+                          styles.button,
+                          styles.confirmButton,
+                          { backgroundColor: color },
+                          alertOptions.showCancel && { flex: 1 }
+                        ]}
+                        onPress={handleConfirm}
+                        android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
+                      >
+                        <Text style={styles.confirmButtonText}>
+                          {alertOptions.confirmText || 'OK'}
+                        </Text>
+                      </Pressable>
+                    </>
                   )}
-                  <Pressable
-                    style={[
-                      styles.button, 
-                      styles.confirmButton, 
-                      { backgroundColor: color },
-                      alertOptions.showCancel && { flex: 1 }
-                    ]}
-                    onPress={handleConfirm}
-                    android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
-                  >
-                    <Text style={styles.confirmButtonText}>
-                      {alertOptions.confirmText || 'OK'}
-                    </Text>
-                  </Pressable>
                 </View>
               )}
             </Pressable>
@@ -313,6 +358,9 @@ const styles = StyleSheet.create({
   confirmButton: {
     backgroundColor: '#2196F3',
     flex: 1,
+  },
+  destructiveButton: {
+    backgroundColor: '#f44336',
   },
   cancelButtonText: {
     fontSize: 16,

@@ -60,6 +60,26 @@ const getNowParts = () => {
   return { today, nowTime };
 };
 
+const isValidIsoDateString = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const buildDateRange = (from: string, to: string) => {
+  const start = new Date(`${from}T00:00:00.000Z`);
+  const end = new Date(`${to}T00:00:00.000Z`);
+
+  const days: string[] = [];
+  const cursor = new Date(start.getTime());
+
+  while (cursor.getTime() <= end.getTime()) {
+    const year = cursor.getUTCFullYear();
+    const month = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(cursor.getUTCDate()).padStart(2, "0");
+    days.push(`${year}-${month}-${day}`);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return days;
+};
+
 const buildPastCondition = (today: string, nowTime: string) => ({
   $or: [
     { status: "cancelled" },
@@ -315,24 +335,17 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         });
       }
 
-      // Se la struttura richiede l'uso delle tariffe per player, verifica che esista una voce corrispondente
-      if (struttura?.isCostSplittingEnabled && (campo as any).pricingRules?.playerCountPricing?.enabled) {
-        const prices = (campo as any).pricingRules.playerCountPricing.prices || [];
-        const match = prices.find((p: any) => p.count === np);
-        if (!match) {
-          return res.status(400).json({ message: `Nessuna tariffa per ${np} giocatori presente nel campo` });
-        }
-      }
     }
 
     console.log("💰 Calcolando prezzo prenotazione...");
-    // 💰 Calcola prezzo usando il sistema deterministico (ora restituisce totalPrice/unitPrice)
+    // 💰 Calcola prezzo usando solo la tariffa campo (fissa/dinamica),
+    //    numberOfPeople serve solo per eventuale quota split.
     const priceResult = calculatePrice(
       (campo as any).pricingRules,
       date,
       startTime,
       duration,
-      { isCostSplittingEnabled: !!struttura?.isCostSplittingEnabled, numberOfPeople: numberOfPeople }
+      { isCostSplittingEnabled: false, numberOfPeople: numberOfPeople }
     );
 
     console.log(`💰 Prezzo calcolato: €${priceResult.totalPrice} (${duration})`, priceResult);
@@ -1285,8 +1298,218 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * 📌 REVENUE GIORNALIERA OWNER
+ * GET /bookings/owner/revenue/daily?from=YYYY-MM-DD&to=YYYY-MM-DD&strutturaId=<id>
+ */
+export const getOwnerDailyRevenue = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerId = req.user!.id;
+    const from = String(req.query?.from || "").trim();
+    const to = String(req.query?.to || "").trim();
+    const strutturaId = String(req.query?.strutturaId || "").trim();
+
+    if (!from || !to) {
+      return res.status(400).json({ message: "Query param obbligatori: from, to (YYYY-MM-DD)" });
+    }
+
+    if (!isValidIsoDateString(from) || !isValidIsoDateString(to)) {
+      return res.status(400).json({ message: "Formato date non valido. Usa YYYY-MM-DD" });
+    }
+
+    if (from > to) {
+      return res.status(400).json({ message: "Intervallo date non valido: from deve essere <= to" });
+    }
+
+    const ownerStrutture = await Struttura.find({ owner: ownerId }).select("_id").lean();
+    if (!ownerStrutture.length) {
+      return res.json({
+        from,
+        to,
+        days: [],
+        totals: {
+          revenueLorda: 0,
+          rimborsi: 0,
+          revenueNetta: 0,
+          bookingsCount: 0,
+          cancelledCount: 0,
+        },
+      });
+    }
+
+    const ownerStrutturaIds = ownerStrutture.map((item: any) => item._id.toString());
+    let selectedStrutturaIds = ownerStrutturaIds;
+
+    if (strutturaId) {
+      if (!mongoose.Types.ObjectId.isValid(strutturaId) || !ownerStrutturaIds.includes(strutturaId)) {
+        return res.status(403).json({ message: "Struttura non autorizzata" });
+      }
+      selectedStrutturaIds = [strutturaId];
+    }
+
+    const ownerCampi = await Campo.find({
+      struttura: { $in: selectedStrutturaIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    })
+      .select("_id")
+      .lean();
+
+    if (!ownerCampi.length) {
+      return res.json({
+        from,
+        to,
+        days: buildDateRange(from, to).map((date) => ({
+          date,
+          revenueLorda: 0,
+          rimborsi: 0,
+          revenueNetta: 0,
+          bookingsCount: 0,
+          cancelledCount: 0,
+        })),
+        totals: {
+          revenueLorda: 0,
+          rimborsi: 0,
+          revenueNetta: 0,
+          bookingsCount: 0,
+          cancelledCount: 0,
+        },
+      });
+    }
+
+    const campoIds = ownerCampi.map((item: any) => item._id);
+
+    const grouped = await Booking.aggregate([
+      {
+        $match: {
+          campo: { $in: campoIds },
+          date: { $gte: from, $lte: to },
+        },
+      },
+      {
+        $project: {
+          date: 1,
+          ownerEarnings: { $ifNull: ["$ownerEarnings", 0] },
+          status: 1,
+          refundAmount: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ["$status", "cancelled"] },
+                  {
+                    $gt: [
+                      {
+                        $size: {
+                          $filter: {
+                            input: { $ifNull: ["$payments", []] },
+                            as: "payment",
+                            cond: { $eq: ["$$payment.status", "refunded"] },
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                ],
+              },
+              { $ifNull: ["$ownerEarnings", 0] },
+              0,
+            ],
+          },
+          grossAmount: {
+            $cond: [{ $eq: ["$status", "confirmed"] }, { $ifNull: ["$ownerEarnings", 0] }, 0],
+          },
+          bookingCount: {
+            $cond: [{ $eq: ["$status", "confirmed"] }, 1, 0],
+          },
+          cancelledCount: {
+            $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          revenueLorda: { $sum: "$grossAmount" },
+          rimborsi: { $sum: "$refundAmount" },
+          bookingsCount: { $sum: "$bookingCount" },
+          cancelledCount: { $sum: "$cancelledCount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          revenueLorda: { $round: ["$revenueLorda", 2] },
+          rimborsi: { $round: ["$rimborsi", 2] },
+          revenueNetta: { $round: [{ $subtract: ["$revenueLorda", "$rimborsi"] }, 2] },
+          bookingsCount: 1,
+          cancelledCount: 1,
+        },
+      },
+      { $sort: { date: 1 } },
+    ]);
+
+    const groupedByDate = new Map(grouped.map((item: any) => [item.date, item]));
+    const days = buildDateRange(from, to).map((date) => {
+      const dayData = groupedByDate.get(date);
+      if (!dayData) {
+        return {
+          date,
+          revenueLorda: 0,
+          rimborsi: 0,
+          revenueNetta: 0,
+          bookingsCount: 0,
+          cancelledCount: 0,
+        };
+      }
+
+      return {
+        date,
+        revenueLorda: dayData.revenueLorda,
+        rimborsi: dayData.rimborsi,
+        revenueNetta: dayData.revenueNetta,
+        bookingsCount: dayData.bookingsCount,
+        cancelledCount: dayData.cancelledCount,
+      };
+    });
+
+    const totals = days.reduce(
+      (acc, day) => {
+        acc.revenueLorda += day.revenueLorda;
+        acc.rimborsi += day.rimborsi;
+        acc.revenueNetta += day.revenueNetta;
+        acc.bookingsCount += day.bookingsCount;
+        acc.cancelledCount += day.cancelledCount;
+        return acc;
+      },
+      {
+        revenueLorda: 0,
+        rimborsi: 0,
+        revenueNetta: 0,
+        bookingsCount: 0,
+        cancelledCount: 0,
+      }
+    );
+
+    return res.json({
+      from,
+      to,
+      days,
+      totals: {
+        revenueLorda: Number(totals.revenueLorda.toFixed(2)),
+        rimborsi: Number(totals.rimborsi.toFixed(2)),
+        revenueNetta: Number(totals.revenueNetta.toFixed(2)),
+        bookingsCount: totals.bookingsCount,
+        cancelledCount: totals.cancelledCount,
+      },
+    });
+  } catch (err) {
+    console.error("❌ getOwnerDailyRevenue error:", err);
+    return res.status(500).json({ message: "Errore server" });
+  }
+};
+
+/**
  * 📌 PRENOTAZIONI RICEVUTE DALL'OWNER PAGINATE
- * GET /bookings/owner/paginated?page=1&limit=10&timeFilter=all|upcoming|past|ongoing
+ * GET /bookings/owner/paginated?page=1&limit=10&timeFilter=all|upcoming|past|ongoing&paymentMode=full|split
  */
 export const getOwnerBookingsPaginated = async (req: AuthRequest, res: Response) => {
   try {
@@ -1298,6 +1521,7 @@ export const getOwnerBookingsPaginated = async (req: AuthRequest, res: Response)
     const campoId = String(req.query?.campoId || "").trim();
     const sportCode = String(req.query?.sport || "").trim().toLowerCase();
     const date = String(req.query?.date || "").trim();
+    const paymentMode = String(req.query?.paymentMode || "").trim().toLowerCase();
     const { today, nowTime } = getNowParts();
 
     const emptyResponse = {
@@ -1348,6 +1572,13 @@ export const getOwnerBookingsPaginated = async (req: AuthRequest, res: Response)
     const bookingBaseQuery: any = {
       campo: { $in: filteredCampi.map((c: any) => c._id) },
     };
+
+    if (paymentMode) {
+      if (paymentMode !== "full" && paymentMode !== "split") {
+        return res.json(emptyResponse);
+      }
+      bookingBaseQuery.paymentMode = paymentMode;
+    }
 
     if (date) {
       bookingBaseQuery.date = date;

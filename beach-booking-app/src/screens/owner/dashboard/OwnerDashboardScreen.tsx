@@ -105,7 +105,7 @@ export default function OwnerDashboardScreen() {
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   
-  const [monthRevenue, setMonthRevenue] = useState(0);
+  const [dailyRevenue, setDailyRevenue] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,7 +122,6 @@ export default function OwnerDashboardScreen() {
       await Promise.all([
         loadStrutture(),
         loadTodayBookings(),
-        loadMonthRevenue(),
         loadUnreadNotifications(),
         loadRecentActivities(),
         loadUpcomingMatches(),
@@ -168,35 +167,17 @@ export default function OwnerDashboardScreen() {
           .sort((a: Booking, b: Booking) => 
             a.startTime.localeCompare(b.startTime)
           );
+
+        const revenue = confirmed.reduce(
+          (sum: number, booking: Booking) => sum + (booking.totalPrice || 0),
+          0
+        );
+
         setTodayBookings(confirmed);
+        setDailyRevenue(revenue);
       }
     } catch (error) {
       console.error("❌ [OwnerDashboard] Errore caricamento prenotazioni oggi:", error);
-    }
-  }, [token]);
-
-  const loadMonthRevenue = useCallback(async () => {
-    if (!token) return;
-
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const monthParam = `${year}-${month}`;
-
-      const res = await fetch(`${API_URL}/owner/bookings?month=${monthParam}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const revenue = data
-          .filter((b: Booking) => b.status === "confirmed")
-          .reduce((sum: number, b: Booking) => sum + (b.totalPrice || 0), 0);
-        setMonthRevenue(revenue);
-      }
-    } catch (error) {
-      console.error("❌ [OwnerDashboard] Errore calcolo incasso:", error);
     }
   }, [token]);
 
@@ -411,7 +392,8 @@ export default function OwnerDashboardScreen() {
           activeStrutture={activeStrutture}
           totalStrutture={strutture.length}
           todayBookings={todayBookings.length}
-          monthRevenue={monthRevenue}
+          ongoingBookings={upcomingBookings.length}
+          dailyRevenue={dailyRevenue}
           onStatsPress={handleStatsPress}
         />
 

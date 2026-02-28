@@ -2027,6 +2027,7 @@ export default function FieldDetailsScreen() {
                                                   {
                                                     campoId: campo._id,
                                                     campoName: campo.name,
+                                                    campo,
                                                     strutturaName:
                                                       struttura.name,
                                                     struttura: struttura,

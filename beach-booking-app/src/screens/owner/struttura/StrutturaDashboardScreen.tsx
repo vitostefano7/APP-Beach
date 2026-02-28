@@ -658,7 +658,7 @@ export default function StrutturaDashboardScreen() {
           )}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: 14,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
 
   // STRUTTURA CARD + IMMAGINI
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 18,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
